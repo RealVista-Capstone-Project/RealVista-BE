@@ -1,0 +1,157 @@
+package com.sep.realvista.application.user.service;
+
+import com.sep.realvista.application.common.dto.PageResponse;
+import com.sep.realvista.application.user.dto.*;
+import com.sep.realvista.application.user.mapper.UserMapper;
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.common.value.Email;
+import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserDomainService;
+import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.UserStatus;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Application Service for User operations.
+ * Orchestrates business logic and coordinates between domain and infrastructure layers.
+ */
+@Service
+@RequiredArgsConstructor
+@Transactional
+@Slf4j
+public class UserApplicationService {
+
+    private final UserRepository userRepository;
+    private final UserDomainService userDomainService;
+    private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
+
+    /**
+     * Create a new user.
+     */
+    public UserResponse createUser(CreateUserRequest request) {
+        log.info("Creating new user with email: {}", request.getEmail());
+
+        // Validate unique email
+        userDomainService.validateUniqueEmail(request.getEmail());
+
+        // Build user entity
+        User user = User.builder()
+                .email(Email.of(request.getEmail()))
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .status(UserStatus.PENDING)
+                .build();
+
+        // Save user
+        User savedUser = userRepository.save(user);
+        log.info("User created successfully with ID: {}", savedUser.getId());
+
+        return userMapper.toResponse(savedUser);
+    }
+
+    /**
+     * Get user by ID.
+     */
+    @Cacheable(value = "users", key = "#userId")
+    @Transactional(readOnly = true)
+    public UserResponse getUserById(Long userId) {
+        log.info("Fetching user with ID: {}", userId);
+        User user = userDomainService.getUserOrThrow(userId);
+        return userMapper.toResponse(user);
+    }
+
+    /**
+     * Update user profile.
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public UserResponse updateUser(Long userId, UpdateUserRequest request) {
+        log.info("Updating user profile for ID: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+        user.updateProfile(request.getFirstName(), request.getLastName(), request.getAvatarUrl());
+
+        User updatedUser = userRepository.save(user);
+        log.info("User profile updated successfully for ID: {}", userId);
+
+        return userMapper.toResponse(updatedUser);
+    }
+
+    /**
+     * Change user password.
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        log.info("Changing password for user ID: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+
+        // Verify current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new BusinessConflictException("Current password is incorrect", "INVALID_CURRENT_PASSWORD");
+        }
+
+        // Update password
+        String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
+        user.updatePassword(newPasswordHash);
+
+        userRepository.save(user);
+        log.info("Password changed successfully for user ID: {}", userId);
+    }
+
+    /**
+     * Activate user account.
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public UserResponse activateUser(Long userId) {
+        log.info("Activating user ID: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+        user.activate();
+
+        User activatedUser = userRepository.save(user);
+        log.info("User activated successfully: {}", userId);
+
+        return userMapper.toResponse(activatedUser);
+    }
+
+    /**
+     * Suspend user account.
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public UserResponse suspendUser(Long userId) {
+        log.info("Suspending user ID: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+        user.suspend();
+
+        User suspendedUser = userRepository.save(user);
+        log.info("User suspended successfully: {}", userId);
+
+        return userMapper.toResponse(suspendedUser);
+    }
+
+    /**
+     * Delete user.
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public void deleteUser(Long userId) {
+        log.info("Deleting user ID: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+        user.markAsDeleted();
+
+        userRepository.save(user);
+        log.info("User deleted successfully: {}", userId);
+    }
+}
+
