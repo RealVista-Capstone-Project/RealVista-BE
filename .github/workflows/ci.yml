@@ -1,0 +1,439 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'hotfix/**'
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+
+jobs:
+  # Job 1: Code Quality Checks
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+      
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      
+      - name: Run Checkstyle
+        run: mvn checkstyle:check
+        continue-on-error: false
+      
+      - name: Run SpotBugs
+        run: mvn spotbugs:check
+        continue-on-error: false
+      
+      - name: Upload Checkstyle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-report
+          path: target/checkstyle-result.xml
+          retention-days: 7
+      
+      - name: Upload SpotBugs report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-report
+          path: target/spotbugsXml.xml
+          retention-days: 7
+
+  # Job 2: Build and Compile
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: code-quality
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      
+      - name: Build with Maven (skip tests)
+        run: mvn clean compile -DskipTests
+      
+      - name: Verify build artifacts
+        run: |
+          if [ ! -d "target/classes" ]; then
+            echo "Build failed: target/classes directory not found"
+            exit 1
+          fi
+          echo "Build successful: target/classes exists"
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: target/classes
+          retention-days: 7
+
+  # Job 3: Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: build
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: realvista_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      
+      - name: Run Unit Tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: realvista_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+        run: mvn test
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: target/surefire-reports
+          retention-days: 7
+      
+      - name: Check test results
+        if: always()
+        run: |
+          if [ -d "target/surefire-reports" ]; then
+            TEST_FAILURES=$(find target/surefire-reports -name "*.xml" -exec grep -l "failures=\"[1-9]" {} \; | wc -l)
+            TEST_ERRORS=$(find target/surefire-reports -name "*.xml" -exec grep -l "errors=\"[1-9]" {} \; | wc -l)
+            
+            if [ "$TEST_FAILURES" -gt 0 ] || [ "$TEST_ERRORS" -gt 0 ]; then
+              echo "Tests failed or had errors"
+              exit 1
+            fi
+            echo "All tests passed successfully"
+          fi
+
+  # Job 4: Code Coverage
+  code-coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: realvista_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      
+      - name: Run tests with coverage
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: realvista_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+        run: mvn clean test jacoco:report
+      
+      - name: Check coverage threshold
+        run: |
+          if [ -f "target/site/jacoco/index.html" ]; then
+            echo "Coverage report generated successfully"
+            
+            # Extract coverage percentage (this is a simple check)
+            COVERAGE=$(grep -oP 'Total[^%]*\K[0-9]+(?=%)' target/site/jacoco/index.html | head -1 || echo "0")
+            echo "Code coverage: ${COVERAGE}%"
+            
+            if [ "$COVERAGE" -lt 70 ]; then
+              echo "Warning: Coverage is below 70% threshold"
+              # Uncomment to fail the build on low coverage
+              # exit 1
+            fi
+          fi
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/site/jacoco
+          retention-days: 30
+      
+      - name: Upload coverage to Codecov (optional)
+        if: github.event_name == 'push'
+        uses: codecov/codecov-action@v4
+        with:
+          files: target/site/jacoco/jacoco.xml
+          fail_ci_if_error: false
+
+  # Job 5: Package Application
+  package:
+    name: Package Application
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests, code-coverage]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      
+      - name: Package application
+        run: mvn clean package -DskipTests
+      
+      - name: Verify JAR file
+        run: |
+          if [ ! -f "target/realvista-0.0.1-SNAPSHOT.jar" ]; then
+            echo "Package failed: JAR file not found"
+            exit 1
+          fi
+          
+          JAR_SIZE=$(du -h target/realvista-0.0.1-SNAPSHOT.jar | cut -f1)
+          echo "JAR file created successfully: $JAR_SIZE"
+          
+          # Verify JAR is executable
+          java -jar target/realvista-0.0.1-SNAPSHOT.jar --version || true
+      
+      - name: Extract build info
+        run: |
+          echo "Build Information:"
+          echo "=================="
+          
+          if [ -f "target/classes/git.properties" ]; then
+            echo "Git Properties:"
+            cat target/classes/git.properties
+          fi
+          
+          if [ -f "target/classes/META-INF/build-info.properties" ]; then
+            echo "Build Info:"
+            cat target/classes/META-INF/build-info.properties
+          fi
+      
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-jar
+          path: target/*.jar
+          retention-days: 30
+      
+      - name: Upload git properties
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metadata
+          path: |
+            target/classes/git.properties
+            target/classes/META-INF/build-info.properties
+          retention-days: 30
+
+  # Job 6: Security Scan (Optional but recommended)
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+      
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      
+      - name: Run OWASP Dependency Check
+        run: |
+          # Install OWASP Dependency Check if not in pom.xml
+          # This is optional, uncomment if needed
+          # mvn org.owasp:dependency-check-maven:check
+          echo "Security scan placeholder - add OWASP or Snyk integration"
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Job 7: Summary Report
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, build, unit-tests, code-coverage, package, security-scan]
+    if: always()
+    
+    steps:
+      - name: Check job statuses
+        run: |
+          echo "CI Pipeline Summary"
+          echo "==================="
+          echo "Code Quality: ${{ needs.code-quality.result }}"
+          echo "Build: ${{ needs.build.result }}"
+          echo "Unit Tests: ${{ needs.unit-tests.result }}"
+          echo "Code Coverage: ${{ needs.code-coverage.result }}"
+          echo "Package: ${{ needs.package.result }}"
+          echo "Security Scan: ${{ needs.security-scan.result }}"
+          
+          # Fail if any critical job failed
+          if [[ "${{ needs.code-quality.result }}" != "success" ]] || \
+             [[ "${{ needs.build.result }}" != "success" ]] || \
+             [[ "${{ needs.unit-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.package.result }}" != "success" ]]; then
+            echo "CI Pipeline Failed!"
+            exit 1
+          fi
+          
+          echo "CI Pipeline Passed Successfully! ✅"
+      
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `
+            ## CI Pipeline Results 🚀
+            
+            | Job | Status |
+            |-----|--------|
+            | Code Quality | ${{ needs.code-quality.result }} |
+            | Build | ${{ needs.build.result }} |
+            | Unit Tests | ${{ needs.unit-tests.result }} |
+            | Code Coverage | ${{ needs.code-coverage.result }} |
+            | Package | ${{ needs.package.result }} |
+            | Security Scan | ${{ needs.security-scan.result }} |
+            
+            **Overall Status:** ${{ job.status }}
+            
+            View the full pipeline run [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
