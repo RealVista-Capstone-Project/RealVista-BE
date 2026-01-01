@@ -152,6 +152,7 @@ jobs:
       
       - name: Run Unit Tests
         env:
+          SPRING_PROFILES_ACTIVE: dev
           DB_HOST: localhost
           DB_PORT: 5432
           DB_NAME: realvista_test
@@ -222,6 +223,7 @@ jobs:
       
       - name: Run tests with coverage
         env:
+          SPRING_PROFILES_ACTIVE: dev
           DB_HOST: localhost
           DB_PORT: 5432
           DB_NAME: realvista_test
