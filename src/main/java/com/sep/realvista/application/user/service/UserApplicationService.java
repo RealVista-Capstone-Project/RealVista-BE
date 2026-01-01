@@ -1,7 +1,9 @@
 package com.sep.realvista.application.user.service;
 
-import com.sep.realvista.application.common.dto.PageResponse;
-import com.sep.realvista.application.user.dto.*;
+import com.sep.realvista.application.user.dto.ChangePasswordRequest;
+import com.sep.realvista.application.user.dto.CreateUserRequest;
+import com.sep.realvista.application.user.dto.UpdateUserRequest;
+import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.mapper.UserMapper;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.value.Email;
@@ -13,8 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

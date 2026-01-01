@@ -1,0 +1,45 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  # JPA Configuration
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  # Cache
+  cache:
+    type: caffeine
+
+# Logging
+logging:
+  level:
+    root: WARN
+    com.sep.realvista: INFO
+    org.springframework.security: INFO
+
+# Swagger - Disable in production
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
+
+# Actuator - More restrictive in production
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

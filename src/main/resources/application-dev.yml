@@ -1,0 +1,34 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/realvista_dev
+    username: postgres
+    password: postgres
+  
+  # JPA Configuration
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  
+  # Cache
+  cache:
+    type: simple
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.sep.realvista: DEBUG
+    org.springframework.security: DEBUG
+
+# Swagger
+springdoc:
+  swagger-ui:
+    enabled: true
+

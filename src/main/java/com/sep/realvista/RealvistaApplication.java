@@ -8,7 +8,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * Spring Boot application implementing Clean Architecture and DDD principles.
  */
 @SpringBootApplication
-public class RealvistaApplication {
+public final class RealvistaApplication {
+
+    private RealvistaApplication() {
+        // Private constructor to hide the implicit public one
+    }
 
     public static void main(String[] args) {
         SpringApplication.run(RealvistaApplication.class, args);
