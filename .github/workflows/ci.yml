@@ -335,7 +335,52 @@ jobs:
             target/classes/META-INF/build-info.properties
           retention-days: 30
 
-  # Job 6: Summary Report
+  # Job 6: Security Scan (Optional but recommended)
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Run OWASP Dependency Check
+        run: |
+          # Install OWASP Dependency Check if not in pom.xml
+          # This is optional, uncomment if needed
+          # mvn org.owasp:dependency-check-maven:check
+          echo "Security scan placeholder - add OWASP or Snyk integration"
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Job 7: Summary Report
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
