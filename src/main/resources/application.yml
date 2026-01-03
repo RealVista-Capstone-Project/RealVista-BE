@@ -7,7 +7,7 @@ spring:
   
   # Database Configuration
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:realvista_db}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:realvista_test}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -105,10 +105,15 @@ logging:
 # Swagger/OpenAPI Configuration
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    path: /v1/api-docs
+    enabled: true
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
     tags-sorter: alpha
     operations-sorter: alpha
+    display-request-duration: true
+    doc-expansion: none
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
 

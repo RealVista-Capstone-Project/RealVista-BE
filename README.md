@@ -1,25 +1,73 @@
-# RealVista Backend - Spring Boot Clean Architecture
+# RealVista Backend
 
-A production-ready Spring Boot backend application implementing Clean Architecture and Domain-Driven Design (DDD) principles.
+![CI Pipeline](https://github.com/YOUR_USERNAME/realvista/workflows/CI%20Pipeline/badge.svg)
+![Java](https://img.shields.io/badge/Java-21-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
 
-## 🏗️ Architecture Overview
+A production-ready Spring Boot backend application implementing Clean Architecture and Domain-Driven Design (DDD) principles with comprehensive CI/CD pipeline.
 
-This project follows Clean Architecture with DDD, organized into four main layers:
+## 🚀 Quick Links
+
+- **API Documentation**: http://localhost:8080/swagger-ui.html
+- **Health Check**: http://localhost:8080/actuator/health
+- **Git Info**: http://localhost:8080/actuator/info
+- **Metrics**: http://localhost:8080/actuator/metrics
+
+## 📋 Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [Development](#development)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Documentation](#documentation)
+
+## ✨ Features
+
+### Core Features
+- ✅ **Clean Architecture** with DDD principles
+- ✅ **JWT Authentication** with role-based access control
+- ✅ **RESTful API** with OpenAPI/Swagger documentation
+- ✅ **Database Migration** with Flyway
+- ✅ **Caching** support with Spring Cache
+- ✅ **Logging** with trace ID support
+- ✅ **Actuator** endpoints for monitoring
+
+### Code Quality
+- ✅ **Checkstyle** for code style enforcement
+- ✅ **SpotBugs** for static analysis
+- ✅ **JaCoCo** for code coverage (70% minimum)
+- ✅ **MapStruct** for DTO mapping
+- ✅ **Lombok** for boilerplate reduction
+
+### DevOps
+- ✅ **CI Pipeline** with GitHub Actions
+- ✅ **Automated Testing** with PostgreSQL
+- ✅ **Security Scanning** with Trivy
+- ✅ **Git SHA Tracking** in health endpoint
+- ✅ **Build Info** in actuator
+
+## 🏗️ Architecture
 
 ```
 src/main/java/com/sep/realvista/
-├── domain/              # Domain Layer (Business Logic)
-├── application/         # Application Layer (Use Cases)
-├── infrastructure/      # Infrastructure Layer (External Systems)
-└── presentation/        # Presentation Layer (REST Controllers)
+├── domain/              # Business Logic (Core)
+│   ├── user/
+│   └── common/
+├── application/         # Use Cases & DTOs
+│   └── user/
+├── infrastructure/      # Technical Implementation
+│   ├── config/
+│   ├── persistence/
+│   └── security/
+└── presentation/        # REST Controllers
+    └── rest/
 ```
 
-### Layer Responsibilities
-
-- **Domain Layer**: Contains business entities, value objects, domain services, and repository interfaces
-- **Application Layer**: Orchestrates business logic, DTOs, mappers, and application services
-- **Infrastructure Layer**: Implements repository interfaces, external services, security, and configuration
-- **Presentation Layer**: REST controllers, request/response handling, and exception handlers
+**Layer Dependencies**: Presentation → Application → Domain ← Infrastructure
 
 ## 🚀 Getting Started
 
@@ -28,275 +76,316 @@ src/main/java/com/sep/realvista/
 - Java 21+
 - Maven 3.8+
 - Docker & Docker Compose
-- PostgreSQL 15+ (optional if using Docker)
+- Git
 
-### Quick Start
+### Installation
 
-1. **Clone the repository**
+1. **Clone repository**
    ```bash
-   cd /path/to/realvista
+   git clone https://github.com/YOUR_USERNAME/realvista.git
+   cd realvista
    ```
 
-2. **Start PostgreSQL with Docker**
+2. **Start database**
    ```bash
    docker-compose up -d
    ```
 
-3. **Configure environment variables** (optional)
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Build the project**
+3. **Build application**
    ```bash
    mvn clean install
    ```
 
-5. **Run the application**
+4. **Run application**
    ```bash
    mvn spring-boot:run
    ```
 
-6. **Access the application**
-   - API: http://localhost:8080
-   - Swagger UI: http://localhost:8080/swagger-ui.html
-   - PgAdmin: http://localhost:5050 (admin@realvista.com / admin)
+5. **Verify**
+   ```bash
+   curl http://localhost:8080/actuator/health
+   ```
 
-## 📋 Default Test Users
+### Docker Setup
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+## 🔄 CI/CD Pipeline
+
+### Automated Checks
+
+Our GitHub Actions pipeline ensures:
+
+✅ **Code Quality**
+- Checkstyle validation
+- SpotBugs analysis
+- Code formatting
+
+✅ **Build**
+- Compilation success
+- Artifact generation
+- Build info extraction
+
+✅ **Testing**
+- Unit tests execution
+- Integration tests with PostgreSQL
+- 70% code coverage minimum
+
+✅ **Security**
+- Dependency vulnerability scan
+- Trivy security analysis
+
+✅ **Package**
+- JAR creation
+- Git SHA embedding
+- Metadata extraction
+
+### Pipeline Status
+
+View pipeline status: [Actions Tab](https://github.com/YOUR_USERNAME/realvista/actions)
+
+### Branch Strategy
+
+```
+main (protected) ← Pull Requests only
+  ↑
+develop
+  ↑
+feature/* | bugfix/* | hotfix/*
+```
+
+**Protection Rules**:
+- Require PR approval
+- All CI checks must pass
+- Up-to-date branches required
+
+## 💻 Development
+
+### Run Locally
+
+```bash
+# Development mode with hot reload
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+# With custom port
+mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8081"
+```
+
+### Code Quality
+
+```bash
+# Run all checks
+mvn clean verify
+
+# Individual checks
+mvn checkstyle:check
+mvn spotbugs:check
+mvn jacoco:report
+```
+
+### Test Accounts
 
 | Email | Password | Role |
 |-------|----------|------|
 | admin@realvista.com | Password123 | ADMIN |
 | user@realvista.com | Password123 | USER |
-| pending@realvista.com | Password123 | USER (Pending) |
-
-## 🔧 Configuration
-
-### Database Configuration
-
-Edit `application.properties` or set environment variables:
-
-```properties
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=realvista_db
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-```
-
-### JWT Configuration
-
-```properties
-JWT_SECRET=your-secret-key
-JWT_EXPIRATION_MS=86400000
-```
-
-### Profiles
-
-- **dev**: Development profile with debug logging
-- **prod**: Production profile with optimized settings
-
-Run with specific profile:
-```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
-```
 
 ## 🧪 Testing
 
-### Run all tests
+### Unit Tests
+
 ```bash
+# Run tests
 mvn test
+
+# With coverage
+mvn test jacoco:report
+
+# View coverage
+open target/site/jacoco/index.html
 ```
 
-### Run integration tests
+### Integration Tests
+
 ```bash
+# Run with Testcontainers
 mvn verify
+
+# Specific test
+mvn test -Dtest=UserControllerTest
 ```
 
-### Code coverage report
+### API Testing
+
 ```bash
-mvn jacoco:report
-```
-View report at: `target/site/jacoco/index.html`
-
-## 🔍 Code Quality
-
-### Run Checkstyle
-```bash
-mvn checkstyle:check
-```
-
-### Run SpotBugs
-```bash
-mvn spotbugs:check
-```
-
-### Run all quality checks
-```bash
-mvn clean verify
-```
-
-## 📚 API Documentation
-
-Once the application is running, access:
-- **Swagger UI**: http://localhost:8080/swagger-ui.html
-- **OpenAPI JSON**: http://localhost:8080/v3/api-docs
-
-### Sample API Endpoints
-
-#### Authentication
-```bash
-# Register
-POST /api/v1/auth/register
-Content-Type: application/json
-
-{
-  "email": "newuser@example.com",
-  "password": "SecurePass123",
-  "firstName": "John",
-  "lastName": "Doe"
-}
-
 # Login
-POST /api/v1/auth/login
-Content-Type: application/json
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@realvista.com","password":"Password123"}'
 
-{
-  "email": "user@realvista.com",
-  "password": "Password123"
-}
+# Use token
+curl -X GET http://localhost:8080/api/v1/users/1 \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-#### User Management
+## 📦 Deployment
+
+### Build for Production
+
 ```bash
-# Get user by ID
-GET /api/v1/users/{id}
-Authorization: Bearer {token}
+# Create JAR
+mvn clean package -Pprod
 
-# Update user profile
-PUT /api/v1/users/{id}
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "firstName": "John",
-  "lastName": "Smith",
-  "avatarUrl": "https://example.com/avatar.jpg"
-}
-
-# Change password
-PUT /api/v1/users/{id}/password
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "currentPassword": "Password123",
-  "newPassword": "NewSecurePass123"
-}
+# Run JAR
+java -jar target/realvista-0.0.1-SNAPSHOT.jar
 ```
 
-## 🗂️ Project Structure
+### Environment Variables
 
-```
-realvista/
-├── src/
-│   ├── main/
-│   │   ├── java/com/sep/realvista/
-│   │   │   ├── domain/
-│   │   │   │   ├── common/          # Shared domain components
-│   │   │   │   └── user/            # User domain
-│   │   │   ├── application/
-│   │   │   │   ├── common/          # Common DTOs
-│   │   │   │   └── user/            # User application services
-│   │   │   ├── infrastructure/
-│   │   │   │   ├── config/          # Configuration classes
-│   │   │   │   ├── persistence/     # JPA repositories
-│   │   │   │   └── security/        # Security implementation
-│   │   │   └── presentation/
-│   │   │       ├── rest/            # REST controllers
-│   │   │       └── exception/       # Exception handlers
-│   │   └── resources/
-│   │       ├── db/migration/        # Flyway migrations
-│   │       ├── application.properties
-│   │       └── logback-spring.xml
-│   └── test/
-├── checkstyle.xml
-├── compose.yaml
-├── pom.xml
-└── README.md
-```
-
-## 🔐 Security
-
-- **Authentication**: JWT-based authentication
-- **Authorization**: Role-based access control (RBAC)
-- **Password**: BCrypt hashing with salt
-- **Input Validation**: Jakarta Bean Validation
-- **SQL Injection**: Prevented with JPA/JPQL parameterized queries
-
-## 📝 Development Guidelines
-
-### Adding a New Feature
-
-1. **Domain Layer**: Create entity, repository interface, domain service
-2. **Application Layer**: Create DTOs, mapper, application service
-3. **Infrastructure Layer**: Implement repository
-4. **Presentation Layer**: Create controller with endpoints
-5. **Database**: Add Flyway migration if needed
-6. **Tests**: Write unit and integration tests
-
-### Code Standards
-
-- Follow checkstyle rules (see `checkstyle.xml`)
-- Write meaningful commit messages
-- Add JavaDoc for public methods
-- Maintain test coverage > 70%
-- Use constructor injection with Lombok's `@RequiredArgsConstructor`
-
-### Branching Strategy
-
-```
-feature/PROJ-123-description
-bugfix/PROJ-456-description
-hotfix/PROJ-789-description
-release/v1.0.0
-```
-
-## 🐳 Docker
-
-### Build Docker image
 ```bash
-docker build -t realvista-backend:latest .
+export DB_HOST=your-db-host
+export DB_PORT=5432
+export DB_NAME=realvista_db
+export DB_USERNAME=postgres
+export DB_PASSWORD=secure-password
+export JWT_SECRET=your-secret-key
+export SPRING_PROFILES_ACTIVE=prod
 ```
 
-### Run with Docker Compose
+### Health Checks
+
 ```bash
-docker-compose up -d
+# Basic health
+curl http://localhost:8080/actuator/health
+
+# Detailed (requires auth)
+curl -H "Authorization: Bearer TOKEN" \
+  http://localhost:8080/actuator/health
+
+# Git information
+curl http://localhost:8080/actuator/info
 ```
 
-## 📊 Monitoring
+## 📚 Documentation
 
-- **Health Check**: http://localhost:8080/actuator/health
-- **Metrics**: http://localhost:8080/actuator/metrics
-- **Logs**: `logs/application.log`
+- [Architecture Guide](ARCHITECTURE.md) - Detailed architecture documentation
+- [Quick Start Guide](QUICKSTART.md) - Step-by-step setup
+- [Contributing Guidelines](CONTRIBUTING.md) - Development standards
+- [CI/CD Pipeline](CI_PIPELINE_GUIDE.md) - Pipeline documentation
+- [Configuration Changes](CONFIGURATION_CHANGES.md) - Recent updates
+- [Project Summary](PROJECT_SUMMARY.md) - Complete overview
+- [Branch Protection](.github/BRANCH_PROTECTION.md) - Branch rules
+
+### API Documentation
+
+Access Swagger UI: http://localhost:8080/swagger-ui.html
+
+### Key Endpoints
+
+```
+Authentication:
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+
+User Management:
+GET    /api/v1/users/{id}
+POST   /api/v1/users
+PUT    /api/v1/users/{id}
+DELETE /api/v1/users/{id}
+PUT    /api/v1/users/{id}/password
+
+Actuator:
+GET    /actuator/health
+GET    /actuator/info
+GET    /actuator/metrics
+```
 
 ## 🤝 Contributing
 
-1. Create a feature branch
-2. Make your changes
-3. Run tests and quality checks
-4. Submit a pull request
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'feat: add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open Pull Request
 
-## 📄 License
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
-This project is licensed under the Apache License 2.0.
+## 📊 Monitoring
+
+### Metrics
+
+Access metrics at: http://localhost:8080/actuator/metrics
+
+Available metrics:
+- JVM memory usage
+- HTTP request counts
+- Database connection pool
+- Cache statistics
+
+### Logging
+
+Logs are available at:
+- `logs/application.log` - All logs
+- `logs/error.log` - Error logs only
+
+Log format includes trace ID for request tracking.
+
+## 🔒 Security
+
+- **Authentication**: JWT-based
+- **Authorization**: Role-based (RBAC)
+- **Password**: BCrypt hashing
+- **Input Validation**: Jakarta Bean Validation
+- **SQL Injection**: Prevented with JPA
+- **Security Scan**: Automated with Trivy
+
+## 📜 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## 👥 Team
 
 RealVista Development Team - Spring 2026
 
-## 📮 Support
+## 📞 Support
 
-For issues or questions, contact: contact@realvista.com
+- **Issues**: [GitHub Issues](https://github.com/YOUR_USERNAME/realvista/issues)
+- **Email**: contact@realvista.com
+- **Documentation**: See `/docs` folder
 
+## 🎯 Roadmap
+
+### Current (v0.0.1)
+- ✅ Clean Architecture setup
+- ✅ JWT Authentication
+- ✅ User Management
+- ✅ CI Pipeline
+
+### Coming Soon (v0.1.0)
+- [ ] CD Pipeline (when cloud ready)
+- [ ] Email verification
+- [ ] Refresh tokens
+- [ ] File upload service
+- [ ] Audit logging
+
+### Future (v1.0.0)
+- [ ] Redis caching
+- [ ] Event-driven architecture
+- [ ] API rate limiting
+- [ ] Multi-tenant support
+- [ ] GraphQL API
+
+---
+
+**Built with ❤️ using Spring Boot and Clean Architecture**
+
+**Status**: ✅ Production Ready | 🔄 CI Pipeline Active | 🧪 Tests Passing
