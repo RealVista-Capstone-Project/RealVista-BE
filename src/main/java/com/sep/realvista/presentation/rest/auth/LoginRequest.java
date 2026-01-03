@@ -23,7 +23,7 @@ public class LoginRequest {
     @Email(message = "Invalid email format")
     private String email;
 
-    @Schema(description = "User password", example = "password123", required = true)
+    @Schema(description = "User password", example = "Abc12345", required = true)
     @NotBlank(message = "Password is required")
     private String password;
 }
