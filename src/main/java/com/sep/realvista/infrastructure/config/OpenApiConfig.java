@@ -24,8 +24,7 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI customOpenAPI() {
-        String apiDescription = "RESTful API for RealVista Real Estate Platform - "
-                + "Communication & Appointment Scheduling";
+        String apiDescription = "RESTful API for RealVista Real Estate Platform";
         String jwtDescription = "Enter JWT token obtained from /api/v1/auth/login endpoint";
 
         return new OpenAPI()

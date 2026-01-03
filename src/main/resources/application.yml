@@ -110,10 +110,3 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
-    tags-sorter: alpha
-    operations-sorter: alpha
-    display-request-duration: true
-    doc-expansion: none
-  default-consumes-media-type: application/json
-  default-produces-media-type: application/json
-
