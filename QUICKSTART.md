@@ -29,6 +29,12 @@ Access PgAdmin: http://localhost:5050
 - Email: admin@realvista.com
 - Password: admin
 
+Connect DB on IDE
+
+<img width="805" height="680" alt="Screenshot 2026-01-03 at 13 10 58" src="https://github.com/user-attachments/assets/62064259-036e-4d38-a45b-f60d1bc336de" />
+<img width="802" height="680" alt="Screenshot 2026-01-03 at 13 11 34" src="https://github.com/user-attachments/assets/3bff5f71-8664-4863-8ec5-065aa09c0e6f" />
+
+
 ### 2. Build Project
 
 ```bash
