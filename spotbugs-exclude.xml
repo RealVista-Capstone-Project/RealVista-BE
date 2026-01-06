@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+        xmlns="https://github.com/spotbugs/filter/3.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/3.1.0/spotbugs/etc/findbugsfilter.xsd">
+
+    <!-- Exclude EI_EXPOSE_REP for DTOs - These are serialization objects -->
+    <Match>
+        <Class name="~.*\.dto\..*"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP2 for Spring-managed service constructors -->
+    <Match>
+        <Class name="~.*\.service\..*"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP2 for Domain services -->
+    <Match>
+        <Class name="~.*\.domain\..*Service"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP2 for Spring-managed controllers -->
+    <Match>
+        <Class name="~.*\.controller\..*"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP2 for Spring-managed REST controllers -->
+    <Match>
+        <Class name="~.*\.rest\..*Controller"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP2 for Spring Security Configuration -->
+    <Match>
+        <Class name="~.*\.config\.security\..*"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP2 for Spring-managed infrastructure services -->
+    <Match>
+        <Class name="~.*\.infrastructure\..*"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude serialVersionUID warnings for value objects and DTOs -->
+    <Match>
+        <Or>
+            <Class name="~.*\.value\..*"/>
+            <Class name="~.*\.dto\..*"/>
+        </Or>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+    </Match>
+
+    <!-- Exclude DM_CONVERT_CASE for value objects doing intentional normalization -->
+    <Match>
+        <Class name="~.*\.value\.Email"/>
+        <Method name="of"/>
+        <Bug pattern="DM_CONVERT_CASE"/>
+    </Match>
+
+</FindBugsFilter>
+
