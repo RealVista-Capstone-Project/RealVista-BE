@@ -1,0 +1,50 @@
+# Test Profile Configuration
+# Uses H2 in-memory database for fast, isolated testing
+
+spring:
+  # H2 In-Memory Database Configuration
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  # JPA/Hibernate Configuration for H2
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    # Use test-specific migrations that are H2-compatible
+    locations: classpath:db/migration
+    # Clean database between tests (optional)
+    clean-disabled: false
+    # Validate migrations
+    validate-on-migrate: true
+  
+  # Disable Docker Compose for tests
+  docker:
+    compose:
+      enabled: false
+  
+  # Logging Configuration for Tests
+  logging:
+    level:
+      root: INFO
+      com.sep.realvista: DEBUG
+      org.springframework.web: INFO
+      org.hibernate: WARN
+      org.flywaydb: INFO
+
+# Disable Actuator security for tests
+management:
+  security:
+    enabled: false
+

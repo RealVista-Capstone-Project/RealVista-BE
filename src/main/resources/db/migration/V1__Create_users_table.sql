@@ -1,9 +1,10 @@
 -- Initial schema: Create users table
 -- Version: V1__Create_users_table.sql
+-- Note: Compatible with both PostgreSQL and H2 (test database)
 
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
-    value VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,  -- Renamed from 'value' (reserved keyword in H2)
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
@@ -16,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Create index on email for faster lookups
-CREATE INDEX IF NOT EXISTS idx_user_email ON users(value);
+CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
 
 -- Create index on status for filtering
 CREATE INDEX IF NOT EXISTS idx_user_status ON users(status);
@@ -30,12 +31,4 @@ ALTER TABLE users ADD CONSTRAINT chk_user_status
 
 ALTER TABLE users ADD CONSTRAINT chk_user_role 
     CHECK (role IN ('USER', 'ADMIN', 'MODERATOR'));
-
--- Add comment
-COMMENT ON TABLE users IS 'User accounts table';
-COMMENT ON COLUMN users.value IS 'User email address';
-COMMENT ON COLUMN users.password_hash IS 'Bcrypt hashed password';
-COMMENT ON COLUMN users.status IS 'User account status';
-COMMENT ON COLUMN users.role IS 'User role for authorization';
-COMMENT ON COLUMN users.deleted IS 'Soft delete flag';
 
