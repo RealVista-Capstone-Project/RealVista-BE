@@ -33,6 +33,7 @@
 		<flyway.version>9.22.3</flyway.version>
 		<spotbugs.version>4.8.2.0</spotbugs.version>
 		<jacoco.version>0.8.11</jacoco.version>
+		<h2.version>2.2.224</h2.version>
 	</properties>
 	<dependencies>
 		<!-- Spring Boot Starters -->
@@ -149,6 +150,7 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
+			<version>${h2.version}</version>
 			<scope>test</scope>
 		</dependency>
 		
