@@ -1,4 +1,4 @@
-package com.sep.realvista.component.presentation.rest;
+package com.sep.realvista.component.presentation.rest.user;
 
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
