@@ -45,13 +45,6 @@ spring:
   cache:
     type: simple
     cache-names: users
-  
-  # MVC Configuration
-  mvc:
-    throw-exception-if-no-handler-found: true
-  web:
-    resources:
-      add-mappings: false
 
 # Server Configuration
 server:
@@ -99,8 +92,10 @@ logging:
     file: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
   file:
     name: logs/application.log
-    max-size: 10MB
-    max-history: 30
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
 
 # Swagger/OpenAPI Configuration
 springdoc:
