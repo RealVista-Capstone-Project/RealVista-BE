@@ -62,8 +62,18 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Download dependencies
-        run: mvn dependency:go-offline -B
+      - name: Download dependencies with retry
+        run: |
+          for i in {1..3}; do
+            echo "Attempt $i: Downloading dependencies..."
+            if mvn dependency:go-offline -B; then
+              echo "Dependencies downloaded successfully"
+              break
+            else
+              echo "Attempt $i failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
         continue-on-error: true
 
       - name: Run Checkstyle
@@ -265,6 +275,19 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
+
+      - name: Download dependencies with retry
+        run: |
+          for i in {1..3}; do
+            echo "Attempt $i: Downloading dependencies..."
+            if mvn dependency:go-offline -B; then
+              echo "Dependencies downloaded successfully"
+              break
+            else
+              echo "Attempt $i failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
 
       - name: Run tests with coverage
         env:
