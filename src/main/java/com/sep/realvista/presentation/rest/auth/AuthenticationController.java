@@ -1,5 +1,7 @@
 package com.sep.realvista.presentation.rest.auth;
 
+import com.sep.realvista.application.auth.dto.AuthenticationResponse;
+import com.sep.realvista.application.auth.dto.LoginRequest;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
