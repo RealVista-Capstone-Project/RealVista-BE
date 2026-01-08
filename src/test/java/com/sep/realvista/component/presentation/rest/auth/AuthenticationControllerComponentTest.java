@@ -195,7 +195,7 @@ class AuthenticationControllerComponentTest {
                 .andExpect(jsonPath("$.message").value("Login successful"))
                 .andExpect(jsonPath("$.data.access_token").value("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"))
                 .andExpect(jsonPath("$.data.type").value("Bearer"))
-                .andExpect(jsonPath("$.data.userId").value(1))
+                .andExpect(jsonPath("$.data.user_id").value(1))
                 .andExpect(jsonPath("$.data.email").value("test@example.com"));
 
         verify(authService).login(any(LoginRequest.class));
@@ -243,7 +243,7 @@ class AuthenticationControllerComponentTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.userId").value(1))
+                .andExpect(jsonPath("$.data.user_id").value(1))
                 .andExpect(jsonPath("$.data.email").value("test@example.com"));
     }
 
