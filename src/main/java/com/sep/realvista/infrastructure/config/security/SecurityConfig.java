@@ -32,7 +32,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
 
-    private final String [] PUBLIC_ENDPOINTS = {
+    private static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/auth/**",
             "/v1/api-docs/**",
             "/swagger-ui/**",
