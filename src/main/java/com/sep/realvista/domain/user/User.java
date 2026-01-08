@@ -17,6 +17,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Domain Entity: User
@@ -33,11 +37,14 @@ import lombok.NoArgsConstructor;
 public class User extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID userId;
 
     @Embedded
     private Email email;
+
+    @Column(unique = true)
+    private String phone;
 
     @Column(nullable = false)
     private String passwordHash;
@@ -48,18 +55,30 @@ public class User extends BaseEntity {
     @Column(length = 100)
     private String lastName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    @Builder.Default
-    private UserStatus status = UserStatus.PENDING;
+    @Column(length = 500)
+    private String avatarUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private UserRole role = UserRole.USER;
 
-    @Column(length = 500)
-    private String avatarUrl;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private UserStatus status = UserStatus.PENDING;
+
+    @ColumnDefault("false")
+    @Builder.Default
+    private boolean emailVerified = false;
+
+    @ColumnDefault("false")
+    @Builder.Default
+    private boolean phoneVerified = false;
+
+    private String businessName;
+
+    private LocalDateTime lastLoginAt;
 
     /**
      * Domain logic: Activate user account.

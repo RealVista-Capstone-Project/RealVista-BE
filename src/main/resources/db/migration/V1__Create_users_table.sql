@@ -3,14 +3,19 @@
 -- Note: Compatible with both PostgreSQL and H2 (test database)
 
 CREATE TABLE IF NOT EXISTS users (
-    id BIGSERIAL PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,  -- Renamed from 'value' (reserved keyword in H2)
+    user_id UUID PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    phone VARCHAR(255) UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-    role VARCHAR(20) NOT NULL DEFAULT 'USER',
     avatar_url VARCHAR(500),
+    role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    phone_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    business_name VARCHAR(255),
+    last_login_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted BOOLEAN NOT NULL DEFAULT FALSE

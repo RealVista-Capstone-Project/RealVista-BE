@@ -54,7 +54,7 @@ public class UserApplicationService {
 
         // Save user
         User savedUser = userRepository.save(user);
-        log.info("User created successfully with ID: {}", savedUser.getId());
+        log.info("User created successfully with ID: {}", savedUser.getUserId());
 
         return userMapper.toResponse(savedUser);
     }

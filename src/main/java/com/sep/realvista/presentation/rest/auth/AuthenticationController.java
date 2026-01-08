@@ -74,7 +74,7 @@ public class AuthenticationController {
         AuthenticationResponse response = AuthenticationResponse.builder()
                 .token(token)
                 .type("Bearer")
-                .userId(user.getId())
+                .userId(user.getUserId())
                 .email(user.getEmail().getValue())
                 .build();
 

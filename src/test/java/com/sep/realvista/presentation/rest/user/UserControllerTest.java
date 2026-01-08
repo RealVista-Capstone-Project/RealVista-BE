@@ -20,6 +20,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.UUID;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -61,7 +63,7 @@ class UserControllerTest {
     void setUp() {
         // Arrange: Prepare test data
         mockUserResponse = UserResponse.builder()
-                .id(1L)
+                .userId(UUID.fromString("550e8400-e29b-41d4-a716-446655440001"))
                 .email("test@example.com")
                 .firstName("John")
                 .lastName("Doe")

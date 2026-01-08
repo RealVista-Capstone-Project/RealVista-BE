@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * Authentication response DTO.
  */
@@ -23,7 +25,7 @@ public class AuthenticationResponse {
     private String type;
 
     @Schema(description = "User ID", example = "1")
-    private Long userId;
+    private UUID userId;
 
     @Schema(description = "User email", example = "user@example.com")
     private String email;
