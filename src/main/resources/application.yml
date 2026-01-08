@@ -1,6 +1,8 @@
 spring:
   application:
     name: realvista
+    frontend:
+      url: http://localhost:3000
   
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}

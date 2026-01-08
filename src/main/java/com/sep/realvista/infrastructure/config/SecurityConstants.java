@@ -1,8 +1,6 @@
 package com.sep.realvista.infrastructure.config;
 
 
-import org.springframework.beans.factory.annotation.Value;
-
 /**
  * Infrastructure layer security constants.
  * Contains technical security-related configurations.
@@ -11,8 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
  */
 public final class SecurityConstants {
 
-    @Value("${spring.profiles.active:dev}")
-    private static String activeProfile;
 
     private SecurityConstants() {
         throw new AssertionError("Cannot instantiate constants class");
@@ -26,6 +22,7 @@ public final class SecurityConstants {
         public static final String HEADER_NAME = "Authorization";
         public static final String TOKEN_TYPE = "Bearer";
         public static final long DEFAULT_EXPIRATION_MS = 86400000L; // 24 hours
+
         private Jwt() {
             throw new AssertionError("Cannot instantiate constants class");
         }
@@ -43,7 +40,8 @@ public final class SecurityConstants {
                 "/actuator/**",
                 "/actuator/health/**",
                 "/oauth2/**",
-                "/login/oauth2/**"
+                "/login/oauth2/**",
+                "/login-google/**"
         };
 
         private PublicEndpoints() {
@@ -58,6 +56,7 @@ public final class SecurityConstants {
         public static final String GOOGLE_PROVIDER = "google";
         public static final String AUTHORIZATION_BASE_URI = "/oauth2/authorization";
         public static final String REDIRECT_BASE_URI = "/login/oauth2/code/*";
+
         private OAuth2() {
             throw new AssertionError("Cannot instantiate constants class");
         }
@@ -70,6 +69,7 @@ public final class SecurityConstants {
         public static final String USERS = "users";
         public static final String USER_DETAILS = "userDetails";
         public static final int DEFAULT_TTL_MINUTES = 60;
+
         private Cache() {
             throw new AssertionError("Cannot instantiate constants class");
         }
@@ -83,14 +83,15 @@ public final class SecurityConstants {
         public static final String[] ALLOWED_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"};
         public static final String[] ALLOWED_HEADERS = {"*"};
         public static final long MAX_AGE_SECONDS = 3600L;
+
         private Cors() {
             throw new AssertionError("Cannot instantiate constants class");
         }
     }
 
     public static final class Url {
-        public static final String FRONTEND_URL = "dev".equals(activeProfile) ? "http://localhost:3000" : "TBU";
-        public static final String FRONTEND_LOGIN_GOOGLE = FRONTEND_URL + "/login-google";
+        public static final String LOGIN_GOOGLE = "/login-google";
+
         private Url() {
             throw new AssertionError("Cannot instantiate constants class");
         }
