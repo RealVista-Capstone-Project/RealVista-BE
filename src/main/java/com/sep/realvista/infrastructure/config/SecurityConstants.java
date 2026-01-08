@@ -52,9 +52,19 @@ public final class SecurityConstants {
      * OAuth2 constants.
      */
     public static final class OAuth2 {
-        public static final String GOOGLE_PROVIDER = "google";
-        public static final String AUTHORIZATION_BASE_URI = "/oauth2/authorization";
-        public static final String REDIRECT_BASE_URI = "/login/oauth2/code/*";
+        // Frontend redirect paths
+        public static final String CALLBACK_PATH = "/vi/auth/callback";
+        public static final String ERROR_PATH = "/login";
+
+        // Query parameter names
+        public static final String PARAM_ACCESS_TOKEN = "access_token";
+        public static final String PARAM_USER_ID = "user_id";
+        public static final String PARAM_EMAIL = "email";
+        public static final String PARAM_ERROR = "error";
+
+        // Error types
+        public static final String ERROR_NO_EMAIL = "no_email";
+        public static final String ERROR_AUTH_FAILED = "auth_failed";
 
         private OAuth2() {
             throw new AssertionError("Cannot instantiate constants class");

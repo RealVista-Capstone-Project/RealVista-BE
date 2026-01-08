@@ -5,6 +5,7 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
+import com.sep.realvista.infrastructure.config.SecurityConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -55,7 +57,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             if (email == null) {
                 log.error("Email not provided by OAuth2 provider");
-                response.sendRedirect(frontendUrl + "/login?error=no_email");
+                String errorUrl = buildErrorRedirectUrl(SecurityConstants.OAuth2.ERROR_NO_EMAIL);
+                response.sendRedirect(errorUrl);
                 return;
             }
 
@@ -72,15 +75,15 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             );
 
             // Redirect to frontend with token
-            String redirectUrl = String.format("%s/auth/callback?access_token=%s&user_id=%d&email=%s",
-                    frontendUrl, jwtToken, user.getId(), email);
+            String redirectUrl = buildSuccessRedirectUrl(jwtToken, user.getId(), email);
 
             log.info("Redirecting to: {}", redirectUrl);
             response.sendRedirect(redirectUrl);
 
         } catch (Exception e) {
             log.error("Error during OAuth2 authentication success handling", e);
-            response.sendRedirect(frontendUrl + "/login?error=auth_failed");
+            String errorUrl = buildErrorRedirectUrl(SecurityConstants.OAuth2.ERROR_AUTH_FAILED);
+            response.sendRedirect(errorUrl);
         }
     }
 
@@ -111,6 +114,26 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         log.info("New OAuth2 user created with ID: {}", userId != null ? userId : "unknown");
 
         return savedUser;
+    }
+
+    private String buildSuccessRedirectUrl(String jwtToken, Long userId, String email) {
+        return UriComponentsBuilder
+                .fromUriString(frontendUrl)
+                .path(SecurityConstants.OAuth2.CALLBACK_PATH)
+                .queryParam(SecurityConstants.OAuth2.PARAM_ACCESS_TOKEN, jwtToken)
+                .queryParam(SecurityConstants.OAuth2.PARAM_USER_ID, userId)
+                .queryParam(SecurityConstants.OAuth2.PARAM_EMAIL, email)
+                .build()
+                .toUriString();
+    }
+
+    private String buildErrorRedirectUrl(String errorType) {
+        return UriComponentsBuilder
+                .fromUriString(frontendUrl)
+                .path(SecurityConstants.OAuth2.ERROR_PATH)
+                .queryParam(SecurityConstants.OAuth2.PARAM_ERROR, errorType)
+                .build()
+                .toUriString();
     }
 }
 
