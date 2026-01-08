@@ -7,20 +7,27 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+
 /**
  * REST Controller for Authentication operations.
- * 
+ * <p>
  * This controller is a thin layer that handles HTTP concerns only.
  * All business logic is delegated to the AuthService.
  */
@@ -41,7 +48,7 @@ public class AuthenticationController {
         log.info("Registration request received for email: {}", request.getEmail());
 
         UserResponse user = authService.register(request);
-        
+
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("User registered successfully", user));
@@ -55,8 +62,48 @@ public class AuthenticationController {
         log.info("Login request received for email: {}", request.getEmail());
 
         AuthenticationResponse response = authService.login(request);
-        
+
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+    }
+
+    @GetMapping("/login-google")
+    @Operation(
+            summary = "Login with Google",
+            description = """
+                    Initiates Google OAuth2 authentication flow.
+                    
+                    **Flow:**
+                    1. Click 'Try it out' and 'Execute' to test
+                    2. You will be redirected to Google's consent screen
+                    3. After authentication, you'll be redirected to the frontend with:
+                       - JWT access token
+                       - User ID
+                       - Email
+                    
+                    **Redirect URL:** `{frontend_url}/auth/callback?access_token={jwt}&user_id={id}&email={email}`
+                    
+                    **Note:** If this is your first login, a new user account will be automatically created.
+                    """
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "302",
+                    description = "Redirect to Google OAuth2 authorization page",
+                    content = @Content(
+                            mediaType = "text/html",
+                            examples = @ExampleObject(
+                                    value = "Redirecting to Google OAuth2..."
+                            )
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server error during OAuth2 initialization"
+            )
+    })
+    public void loginWithGoogle(HttpServletResponse response) throws IOException {
+        log.info("Initiating Google OAuth2 login via /api/v1/auth/login-google");
+        response.sendRedirect("/login-google/google");
     }
 }
 

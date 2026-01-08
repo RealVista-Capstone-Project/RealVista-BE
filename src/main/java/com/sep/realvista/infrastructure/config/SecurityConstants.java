@@ -40,8 +40,7 @@ public final class SecurityConstants {
                 "/actuator/**",
                 "/actuator/health/**",
                 "/oauth2/**",
-                "/login/oauth2/**",
-                "/login-google/**"
+                "/login/oauth2/**"
         };
 
         private PublicEndpoints() {
@@ -89,8 +88,11 @@ public final class SecurityConstants {
         }
     }
 
+    /**
+     * OAuth2 URL paths.
+     */
     public static final class Url {
-        public static final String LOGIN_GOOGLE = "/login-google";
+        public static final String LOGIN_GOOGLE = "/api/v1/auth/login-google";
 
         private Url() {
             throw new AssertionError("Cannot instantiate constants class");
