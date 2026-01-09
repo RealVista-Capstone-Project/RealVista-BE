@@ -1,6 +1,8 @@
 package com.sep.realvista.infrastructure.config;
 
 
+import java.util.List;
+
 /**
  * Infrastructure layer security constants.
  * Contains technical security-related configurations.
@@ -88,9 +90,10 @@ public final class SecurityConstants {
      * CORS configuration.
      */
     public static final class Cors {
-        public static final String[] ALLOWED_ORIGINS = {"http://localhost:3000"};
-        public static final String[] ALLOWED_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"};
-        public static final String[] ALLOWED_HEADERS = {"*"};
+        public static final List<String> ALLOWED_ORIGINS = List.of("http://localhost:3000");
+        public static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
+        public static final List<String> ALLOWED_HEADERS = List.of("Authorization", "Content-Type", "Accept", "Origin");
+        public static final List<String> EXPOSED_HEADERS = List.of("Authorization", "Content-Disposition");
         public static final long MAX_AGE_SECONDS = 3600L;
 
         private Cors() {

@@ -6,13 +6,13 @@ import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.infrastructure.config.SecurityConstants;
+import com.sep.realvista.infrastructure.security.PasswordService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -32,7 +32,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordService passwordService;
     @Value("${spring.application.frontend.url}")
     private String frontendUrl;
 
@@ -95,7 +95,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         // Generate a random password for OAuth2 users (they won't use it)
         String randomPassword = UUID.randomUUID().toString();
-        String hashedPassword = passwordEncoder.encode(randomPassword);
+        String hashedPassword = passwordService.encode(randomPassword);
 
         User newUser = User.builder()
                 .email(Email.of(email))
