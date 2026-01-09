@@ -50,9 +50,9 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-    private TokenService jwtService;
+    private TokenService tokenService;
     @Mock
-    private PasswordService passwordEncoder;
+    private PasswordService passwordService;
     @Mock
     private HttpServletRequest request;
     @Mock
@@ -67,8 +67,8 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
     void setUp() {
         successHandler = new OAuth2AuthenticationSuccessHandler(
                 userRepository,
-                jwtService,
-                passwordEncoder
+                tokenService,
+                passwordService
         );
         ReflectionTestUtils.setField(successHandler, "frontendUrl", FRONTEND_URL);
     }
@@ -84,11 +84,11 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         when(oAuth2User.getAttribute("picture")).thenReturn(TEST_AVATAR_URL);
 
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.empty());
-        when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
+        when(passwordService.encode(anyString())).thenReturn("hashed_password");
 
         User savedUser = createTestUser();
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(jwtService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
+        when(tokenService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
 
         // When
         successHandler.onAuthenticationSuccess(request, response, authentication);
@@ -96,7 +96,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         // Then
         verify(userRepository).findByEmailValue(TEST_EMAIL);
         verify(userRepository).save(any(User.class));
-        verify(jwtService).generateToken(any(UserDetails.class));
+        verify(tokenService).generateToken(any(UserDetails.class));
 
         ArgumentCaptor<String> redirectCaptor = ArgumentCaptor.forClass(String.class);
         verify(response).sendRedirect(redirectCaptor.capture());
@@ -122,7 +122,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
 
         User existingUser = createTestUser();
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.of(existingUser));
-        when(jwtService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
+        when(tokenService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
 
         // When
         successHandler.onAuthenticationSuccess(request, response, authentication);
@@ -130,7 +130,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         // Then
         verify(userRepository).findByEmailValue(TEST_EMAIL);
         verify(userRepository, never()).save(any(User.class)); // Should not create new user
-        verify(jwtService).generateToken(any(UserDetails.class));
+        verify(tokenService).generateToken(any(UserDetails.class));
 
         ArgumentCaptor<String> redirectCaptor = ArgumentCaptor.forClass(String.class);
         verify(response).sendRedirect(redirectCaptor.capture());
@@ -199,11 +199,11 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         when(oAuth2User.getAttribute("picture")).thenReturn(TEST_AVATAR_URL);
 
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.empty());
-        when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
+        when(passwordService.encode(anyString())).thenReturn("hashed_password");
 
         User savedUser = createTestUser();
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(jwtService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
+        when(tokenService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
 
         // When
         successHandler.onAuthenticationSuccess(request, response, authentication);
@@ -232,7 +232,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         when(oAuth2User.getAttribute("picture")).thenReturn(null); // Missing avatar
 
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.empty());
-        when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
+        when(passwordService.encode(anyString())).thenReturn("hashed_password");
 
         User savedUser = User.builder()
                 .id(TEST_USER_ID)
@@ -243,7 +243,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
                 .build();
 
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(jwtService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
+        when(tokenService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
 
         // When
         successHandler.onAuthenticationSuccess(request, response, authentication);
