@@ -69,44 +69,7 @@ public class AuthenticationController {
     @GetMapping("/login-google")
     @Operation(
             summary = "Login with Google",
-            description = """
-                    Initiates Google OAuth2 authentication flow.
-                    
-                    ⚠️ **IMPORTANT: This endpoint CANNOT be tested using Swagger's "Execute" button!**
-                    
-                    **Why?** Swagger UI uses AJAX/fetch which cannot handle OAuth2 redirects due to CORS restrictions.
-                    
-                    **How to Test:**
-                    1. Open this URL directly in your browser:
-                       ```
-                       http://localhost:8080/api/v1/auth/login-google
-                       ```
-                    2. Or click this link in Swagger UI documentation
-                    3. You will be redirected to Google's sign-in page
-                    4. After authentication, you'll be redirected to your frontend
-                    
-                    **OAuth2 Flow:**
-                    1. User visits: `http://localhost:8080/api/v1/auth/login-google`
-                    2. Redirects to: `/api/v1/auth/login-google/google`
-                    3. Spring Security redirects to: `https://accounts.google.com/o/oauth2/v2/auth`
-                    4. User authenticates with Google
-                    5. Google redirects back to: `http://localhost:8080/login/oauth2/code/google`
-                    6. Success handler processes user and generates JWT
-                    7. Final redirect to: `{frontend_url}/auth/callback?token={jwt}&userId={id}&email={email}`
-                    
-                    **Note:** If this is your first login, a new user account will be automatically created.
-                    
-                    **For Frontend Integration:**
-                    ```javascript
-                    // React/JavaScript
-                    window.location.href = 'http://localhost:8080/api/v1/auth/login-google';
-                    ```
-                    
-                    ```html
-                    <!-- HTML Link -->
-                    <a href="http://localhost:8080/api/v1/auth/login-google">Login with Google</a>
-                    ```
-                    """
+            description = "Initiates Google OAuth2 authentication flow. Open this URL directly in your browser (not via Swagger's Execute button). Redirects to Google sign-in and then back to the frontend with JWT token."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
