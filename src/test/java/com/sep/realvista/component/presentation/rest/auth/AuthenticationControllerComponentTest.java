@@ -3,12 +3,12 @@ package com.sep.realvista.component.presentation.rest.auth;
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
 import com.sep.realvista.application.auth.dto.LoginRequest;
 import com.sep.realvista.application.auth.service.AuthService;
+import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
-import com.sep.realvista.infrastructure.config.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,7 +60,7 @@ class AuthenticationControllerComponentTest {
     private UserRepository userRepository;
 
     @Autowired
-    private JwtService jwtService;
+    private TokenService jwtService;
 
     @Autowired(required = false)
     private ClientRegistrationRepository clientRegistrationRepository;

@@ -1,12 +1,13 @@
 package com.sep.realvista.unit.infrastructure.security;
 
+import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
-import com.sep.realvista.infrastructure.config.security.JwtService;
 import com.sep.realvista.infrastructure.config.security.OAuth2AuthenticationSuccessHandler;
+import com.sep.realvista.infrastructure.security.PasswordService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,19 +19,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.contains;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for OAuth2AuthenticationSuccessHandler.
@@ -39,29 +40,6 @@ import static org.mockito.Mockito.*;
 @DisplayName("OAuth2AuthenticationSuccessHandler Unit Tests")
 class OAuth2AuthenticationSuccessHandlerUnitTest {
 
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private JwtService jwtService;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private HttpServletRequest request;
-
-    @Mock
-    private HttpServletResponse response;
-
-    @Mock
-    private Authentication authentication;
-
-    @Mock
-    private OAuth2User oAuth2User;
-
-    private OAuth2AuthenticationSuccessHandler successHandler;
-
     private static final String FRONTEND_URL = "http://localhost:3000";
     private static final String TEST_EMAIL = "test@example.com";
     private static final String TEST_FIRST_NAME = "John";
@@ -69,6 +47,21 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
     private static final String TEST_AVATAR_URL = "https://example.com/avatar.jpg";
     private static final String TEST_JWT_TOKEN = "test.jwt.token";
     private static final Long TEST_USER_ID = 1L;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private TokenService jwtService;
+    @Mock
+    private PasswordService passwordEncoder;
+    @Mock
+    private HttpServletRequest request;
+    @Mock
+    private HttpServletResponse response;
+    @Mock
+    private Authentication authentication;
+    @Mock
+    private OAuth2User oAuth2User;
+    private OAuth2AuthenticationSuccessHandler successHandler;
 
     @BeforeEach
     void setUp() {
@@ -84,7 +77,6 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
     @DisplayName("Should create new user and redirect on first-time OAuth2 login")
     void shouldCreateNewUserOnFirstLogin() throws IOException {
         // Given
-        Map<String, Object> attributes = createOAuth2Attributes();
         when(authentication.getPrincipal()).thenReturn(oAuth2User);
         when(oAuth2User.getAttribute("email")).thenReturn(TEST_EMAIL);
         when(oAuth2User.getAttribute("given_name")).thenReturn(TEST_FIRST_NAME);
@@ -93,7 +85,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
 
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.empty());
         when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
-        
+
         User savedUser = createTestUser();
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(jwtService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
@@ -105,10 +97,10 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         verify(userRepository).findByEmailValue(TEST_EMAIL);
         verify(userRepository).save(any(User.class));
         verify(jwtService).generateToken(any(UserDetails.class));
-        
+
         ArgumentCaptor<String> redirectCaptor = ArgumentCaptor.forClass(String.class);
         verify(response).sendRedirect(redirectCaptor.capture());
-        
+
         String redirectUrl = redirectCaptor.getValue();
         assertThat(redirectUrl)
                 .contains(FRONTEND_URL)
@@ -139,10 +131,10 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         verify(userRepository).findByEmailValue(TEST_EMAIL);
         verify(userRepository, never()).save(any(User.class)); // Should not create new user
         verify(jwtService).generateToken(any(UserDetails.class));
-        
+
         ArgumentCaptor<String> redirectCaptor = ArgumentCaptor.forClass(String.class);
         verify(response).sendRedirect(redirectCaptor.capture());
-        
+
         String redirectUrl = redirectCaptor.getValue();
         assertThat(redirectUrl)
                 .contains(FRONTEND_URL)
@@ -163,10 +155,10 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         // Then
         verify(userRepository, never()).findByEmailValue(anyString());
         verify(userRepository, never()).save(any(User.class));
-        
+
         ArgumentCaptor<String> redirectCaptor = ArgumentCaptor.forClass(String.class);
         verify(response).sendRedirect(redirectCaptor.capture());
-        
+
         String redirectUrl = redirectCaptor.getValue();
         assertThat(redirectUrl)
                 .contains(FRONTEND_URL)
@@ -188,7 +180,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         // Then
         ArgumentCaptor<String> redirectCaptor = ArgumentCaptor.forClass(String.class);
         verify(response).sendRedirect(redirectCaptor.capture());
-        
+
         String redirectUrl = redirectCaptor.getValue();
         assertThat(redirectUrl)
                 .contains(FRONTEND_URL)
@@ -208,7 +200,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
 
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.empty());
         when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
-        
+
         User savedUser = createTestUser();
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(jwtService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
@@ -219,7 +211,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         // Then
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
-        
+
         User capturedUser = userCaptor.getValue();
         assertThat(capturedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(capturedUser.getRole()).isEqualTo(UserRole.USER);
@@ -241,7 +233,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
 
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.empty());
         when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
-        
+
         User savedUser = User.builder()
                 .id(TEST_USER_ID)
                 .email(Email.of(TEST_EMAIL))
@@ -249,7 +241,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
                 .status(UserStatus.ACTIVE)
                 .role(UserRole.USER)
                 .build();
-        
+
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(jwtService.generateToken(any(UserDetails.class))).thenReturn(TEST_JWT_TOKEN);
 
@@ -259,25 +251,16 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         // Then
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
-        
+
         User capturedUser = userCaptor.getValue();
         assertThat(capturedUser.getEmail().getValue()).isEqualTo(TEST_EMAIL);
         assertThat(capturedUser.getFirstName()).isNull();
         assertThat(capturedUser.getLastName()).isNull();
         assertThat(capturedUser.getAvatarUrl()).isNull();
-        
+
         verify(response).sendRedirect(contains("/auth/callback"));
     }
 
-    // Helper methods
-    private Map<String, Object> createOAuth2Attributes() {
-        Map<String, Object> attributes = new HashMap<>();
-        attributes.put("email", TEST_EMAIL);
-        attributes.put("given_name", TEST_FIRST_NAME);
-        attributes.put("family_name", TEST_LAST_NAME);
-        attributes.put("picture", TEST_AVATAR_URL);
-        return attributes;
-    }
 
     private User createTestUser() {
         return User.builder()

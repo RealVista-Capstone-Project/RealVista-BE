@@ -8,7 +8,6 @@ import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserNotFoundException;
 import com.sep.realvista.domain.user.UserRepository;
-import com.sep.realvista.infrastructure.config.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,7 +30,7 @@ public class AuthService {
 
     private final UserApplicationService userApplicationService;
     private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
+    private final TokenService tokenService;
     private final UserRepository userRepository;
 
     @Transactional
@@ -54,7 +53,7 @@ public class AuthService {
 
         // Step 2: Generate JWT token
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = jwtService.generateToken(userDetails);
+        String token = tokenService.generateToken(userDetails);
 
         // Step 3: Retrieve user details
         User user = userRepository.findByEmailValue(request.getEmail())

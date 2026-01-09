@@ -1,5 +1,6 @@
 package com.sep.realvista.infrastructure.config.security;
 
+import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
@@ -31,7 +32,7 @@ import java.util.UUID;
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
-    private final JwtService jwtService;
+    private final TokenService tokenService;
     private final PasswordService passwordService;
     @Value("${spring.application.frontend.url}")
     private String frontendUrl;
@@ -64,7 +65,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             User user = findOrCreateUser(email, firstName, lastName, avatarUrl);
 
             // Generate JWT token
-            String jwtToken = jwtService.generateToken(
+            String jwtToken = tokenService.generateToken(
                     new org.springframework.security.core.userdetails.User(
                             user.getEmail().getValue(),
                             user.getPasswordHash(),

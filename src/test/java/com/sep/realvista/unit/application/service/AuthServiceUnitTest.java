@@ -3,6 +3,7 @@ package com.sep.realvista.unit.application.service;
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
 import com.sep.realvista.application.auth.dto.LoginRequest;
 import com.sep.realvista.application.auth.service.AuthService;
+import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
@@ -11,7 +12,6 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
-import com.sep.realvista.infrastructure.config.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,14 +30,13 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for AuthService.
- * 
+ * <p>
  * These are pure unit tests with all dependencies mocked.
  * Tests the authentication business logic in isolation.
  */
@@ -52,7 +51,7 @@ class AuthServiceUnitTest {
     private AuthenticationManager authenticationManager;
 
     @Mock
-    private JwtService jwtService;
+    private TokenService jwtService;
 
     @Mock
     private UserRepository userRepository;
@@ -126,7 +125,7 @@ class AuthServiceUnitTest {
         assertThat(result.getEmail()).isEqualTo("test@example.com");
         assertThat(result.getFirstName()).isEqualTo("John");
         assertThat(result.getLastName()).isEqualTo("Doe");
-        
+
         verify(userApplicationService).createUser(createUserRequest);
     }
 
@@ -141,7 +140,7 @@ class AuthServiceUnitTest {
         assertThatThrownBy(() -> authService.register(createUserRequest))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Email already exists");
-        
+
         verify(userApplicationService).createUser(createUserRequest);
     }
 
@@ -154,7 +153,7 @@ class AuthServiceUnitTest {
     void shouldLoginSuccessfullyWithValidCredentials() {
         // Arrange
         String expectedToken = "jwt.token.here";
-        
+
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
@@ -171,7 +170,7 @@ class AuthServiceUnitTest {
         assertThat(result.getType()).isEqualTo("Bearer");
         assertThat(result.getUserId()).isEqualTo(1L);
         assertThat(result.getEmail()).isEqualTo("test@example.com");
-        
+
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(jwtService).generateToken(userDetails);
         verify(userRepository).findByEmailValue("test@example.com");
@@ -182,7 +181,7 @@ class AuthServiceUnitTest {
     void shouldGenerateJwtTokenAfterSuccessfulAuthentication() {
         // Arrange
         String expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test";
-        
+
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
@@ -232,7 +231,7 @@ class AuthServiceUnitTest {
         assertThatThrownBy(() -> authService.login(loginRequest))
                 .isInstanceOf(BadCredentialsException.class)
                 .hasMessage("Invalid credentials");
-        
+
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     }
 
@@ -250,8 +249,8 @@ class AuthServiceUnitTest {
         // Act & Assert
         assertThatThrownBy(() -> authService.login(loginRequest))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessage("User not found after authentication");
-        
+                .hasMessage("User not found with email: " + "test@example.com");
+
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(userRepository).findByEmailValue("test@example.com");
     }
@@ -319,7 +318,7 @@ class AuthServiceUnitTest {
         verify(jwtService).generateToken(userDetails);
         // 3. User retrieval
         verify(userRepository).findByEmailValue("test@example.com");
-        
+
         // Final result is complete
         assertThat(result).isNotNull();
         assertThat(result.getToken()).isNotNull();
