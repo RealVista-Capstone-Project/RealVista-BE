@@ -20,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -68,9 +67,9 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         successHandler = new OAuth2AuthenticationSuccessHandler(
                 userRepository,
                 tokenService,
-                passwordService
+                passwordService,
+                FRONTEND_URL
         );
-        ReflectionTestUtils.setField(successHandler, "frontendUrl", FRONTEND_URL);
     }
 
     @Test

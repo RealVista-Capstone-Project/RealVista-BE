@@ -10,7 +10,6 @@ import com.sep.realvista.infrastructure.constants.SecurityConstants;
 import com.sep.realvista.infrastructure.security.PasswordService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -25,17 +24,30 @@ import java.util.UUID;
 /**
  * Custom OAuth2 authentication success handler.
  * Handles the success flow for Google OAuth2 login.
+ * <p>
+ * Uses constructor injection for all dependencies including configuration values
+ * for better testability and consistency.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final PasswordService passwordService;
-    @Value("${spring.application.frontend.url}")
-    private String frontendUrl;
+    private final String frontendUrl;
+
+    public OAuth2AuthenticationSuccessHandler(
+            UserRepository userRepository,
+            TokenService tokenService,
+            PasswordService passwordService,
+            @Value("${spring.application.frontend.url}") String frontendUrl
+    ) {
+        this.userRepository = userRepository;
+        this.tokenService = tokenService;
+        this.passwordService = passwordService;
+        this.frontendUrl = frontendUrl;
+    }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
