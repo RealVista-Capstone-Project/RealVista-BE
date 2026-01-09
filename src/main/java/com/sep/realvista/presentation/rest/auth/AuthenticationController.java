@@ -69,7 +69,9 @@ public class AuthenticationController {
     @GetMapping("/login-google")
     @Operation(
             summary = "Login with Google",
-            description = "Initiates Google OAuth2 authentication flow. Open this URL directly in your browser (not via Swagger's Execute button). Redirects to Google sign-in and then back to the frontend with JWT token."
+            description = "Initiates Google OAuth2 authentication flow. "
+                    + "Open this URL directly in your browser (not via Swagger's Execute button). "
+                    + "Redirects to Google sign-in and then back to the frontend with JWT token."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
