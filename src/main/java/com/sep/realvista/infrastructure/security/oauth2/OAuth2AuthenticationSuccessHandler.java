@@ -1,4 +1,4 @@
-package com.sep.realvista.infrastructure.config.security;
+package com.sep.realvista.infrastructure.security.oauth2;
 
 import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.domain.common.value.Email;
@@ -6,7 +6,7 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
-import com.sep.realvista.infrastructure.config.SecurityConstants;
+import com.sep.realvista.infrastructure.constants.SecurityConstants;
 import com.sep.realvista.infrastructure.security.PasswordService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

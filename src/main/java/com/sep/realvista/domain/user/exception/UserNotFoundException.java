@@ -1,4 +1,4 @@
-package com.sep.realvista.domain.user;
+package com.sep.realvista.domain.user.exception;
 
 import com.sep.realvista.domain.common.exception.DomainException;
 

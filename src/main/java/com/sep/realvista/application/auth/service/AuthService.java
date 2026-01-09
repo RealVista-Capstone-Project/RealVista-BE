@@ -7,7 +7,7 @@ import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.user.User;
-import com.sep.realvista.domain.user.UserNotFoundException;
+import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

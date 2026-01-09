@@ -1,4 +1,4 @@
-package com.sep.realvista.infrastructure.config.security;
+package com.sep.realvista.infrastructure.security.jwt;
 
 import com.sep.realvista.application.auth.service.TokenService;
 import jakarta.servlet.FilterChain;

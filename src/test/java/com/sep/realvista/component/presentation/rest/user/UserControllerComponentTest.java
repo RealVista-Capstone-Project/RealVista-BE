@@ -6,7 +6,7 @@ import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
-import com.sep.realvista.infrastructure.config.security.JwtAuthenticationFilter;
+import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
 import com.sep.realvista.presentation.exception.GlobalExceptionHandler;
 import com.sep.realvista.presentation.rest.user.UserController;
 import org.junit.jupiter.api.BeforeEach;

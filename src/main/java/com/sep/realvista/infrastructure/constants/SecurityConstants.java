@@ -1,4 +1,4 @@
-package com.sep.realvista.infrastructure.config;
+package com.sep.realvista.infrastructure.constants;
 
 
 import java.util.List;

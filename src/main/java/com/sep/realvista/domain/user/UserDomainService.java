@@ -1,6 +1,7 @@
 package com.sep.realvista.domain.user;
 
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

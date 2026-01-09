@@ -13,7 +13,7 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
-import com.sep.realvista.domain.user.UserNotFoundException;
+import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
