@@ -2,6 +2,7 @@ package com.sep.realvista.unit.application.service;
 
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
 import com.sep.realvista.application.auth.dto.LoginRequest;
+import com.sep.realvista.application.auth.mapper.AuthenticationMapper;
 import com.sep.realvista.application.auth.service.AuthService;
 import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
@@ -12,6 +13,7 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
+import com.sep.realvista.domain.user.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,6 +57,9 @@ class AuthServiceUnitTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private AuthenticationMapper authenticationMapper;
 
     @InjectMocks
     private AuthService authService;
@@ -153,6 +158,12 @@ class AuthServiceUnitTest {
     void shouldLoginSuccessfullyWithValidCredentials() {
         // Arrange
         String expectedToken = "jwt.token.here";
+        AuthenticationResponse expectedResponse = AuthenticationResponse.builder()
+                .token(expectedToken)
+                .type("Bearer")
+                .userId(1L)
+                .email("test@example.com")
+                .build();
 
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
@@ -160,6 +171,8 @@ class AuthServiceUnitTest {
         when(jwtService.generateToken(userDetails)).thenReturn(expectedToken);
         when(userRepository.findByEmailValue("test@example.com"))
                 .thenReturn(Optional.of(user));
+        when(authenticationMapper.toAuthenticationResponse(user, expectedToken))
+                .thenReturn(expectedResponse);
 
         // Act
         AuthenticationResponse result = authService.login(loginRequest);
@@ -174,6 +187,7 @@ class AuthServiceUnitTest {
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(jwtService).generateToken(userDetails);
         verify(userRepository).findByEmailValue("test@example.com");
+        verify(authenticationMapper).toAuthenticationResponse(user, expectedToken);
     }
 
     @Test
@@ -181,6 +195,12 @@ class AuthServiceUnitTest {
     void shouldGenerateJwtTokenAfterSuccessfulAuthentication() {
         // Arrange
         String expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test";
+        AuthenticationResponse expectedResponse = AuthenticationResponse.builder()
+                .token(expectedToken)
+                .type("Bearer")
+                .userId(1L)
+                .email("test@example.com")
+                .build();
 
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
@@ -188,6 +208,8 @@ class AuthServiceUnitTest {
         when(jwtService.generateToken(userDetails)).thenReturn(expectedToken);
         when(userRepository.findByEmailValue("test@example.com"))
                 .thenReturn(Optional.of(user));
+        when(authenticationMapper.toAuthenticationResponse(user, expectedToken))
+                .thenReturn(expectedResponse);
 
         // Act
         AuthenticationResponse result = authService.login(loginRequest);
@@ -195,18 +217,28 @@ class AuthServiceUnitTest {
         // Assert
         assertThat(result.getToken()).isEqualTo(expectedToken);
         verify(jwtService).generateToken(userDetails);
+        verify(authenticationMapper).toAuthenticationResponse(user, expectedToken);
     }
 
     @Test
     @DisplayName("Should return user details in authentication response")
     void shouldReturnUserDetailsInAuthenticationResponse() {
         // Arrange
+        AuthenticationResponse expectedResponse = AuthenticationResponse.builder()
+                .token("token")
+                .type("Bearer")
+                .userId(user.getId())
+                .email(user.getEmail().getValue())
+                .build();
+
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(jwtService.generateToken(userDetails)).thenReturn("token");
         when(userRepository.findByEmailValue("test@example.com"))
                 .thenReturn(Optional.of(user));
+        when(authenticationMapper.toAuthenticationResponse(user, "token"))
+                .thenReturn(expectedResponse);
 
         // Act
         AuthenticationResponse result = authService.login(loginRequest);
@@ -214,6 +246,7 @@ class AuthServiceUnitTest {
         // Assert
         assertThat(result.getUserId()).isEqualTo(user.getId());
         assertThat(result.getEmail()).isEqualTo(user.getEmail().getValue());
+        verify(authenticationMapper).toAuthenticationResponse(user, "token");
     }
 
     // ============================================
@@ -248,7 +281,7 @@ class AuthServiceUnitTest {
 
         // Act & Assert
         assertThatThrownBy(() -> authService.login(loginRequest))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(UserNotFoundException.class)
                 .hasMessage("User not found with email: " + "test@example.com");
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
@@ -259,12 +292,21 @@ class AuthServiceUnitTest {
     @DisplayName("Should use correct email in authentication token")
     void shouldUseCorrectEmailInAuthenticationToken() {
         // Arrange
+        AuthenticationResponse expectedResponse = AuthenticationResponse.builder()
+                .token("token")
+                .type("Bearer")
+                .userId(1L)
+                .email("test@example.com")
+                .build();
+
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(jwtService.generateToken(userDetails)).thenReturn("token");
         when(userRepository.findByEmailValue("test@example.com"))
                 .thenReturn(Optional.of(user));
+        when(authenticationMapper.toAuthenticationResponse(user, "token"))
+                .thenReturn(expectedResponse);
 
         // Act
         authService.login(loginRequest);
@@ -279,18 +321,28 @@ class AuthServiceUnitTest {
     @DisplayName("Should return Bearer token type")
     void shouldReturnBearerTokenType() {
         // Arrange
+        AuthenticationResponse expectedResponse = AuthenticationResponse.builder()
+                .token("token")
+                .type("Bearer")
+                .userId(1L)
+                .email("test@example.com")
+                .build();
+
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(jwtService.generateToken(userDetails)).thenReturn("token");
         when(userRepository.findByEmailValue("test@example.com"))
                 .thenReturn(Optional.of(user));
+        when(authenticationMapper.toAuthenticationResponse(user, "token"))
+                .thenReturn(expectedResponse);
 
         // Act
         AuthenticationResponse result = authService.login(loginRequest);
 
         // Assert
         assertThat(result.getType()).isEqualTo("Bearer");
+        verify(authenticationMapper).toAuthenticationResponse(user, "token");
     }
 
     // ============================================
@@ -301,12 +353,21 @@ class AuthServiceUnitTest {
     @DisplayName("Should handle authentication flow correctly")
     void shouldHandleAuthenticationFlowCorrectly() {
         // Arrange
+        AuthenticationResponse expectedResponse = AuthenticationResponse.builder()
+                .token("token")
+                .type("Bearer")
+                .userId(1L)
+                .email("test@example.com")
+                .build();
+
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(jwtService.generateToken(userDetails)).thenReturn("token");
         when(userRepository.findByEmailValue("test@example.com"))
                 .thenReturn(Optional.of(user));
+        when(authenticationMapper.toAuthenticationResponse(user, "token"))
+                .thenReturn(expectedResponse);
 
         // Act
         AuthenticationResponse result = authService.login(loginRequest);
@@ -318,6 +379,8 @@ class AuthServiceUnitTest {
         verify(jwtService).generateToken(userDetails);
         // 3. User retrieval
         verify(userRepository).findByEmailValue("test@example.com");
+        // 4. Response mapping
+        verify(authenticationMapper).toAuthenticationResponse(user, "token");
 
         // Final result is complete
         assertThat(result).isNotNull();

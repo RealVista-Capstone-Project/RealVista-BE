@@ -2,6 +2,7 @@ package com.sep.realvista.application.auth.service;
 
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
 import com.sep.realvista.application.auth.dto.LoginRequest;
+import com.sep.realvista.application.auth.mapper.AuthenticationMapper;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
@@ -32,6 +33,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
     private final UserRepository userRepository;
+    private final AuthenticationMapper authenticationMapper;
 
     @Transactional
     public UserResponse register(CreateUserRequest request) {
@@ -60,7 +62,7 @@ public class AuthService {
                 .orElseThrow(() -> new UserNotFoundException(request.getEmail()));
 
         // Step 4: Build authentication response
-        AuthenticationResponse response = buildAuthenticationResponse(token, user);
+        AuthenticationResponse response = authenticationMapper.toAuthenticationResponse(user, token);
 
         log.info("User authenticated successfully: {}", request.getEmail());
 
@@ -79,14 +81,5 @@ public class AuthService {
             log.error("Authentication failed for email: {}", request.getEmail(), e);
             throw e;
         }
-    }
-
-    private AuthenticationResponse buildAuthenticationResponse(String token, User user) {
-        return AuthenticationResponse.builder()
-                .token(token)
-                .type("Bearer")
-                .userId(user.getId())
-                .email(user.getEmail().getValue())
-                .build();
     }
 }
