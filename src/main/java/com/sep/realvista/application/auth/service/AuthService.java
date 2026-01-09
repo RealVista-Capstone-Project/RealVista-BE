@@ -6,6 +6,7 @@ import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserNotFoundException;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.infrastructure.config.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Application service for authentication operations.
- * 
+ * <p>
  * This service handles the business logic for authentication,
  * following clean architecture and DDD principles.
  */
@@ -36,35 +37,34 @@ public class AuthService {
     @Transactional
     public UserResponse register(CreateUserRequest request) {
         log.debug("Registering new user with email: {}", request.getEmail());
-        
+
         UserResponse user = userApplicationService.createUser(request);
-        
-        log.info("User registered successfully with ID: {} and email: {}", 
+
+        log.info("User registered successfully with ID: {} and email: {}",
                 user.getId(), user.getEmail());
-        
+
         return user;
     }
 
-    @Transactional(readOnly = true)
     public AuthenticationResponse login(LoginRequest request) {
         log.debug("Authenticating user with email: {}", request.getEmail());
-        
+
         // Step 1: Authenticate user credentials
         Authentication authentication = authenticateUser(request);
-        
+
         // Step 2: Generate JWT token
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtService.generateToken(userDetails);
-        
+
         // Step 3: Retrieve user details
         User user = userRepository.findByEmailValue(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found after authentication"));
-        
+                .orElseThrow(() -> new UserNotFoundException(request.getEmail()));
+
         // Step 4: Build authentication response
         AuthenticationResponse response = buildAuthenticationResponse(token, user);
-        
+
         log.info("User authenticated successfully: {}", request.getEmail());
-        
+
         return response;
     }
 
@@ -72,7 +72,7 @@ public class AuthService {
         try {
             return authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            request.getEmail(), 
+                            request.getEmail(),
                             request.getPassword()
                     )
             );
