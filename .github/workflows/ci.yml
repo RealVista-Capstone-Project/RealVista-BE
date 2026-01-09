@@ -483,8 +483,8 @@ jobs:
                 repo: context.repo.repo,
                 body: output
               });
-              console.log('✅ Comment posted successfully');
+              console.log('Comment posted successfully');
             } catch (error) {
-              console.error('❌ Failed to post comment:', error.message);
+              console.error('Failed to post comment:', error.message);
               // Don't fail the workflow if commenting fails
             }
