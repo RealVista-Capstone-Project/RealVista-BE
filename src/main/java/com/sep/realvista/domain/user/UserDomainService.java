@@ -1,7 +1,7 @@
 package com.sep.realvista.domain.user;
 
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
-import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +29,7 @@ public class UserDomainService {
      */
     public User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+                .orElseThrow(() -> new UserNotFoundException(userId));
     }
 
     /**
@@ -37,7 +37,7 @@ public class UserDomainService {
      */
     public User getUserByEmailOrThrow(String email) {
         return userRepository.findByEmailValue(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User with email: " + email));
+                .orElseThrow(() -> new UserNotFoundException(email));
     }
 }
 

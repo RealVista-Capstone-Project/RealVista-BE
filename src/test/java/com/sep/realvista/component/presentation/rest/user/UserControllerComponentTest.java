@@ -1,13 +1,14 @@
-package com.sep.realvista.presentation.rest.user;
+package com.sep.realvista.component.presentation.rest.user;
 
+import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
-import com.sep.realvista.infrastructure.config.security.JwtAuthenticationFilter;
-import com.sep.realvista.infrastructure.config.security.JwtService;
+import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
 import com.sep.realvista.presentation.exception.GlobalExceptionHandler;
+import com.sep.realvista.presentation.rest.user.UserController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,16 +28,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Integration tests for UserController.
- * 
- * Tests the controller layer with Spring MVC infrastructure while mocking
+ * Component tests for UserController.
+ * <p>
+ * Tests the web layer (controller) with Spring MVC infrastructure while mocking
  * the business layer (services) and security components.
+ * <p>
+ * These are component tests (not unit tests) because they:
+ * - Use Spring Test Context (@WebMvcTest)
+ * - Test HTTP request/response handling
+ * - Test JSON serialization/deserialization
+ * - Test validation annotations
+ * - Use MockMvc for integration with Spring MVC
  */
 @WebMvcTest(UserController.class)
 @AutoConfigureMockMvc(addFilters = false)  // Disable security filters for testing
 @Import(GlobalExceptionHandler.class)
-@DisplayName("UserController Integration Tests (Web Layer)")
-class UserControllerTest {
+@DisplayName("UserController Component Tests (Web Layer)")
+class UserControllerComponentTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -50,7 +58,7 @@ class UserControllerTest {
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @MockitoBean
-    private JwtService jwtService;
+    private TokenService jwtService;
 
     @MockitoBean
     private UserDetailsService userDetailsService;

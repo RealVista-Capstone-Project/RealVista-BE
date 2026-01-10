@@ -61,6 +61,10 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
 
 		<!-- Database -->
 		<dependency>
@@ -119,12 +123,19 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- Apache Commons -->
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.18.0</version> <!-- CVE-2025-48924 fix: upgraded from managed version -->
-		</dependency>
+	    <!-- Apache Commons -->
+	    <dependency>
+		    <groupId>org.apache.commons</groupId>
+		    <artifactId>commons-lang3</artifactId>
+		    <version>3.18.0</version> <!-- CVE-2025-48924 fix: upgraded from managed version -->
+	    </dependency>
+
+	    <!-- Spring Dotenv for loading .env files -->
+	    <dependency>
+		    <groupId>me.paulschwarz</groupId>
+		    <artifactId>springboot3-dotenv</artifactId>
+		    <version>5.1.0</version>
+	    </dependency>
 
 		<!-- Docker Compose Support -->
 		<dependency>
