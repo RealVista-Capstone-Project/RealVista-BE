@@ -1,6 +1,8 @@
 package com.sep.realvista.unit.application.service;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
+import com.sep.realvista.application.auth.dto.GoogleIdTokenRequest;
 import com.sep.realvista.application.auth.dto.LoginRequest;
 import com.sep.realvista.application.auth.mapper.AuthenticationMapper;
 import com.sep.realvista.application.auth.service.AuthService;
@@ -8,12 +10,15 @@ import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
+import com.sep.realvista.infrastructure.security.oauth2.GoogleTokenVerifier;
+import com.sep.realvista.infrastructure.security.util.PasswordUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,6 +65,12 @@ class AuthServiceUnitTest {
 
     @Mock
     private AuthenticationMapper authenticationMapper;
+
+    @Mock
+    private GoogleTokenVerifier googleTokenVerifier;
+
+    @Mock
+    private PasswordUtil passwordUtil;
 
     @InjectMocks
     private AuthService authService;
@@ -387,6 +398,228 @@ class AuthServiceUnitTest {
         assertThat(result.getToken()).isNotNull();
         assertThat(result.getUserId()).isNotNull();
         assertThat(result.getEmail()).isNotNull();
+    }
+
+    // ============================================
+    // Google Mobile Login Tests
+    // ============================================
+
+    @Test
+    @DisplayName("Should login successfully with valid Google ID token")
+    void shouldLoginSuccessfullyWithValidGoogleIdToken() throws Exception {
+        // Arrange
+        String idToken = "valid.google.id.token";
+        String email = "google.user@gmail.com";
+        String firstName = "Jane";
+        String lastName = "Smith";
+        String avatarUrl = "https://example.com/avatar.jpg";
+        String hashedPassword = "hashed_random_password";
+        String jwtToken = "generated.jwt.token";
+
+        GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
+                .idToken(idToken)
+                .build();
+
+        GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
+        payload.setEmail(email);
+        payload.set("given_name", firstName);
+        payload.set("family_name", lastName);
+        payload.set("picture", avatarUrl);
+
+        User googleUser = User.builder()
+                .id(2L)
+                .email(Email.of(email))
+                .passwordHash(hashedPassword)
+                .firstName(firstName)
+                .lastName(lastName)
+                .avatarUrl(avatarUrl)
+                .status(UserStatus.ACTIVE)
+                .role(UserRole.USER)
+                .build();
+
+        AuthenticationResponse expectedResponse = AuthenticationResponse.builder()
+                .token(jwtToken)
+                .type("Bearer")
+                .userId(2L)
+                .email(email)
+                .build();
+
+        when(googleTokenVerifier.verifyToken(idToken)).thenReturn(payload);
+        when(googleTokenVerifier.getEmail(payload)).thenReturn(email);
+        when(googleTokenVerifier.getGivenName(payload)).thenReturn(firstName);
+        when(googleTokenVerifier.getFamilyName(payload)).thenReturn(lastName);
+        when(googleTokenVerifier.getPictureUrl(payload)).thenReturn(avatarUrl);
+        when(userRepository.findByEmailValue(email)).thenReturn(Optional.empty());
+        when(passwordUtil.generateRandomHashedPassword()).thenReturn(hashedPassword);
+        when(userRepository.save(any(User.class))).thenReturn(googleUser);
+        when(jwtService.generateToken(any(UserDetails.class))).thenReturn(jwtToken);
+        when(authenticationMapper.toAuthenticationResponse(googleUser, jwtToken))
+                .thenReturn(expectedResponse);
+
+        // Act
+        AuthenticationResponse result = authService.loginWithGoogleMobile(request);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getToken()).isEqualTo(jwtToken);
+        assertThat(result.getEmail()).isEqualTo(email);
+        assertThat(result.getUserId()).isEqualTo(2L);
+
+        verify(googleTokenVerifier).verifyToken(idToken);
+        verify(userRepository).save(any(User.class));
+        verify(passwordUtil).generateRandomHashedPassword();
+        verify(jwtService).generateToken(any(UserDetails.class));
+        verify(authenticationMapper).toAuthenticationResponse(googleUser, jwtToken);
+    }
+
+    @Test
+    @DisplayName("Should use existing user for Google login")
+    void shouldUseExistingUserForGoogleLogin() throws Exception {
+        // Arrange
+        String idToken = "valid.google.id.token";
+        String email = "existing.user@gmail.com";
+        String jwtToken = "generated.jwt.token";
+
+        GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
+                .idToken(idToken)
+                .build();
+
+        GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
+        payload.setEmail(email);
+
+        User existingUser = User.builder()
+                .id(3L)
+                .email(Email.of(email))
+                .passwordHash("existing_hash")
+                .firstName("Existing")
+                .lastName("User")
+                .status(UserStatus.ACTIVE)
+                .role(UserRole.USER)
+                .build();
+
+        AuthenticationResponse expectedResponse = AuthenticationResponse.builder()
+                .token(jwtToken)
+                .type("Bearer")
+                .userId(3L)
+                .email(email)
+                .build();
+
+        when(googleTokenVerifier.verifyToken(idToken)).thenReturn(payload);
+        when(googleTokenVerifier.getEmail(payload)).thenReturn(email);
+        when(googleTokenVerifier.getGivenName(payload)).thenReturn(null);
+        when(googleTokenVerifier.getFamilyName(payload)).thenReturn(null);
+        when(googleTokenVerifier.getPictureUrl(payload)).thenReturn(null);
+        when(userRepository.findByEmailValue(email)).thenReturn(Optional.of(existingUser));
+        when(jwtService.generateToken(any(UserDetails.class))).thenReturn(jwtToken);
+        when(authenticationMapper.toAuthenticationResponse(existingUser, jwtToken))
+                .thenReturn(expectedResponse);
+
+        // Act
+        AuthenticationResponse result = authService.loginWithGoogleMobile(request);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getUserId()).isEqualTo(3L);
+        assertThat(result.getEmail()).isEqualTo(email);
+
+        verify(googleTokenVerifier).verifyToken(idToken);
+        verify(userRepository).findByEmailValue(email);
+        verify(userRepository, org.mockito.Mockito.never()).save(any(User.class));
+        verify(passwordUtil, org.mockito.Mockito.never()).generateRandomHashedPassword();
+    }
+
+    @Test
+    @DisplayName("Should throw exception when Google ID token is invalid")
+    void shouldThrowExceptionWhenGoogleIdTokenIsInvalid() throws Exception {
+        // Arrange
+        String invalidToken = "invalid.token";
+        GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
+                .idToken(invalidToken)
+                .build();
+
+        when(googleTokenVerifier.verifyToken(invalidToken))
+                .thenThrow(new IllegalArgumentException("Invalid ID token"));
+
+        // Act & Assert
+        assertThatThrownBy(() -> authService.loginWithGoogleMobile(request))
+                .isInstanceOf(BusinessConflictException.class)
+                .hasMessageContaining("Google authentication failed");
+
+        verify(googleTokenVerifier).verifyToken(invalidToken);
+    }
+
+    @Test
+    @DisplayName("Should throw exception when email is missing from Google token")
+    void shouldThrowExceptionWhenEmailIsMissingFromGoogleToken() throws Exception {
+        // Arrange
+        String idToken = "valid.token.without.email";
+        GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
+                .idToken(idToken)
+                .build();
+
+        GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
+
+        when(googleTokenVerifier.verifyToken(idToken)).thenReturn(payload);
+        when(googleTokenVerifier.getEmail(payload)).thenReturn(null);
+
+        // Act & Assert
+        assertThatThrownBy(() -> authService.loginWithGoogleMobile(request))
+                .isInstanceOf(BusinessConflictException.class)
+                .hasMessageContaining("Email not provided by Google");
+
+        verify(googleTokenVerifier).verifyToken(idToken);
+        verify(googleTokenVerifier).getEmail(payload);
+    }
+
+    @Test
+    @DisplayName("Should create new user with ACTIVE status for Google login")
+    void shouldCreateNewUserWithActiveStatusForGoogleLogin() throws Exception {
+        // Arrange
+        String idToken = "valid.google.id.token";
+        String email = "new.google.user@gmail.com";
+        String hashedPassword = "hashed_password";
+        String jwtToken = "jwt.token";
+
+        GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
+                .idToken(idToken)
+                .build();
+
+        GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
+        payload.setEmail(email);
+
+        User newGoogleUser = User.builder()
+                .id(4L)
+                .email(Email.of(email))
+                .passwordHash(hashedPassword)
+                .status(UserStatus.ACTIVE)
+                .role(UserRole.USER)
+                .build();
+
+        AuthenticationResponse expectedResponse = AuthenticationResponse.builder()
+                .token(jwtToken)
+                .type("Bearer")
+                .userId(4L)
+                .email(email)
+                .build();
+
+        when(googleTokenVerifier.verifyToken(idToken)).thenReturn(payload);
+        when(googleTokenVerifier.getEmail(payload)).thenReturn(email);
+        when(googleTokenVerifier.getGivenName(payload)).thenReturn(null);
+        when(googleTokenVerifier.getFamilyName(payload)).thenReturn(null);
+        when(googleTokenVerifier.getPictureUrl(payload)).thenReturn(null);
+        when(userRepository.findByEmailValue(email)).thenReturn(Optional.empty());
+        when(passwordUtil.generateRandomHashedPassword()).thenReturn(hashedPassword);
+        when(userRepository.save(any(User.class))).thenReturn(newGoogleUser);
+        when(jwtService.generateToken(any(UserDetails.class))).thenReturn(jwtToken);
+        when(authenticationMapper.toAuthenticationResponse(newGoogleUser, jwtToken))
+                .thenReturn(expectedResponse);
+
+        // Act
+        authService.loginWithGoogleMobile(request);
+
+        // Assert
+        verify(userRepository).save(any(User.class));
+        verify(passwordUtil).generateRandomHashedPassword();
     }
 }
 

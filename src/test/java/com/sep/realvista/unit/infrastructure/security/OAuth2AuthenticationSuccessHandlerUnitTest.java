@@ -7,7 +7,7 @@ import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.infrastructure.security.oauth2.OAuth2AuthenticationSuccessHandler;
-import com.sep.realvista.infrastructure.security.PasswordService;
+import com.sep.realvista.infrastructure.security.util.PasswordUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,7 +51,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
     @Mock
     private TokenService tokenService;
     @Mock
-    private PasswordService passwordService;
+    private PasswordUtil passwordUtil;
     @Mock
     private HttpServletRequest request;
     @Mock
@@ -67,7 +67,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         successHandler = new OAuth2AuthenticationSuccessHandler(
                 userRepository,
                 tokenService,
-                passwordService,
+                passwordUtil,
                 FRONTEND_URL
         );
     }
@@ -83,7 +83,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         when(oAuth2User.getAttribute("picture")).thenReturn(TEST_AVATAR_URL);
 
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.empty());
-        when(passwordService.encode(anyString())).thenReturn("hashed_password");
+        when(passwordUtil.generateRandomHashedPassword()).thenReturn("hashed_password");
 
         User savedUser = createTestUser();
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
@@ -198,7 +198,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         when(oAuth2User.getAttribute("picture")).thenReturn(TEST_AVATAR_URL);
 
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.empty());
-        when(passwordService.encode(anyString())).thenReturn("hashed_password");
+        when(passwordUtil.generateRandomHashedPassword()).thenReturn("hashed_password");
 
         User savedUser = createTestUser();
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
@@ -231,7 +231,7 @@ class OAuth2AuthenticationSuccessHandlerUnitTest {
         when(oAuth2User.getAttribute("picture")).thenReturn(null); // Missing avatar
 
         when(userRepository.findByEmailValue(TEST_EMAIL)).thenReturn(Optional.empty());
-        when(passwordService.encode(anyString())).thenReturn("hashed_password");
+        when(passwordUtil.generateRandomHashedPassword()).thenReturn("hashed_password");
 
         User savedUser = User.builder()
                 .id(TEST_USER_ID)
