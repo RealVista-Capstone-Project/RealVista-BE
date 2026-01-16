@@ -32,7 +32,7 @@ class GoogleTokenVerifierUnitTest {
 
     @BeforeEach
     void setUp() {
-        googleTokenVerifier = new GoogleTokenVerifier(TEST_CLIENT_ID);
+        googleTokenVerifier = new GoogleTokenVerifier(TEST_CLIENT_ID, TEST_CLIENT_ID);
     }
 
     @Test

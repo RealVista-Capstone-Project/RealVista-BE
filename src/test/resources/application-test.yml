@@ -41,6 +41,20 @@ spring:
       # This is: "test-secret-key-for-jwt-token-signing-in-unit-tests-only" in base64
       secret-key: dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtdG9rZW4tc2lnbmluZy1pbi11bml0LXRlc3RzLW9ubHkK
       expiration: 86400000 # 24 hours
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+            scope: profile,email
+        provider:
+          google:
+            issuer-uri: https://accounts.google.com
+      mobile:
+        google:
+          client-id: test-google-mobile-client-id
 
   # Disable Docker Compose for tests
   docker:

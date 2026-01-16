@@ -71,6 +71,9 @@ spring:
         provider:
           google:
             issuer-uri: https://accounts.google.com
+      mobile:
+        google:
+          client-id: ${GOOGLE_MOBILE_CLIENT_ID:your_google_mobile_client_id}
 
 # Actuator Configuration
 management:

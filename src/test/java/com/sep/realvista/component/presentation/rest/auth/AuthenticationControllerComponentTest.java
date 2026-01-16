@@ -1,11 +1,13 @@
 package com.sep.realvista.component.presentation.rest.auth;
 
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
+import com.sep.realvista.application.auth.dto.GoogleIdTokenRequest;
 import com.sep.realvista.application.auth.dto.LoginRequest;
 import com.sep.realvista.application.auth.service.AuthService;
 import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
@@ -485,6 +487,130 @@ class AuthenticationControllerComponentTest {
                 com.sep.realvista.domain.common.value.Email.of("test@example.com")
         );
         assertThat(exists).isIn(true, false); // Either true or false is valid
+    }
+
+    // ============================================
+    // Mobile Google Login Tests
+    // ============================================
+
+    @Test
+    @DisplayName("Should return 200 OK when mobile Google login with valid ID token")
+    void shouldReturn200WhenMobileGoogleLoginWithValidToken() throws Exception {
+        // Arrange
+        when(authService.loginWithGoogleMobile(any(GoogleIdTokenRequest.class)))
+                .thenReturn(mockAuthResponse);
+
+        String requestBody = """
+                {
+                    "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE4MmU0M2VmNjIzZjY1Y2JiYWFkY2M4NjY1NmJkODUzN2JlYjE4NzIiLCJ0eXAiOiJKV1QifQ.test"
+                }
+                """;
+
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/auth/login-google-mobile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Google authentication successful"))
+                .andExpect(jsonPath("$.data.access_token").exists())
+                .andExpect(jsonPath("$.data.type").value("Bearer"))
+                .andExpect(jsonPath("$.data.user_id").exists())
+                .andExpect(jsonPath("$.data.email").exists());
+
+        verify(authService).loginWithGoogleMobile(any(GoogleIdTokenRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should return 400 Bad Request when mobile Google login with missing ID token")
+    void shouldReturn400WhenMobileGoogleLoginWithMissingToken() throws Exception {
+        // Arrange
+        String requestBody = """
+                {
+                    "idToken": ""
+                }
+                """;
+
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/auth/login-google-mobile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("Should return 400 Bad Request when mobile Google login without ID token field")
+    void shouldReturn400WhenMobileGoogleLoginWithoutTokenField() throws Exception {
+        // Arrange
+        String requestBody = """
+                {
+                }
+                """;
+
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/auth/login-google-mobile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("Should handle invalid Google ID token gracefully")
+    void shouldHandleInvalidGoogleIdToken() throws Exception {
+        // Arrange
+        when(authService.loginWithGoogleMobile(any(GoogleIdTokenRequest.class)))
+                .thenThrow(new BusinessConflictException(
+                        "Google authentication failed: Invalid ID token",
+                        "GOOGLE_AUTH_FAILED"
+                ));
+
+        String requestBody = """
+                {
+                    "idToken": "invalid_token_string"
+                }
+                """;
+
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/auth/login-google-mobile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("GOOGLE_AUTH_FAILED"));
+
+        verify(authService).loginWithGoogleMobile(any(GoogleIdTokenRequest.class));
+    }
+
+    @Test
+    @DisplayName("Should allow access to mobile Google login endpoint without authentication")
+    void shouldAllowAccessToMobileGoogleLoginEndpoint() throws Exception {
+        // Arrange
+        when(authService.loginWithGoogleMobile(any(GoogleIdTokenRequest.class)))
+                .thenReturn(mockAuthResponse);
+
+        String requestBody = """
+                {
+                    "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE4MmU0M2VmNjIzZjY1Y2JiYWFkY2M4NjY1NmJkODUzN2JlYjE4NzIiLCJ0eXAiOiJKV1QifQ.test"
+                }
+                """;
+
+        // Act & Assert - Should not redirect to login or return 401
+        mockMvc.perform(post("/api/v1/auth/login-google-mobile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Should include mobile Google login in Swagger API documentation")
+    void shouldIncludeMobileGoogleLoginInSwaggerDocumentation() throws Exception {
+        // When & Then - Check that the endpoint is documented
+        mockMvc.perform(get("/v1/api-docs"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/v1/auth/login-google-mobile']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/auth/login-google-mobile'].post").exists());
     }
 }
 

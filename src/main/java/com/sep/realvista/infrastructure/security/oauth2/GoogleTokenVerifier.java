@@ -8,10 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.List;
 
 /**
- * Service for verifying Google ID tokens from mobile applications.
+ * Service for verifying Google ID tokens from mobile and web applications.
  * <p>
  * Mobile apps use Google Sign-In SDK to obtain an ID token,
  * which is then verified by this service to authenticate the user.
@@ -20,18 +21,35 @@ import java.util.Collections;
  * - No redirect URLs needed (avoids private IP issue)
  * - Token validation happens server-side
  * - Secure and recommended by Google for mobile apps
+ * <p>
+ * Supports multiple Google Client IDs:
+ * - Web Client ID (for web OAuth2 flow)
+ * - Mobile Client ID (for React Native and other mobile apps)
  */
 @Service
 @Slf4j
 public class GoogleTokenVerifier {
 
     private final GoogleIdTokenVerifier verifier;
+    private final String webClientId;
+    private final String mobileClientId;
 
-    public GoogleTokenVerifier(@Value("${spring.security.oauth2.client.registration.google.client-id}")
-                                String clientId) {
+    public GoogleTokenVerifier(
+            @Value("${spring.security.oauth2.client.registration.google.client-id}") String webClientId,
+            @Value("${spring.security.oauth2.mobile.google.client-id}") String mobileClientId
+    ) {
+        this.webClientId = webClientId;
+        this.mobileClientId = mobileClientId;
+
+        // Support both web and mobile client IDs for token verification
+        List<String> clientIds = Arrays.asList(webClientId, mobileClientId);
+
         this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
-                .setAudience(Collections.singletonList(clientId))
+                .setAudience(clientIds)
                 .build();
+
+        log.info("GoogleTokenVerifier initialized with web and mobile client IDs");
+        log.debug("Supported client IDs count: {}", clientIds.size());
     }
 
     /**
@@ -99,5 +117,23 @@ public class GoogleTokenVerifier {
      */
     public String getPictureUrl(GoogleIdToken.Payload payload) {
         return (String) payload.get("picture");
+    }
+
+    /**
+     * Gets the configured web client ID.
+     *
+     * @return web client ID
+     */
+    public String getWebClientId() {
+        return webClientId;
+    }
+
+    /**
+     * Gets the configured mobile client ID.
+     *
+     * @return mobile client ID
+     */
+    public String getMobileClientId() {
+        return mobileClientId;
     }
 }
