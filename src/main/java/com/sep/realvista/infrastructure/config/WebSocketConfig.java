@@ -60,6 +60,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Native WebSocket endpoint (for Postman, mobile apps, etc.)
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(
                         "http://localhost:3000",           // Next.js development
@@ -67,10 +68,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://192.168.*.*:*",            // Local network for mobile testing
                         "http://10.0.*.*:*",               // Local network for mobile testing
                         "https://*.vercel.app",            // Vercel deployment
-                        "https://*.netlify.app"           // Netlify deployment
+                        "https://*.netlify.app",           // Netlify deployment
+                        "*"                                 // Allow all for development
+                );
+
+        // SockJS fallback endpoint (for browsers that don't support WebSocket)
+        registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns(
+                        "http://localhost:3000",
+                        "http://localhost:19006",
+                        "http://192.168.*.*:*",
+                        "http://10.0.*.*:*",
+                        "https://*.vercel.app",
+                        "https://*.netlify.app",
+                        "*"
                 )
                 .withSockJS();
-        log.info("STOMP endpoints registered at /ws with SockJS fallback support");
+
+        log.info("STOMP endpoints registered at /ws with native WebSocket and SockJS fallback support");
     }
 
     /**
