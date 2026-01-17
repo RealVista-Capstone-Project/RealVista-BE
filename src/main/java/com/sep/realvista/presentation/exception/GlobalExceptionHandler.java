@@ -1,5 +1,6 @@
 package com.sep.realvista.presentation.exception;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.sep.realvista.application.common.dto.ErrorResponse;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.DomainException;
@@ -8,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
@@ -104,6 +106,47 @@ public class GlobalExceptionHandler {
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
                 .errors(validationErrors)
+                .build();
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex,
+            HttpServletRequest request
+    ) {
+        log.error("HTTP message not readable: {}", ex.getMessage());
+
+        String message = "Invalid request body";
+        String errorCode = "INVALID_REQUEST_BODY";
+
+        // Check if it's an InvalidFormatException (e.g., invalid enum value)
+        Throwable cause = ex.getCause();
+        if (cause instanceof InvalidFormatException invalidFormatEx) {
+            // Check if the cause is our custom IllegalArgumentException from enum
+            Throwable rootCause = invalidFormatEx.getCause();
+            if (rootCause instanceof IllegalArgumentException) {
+                message = rootCause.getMessage();
+            } else {
+                // Generic invalid format message
+                Object value = invalidFormatEx.getValue();
+                String fieldName = invalidFormatEx.getPath().isEmpty()
+                        ? "field"
+                        : invalidFormatEx.getPath().getFirst().getFieldName();
+                message = String.format("Invalid value '%s' for field '%s'", value, fieldName);
+            }
+            errorCode = "VALIDATION_ERROR";
+        } else if (cause != null && cause.getMessage() != null) {
+            message = cause.getMessage();
+        }
+
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message(message)
+                .errorCode(errorCode)
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
                 .build();
 
         return ResponseEntity.badRequest().body(error);

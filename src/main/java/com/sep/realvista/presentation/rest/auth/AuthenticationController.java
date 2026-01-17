@@ -106,6 +106,7 @@ public class AuthenticationController {
                     + "2. Obtain ID token from Google "
                     + "3. Send the ID token to this endpoint "
                     + "4. Receive JWT token in the response. "
+                    + "Platform must be either 'android' or 'ios'. "
                     + "This approach avoids the private IP redirect issue with OAuth2 on mobile."
     )
     @ApiResponses(value = {

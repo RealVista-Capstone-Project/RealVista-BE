@@ -2,6 +2,7 @@ package com.sep.realvista.application.auth.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +13,10 @@ import lombok.NoArgsConstructor;
  * <p>
  * Mobile apps should use Google Sign-In SDK to get the ID token,
  * then send it to this endpoint for validation and authentication.
+ * <p>
+ * Platform-specific authentication:
+ * - Android apps use Android OAuth client ID
+ * - iOS apps use iOS OAuth client ID
  */
 @Data
 @Builder
@@ -27,4 +32,13 @@ public class GoogleIdTokenRequest {
     )
     @NotBlank(message = "ID token is required")
     private String idToken;
+
+    @Schema(
+            description = "Mobile platform type (android or ios)",
+            example = "android",
+            requiredMode = Schema.RequiredMode.REQUIRED,
+            allowableValues = {"android", "ios"}
+    )
+    @NotNull(message = "Platform is required")
+    private MobilePlatform platform;
 }

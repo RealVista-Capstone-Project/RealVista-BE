@@ -87,17 +87,24 @@ public class AuthService {
      * <p>
      * This approach avoids the private IP redirect issue that occurs
      * with standard OAuth2 web flows on mobile devices.
+     * <p>
+     * Platform-specific validation:
+     * - Android tokens are validated against Android OAuth client ID
+     * - iOS tokens are validated against iOS OAuth client ID
      *
-     * @param request the Google ID token request
+     * @param request the Google ID token request with platform information
      * @return authentication response with JWT token
      */
     @Transactional
     public AuthenticationResponse loginWithGoogleMobile(GoogleIdTokenRequest request) {
-        log.debug("Processing mobile Google login with ID token");
+        log.debug("Processing mobile Google login with ID token for platform: {}", request.getPlatform());
 
         try {
-            // Step 1: Verify Google ID token
-            GoogleIdToken.Payload payload = googleTokenVerifier.verifyToken(request.getIdToken());
+            // Step 1: Verify Google ID token for specific platform
+            GoogleIdToken.Payload payload = googleTokenVerifier.verifyTokenForPlatform(
+                    request.getIdToken(),
+                    request.getPlatform()
+            );
 
             // Step 2: Extract user information
             String email = googleTokenVerifier.getEmail(payload);
@@ -127,12 +134,19 @@ public class AuthService {
             // Step 5: Build authentication response
             AuthenticationResponse response = authenticationMapper.toAuthenticationResponse(user, token);
 
-            log.info("Mobile Google login successful for user: {}", email);
+            log.info("Mobile Google login successful for platform {} and user: {}",
+                    request.getPlatform(), email);
 
             return response;
 
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid platform or token for mobile Google authentication: {}", e.getMessage());
+            throw new BusinessConflictException(
+                    "Invalid authentication request: " + e.getMessage(),
+                    "INVALID_AUTH_REQUEST"
+            );
         } catch (Exception e) {
-            log.error("Mobile Google authentication failed", e);
+            log.error("Mobile Google authentication failed for platform {}", request.getPlatform(), e);
             throw new BusinessConflictException(
                     "Google authentication failed: " + e.getMessage(),
                     "GOOGLE_AUTH_FAILED"
