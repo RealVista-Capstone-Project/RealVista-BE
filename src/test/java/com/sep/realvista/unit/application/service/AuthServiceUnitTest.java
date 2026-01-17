@@ -4,6 +4,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
 import com.sep.realvista.application.auth.dto.GoogleIdTokenRequest;
 import com.sep.realvista.application.auth.dto.LoginRequest;
+import com.sep.realvista.application.auth.dto.MobilePlatform;
 import com.sep.realvista.application.auth.mapper.AuthenticationMapper;
 import com.sep.realvista.application.auth.service.AuthService;
 import com.sep.realvista.application.auth.service.TokenService;
@@ -415,9 +416,11 @@ class AuthServiceUnitTest {
         String avatarUrl = "https://example.com/avatar.jpg";
         String hashedPassword = "hashed_random_password";
         String jwtToken = "generated.jwt.token";
+        MobilePlatform platform = MobilePlatform.ANDROID;
 
         GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
                 .idToken(idToken)
+                .platform(platform)  // Added platform
                 .build();
 
         GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
@@ -444,7 +447,7 @@ class AuthServiceUnitTest {
                 .email(email)
                 .build();
 
-        when(googleTokenVerifier.verifyToken(idToken)).thenReturn(payload);
+        when(googleTokenVerifier.verifyTokenForPlatform(idToken, platform)).thenReturn(payload);  // Updated method
         when(googleTokenVerifier.getEmail(payload)).thenReturn(email);
         when(googleTokenVerifier.getGivenName(payload)).thenReturn(firstName);
         when(googleTokenVerifier.getFamilyName(payload)).thenReturn(lastName);
@@ -465,7 +468,7 @@ class AuthServiceUnitTest {
         assertThat(result.getEmail()).isEqualTo(email);
         assertThat(result.getUserId()).isEqualTo(2L);
 
-        verify(googleTokenVerifier).verifyToken(idToken);
+        verify(googleTokenVerifier).verifyTokenForPlatform(idToken, platform);  // Updated verification
         verify(userRepository).save(any(User.class));
         verify(passwordUtil).generateRandomHashedPassword();
         verify(jwtService).generateToken(any(UserDetails.class));
@@ -479,9 +482,11 @@ class AuthServiceUnitTest {
         String idToken = "valid.google.id.token";
         String email = "existing.user@gmail.com";
         String jwtToken = "generated.jwt.token";
+        MobilePlatform platform = MobilePlatform.IOS;
 
         GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
                 .idToken(idToken)
+                .platform(platform)  // Added platform
                 .build();
 
         GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
@@ -504,7 +509,7 @@ class AuthServiceUnitTest {
                 .email(email)
                 .build();
 
-        when(googleTokenVerifier.verifyToken(idToken)).thenReturn(payload);
+        when(googleTokenVerifier.verifyTokenForPlatform(idToken, platform)).thenReturn(payload);  // Updated method
         when(googleTokenVerifier.getEmail(payload)).thenReturn(email);
         when(googleTokenVerifier.getGivenName(payload)).thenReturn(null);
         when(googleTokenVerifier.getFamilyName(payload)).thenReturn(null);
@@ -522,7 +527,7 @@ class AuthServiceUnitTest {
         assertThat(result.getUserId()).isEqualTo(3L);
         assertThat(result.getEmail()).isEqualTo(email);
 
-        verify(googleTokenVerifier).verifyToken(idToken);
+        verify(googleTokenVerifier).verifyTokenForPlatform(idToken, platform);  // Updated verification
         verify(userRepository).findByEmailValue(email);
         verify(userRepository, org.mockito.Mockito.never()).save(any(User.class));
         verify(passwordUtil, org.mockito.Mockito.never()).generateRandomHashedPassword();
@@ -533,19 +538,22 @@ class AuthServiceUnitTest {
     void shouldThrowExceptionWhenGoogleIdTokenIsInvalid() throws Exception {
         // Arrange
         String invalidToken = "invalid.token";
+        MobilePlatform platform = MobilePlatform.ANDROID;
+        
         GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
                 .idToken(invalidToken)
+                .platform(platform)  // Added platform
                 .build();
 
-        when(googleTokenVerifier.verifyToken(invalidToken))
+        when(googleTokenVerifier.verifyTokenForPlatform(invalidToken, platform))  // Updated method
                 .thenThrow(new IllegalArgumentException("Invalid ID token"));
 
         // Act & Assert
         assertThatThrownBy(() -> authService.loginWithGoogleMobile(request))
                 .isInstanceOf(BusinessConflictException.class)
-                .hasMessageContaining("Google authentication failed");
+                .hasMessageContaining("Invalid authentication request");  // Updated to match actual message
 
-        verify(googleTokenVerifier).verifyToken(invalidToken);
+        verify(googleTokenVerifier).verifyTokenForPlatform(invalidToken, platform);  // Updated verification
     }
 
     @Test
@@ -553,13 +561,16 @@ class AuthServiceUnitTest {
     void shouldThrowExceptionWhenEmailIsMissingFromGoogleToken() throws Exception {
         // Arrange
         String idToken = "valid.token.without.email";
+        MobilePlatform platform = MobilePlatform.IOS;
+        
         GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
                 .idToken(idToken)
+                .platform(platform)  // Added platform
                 .build();
 
         GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
 
-        when(googleTokenVerifier.verifyToken(idToken)).thenReturn(payload);
+        when(googleTokenVerifier.verifyTokenForPlatform(idToken, platform)).thenReturn(payload);  // Updated method
         when(googleTokenVerifier.getEmail(payload)).thenReturn(null);
 
         // Act & Assert
@@ -567,7 +578,7 @@ class AuthServiceUnitTest {
                 .isInstanceOf(BusinessConflictException.class)
                 .hasMessageContaining("Email not provided by Google");
 
-        verify(googleTokenVerifier).verifyToken(idToken);
+        verify(googleTokenVerifier).verifyTokenForPlatform(idToken, platform);  // Updated verification
         verify(googleTokenVerifier).getEmail(payload);
     }
 
@@ -579,9 +590,11 @@ class AuthServiceUnitTest {
         String email = "new.google.user@gmail.com";
         String hashedPassword = "hashed_password";
         String jwtToken = "jwt.token";
+        MobilePlatform platform = MobilePlatform.ANDROID;
 
         GoogleIdTokenRequest request = GoogleIdTokenRequest.builder()
                 .idToken(idToken)
+                .platform(platform)  // Added platform
                 .build();
 
         GoogleIdToken.Payload payload = new GoogleIdToken.Payload();
@@ -602,7 +615,7 @@ class AuthServiceUnitTest {
                 .email(email)
                 .build();
 
-        when(googleTokenVerifier.verifyToken(idToken)).thenReturn(payload);
+        when(googleTokenVerifier.verifyTokenForPlatform(idToken, platform)).thenReturn(payload);  // Updated method
         when(googleTokenVerifier.getEmail(payload)).thenReturn(email);
         when(googleTokenVerifier.getGivenName(payload)).thenReturn(null);
         when(googleTokenVerifier.getFamilyName(payload)).thenReturn(null);
