@@ -3,17 +3,17 @@ spring:
     name: realvista
     frontend:
       url: http://localhost:3000
-  
+
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-  
+
   # Database Configuration
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:realvista_test}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-  
+
   # JPA Configuration
   jpa:
     hibernate:
@@ -28,21 +28,21 @@ spring:
           batch_size: 20
         order_inserts: true
         order_updates: true
-  
+
   # Flyway Configuration
   flyway:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
     validate-on-migrate: true
-  
+
   # Jackson Configuration
   jackson:
     serialization:
       write-dates-as-timestamps: false
     time-zone: UTC
     default-property-inclusion: non_null
-  
+
   # Cache Configuration
   cache:
     type: simple
@@ -106,8 +106,8 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:
-    console: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
-    file: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n"
   file:
     name: logs/application.log
   logback:
