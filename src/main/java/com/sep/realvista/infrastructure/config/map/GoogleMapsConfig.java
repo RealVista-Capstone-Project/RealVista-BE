@@ -3,6 +3,7 @@ package com.sep.realvista.infrastructure.config.map;
 import com.google.maps.GeoApiContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.EnableCaching;
@@ -29,32 +30,36 @@ public class GoogleMapsConfig {
      * Creates and configures GeoApiContext for Google Maps API calls.
      * This context is thread-safe and should be reused across the application.
      *
-     * @return configured GeoApiContext instance
+     * Only created when google.maps.api-key property is set and not empty.
+     *
+     * @return configured GeoApiContext instance or null if API key is not configured
      */
     @Bean
-    @ConditionalOnProperty(name = "google.maps.api-key", matchIfMissing = false)
+    @ConditionalOnProperty(name = "google.maps.api-key")
     public GeoApiContext geoApiContext() {
-        if (!StringUtils.hasText(properties.getApiKey())) {
-            log.warn("Google Maps API key is missing or empty. Skipping GeoApiContext creation.");
+        String apiKey = properties.getApiKey();
+
+        if (!StringUtils.hasText(apiKey)) {
+            log.warn("Google Maps API key is configured but empty. Google Maps features will be disabled.");
+            log.warn("Set GOOGLE_MAPS_API_KEY environment variable to enable Google Maps integration.");
             return null;
         }
         log.info("Initializing Google Maps API context");
-        log.info("Rate limit: {} queries per second",
-                properties.getRateLimit().getQueriesPerSecond());
-        log.info("Monthly quota limit: {}",
-                properties.getRateLimit().getMonthlyQuotaLimit());
+        log.debug("API Key configured: {}", apiKey.substring(0, Math.min(10, apiKey.length())) + "...");
+        log.info("Rate limit: {} queries per second", properties.getRateLimit().getQueriesPerSecond());
+        log.info("Monthly quota limit: {}", properties.getRateLimit().getMonthlyQuotaLimit());
 
         GeoApiContext.Builder builder = new GeoApiContext.Builder()
-                .apiKey(properties.getApiKey())
+                .apiKey(apiKey)
                 .connectTimeout(properties.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
                 .readTimeout(properties.getReadTimeoutMs(), TimeUnit.MILLISECONDS)
                 .maxRetries(properties.getMaxRetries());
 
         // Configure rate limiting to prevent quota overages
-        if (properties.getRateLimit().getQueriesPerSecond() > 0) {
-            builder.queryRateLimit(properties.getRateLimit().getQueriesPerSecond());
-            log.info("Rate limiting enabled: {} QPS",
-                    properties.getRateLimit().getQueriesPerSecond());
+        Integer qps = properties.getRateLimit().getQueriesPerSecond();
+        if (qps != null && qps > 0) {
+            builder.queryRateLimit(qps);
+            log.info("Rate limiting enabled: {} QPS", qps);
         }
 
         GeoApiContext context = builder.build();
@@ -65,8 +70,10 @@ public class GoogleMapsConfig {
 
     /**
      * Gracefully shutdown GeoApiContext on application shutdown.
+     * Only created when GeoApiContext bean exists.
      */
     @Bean
+    @ConditionalOnBean(GeoApiContext.class)
     public GoogleMapsShutdownHook googleMapsShutdownHook(GeoApiContext geoApiContext) {
         return new GoogleMapsShutdownHook(geoApiContext);
     }
@@ -80,8 +87,8 @@ public class GoogleMapsConfig {
 
         @jakarta.annotation.PreDestroy
         public void shutdown() {
-            log.info("Shutting down Google Maps API context");
             if (geoApiContext != null) {
+                log.info("Shutting down Google Maps API context");
                 geoApiContext.shutdown();
             }
         }

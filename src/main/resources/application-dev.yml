@@ -36,7 +36,7 @@ springdoc:
 google:
   maps:
     # API Key from environment variable
-    api-key: ${GOOGLE_MAPS_API_KEY:}
+    api-key: ${GOOGLE_MAPS_API_KEY}
 
     # HTTP client timeouts (milliseconds) - shorter for dev
     connect-timeout-ms: 5000

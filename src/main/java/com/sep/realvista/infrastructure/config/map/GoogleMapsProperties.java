@@ -1,5 +1,6 @@
 package com.sep.realvista.infrastructure.config.map;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
@@ -9,7 +10,7 @@ import org.springframework.validation.annotation.Validated;
 
 /**
  * Configuration properties for Google Maps API integration.
- * Maps to Google Maps.* properties in application.yml
+ * Maps to google.maps.* properties in application.yml
  */
 @Getter
 @Setter
@@ -47,18 +48,14 @@ public class GoogleMapsProperties {
     /**
      * Rate limiting configuration.
      */
-    private final RateLimit rateLimit = new RateLimit();
+    @Valid
+    @NotNull
+    private RateLimit rateLimit = new RateLimit();
 
     /**
      * Cache configuration for geocoding results.
      */
-    private final Cache cache = new Cache();
-
-    public RateLimit getRateLimit() {
-        return rateLimit.copy();
-    }
-
-    public Cache getCache() {
-        return cache.copy();
-    }
+    @Valid
+    @NotNull
+    private Cache cache = new Cache();
 }

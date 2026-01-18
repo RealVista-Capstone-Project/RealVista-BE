@@ -15,10 +15,20 @@ import static org.assertj.core.api.Assertions.*;
 /**
  * Integration test for Google Maps API client.
  *
- * To run this test, you need to set GOOGLE_MAPS_API_KEY_DEV environment variable.
- * This test is disabled by default to avoid using API quota during regular test runs.
+ * IMPORTANT: This test requires a valid Google Maps API key to run.
  *
- * Run with: mvn test -Dtest=GoogleMapsClientIntegrationTest -DGOOGLE_MAPS_API_KEY_DEV=your-key
+ * To run these tests:
+ * 1. Get an API key from Google Cloud Console: https://console.cloud.google.com/
+ * 2. Enable Geocoding API for your project
+ * 3. Set the environment variable: GOOGLE_MAPS_API_KEY=your-api-key
+ *
+ * These tests are automatically skipped if GOOGLE_MAPS_API_KEY is not set.
+ *
+ * Run with Maven:
+ *   mvn test -DGOOGLE_MAPS_API_KEY=your-key
+ *
+ * Run with Gradle:
+ *   ./gradlew test -DGOOGLE_MAPS_API_KEY=your-key
  */
 @Slf4j
 @SpringBootTest
@@ -40,7 +50,7 @@ class GoogleMapsClientIntegrationTest {
         boolean connected = googleMapsClient.testConnection();
         assertThat(connected).isTrue();
 
-        log.info("Connection test PASSED");
+        log.info("✓ Connection test PASSED");
     }
 
     @Test
@@ -59,7 +69,7 @@ class GoogleMapsClientIntegrationTest {
         assertThat(results[0].geometry.location.lat).isBetween(10.0, 11.0);
         assertThat(results[0].geometry.location.lng).isBetween(106.0, 107.0);
 
-        log.info("Geocoding test PASSED");
+        log.info(" Geocoding test PASSED");
         log.info("   Address: {}", results[0].formattedAddress);
         log.info("   Lat/Lng: {}, {}",
                 results[0].geometry.location.lat,
@@ -77,7 +87,7 @@ class GoogleMapsClientIntegrationTest {
                 .isInstanceOf(GoogleMapsException.class)
                 .hasMessageContaining("No results found");
 
-        log.info("Invalid address test PASSED");
+        log.info("✓ Invalid address test PASSED");
     }
 
     @Test
@@ -95,7 +105,7 @@ class GoogleMapsClientIntegrationTest {
         assertThat(results).isNotEmpty();
         assertThat(results[0].formattedAddress).isNotBlank();
 
-        log.info("Reverse geocoding test PASSED");
+        log.info(" Reverse geocoding test PASSED");
         log.info("   Address: {}", results[0].formattedAddress);
     }
 
@@ -112,7 +122,7 @@ class GoogleMapsClientIntegrationTest {
         // Assert - May return empty or water body result
         assertThat(results).isNotNull();
 
-        log.info("Ocean coordinates test PASSED");
+        log.info(" Ocean coordinates test PASSED");
         log.info("   Results count: {}", results.length);
     }
 
@@ -134,13 +144,13 @@ class GoogleMapsClientIntegrationTest {
             assertThatCode(() -> {
                 GeocodingResult[] results = googleMapsClient.geocodeAddress(address);
                 assertThat(results).isNotEmpty();
-                log.info("   ✓ Geocoded: {} -> {}, {}",
+                log.info("    Geocoded: {} -> {}, {}",
                         address.substring(0, Math.min(30, address.length())),
                         results[0].geometry.location.lat,
                         results[0].geometry.location.lng);
             }).doesNotThrowAnyException();
         }
 
-        log.info("Rate limiting test PASSED - all requests succeeded");
+        log.info("✓ Rate limiting test PASSED - all requests succeeded");
     }
 }

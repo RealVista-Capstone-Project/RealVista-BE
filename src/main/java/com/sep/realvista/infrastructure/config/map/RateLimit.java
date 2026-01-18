@@ -5,6 +5,9 @@ import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Rate limiting configuration for Google Maps API.
+ */
 @Getter
 @Setter
 public class RateLimit {
@@ -26,12 +29,4 @@ public class RateLimit {
      * Enable quota monitoring and alerting.
      */
     private Boolean enableMonitoring = true;
-
-    public RateLimit copy() {
-        RateLimit r = new RateLimit();
-        r.queriesPerSecond = this.queriesPerSecond;
-        r.monthlyQuotaLimit = this.monthlyQuotaLimit;
-        r.enableMonitoring = this.enableMonitoring;
-        return r;
-    }
 }

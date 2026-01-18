@@ -61,3 +61,29 @@ management:
   security:
     enabled: false
 
+# Google Maps API Configuration
+google:
+  maps:
+    # API Key from environment variable
+    api-key: ${GOOGLE_MAPS_API_KEY:}
+
+    # HTTP client timeouts (milliseconds) - shorter for dev
+    connect-timeout-ms: 5000
+    read-timeout-ms: 5000
+    max-retries: 3
+
+    # Rate limiting configuration
+    rate-limit:
+      # Lower for development to conserve quota
+      queries-per-second: 10
+      monthly-quota-limit: 5000
+      enable-monitoring: true
+
+    # Cache configuration for geocoding results
+    cache:
+      enabled: true
+      ttl-seconds: 3600  # 1 hour for dev (easier testing)
+      max-size: 1000
+
+
+

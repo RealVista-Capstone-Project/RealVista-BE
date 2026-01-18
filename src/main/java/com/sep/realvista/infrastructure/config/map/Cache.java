@@ -5,6 +5,9 @@ import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Cache configuration for Google Maps API geocoding results.
+ */
 @Getter
 @Setter
 public class Cache {
@@ -26,12 +29,4 @@ public class Cache {
     @NotNull
     @Positive
     private Integer maxSize = 10000;
-
-    public Cache copy() {
-        Cache c = new Cache();
-        c.enabled = this.enabled;
-        c.ttlSeconds = this.ttlSeconds;
-        c.maxSize = this.maxSize;
-        return c;
-    }
 }

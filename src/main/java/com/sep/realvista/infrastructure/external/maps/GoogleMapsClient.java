@@ -9,6 +9,7 @@ import com.sep.realvista.infrastructure.config.map.GoogleMapsProperties;
 import com.sep.realvista.infrastructure.external.maps.exception.GoogleMapsException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -17,9 +18,12 @@ import java.io.IOException;
  * Client for interacting with Google Maps API services.
  * Provides methods for geocoding, reverse geocoding, and place searches.
  * This is the infrastructure layer component that handles external API calls.
+ *
+ * Note: This bean is only created when GeoApiContext is available (i.e., when API key is configured).
  */
 @Slf4j
 @Component
+@ConditionalOnBean(GeoApiContext.class)
 @RequiredArgsConstructor
 public class GoogleMapsClient {
 
