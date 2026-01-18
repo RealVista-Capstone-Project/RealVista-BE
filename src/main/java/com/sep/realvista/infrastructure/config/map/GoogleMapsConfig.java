@@ -3,10 +3,12 @@ package com.sep.realvista.infrastructure.config.map;
 import com.google.maps.GeoApiContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 
 import java.util.concurrent.TimeUnit;
 
@@ -30,7 +32,12 @@ public class GoogleMapsConfig {
      * @return configured GeoApiContext instance
      */
     @Bean
+    @ConditionalOnProperty(name = "google.maps.api-key", matchIfMissing = false)
     public GeoApiContext geoApiContext() {
+        if (!StringUtils.hasText(properties.getApiKey())) {
+            log.warn("Google Maps API key is missing or empty. Skipping GeoApiContext creation.");
+            return null;
+        }
         log.info("Initializing Google Maps API context");
         log.info("Rate limit: {} queries per second",
                 properties.getRateLimit().getQueriesPerSecond());
