@@ -12,10 +12,10 @@ import org.springframework.stereotype.Controller;
 import java.security.Principal;
 
 /**
+ * Note: To be removed or replaced with actual implementation
  * WebSocket controller for handling real-time message communications.
  * Provides endpoints for message handling and broadcasting.
  */
-// TODO: To be removed or replaced with actual implementation
 @Slf4j
 @Controller
 @RequiredArgsConstructor

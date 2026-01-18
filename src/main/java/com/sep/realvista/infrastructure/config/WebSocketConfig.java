@@ -53,15 +53,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     /**
+     * Note: AllowedOriginPatterns should not be hardcoded
      * Register STOMP endpoints for WebSocket connections.
      * Supports SockJS fallback for clients that don't support WebSocket.
-     *
      * @param registry the STOMP endpoint registry
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // Native WebSocket endpoint (for Postman, mobile apps, etc.)
-        // TODO: AllowedOriginPatterns should not be hardcoded
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(
                         "http://localhost:3000",           // Next.js development
@@ -74,7 +73,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 );
 
         // SockJS fallback endpoint (for browsers that don't support WebSocket)
-        // TODO: AllowedOriginPatterns should not be hardcoded
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(
                         "http://localhost:3000",
