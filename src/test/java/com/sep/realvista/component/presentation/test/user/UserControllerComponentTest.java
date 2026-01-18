@@ -1,4 +1,4 @@
-package com.sep.realvista.component.presentation.rest.user;
+package com.sep.realvista.component.presentation.test.user;
 
 import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;

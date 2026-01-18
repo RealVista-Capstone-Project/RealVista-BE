@@ -1,4 +1,4 @@
-package com.sep.realvista.component.presentation.rest.auth;
+package com.sep.realvista.component.presentation.test.auth;
 
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
 import com.sep.realvista.application.auth.dto.LoginRequest;
