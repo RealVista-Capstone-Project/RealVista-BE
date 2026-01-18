@@ -7,7 +7,7 @@ import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.infrastructure.constants.SecurityConstants;
-import com.sep.realvista.infrastructure.security.PasswordService;
+import com.sep.realvista.infrastructure.security.util.PasswordUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +19,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
-import java.util.UUID;
 
 /**
  * Custom OAuth2 authentication success handler.
@@ -34,18 +33,18 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private final UserRepository userRepository;
     private final TokenService tokenService;
-    private final PasswordService passwordService;
+    private final PasswordUtil passwordUtil;
     private final String frontendUrl;
 
     public OAuth2AuthenticationSuccessHandler(
             UserRepository userRepository,
             TokenService tokenService,
-            PasswordService passwordService,
+            PasswordUtil passwordUtil,
             @Value("${spring.application.frontend.url}") String frontendUrl
     ) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
-        this.passwordService = passwordService;
+        this.passwordUtil = passwordUtil;
         this.frontendUrl = frontendUrl;
     }
 
@@ -106,9 +105,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private User createNewOAuth2User(String email, String firstName, String lastName, String avatarUrl) {
         log.info("Creating new user from OAuth2 login: {}", email);
 
-        // Generate a random password for OAuth2 users (they won't use it)
-        String randomPassword = UUID.randomUUID().toString();
-        String hashedPassword = passwordService.encode(randomPassword);
+        // Generate a random hashed password for OAuth2 users (they won't use it)
+        String hashedPassword = passwordUtil.generateRandomHashedPassword();
 
         User newUser = User.builder()
                 .email(Email.of(email))

@@ -1,6 +1,7 @@
 package com.sep.realvista.presentation.rest.auth;
 
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
+import com.sep.realvista.application.auth.dto.GoogleIdTokenRequest;
 import com.sep.realvista.application.auth.dto.LoginRequest;
 import com.sep.realvista.application.auth.service.AuthService;
 import com.sep.realvista.application.common.dto.ApiResponse;
@@ -68,10 +69,12 @@ public class AuthenticationController {
 
     @GetMapping("/login-google")
     @Operation(
-            summary = "Login with Google",
-            description = "Initiates Google OAuth2 authentication flow. "
+            summary = "Login with Google (Web)",
+            description = "Initiates Google OAuth2 authentication flow for web browsers. "
                     + "Open this URL directly in your browser (not via Swagger's Execute button). "
-                    + "Redirects to Google sign-in and then back to the frontend with JWT token."
+                    + "Redirects to Google sign-in and then back to the frontend with JWT token. "
+                    + "This endpoint only works for web browsers. "
+                    + "Mobile apps should use POST /api/v1/auth/login-google-mobile instead."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -92,6 +95,45 @@ public class AuthenticationController {
     public void loginWithGoogle(HttpServletResponse response) throws IOException {
         log.info("Initiating Google OAuth2 login via /api/v1/auth/login-google");
         response.sendRedirect("/api/v1/auth/login-google/google");
+    }
+
+    @PostMapping("/login-google-mobile")
+    @Operation(
+            summary = "Login with Google (Mobile)",
+            description = "Authenticates mobile users using Google ID token. "
+                    + "Mobile apps should: "
+                    + "1. Integrate Google Sign-In SDK "
+                    + "2. Obtain ID token from Google "
+                    + "3. Send the ID token to this endpoint "
+                    + "4. Receive JWT token in the response. "
+                    + "Platform must be either 'android' or 'ios'. "
+                    + "This approach avoids the private IP redirect issue with OAuth2 on mobile."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Successfully authenticated with Google",
+                    content = @Content(mediaType = "application/json")
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid or expired ID token"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server error during authentication"
+            )
+    })
+    public ResponseEntity<ApiResponse<AuthenticationResponse>> loginWithGoogleMobile(
+            @Valid @RequestBody GoogleIdTokenRequest request
+    ) {
+        log.info("Mobile Google login request received");
+
+        AuthenticationResponse response = authService.loginWithGoogleMobile(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Google authentication successful", response)
+        );
     }
 }
 
