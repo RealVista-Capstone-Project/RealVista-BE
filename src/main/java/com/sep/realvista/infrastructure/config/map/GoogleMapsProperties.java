@@ -22,7 +22,6 @@ public class GoogleMapsProperties {
      * Google Maps API key for backend services.
      * This key should have IP restrictions applied in Google Cloud Console.
      */
-    @NotBlank(message = "Google Maps API key is required")
     private String apiKey;
 
     /**
