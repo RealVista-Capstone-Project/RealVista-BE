@@ -47,14 +47,14 @@ spring:
     compose:
       enabled: false
 
-  # Logging Configuration for Tests
-  logging:
-    level:
-      root: INFO
-      com.sep.realvista: DEBUG
-      org.springframework.web: INFO
-      org.hibernate: WARN
-      org.flywaydb: INFO
+# Logging Configuration for Tests
+logging:
+  level:
+    root: INFO
+    com.sep.realvista: DEBUG
+    org.springframework.web: INFO
+    org.hibernate: WARN
+    org.flywaydb: INFO
 
 # Disable Actuator security for tests
 management:
@@ -62,19 +62,20 @@ management:
     enabled: false
 
 # Google Maps API Configuration
+# Only enabled if GOOGLE_MAPS_API_KEY environment variable is set
 google:
   maps:
-    # API Key from environment variable
-    api-key: ${GOOGLE_MAPS_API_KEY:}
+    # API Key from environment variable (will be null if not set)
+    # Spring Expression Language: #{null} creates a proper null value
+    api-key: ${GOOGLE_MAPS_API_KEY:#{null}}
 
-    # HTTP client timeouts (milliseconds) - shorter for dev
+    # HTTP client timeouts (milliseconds)
     connect-timeout-ms: 5000
     read-timeout-ms: 5000
     max-retries: 3
 
     # Rate limiting configuration
     rate-limit:
-      # Lower for development to conserve quota
       queries-per-second: 10
       monthly-quota-limit: 5000
       enable-monitoring: true
@@ -82,8 +83,5 @@ google:
     # Cache configuration for geocoding results
     cache:
       enabled: true
-      ttl-seconds: 3600  # 1 hour for dev (easier testing)
+      ttl-seconds: 3600  # 1 hour for tests
       max-size: 1000
-
-
-
