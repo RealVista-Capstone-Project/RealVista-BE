@@ -1,5 +1,6 @@
 package com.sep.realvista.infrastructure.config.map;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
@@ -21,6 +22,7 @@ public class GoogleMapsProperties {
      * Google Maps API key for backend services.
      * This key should have IP restrictions applied in Google Cloud Console.
      */
+    @NotBlank(message = "Google Maps API key is required")
     private String apiKey;
 
     /**

@@ -3,8 +3,6 @@ package com.sep.realvista.infrastructure.config.map;
 import com.google.maps.GeoApiContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -32,7 +30,6 @@ public class GoogleMapsConfig {
      * @return configured GeoApiContext instance
      */
     @Bean
-    @ConditionalOnProperty(prefix = "google.maps", name = "api-key")
     public GeoApiContext geoApiContext() {
         log.info("Initializing Google Maps API context");
         log.info("Rate limit: {} queries per second",
@@ -63,7 +60,6 @@ public class GoogleMapsConfig {
      * Gracefully shutdown GeoApiContext on application shutdown.
      */
     @Bean
-    @ConditionalOnBean(GeoApiContext.class)
     public GoogleMapsShutdownHook googleMapsShutdownHook(GeoApiContext geoApiContext) {
         return new GoogleMapsShutdownHook(geoApiContext);
     }
