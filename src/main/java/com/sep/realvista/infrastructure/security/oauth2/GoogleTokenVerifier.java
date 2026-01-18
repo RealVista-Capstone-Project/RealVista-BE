@@ -126,13 +126,12 @@ public class GoogleTokenVerifier {
         log.debug("Token audience: {}, Expected client ID for {}: {}",
                 tokenAudience, platform, expectedClientId);
 
-        // The token should be issued for the platform-specific client ID
-        // Note: Some SDKs might use web client ID, so we verify against all valid audiences
-        if (!clientIds.contains(tokenAudience)) {
-            log.error("Token audience mismatch. Expected one of {}, but got: {}",
-                    clientIds, tokenAudience);
+        // Strict audience verification: token must match the expected platform's client ID
+        if (!tokenAudience.equals(expectedClientId)) {
+            log.error("Token audience mismatch. Expected: {}, but got: {}",
+                    expectedClientId, tokenAudience);
             throw new IllegalArgumentException(
-                    "Invalid token: audience does not match expected client IDs"
+                    "Token audience mismatch. Expected: " + expectedClientId
             );
         }
 

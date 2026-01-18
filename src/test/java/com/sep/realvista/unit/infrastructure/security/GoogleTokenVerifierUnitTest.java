@@ -1,6 +1,7 @@
 package com.sep.realvista.unit.infrastructure.security;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.sep.realvista.application.auth.dto.MobilePlatform;
 import com.sep.realvista.infrastructure.security.oauth2.GoogleTokenVerifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,7 +22,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("GoogleTokenVerifier Unit Tests")
 class GoogleTokenVerifierUnitTest {
 
-    private static final String TEST_CLIENT_ID = "test-client-id.apps.googleusercontent.com";
+    private static final String WEB_CLIENT_ID = "web-client-id.apps.googleusercontent.com";
+    private static final String ANDROID_CLIENT_ID = "android-client-id.apps.googleusercontent.com";
+    private static final String IOS_CLIENT_ID = "ios-client-id.apps.googleusercontent.com";
     private static final String TEST_EMAIL = "test@example.com";
     private static final String TEST_FIRST_NAME = "John";
     private static final String TEST_LAST_NAME = "Doe";
@@ -31,7 +34,7 @@ class GoogleTokenVerifierUnitTest {
 
     @BeforeEach
     void setUp() {
-        googleTokenVerifier = new GoogleTokenVerifier(TEST_CLIENT_ID, TEST_CLIENT_ID, TEST_CLIENT_ID);
+        googleTokenVerifier = new GoogleTokenVerifier(WEB_CLIENT_ID, ANDROID_CLIENT_ID, IOS_CLIENT_ID);
     }
 
     @Test
@@ -39,6 +42,32 @@ class GoogleTokenVerifierUnitTest {
     void shouldBeInstantiatedWithClientId() {
         // Then
         assertThat(googleTokenVerifier).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should have correct platform client ID mappings")
+    void shouldHaveCorrectPlatformClientIdMappings() {
+        // Then
+        assertThat(googleTokenVerifier.getWebClientId()).isEqualTo(WEB_CLIENT_ID);
+        assertThat(googleTokenVerifier.getAndroidClientId()).isEqualTo(ANDROID_CLIENT_ID);
+        assertThat(googleTokenVerifier.getIosClientId()).isEqualTo(IOS_CLIENT_ID);
+    }
+
+    @Test
+    @DisplayName("Should have platform client IDs mapped correctly")
+    void shouldHavePlatformClientIdsMappedCorrectly() {
+        // Then
+        assertThat(googleTokenVerifier.getPlatformClientIds())
+                .containsEntry(MobilePlatform.ANDROID, ANDROID_CLIENT_ID)
+                .containsEntry(MobilePlatform.IOS, IOS_CLIENT_ID);
+    }
+
+    @Test
+    @DisplayName("Should have all client IDs in the list")
+    void shouldHaveAllClientIdsInTheList() {
+        // Then
+        assertThat(googleTokenVerifier.getClientIds())
+                .containsExactlyInAnyOrder(WEB_CLIENT_ID, ANDROID_CLIENT_ID, IOS_CLIENT_ID);
     }
 
     @Test
