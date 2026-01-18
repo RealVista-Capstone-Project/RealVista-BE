@@ -15,6 +15,7 @@ import java.security.Principal;
  * WebSocket controller for handling real-time message communications.
  * Provides endpoints for message handling and broadcasting.
  */
+// TODO: To be removed or replaced with actual implementation
 @Slf4j
 @Controller
 @RequiredArgsConstructor
