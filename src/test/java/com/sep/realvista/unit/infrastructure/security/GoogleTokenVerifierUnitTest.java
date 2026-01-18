@@ -10,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for GoogleTokenVerifier.
@@ -137,32 +136,5 @@ class GoogleTokenVerifierUnitTest {
         assertThat(googleTokenVerifier.getGivenName(payload)).isNull();
         assertThat(googleTokenVerifier.getFamilyName(payload)).isNull();
         assertThat(googleTokenVerifier.getPictureUrl(payload)).isNull();
-    }
-
-    @Test
-    @DisplayName("Should throw exception for invalid token")
-    void shouldThrowExceptionForInvalidToken() {
-        // Given
-        String invalidToken = "invalid.token.string";
-
-        // When & Then
-        assertThatThrownBy(() -> googleTokenVerifier.verifyToken(invalidToken))
-                .isInstanceOf(Exception.class);
-    }
-
-    @Test
-    @DisplayName("Should throw exception for null token")
-    void shouldThrowExceptionForNullToken() {
-        // When & Then
-        assertThatThrownBy(() -> googleTokenVerifier.verifyToken(null))
-                .isInstanceOf(Exception.class);
-    }
-
-    @Test
-    @DisplayName("Should throw exception for empty token")
-    void shouldThrowExceptionForEmptyToken() {
-        // When & Then
-        assertThatThrownBy(() -> googleTokenVerifier.verifyToken(""))
-                .isInstanceOf(Exception.class);
     }
 }

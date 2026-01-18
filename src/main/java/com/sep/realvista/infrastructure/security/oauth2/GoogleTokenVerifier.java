@@ -69,33 +69,6 @@ public class GoogleTokenVerifier {
     }
 
     /**
-     * Verifies a Google ID token and extracts user information.
-     *
-     * @param idTokenString the ID token from Google Sign-In SDK
-     * @return GoogleIdToken.Payload containing user information
-     * @throws Exception if token is invalid or verification fails
-     */
-    public GoogleIdToken.Payload verifyToken(String idTokenString) throws Exception {
-        log.debug("Verifying Google ID token");
-
-        GoogleIdToken idToken = verifier.verify(idTokenString);
-
-        if (idToken == null) {
-            log.error("Invalid ID token: verification failed");
-            throw new IllegalArgumentException("Invalid ID token");
-        }
-
-        GoogleIdToken.Payload payload = idToken.getPayload();
-
-        // Log user info for debugging
-        log.info("Token verified successfully for user: {} ({})",
-                payload.getEmail(),
-                payload.getSubject());
-
-        return payload;
-    }
-
-    /**
      * Verifies a Google ID token for a specific mobile platform.
      * <p>
      * This method ensures the token was issued for the correct platform's client ID,
