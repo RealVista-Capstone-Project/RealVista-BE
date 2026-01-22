@@ -43,7 +43,8 @@ public final class SecurityConstants {
                 "/actuator/health/**",
                 "/oauth2/**",
                 "/login/oauth2/**",
-                "/ws/**"
+                "/ws/**",
+                "api/test/**",
         };
 
         private PublicEndpoints() {
