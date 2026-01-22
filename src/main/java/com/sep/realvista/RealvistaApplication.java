@@ -2,12 +2,14 @@ package com.sep.realvista;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * RealVista Backend Application.
  * Spring Boot application implementing Clean Architecture and DDD principles.
  */
 @SpringBootApplication
+@EnableAsync
 public final class RealvistaApplication {
 
     private RealvistaApplication() {
