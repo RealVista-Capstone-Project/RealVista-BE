@@ -28,6 +28,7 @@ A production-ready Spring Boot backend application implementing Clean Architectu
 ## ✨ Features
 
 ### Core Features
+
 - ✅ **Clean Architecture** with DDD principles
 - ✅ **JWT Authentication** with role-based access control
 - ✅ **RESTful API** with OpenAPI/Swagger documentation
@@ -37,6 +38,7 @@ A production-ready Spring Boot backend application implementing Clean Architectu
 - ✅ **Actuator** endpoints for monitoring
 
 ### Code Quality
+
 - ✅ **Checkstyle** for code style enforcement
 - ✅ **SpotBugs** for static analysis
 - ✅ **JaCoCo** for code coverage (70% minimum)
@@ -44,6 +46,7 @@ A production-ready Spring Boot backend application implementing Clean Architectu
 - ✅ **Lombok** for boilerplate reduction
 
 ### DevOps
+
 - ✅ **CI Pipeline** with GitHub Actions
 - ✅ **Automated Testing** with PostgreSQL
 - ✅ **Security Scanning** with Trivy
@@ -81,22 +84,26 @@ src/main/java/com/sep/realvista/
 ### Installation
 
 1. **Clone repository**
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/realvista.git
    cd realvista
    ```
 
 2. **Start database**
+
    ```bash
    docker-compose up -d
    ```
 
 3. **Build application**
+
    ```bash
    mvn clean install
    ```
 
 4. **Run application**
+
    ```bash
    mvn spring-boot:run
    ```
@@ -126,25 +133,30 @@ docker-compose down
 Our GitHub Actions pipeline ensures:
 
 ✅ **Code Quality**
+
 - Checkstyle validation
 - SpotBugs analysis
 - Code formatting
 
 ✅ **Build**
+
 - Compilation success
 - Artifact generation
 - Build info extraction
 
 ✅ **Testing**
+
 - Unit tests execution
 - Integration tests with PostgreSQL
 - 70% code coverage minimum
 
 ✅ **Security**
+
 - Dependency vulnerability scan
 - Trivy security analysis
 
 ✅ **Package**
+
 - JAR creation
 - Git SHA embedding
 - Metadata extraction
@@ -164,6 +176,7 @@ feature/* | bugfix/* | hotfix/*
 ```
 
 **Protection Rules**:
+
 - Require PR approval
 - All CI checks must pass
 - Up-to-date branches required
@@ -180,6 +193,24 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8081"
 ```
 
+### Database Migration (Flyway)
+
+```bash
+# Clean database (CAUTION: drops all tables)
+./mvnw flyway:clean -Dflyway.cleanDisabled=false
+
+# Run migrations
+./mvnw flyway:migrate
+
+# Clean and migrate (fresh start)
+./mvnw flyway:clean -Dflyway.cleanDisabled=false && ./mvnw flyway:migrate
+
+# Check migration info
+./mvnw flyway:info
+```
+
+> ⚠️ **Warning**: `flyway:clean` will delete ALL data. Use only in development!
+
 ### Code Quality
 
 ```bash
@@ -194,10 +225,10 @@ mvn jacoco:report
 
 ### Test Accounts
 
-| Email | Password | Role |
-|-------|----------|------|
+| Email               | Password    | Role  |
+| ------------------- | ----------- | ----- |
 | admin@realvista.com | Password123 | ADMIN |
-| user@realvista.com | Password123 | USER |
+| user@realvista.com  | Password123 | USER  |
 
 ## 🧪 Testing
 
@@ -326,6 +357,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 Access metrics at: http://localhost:8080/actuator/metrics
 
 Available metrics:
+
 - JVM memory usage
 - HTTP request counts
 - Database connection pool
@@ -334,6 +366,7 @@ Available metrics:
 ### Logging
 
 Logs are available at:
+
 - `logs/application.log` - All logs
 - `logs/error.log` - Error logs only
 
@@ -365,12 +398,14 @@ RealVista Development Team - Spring 2026
 ## 🎯 Roadmap
 
 ### Current (v0.0.1)
+
 - ✅ Clean Architecture setup
 - ✅ JWT Authentication
 - ✅ User Management
 - ✅ CI Pipeline
 
 ### Coming Soon (v0.1.0)
+
 - [ ] CD Pipeline (when cloud ready)
 - [ ] Email verification
 - [ ] Refresh tokens
@@ -378,6 +413,7 @@ RealVista Development Team - Spring 2026
 - [ ] Audit logging
 
 ### Future (v1.0.0)
+
 - [ ] Redis caching
 - [ ] Event-driven architecture
 - [ ] API rate limiting
