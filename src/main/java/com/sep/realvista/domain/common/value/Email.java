@@ -9,9 +9,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
-/**
- * Value Object for Email addresses with validation.
- */
 @Embeddable
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

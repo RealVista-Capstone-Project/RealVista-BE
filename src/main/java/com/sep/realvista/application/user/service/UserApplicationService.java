@@ -49,7 +49,9 @@ public class UserApplicationService {
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
-                .status(UserStatus.PENDING)
+                .businessName(request.getFirstName() + " " + request.getLastName())
+                .phone(request.getPhone())
+                .status(UserStatus.ACTIVE)
                 .build();
 
         // Save user

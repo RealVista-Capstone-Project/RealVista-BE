@@ -3,7 +3,6 @@ package com.sep.realvista.presentation.rest.user;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
-import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.infrastructure.config.security.JwtAuthenticationFilter;
 import com.sep.realvista.infrastructure.config.security.JwtService;
@@ -20,6 +19,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -69,7 +69,7 @@ class UserControllerTest {
                 .lastName("Doe")
                 .fullName("John Doe")
                 .status(UserStatus.ACTIVE)
-                .role(UserRole.USER)
+                .roles(Set.of("BUYER"))
                 .build();
     }
 
