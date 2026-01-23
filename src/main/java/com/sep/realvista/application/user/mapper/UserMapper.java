@@ -3,7 +3,7 @@ package com.sep.realvista.application.user.mapper;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.domain.common.value.Email;
-import com.sep.realvista.domain.user.role.Role;
+import com.sep.realvista.domain.user.role.UserRole;
 import com.sep.realvista.domain.user.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -21,7 +21,7 @@ public interface UserMapper {
     @Mapping(target = "userId", source = "userId")
     @Mapping(target = "email", source = "email.value")
     @Mapping(target = "fullName", source = ".", qualifiedByName = "getFullName")
-    @Mapping(target = "roles", source = "roles", qualifiedByName = "rolesToStrings")
+    @Mapping(target = "roles", source = "userRoles", qualifiedByName = "userRolesToStrings")
     UserResponse toResponse(User user);
 
     @Mapping(target = "userId", ignore = true)
@@ -29,7 +29,7 @@ public interface UserMapper {
     @Mapping(target = "phone", ignore = true)
     @Mapping(target = "passwordHash", source = "password")
     @Mapping(target = "status", ignore = true)
-    @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "userRoles", ignore = true)
     @Mapping(target = "avatarUrl", ignore = true)
     @Mapping(target = "emailVerifiedAt", ignore = true)
     @Mapping(target = "phoneVerifiedAt", ignore = true)
@@ -46,13 +46,14 @@ public interface UserMapper {
         return user.getFullName();
     }
 
-    @Named("rolesToStrings")
-    default Set<String> rolesToStrings(Set<Role> roles) {
-        if (roles == null) {
+    @Named("userRolesToStrings")
+    default Set<String> userRolesToStrings(Set<UserRole> userRoles) {
+        if (userRoles == null) {
             return Set.of();
         }
-        return roles.stream()
-                .map(Role::getRoleCode)
+        return userRoles.stream()
+                .filter(ur -> ur.getRole() != null)
+                .map(ur -> ur.getRole().getRoleCode().name())
                 .collect(Collectors.toSet());
     }
 }

@@ -50,7 +50,6 @@ public class UserApplicationService {
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .businessName(request.getFirstName() + " " + request.getLastName())
-                .phone(request.getPhone())
                 .status(UserStatus.ACTIVE)
                 .build();
 

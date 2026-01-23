@@ -27,7 +27,7 @@ CREATE TABLE "users"
     business_name     VARCHAR(255) NOT NULL,
     password_hash     VARCHAR(255) NOT NULL,
     email             VARCHAR(255) UNIQUE,
-    phone             VARCHAR(20) UNIQUE NOT NULL,
+    phone             VARCHAR(20) UNIQUE,
     email_verified_at TIMESTAMP,
     phone_verified_at TIMESTAMP,
     avatar_url        TEXT,

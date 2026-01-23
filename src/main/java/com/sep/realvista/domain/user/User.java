@@ -56,7 +56,7 @@ public class User extends BaseEntity {
     @Embedded
     private Email email;
 
-    @Column(unique = true, nullable = false, length = 20)
+    @Column(unique = true, length = 20)
     private String phone;
 
     @Column(name = "email_verified_at")
@@ -140,17 +140,18 @@ public class User extends BaseEntity {
                 lastName != null ? lastName : "").trim();
     }
 
-    public void addRole(Role role) {
-        this.roles.add(role);
+    public void addUserRole(UserRole userRole) {
+        this.userRoles.add(userRole);
     }
 
-    public void removeRole(Role role) {
-        this.roles.remove(role);
+    public void removeUserRole(UserRole userRole) {
+        this.userRoles.remove(userRole);
     }
 
     public boolean hasRole(String roleCode) {
-        return this.roles.stream()
-                .anyMatch(role -> role.getRoleCode().equals(roleCode));
+        return this.userRoles.stream()
+                .filter(ur -> ur.getRole() != null)
+                .anyMatch(ur -> ur.getRole().getRoleCode().name().equals(roleCode));
     }
 }
 
