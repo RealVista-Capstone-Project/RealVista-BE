@@ -195,7 +195,7 @@ CREATE TABLE reports
     reported_user_id    UUID,
     reported_listing_id UUID,
     report_target_type  VARCHAR(20) NOT NULL,
-    report_reason       VARCHAR(50) NOT NULL,
+    report_reason       VARCHAR(20) NOT NULL,
     description         TEXT,
     evidence_media_url  TEXT,
     status              VARCHAR(20) NOT NULL DEFAULT 'PENDING',
@@ -205,6 +205,7 @@ CREATE TABLE reports
     deleted             BOOLEAN DEFAULT FALSE,
 
     CONSTRAINT chk_report_target_type CHECK (report_target_type IN ('USER', 'LISTING')),
+    CONSTRAINT chk_report_reason CHECK (report_reason IN ('SCAM', 'FAKE_INFO', 'DUPLICATE', 'HARASSMENT', 'OTHER')),
     CONSTRAINT chk_report_status CHECK (status IN ('PENDING', 'REVIEWING', 'RESOLVED', 'DISMISSED'))
 );
 
@@ -213,6 +214,7 @@ CREATE INDEX idx_report_reported_user ON reports (reported_user_id);
 CREATE INDEX idx_report_reported_listing ON reports (reported_listing_id);
 CREATE INDEX idx_report_target_type ON reports (report_target_type);
 CREATE INDEX idx_report_status ON reports (status);
+CREATE INDEX idx_report_reason ON reports (report_reason);
 
 -- ============================================================================
 -- PROPERTY FEE SERVICES TABLE
@@ -275,18 +277,20 @@ CREATE TABLE lead_notes
     lead_note_id    UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     listing_lead_id UUID        NOT NULL,
     note_type       VARCHAR(20) NOT NULL,
-    tag             VARCHAR(50),
+    tag             VARCHAR(20),
     content         TEXT,
     created_at      TIMESTAMP   NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP   NOT NULL DEFAULT NOW(),
     deleted         BOOLEAN DEFAULT FALSE,
 
     FOREIGN KEY (listing_lead_id) REFERENCES listing_leads (listing_lead_id) ON DELETE CASCADE,
-    CONSTRAINT chk_note_type CHECK (note_type IN ('NOTE', 'TAG', 'SYSTEM'))
+    CONSTRAINT chk_note_type CHECK (note_type IN ('NOTE', 'TAG', 'SYSTEM')),
+    CONSTRAINT chk_lead_tag CHECK (tag IS NULL OR tag IN ('HOT', 'PRIORITY', 'FOLLOW_UP', 'NEGOTIATION'))
 );
 
 CREATE INDEX idx_lead_note_lead ON lead_notes (listing_lead_id);
 CREATE INDEX idx_lead_note_type ON lead_notes (note_type);
+CREATE INDEX idx_lead_note_tag ON lead_notes (tag);
 
 -- ============================================================================
 -- LEASE & LEGAL TABLES

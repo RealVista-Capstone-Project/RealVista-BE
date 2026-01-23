@@ -75,7 +75,7 @@ CREATE INDEX idx_property_agent_agent ON property_agents (agent_id);
 CREATE TABLE customer_profiles
 (
     customer_profile_id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id             UUID         NOT NULL UNIQUE,
+    user_id             UUID         NOT NULL,
     profile_name        VARCHAR(255) NOT NULL,
     is_active           BOOLEAN   DEFAULT TRUE,
     created_at          TIMESTAMP    NOT NULL DEFAULT NOW(),
@@ -84,6 +84,9 @@ CREATE TABLE customer_profiles
 
     FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_customer_profile_user ON customer_profiles (user_id);
+CREATE INDEX idx_customer_profile_active ON customer_profiles (is_active);
 
 -- ============================================================================
 -- AMENITIES TABLES
