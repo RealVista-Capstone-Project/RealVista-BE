@@ -2,13 +2,18 @@
 # Uses H2 in-memory database for fast, isolated testing
 
 spring:
+  # Application Configuration
+  application:
+    frontend:
+      url: http://localhost:3000
+
   # H2 In-Memory Database Configuration
   datasource:
     url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
     driver-class-name: org.h2.Driver
     username: sa
-    password: 
-  
+    password:
+
   # JPA/Hibernate Configuration for H2
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
@@ -18,7 +23,7 @@ spring:
     properties:
       hibernate:
         format_sql: false
-  
+
   # Flyway Configuration
   flyway:
     enabled: true
@@ -28,12 +33,37 @@ spring:
     clean-disabled: false
     # Validate migrations
     validate-on-migrate: true
-  
+
+  # Security Configuration for Tests
+  security:
+    jwt:
+      # Base64-encoded test secret key (minimum 256 bits for HS256)
+      # This is: "test-secret-key-for-jwt-token-signing-in-unit-tests-only" in base64
+      secret-key: dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtdG9rZW4tc2lnbmluZy1pbi11bml0LXRlc3RzLW9ubHkK
+      expiration: 86400000 # 24 hours
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+            scope: profile,email
+        provider:
+          google:
+            issuer-uri: https://accounts.google.com
+      mobile:
+        google:
+          android:
+            client-id: test-google-android-client-id
+          ios:
+            client-id: test-google-ios-client-id
+
   # Disable Docker Compose for tests
   docker:
     compose:
       enabled: false
-  
+
   # Logging Configuration for Tests
   logging:
     level:

@@ -61,6 +61,36 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <!-- Websocket -->
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>sockjs-client</artifactId>
+            <version>1.5.1</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>stomp-websocket</artifactId>
+            <version>2.3.4</version>
+            <scope>compile</scope>
+        </dependency>
 
 		<!-- Database -->
 		<dependency>
@@ -119,12 +149,19 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- Apache Commons -->
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.18.0</version> <!-- CVE-2025-48924 fix: upgraded from managed version -->
-		</dependency>
+	    <!-- Apache Commons -->
+	    <dependency>
+		    <groupId>org.apache.commons</groupId>
+		    <artifactId>commons-lang3</artifactId>
+		    <version>3.18.0</version> <!-- CVE-2025-48924 fix: upgraded from managed version -->
+	    </dependency>
+
+	    <!-- Spring Dotenv for loading .env files -->
+	    <dependency>
+		    <groupId>me.paulschwarz</groupId>
+		    <artifactId>springboot3-dotenv</artifactId>
+		    <version>5.1.0</version>
+	    </dependency>
 
 		<!-- Docker Compose Support -->
 		<dependency>
@@ -153,22 +190,18 @@
 			<version>${h2.version}</version>
 			<scope>test</scope>
 		</dependency>
-		
-		<!-- Testcontainers (optional - for integration tests with real PostgreSQL) -->
+
+		<!-- Google API Client for ID Token verification (Mobile OAuth2) -->
 		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>testcontainers</artifactId>
-			<scope>test</scope>
+			<groupId>com.google.api-client</groupId>
+			<artifactId>google-api-client</artifactId>
+			<version>2.2.0</version>
 		</dependency>
+
 		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>junit-jupiter</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.testcontainers</groupId>
-			<artifactId>postgresql</artifactId>
-			<scope>test</scope>
+			<groupId>com.google.firebase</groupId>
+			<artifactId>firebase-admin</artifactId>
+			<version>9.2.0</version>
 		</dependency>
 	</dependencies>
 

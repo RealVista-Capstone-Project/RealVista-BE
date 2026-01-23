@@ -13,6 +13,13 @@ on:
       - main
       - develop
 
+# Required permissions for the workflow
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
 env:
   JAVA_VERSION: "21"
   JAVA_DISTRIBUTION: "temurin"
@@ -448,8 +455,10 @@ jobs:
 
       - name: Comment on PR (if applicable)
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const output = `
             ## CI Pipeline Results 🚀
@@ -467,9 +476,15 @@ jobs:
             View the full pipeline run [here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             `;
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              });
+              console.log('Comment posted successfully');
+            } catch (error) {
+              console.error('Failed to post comment:', error.message);
+              // Don't fail the workflow if commenting fails
+            }

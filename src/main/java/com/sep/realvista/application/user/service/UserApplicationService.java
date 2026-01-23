@@ -11,11 +11,11 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserStatus;
+import com.sep.realvista.infrastructure.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +32,7 @@ public class UserApplicationService {
     private final UserRepository userRepository;
     private final UserDomainService userDomainService;
     private final UserMapper userMapper;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordService passwordService;
 
     /**
      * Create a new user.
@@ -46,7 +46,7 @@ public class UserApplicationService {
         // Build user entity
         User user = User.builder()
                 .email(Email.of(request.getEmail()))
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .passwordHash(passwordService.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .businessName(request.getFirstName() + " " + request.getLastName())
@@ -97,12 +97,12 @@ public class UserApplicationService {
         User user = userDomainService.getUserOrThrow(userId);
 
         // Verify current password
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+        if (!passwordService.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw new BusinessConflictException("Current password is incorrect", "INVALID_CURRENT_PASSWORD");
         }
 
         // Update password
-        String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
+        String newPasswordHash = passwordService.encode(request.getNewPassword());
         user.updatePassword(newPasswordHash);
 
         userRepository.save(user);

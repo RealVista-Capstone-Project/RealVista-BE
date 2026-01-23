@@ -1,5 +1,6 @@
-package com.sep.realvista.infrastructure.config.security;
+package com.sep.realvista.infrastructure.security.jwt;
 
+import com.sep.realvista.application.auth.service.TokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -15,32 +16,56 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * JWT Service for token generation and validation.
+ * JWT implementation of TokenService.
+ * <p>
+ * This class provides JWT-based token generation and validation.
+ * It implements the TokenService interface defined in the application layer,
+ * following the Dependency Inversion Principle (DIP).
+ * <p>
+ * Infrastructure concerns (JWT library, secret key management) are isolated here,
+ * keeping the application layer clean and independent of specific token technology.
  */
 @Service
-public class JwtService {
+public class JwtTokenService implements TokenService {
 
-    @Value("${application.security.jwt.secret-key}")
+    @Value("${spring.security.jwt.secret-key}")
     private String secretKey;
 
-    @Value("${application.security.jwt.expiration}")
+    @Value("${spring.security.jwt.expiration}")
     private long jwtExpiration;
 
+    @Override
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
+    @Override
     public String generateToken(UserDetails userDetails) {
         return generateToken(new HashMap<>(), userDetails);
     }
 
+    @Override
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return buildToken(extraClaims, userDetails, jwtExpiration);
+    }
+
+    @Override
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+    }
+
+    /**
+     * Extracts a specific claim from the token.
+     *
+     * @param token          the JWT token
+     * @param claimsResolver function to extract the desired claim
+     * @param <T>            the type of the claim
+     * @return the extracted claim value
+     */
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
     }
 
     private String buildToken(
@@ -56,11 +81,6 @@ public class JwtService {
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSignInKey())
                 .compact();
-    }
-
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {
@@ -85,4 +105,3 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
-
