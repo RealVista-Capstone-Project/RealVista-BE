@@ -126,6 +126,25 @@ docker-compose logs -f
 docker-compose down
 ```
 
+### Troubleshooting
+
+**Port 5432 conflict (PostgreSQL)**
+
+If Docker PostgreSQL fails because local PostgreSQL is using port 5432:
+
+```powershell
+# Run PowerShell as Administrator
+
+# Check what's using port 5432
+netstat -ano | findstr :5432
+
+# Stop local PostgreSQL service
+net stop postgresql-x64-16
+
+# Or start it again
+net start postgresql-x64-16
+```
+
 ## 🔄 CI/CD Pipeline
 
 ### Automated Checks
