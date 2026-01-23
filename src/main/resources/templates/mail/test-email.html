@@ -1,0 +1,14 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Email Template</title>
+  </head>
+  <body>
+    <h1 th:text="${title}">Title</h1>
+    <p th:text="${message}">Message</p>
+    <p>
+      <a th:href="${link}">Click here</a>
+    </p>
+  </body>
+</html>
