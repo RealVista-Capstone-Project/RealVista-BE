@@ -22,6 +22,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -79,6 +80,15 @@ public class Listing extends BaseEntity {
     @Column(name = "is_negotiable", nullable = false)
     @Builder.Default
     private Boolean isNegotiable = false;
+
+    /**
+     * Move-in availability date for RENT listings.
+     * NULL or past/today date = Available immediately.
+     * Future date = Available from that specific date.
+     * Only meaningful when listingType = RENT.
+     */
+    @Column(name = "available_from")
+    private LocalDate availableFrom;
 
     @Column(name = "published_at")
     private LocalDateTime publishedAt;

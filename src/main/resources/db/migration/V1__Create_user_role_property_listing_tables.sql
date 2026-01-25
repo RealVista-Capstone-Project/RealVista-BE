@@ -176,6 +176,7 @@ CREATE TABLE "listings"
     min_price      NUMERIC(14,2),
     max_price      NUMERIC(14,2),
     is_negotiable  BOOLEAN NOT NULL DEFAULT FALSE,
+    available_from DATE,
     published_at   TIMESTAMP,
     created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMP NOT NULL DEFAULT NOW(),
