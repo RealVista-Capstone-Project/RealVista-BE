@@ -34,6 +34,9 @@
 		<spotbugs.version>4.8.2.0</spotbugs.version>
 		<jacoco.version>0.8.11</jacoco.version>
 		<h2.version>2.2.224</h2.version>
+		<flyway.url>jdbc:postgresql://localhost:5432/realvista_test</flyway.url>
+		<flyway.user>postgres</flyway.user>
+		<flyway.password>postgres</flyway.password>
 	</properties>
 	<dependencies>
 		<!-- Spring Boot Starters -->
@@ -294,9 +297,9 @@
 				<artifactId>flyway-maven-plugin</artifactId>
 				<version>${flyway.version}</version>
 				<configuration>
-					<url>jdbc:postgresql://localhost:5432/realvista_test</url>
-					<user>postgres</user>
-					<password>postgres</password>
+					<url>${flyway.url}</url>
+					<user>${flyway.user}</user>
+					<password>${flyway.password}</password>
 					<locations>
 						<location>filesystem:src/main/resources/db/migration</location>
 					</locations>
