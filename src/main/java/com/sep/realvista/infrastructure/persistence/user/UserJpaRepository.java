@@ -7,11 +7,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Spring Data JPA repository for User entity.
  */
-public interface UserJpaRepository extends JpaRepository<User, Long> {
+public interface UserJpaRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(Email email);
 

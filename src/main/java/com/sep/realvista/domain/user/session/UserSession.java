@@ -1,6 +1,7 @@
-package com.sep.realvista.domain.user;
+package com.sep.realvista.domain.user.session;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
+import com.sep.realvista.domain.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

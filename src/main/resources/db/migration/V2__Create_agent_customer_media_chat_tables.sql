@@ -237,7 +237,7 @@ CREATE TABLE messages
     message_id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     conversation_id     UUID        NOT NULL,
     reply_to_message_id UUID,
-    sender_id           UUID        NOT NULL,
+    sender_id           UUID,
     message_type        VARCHAR(20) NOT NULL,
     content             TEXT,
     metadata            JSON,

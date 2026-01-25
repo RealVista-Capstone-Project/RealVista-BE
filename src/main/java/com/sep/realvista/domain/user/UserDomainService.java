@@ -5,6 +5,8 @@ import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class UserDomainService {
@@ -17,7 +19,7 @@ public class UserDomainService {
         }
     }
 
-    public User getUserOrThrow(Long userId) {
+    public User getUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
     }

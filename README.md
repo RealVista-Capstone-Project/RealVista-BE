@@ -244,10 +244,14 @@ mvn jacoco:report
 
 ### Test Accounts
 
+> **Note:** Test users must be created manually or via a seed migration. The roles seeded are: ADMIN, VERIFIER, AGENT, OWNER, BUYER, TENANT.
+
+Example test accounts (create via API or seed migration):
+
 | Email               | Password    | Role  |
 | ------------------- | ----------- | ----- |
 | admin@realvista.com | Password123 | ADMIN |
-| user@realvista.com  | Password123 | USER  |
+| buyer@realvista.com | Password123 | BUYER |
 
 ## 🧪 Testing
 

@@ -54,7 +54,7 @@ public class Message extends BaseEntity {
     @JoinColumn(name = "reply_to_message_id", insertable = false, updatable = false)
     private Message replyToMessage;
 
-    @Column(name = "sender_id", nullable = false)
+    @Column(name = "sender_id")
     private UUID senderId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -68,7 +68,7 @@ public class Message extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "json")
     private String metadata;
 
     public boolean isText() {

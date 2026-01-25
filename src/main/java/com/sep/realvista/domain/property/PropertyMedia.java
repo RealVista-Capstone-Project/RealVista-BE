@@ -4,9 +4,8 @@ import com.sep.realvista.domain.common.entity.BaseEntity;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.user.User;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -55,7 +54,7 @@ public class PropertyMedia extends BaseEntity {
     @JoinColumn(name = "upload_by", insertable = false, updatable = false)
     private User uploader;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = MediaType.MediaTypeConverter.class)
     @Column(name = "media_type", nullable = false, length = 20)
     private MediaType mediaType;
 

@@ -1,4 +1,4 @@
-package com.sep.realvista.domain.user;
+package com.sep.realvista.domain.user.session;
 
 public enum DeviceType {
     WEB,

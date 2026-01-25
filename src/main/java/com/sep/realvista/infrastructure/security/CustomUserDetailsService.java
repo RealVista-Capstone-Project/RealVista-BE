@@ -31,9 +31,9 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .map(ur -> new SimpleGrantedAuthority("ROLE_" + ur.getRole().getRoleCode().name()))
                 .collect(Collectors.toList());
 
-        // Default to USER role if no roles assigned
+        // Default to BUYER role if no roles assigned
         if (authorities.isEmpty()) {
-            authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+            authorities = List.of(new SimpleGrantedAuthority("ROLE_BUYER"));
         }
 
         return org.springframework.security.core.userdetails.User.builder()

@@ -1,4 +1,4 @@
-package com.sep.realvista.domain.engagement;
+package com.sep.realvista.domain.engagement.proposal;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
 import com.sep.realvista.domain.property.Property;
