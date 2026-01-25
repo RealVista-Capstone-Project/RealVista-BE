@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
-@Table(name = "property_media", indexes = {
+@Table(name = "property_medias", indexes = {
         @Index(name = "idx_property_media_property", columnList = "property_id"),
         @Index(name = "idx_property_media_type", columnList = "media_type"),
         @Index(name = "idx_property_media_primary", columnList = "is_primary"),

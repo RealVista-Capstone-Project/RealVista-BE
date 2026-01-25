@@ -23,7 +23,7 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
-@Table(name = "listing_media", 
+@Table(name = "listing_medias", 
         indexes = {
                 @Index(name = "idx_listing_media_listing", columnList = "listing_id"),
                 @Index(name = "idx_listing_media_order", columnList = "display_order"),

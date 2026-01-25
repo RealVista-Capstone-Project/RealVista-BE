@@ -65,7 +65,7 @@ CREATE TABLE "user_sessions"
     ip_address         VARCHAR(45),
     user_agent         TEXT,
     expires_at         TIMESTAMP NOT NULL,
-    revoked_at         TIMESTAMP NOT NULL,
+    revoked_at         TIMESTAMP,
     last_activity_at   TIMESTAMP,
     created_at         TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at         TIMESTAMP NOT NULL DEFAULT NOW(),
