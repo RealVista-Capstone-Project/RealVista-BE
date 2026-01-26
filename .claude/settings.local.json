@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api:*)",
+      "Bash(git show:*)",
+      "Bash(mvn checkstyle:check:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr view:*)"
+    ]
+  },
+  "enabledPlugins": {
+    "context7@claude-plugins-official": true,
+    "atlassian@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true
+  }
+}

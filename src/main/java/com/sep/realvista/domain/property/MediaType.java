@@ -1,4 +1,4 @@
-package com.sep.realvista.domain.property.media;
+package com.sep.realvista.domain.property;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;

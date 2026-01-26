@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.9</version>
+		<version>3.5.10</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.sep</groupId>
@@ -190,7 +190,6 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
-			<version>${h2.version}</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -266,7 +265,6 @@
 		<plugin>
 			<groupId>io.github.git-commit-id</groupId>
 			<artifactId>git-commit-id-maven-plugin</artifactId>
-			<version>9.0.1</version>
 			<executions>
 				<execution>
 					<id>get-the-git-infos</id>
@@ -295,7 +293,6 @@
 			<plugin>
 				<groupId>org.flywaydb</groupId>
 				<artifactId>flyway-maven-plugin</artifactId>
-				<version>${flyway.version}</version>
 				<configuration>
 					<url>${flyway.url}</url>
 					<user>${flyway.user}</user>

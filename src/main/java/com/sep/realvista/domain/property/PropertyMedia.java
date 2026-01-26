@@ -1,7 +1,6 @@
-package com.sep.realvista.domain.property.media;
+package com.sep.realvista.domain.property;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
-import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
