@@ -4,7 +4,7 @@
 -- Password for all users: 'Password123' (BCrypt encoded)
 
 -- Admin user
-INSERT INTO "users" (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
+INSERT INTO users (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440001',
     'Admin',
@@ -20,7 +20,7 @@ VALUES (
 );
 
 -- Regular active user
-INSERT INTO "users" (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
+INSERT INTO users (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440002',
     'John',
@@ -36,7 +36,7 @@ VALUES (
 );
 
 -- Verified user
-INSERT INTO "users" (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
+INSERT INTO users (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440003',
     'Jane',
@@ -52,7 +52,7 @@ VALUES (
 );
 
 -- Suspended user (for testing suspended account login)
-INSERT INTO "users" (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
+INSERT INTO users (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440004',
     'Bob',
@@ -68,7 +68,7 @@ VALUES (
 );
 
 -- Banned user (for testing banned account login)
-INSERT INTO "users" (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
+INSERT INTO users (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440005',
     'Charlie',
@@ -85,7 +85,7 @@ VALUES (
 
 -- Assign roles to users
 -- Admin gets ADMIN role
-INSERT INTO "user_roles" (user_id, role_id, assigned_at, created_at, updated_at, deleted)
+INSERT INTO user_roles (user_id, role_id, assigned_at, created_at, updated_at, deleted)
 SELECT 
     '550e8400-e29b-41d4-a716-446655440001',
     role_id,
@@ -93,10 +93,10 @@ SELECT
     NOW(),
     NOW(),
     FALSE
-FROM "roles" WHERE role_code = 'ADMIN';
+FROM roles WHERE role_code = 'ADMIN';
 
 -- Regular user gets BUYER role
-INSERT INTO "user_roles" (user_id, role_id, assigned_at, created_at, updated_at, deleted)
+INSERT INTO user_roles (user_id, role_id, assigned_at, created_at, updated_at, deleted)
 SELECT 
     '550e8400-e29b-41d4-a716-446655440002',
     role_id,
@@ -104,10 +104,10 @@ SELECT
     NOW(),
     NOW(),
     FALSE
-FROM "roles" WHERE role_code = 'BUYER';
+FROM roles WHERE role_code = 'BUYER';
 
 -- Verified user gets AGENT role
-INSERT INTO "user_roles" (user_id, role_id, assigned_at, created_at, updated_at, deleted)
+INSERT INTO user_roles (user_id, role_id, assigned_at, created_at, updated_at, deleted)
 SELECT 
     '550e8400-e29b-41d4-a716-446655440003',
     role_id,
@@ -115,10 +115,10 @@ SELECT
     NOW(),
     NOW(),
     FALSE
-FROM "roles" WHERE role_code = 'AGENT';
+FROM roles WHERE role_code = 'AGENT';
 
 -- Suspended user gets OWNER role
-INSERT INTO "user_roles" (user_id, role_id, assigned_at, created_at, updated_at, deleted)
+INSERT INTO user_roles (user_id, role_id, assigned_at, created_at, updated_at, deleted)
 SELECT 
     '550e8400-e29b-41d4-a716-446655440004',
     role_id,
@@ -126,10 +126,10 @@ SELECT
     NOW(),
     NOW(),
     FALSE
-FROM "roles" WHERE role_code = 'OWNER';
+FROM roles WHERE role_code = 'OWNER';
 
 -- Banned user gets TENANT role
-INSERT INTO "user_roles" (user_id, role_id, assigned_at, created_at, updated_at, deleted)
+INSERT INTO user_roles (user_id, role_id, assigned_at, created_at, updated_at, deleted)
 SELECT 
     '550e8400-e29b-41d4-a716-446655440005',
     role_id,
@@ -137,4 +137,4 @@ SELECT
     NOW(),
     NOW(),
     FALSE
-FROM "roles" WHERE role_code = 'TENANT';
+FROM roles WHERE role_code = 'TENANT';
