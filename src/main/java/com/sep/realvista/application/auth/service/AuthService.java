@@ -12,7 +12,6 @@ import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
-import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.infrastructure.security.oauth2.GoogleTokenVerifier;
@@ -52,7 +51,7 @@ public class AuthService {
         UserResponse user = userApplicationService.createUser(request);
 
         log.info("User registered successfully with ID: {} and email: {}",
-                user.getId(), user.getEmail());
+                user.getUserId(), user.getEmail());
 
         return user;
     }
@@ -167,18 +166,23 @@ public class AuthService {
         // Generate a random hashed password for Google users (they won't use it)
         String hashedPassword = passwordUtil.generateRandomHashedPassword();
 
+        // Generate business name from user's name or email
+        String businessName = (firstName != null && lastName != null)
+                ? firstName + " " + lastName
+                : email.split("@")[0];
+
         User newUser = User.builder()
                 .email(Email.of(email))
                 .passwordHash(hashedPassword)
                 .firstName(firstName)
                 .lastName(lastName)
+                .businessName(businessName)
                 .avatarUrl(avatarUrl)
                 .status(UserStatus.ACTIVE) // Google users are automatically active
-                .role(UserRole.USER)
                 .build();
 
         User savedUser = userRepository.save(newUser);
-        log.info("New Google user created with ID: {}", savedUser.getId());
+        log.info("New Google user created with ID: {}", savedUser.getUserId());
 
         return savedUser;
     }

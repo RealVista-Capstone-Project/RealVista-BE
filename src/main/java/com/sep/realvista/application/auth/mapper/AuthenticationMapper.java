@@ -23,7 +23,7 @@ public interface AuthenticationMapper {
      */
     @Mapping(target = "token", source = "token")
     @Mapping(target = "type", constant = "Bearer")
-    @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "userId", source = "user.userId")
     @Mapping(target = "email", source = "user.email.value")
     AuthenticationResponse toAuthenticationResponse(User user, String token);
 }

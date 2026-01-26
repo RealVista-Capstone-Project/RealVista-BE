@@ -4,7 +4,6 @@ import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
-import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.infrastructure.constants.SecurityConstants;
 import com.sep.realvista.infrastructure.security.util.PasswordUtil;
@@ -19,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * Custom OAuth2 authentication success handler.
@@ -85,7 +85,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             );
 
             // Redirect to frontend with token
-            String redirectUrl = buildSuccessRedirectUrl(jwtToken, user.getId(), email);
+            String redirectUrl = buildSuccessRedirectUrl(jwtToken, user.getUserId(), email);
 
             log.info("Redirecting to: {}", redirectUrl);
             response.sendRedirect(redirectUrl);
@@ -108,24 +108,28 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         // Generate a random hashed password for OAuth2 users (they won't use it)
         String hashedPassword = passwordUtil.generateRandomHashedPassword();
 
+        // Generate business name from user's name or email
+        String businessName = (firstName != null && lastName != null)
+                ? firstName + " " + lastName
+                : email.split("@")[0];
+
         User newUser = User.builder()
                 .email(Email.of(email))
                 .passwordHash(hashedPassword)
                 .firstName(firstName)
                 .lastName(lastName)
+                .businessName(businessName)
                 .avatarUrl(avatarUrl)
                 .status(UserStatus.ACTIVE) // OAuth2 users are automatically active
-                .role(UserRole.USER)
                 .build();
 
         User savedUser = userRepository.save(newUser);
-        Long userId = savedUser.getId();
-        log.info("New OAuth2 user created with ID: {}", userId != null ? userId : "unknown");
+        log.info("New OAuth2 user created with ID: {}", savedUser.getUserId());
 
         return savedUser;
     }
 
-    private String buildSuccessRedirectUrl(String jwtToken, Long userId, String email) {
+    private String buildSuccessRedirectUrl(String jwtToken, UUID userId, String email) {
         return UriComponentsBuilder
                 .fromUriString(frontendUrl)
                 .path(SecurityConstants.OAuth2.CALLBACK_PATH)

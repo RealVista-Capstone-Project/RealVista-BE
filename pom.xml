@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.9</version>
+		<version>3.5.10</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.sep</groupId>
@@ -34,6 +34,9 @@
 		<spotbugs.version>4.8.2.0</spotbugs.version>
 		<jacoco.version>0.8.11</jacoco.version>
 		<h2.version>2.2.224</h2.version>
+		<flyway.url>jdbc:postgresql://localhost:5432/realvista_test</flyway.url>
+		<flyway.user>postgres</flyway.user>
+		<flyway.password>postgres</flyway.password>
 	</properties>
 	<dependencies>
 		<!-- Spring Boot Starters -->
@@ -187,7 +190,6 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
-			<version>${h2.version}</version>
 			<scope>test</scope>
 		</dependency>
 
@@ -263,7 +265,6 @@
 		<plugin>
 			<groupId>io.github.git-commit-id</groupId>
 			<artifactId>git-commit-id-maven-plugin</artifactId>
-			<version>9.0.1</version>
 			<executions>
 				<execution>
 					<id>get-the-git-infos</id>
@@ -292,7 +293,14 @@
 			<plugin>
 				<groupId>org.flywaydb</groupId>
 				<artifactId>flyway-maven-plugin</artifactId>
-				<version>${flyway.version}</version>
+				<configuration>
+					<url>${flyway.url}</url>
+					<user>${flyway.user}</user>
+					<password>${flyway.password}</password>
+					<locations>
+						<location>filesystem:src/main/resources/db/migration</location>
+					</locations>
+				</configuration>
 			</plugin>
 
 			<!-- Checkstyle Plugin -->

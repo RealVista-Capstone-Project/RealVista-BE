@@ -2,9 +2,6 @@ package com.sep.realvista.domain.common.exception;
 
 import lombok.Getter;
 
-/**
- * Base exception for all domain-level business logic errors.
- */
 @Getter
 public class DomainException extends RuntimeException {
     private final String errorCode;

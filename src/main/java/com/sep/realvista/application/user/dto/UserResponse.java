@@ -1,6 +1,5 @@
 package com.sep.realvista.application.user.dto;
 
-import com.sep.realvista.domain.user.UserRole;
 import com.sep.realvista.domain.user.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * User response DTO.
@@ -17,13 +18,15 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserResponse {
-    private Long id;
+    private UUID userId;
     private String email;
+    private String phone;
     private String firstName;
     private String lastName;
+    private String businessName;
     private String fullName;
     private UserStatus status;
-    private UserRole role;
+    private Set<String> roles;
     private String avatarUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

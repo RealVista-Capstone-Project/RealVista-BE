@@ -61,7 +61,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get user by ID", description = "Retrieves user details by ID")
-    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
@@ -75,7 +75,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
     @Operation(summary = "Update user profile", description = "Updates user profile information")
     public ResponseEntity<ApiResponse<UserResponse>> updateUser(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request
     ) {
         String traceId = UUID.randomUUID().toString();
@@ -91,7 +91,7 @@ public class UserController {
     @PreAuthorize("#id == authentication.principal.id")
     @Operation(summary = "Change password", description = "Changes user password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody ChangePasswordRequest request
     ) {
         String traceId = UUID.randomUUID().toString();
@@ -106,7 +106,7 @@ public class UserController {
     @PutMapping("/{id}/activate")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Activate user", description = "Activates a user account (Admin only)")
-    public ResponseEntity<ApiResponse<UserResponse>> activateUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponse>> activateUser(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
@@ -119,7 +119,7 @@ public class UserController {
     @PutMapping("/{id}/suspend")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Suspend user", description = "Suspends a user account (Admin only)")
-    public ResponseEntity<ApiResponse<UserResponse>> suspendUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserResponse>> suspendUser(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
@@ -132,7 +132,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
     @Operation(summary = "Delete user", description = "Soft deletes a user account")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
