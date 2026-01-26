@@ -157,7 +157,7 @@ CREATE TABLE "properties"
     FOREIGN KEY (property_type_id) REFERENCES property_types (property_type_id),
 
     CONSTRAINT chk_property_status 
-        CHECK (status IN ('DRAFT', 'AVAILABLE', 'RESERVED', 'SOLD'))
+        CHECK (status IN ('DRAFT', 'PENDING', 'VERIFIED', 'REJECTED', 'AVAILABLE', 'RESERVED', 'SOLD'))
 );
 
 CREATE INDEX idx_property_owner ON "properties"(owner_id);
