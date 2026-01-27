@@ -4,7 +4,6 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +30,8 @@ public class ListingController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get listing detail by ID",
-            description = "Retrieves complete listing information including media, property, location, type, category, and agent/owner")
+            description = "Retrieves complete listing information including media, property, "
+                    + "location, type, category, and agent/owner")
     public ResponseEntity<ApiResponse<ListingDetailResponse>> getListingDetail(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);

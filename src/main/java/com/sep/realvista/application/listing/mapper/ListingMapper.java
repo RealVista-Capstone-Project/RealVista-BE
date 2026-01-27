@@ -3,12 +3,18 @@ package com.sep.realvista.application.listing.mapper;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
+import com.sep.realvista.domain.property.PropertyType;
+import com.sep.realvista.domain.property.location.Location;
+import com.sep.realvista.domain.property.location.LocationType;
 import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.PropertyMedia;
+import com.sep.realvista.domain.user.UserStatus;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -81,14 +87,14 @@ public interface ListingMapper {
                 .build();
     }
 
-    default ListingDetailResponse.LocationInfoDTO mapLocationInfo(com.sep.realvista.domain.property.location.Location location) {
+    default ListingDetailResponse.LocationInfoDTO mapLocationInfo(Location location) {
         if (location == null) {
             return null;
         }
 
         // Traverse up the location hierarchy to collect names
-        java.util.Map<com.sep.realvista.domain.property.location.LocationType, String> locationNames = new java.util.HashMap<>();
-        com.sep.realvista.domain.property.location.Location current = location;
+        Map<LocationType, String> locationNames = new HashMap<>();
+        Location current = location;
         while (current != null) {
             locationNames.put(current.getType(), current.getName());
             current = current.getParent();
@@ -96,15 +102,15 @@ public interface ListingMapper {
 
         return ListingDetailResponse.LocationInfoDTO.builder()
                 .locationId(location.getLocationId())
-                .cityName(locationNames.getOrDefault(com.sep.realvista.domain.property.location.LocationType.CITY, null))
-                .districtName(locationNames.getOrDefault(com.sep.realvista.domain.property.location.LocationType.DISTRICT, null))
-                .wardName(locationNames.getOrDefault(com.sep.realvista.domain.property.location.LocationType.WARD, null))
+                .cityName(locationNames.getOrDefault(LocationType.CITY, null))
+                .districtName(locationNames.getOrDefault(LocationType.DISTRICT, null))
+                .wardName(locationNames.getOrDefault(LocationType.WARD, null))
                 .latitude(location.getNorthLat())
                 .longitude(location.getEastLng())
                 .build();
     }
 
-    default ListingDetailResponse.PropertyTypeInfoDTO mapPropertyTypeInfo(com.sep.realvista.domain.property.PropertyType propertyType) {
+    default ListingDetailResponse.PropertyTypeInfoDTO mapPropertyTypeInfo(PropertyType propertyType) {
         if (propertyType == null) {
             return null;
         }
@@ -138,7 +144,7 @@ public interface ListingMapper {
                 .phone(user.getPhone())
                 .avatarUrl(user.getAvatarUrl())
                 .company(user.getBusinessName()) // Using businessName as company for now
-                .isVerified(user.getStatus() == com.sep.realvista.domain.user.UserStatus.VERIFIED || user.isEmailVerified())
+                .isVerified(user.getStatus() == UserStatus.VERIFIED || user.isEmailVerified())
                 .build();
     }
 
