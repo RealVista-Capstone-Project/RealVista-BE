@@ -6,7 +6,8 @@
       "Bash(mvn checkstyle:check:*)",
       "Bash(gh pr diff:*)",
       "Bash(gh pr checks:*)",
-      "Bash(gh pr view:*)"
+      "Bash(gh pr view:*)",
+      "Bash(dir:*)"
     ]
   },
   "enabledPlugins": {
