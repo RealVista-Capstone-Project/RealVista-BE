@@ -155,7 +155,7 @@ public class Listing extends BaseEntity {
         return this.listingType == ListingType.RENT;
     }
 
-    public void updatePricing(BigDecimal price, BigDecimal minPrice, 
+    public void updatePricing(BigDecimal price, BigDecimal minPrice,
                                BigDecimal maxPrice, Boolean isNegotiable) {
         if (price != null) {
             this.price = price;
@@ -165,6 +165,26 @@ public class Listing extends BaseEntity {
         if (isNegotiable != null) {
             this.isNegotiable = isNegotiable;
         }
+    }
+
+    /**
+     * Attach property entity for DTO mapping purposes.
+     * This does not persist changes - property relationship is managed by JPA.
+     *
+     * @param property the property entity to attach
+     */
+    public void attachProperty(Property property) {
+        this.property = property;
+    }
+
+    /**
+     * Attach user entity for DTO mapping purposes.
+     * This does not persist changes - user relationship is managed by JPA.
+     *
+     * @param user the user entity to attach
+     */
+    public void attachUser(User user) {
+        this.user = user;
     }
 
 }

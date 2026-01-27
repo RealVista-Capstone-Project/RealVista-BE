@@ -7,7 +7,9 @@
       "Bash(gh pr diff:*)",
       "Bash(gh pr checks:*)",
       "Bash(gh pr view:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(./mvnw:*)",
+      "Bash(javac:*)"
     ]
   },
   "enabledPlugins": {
