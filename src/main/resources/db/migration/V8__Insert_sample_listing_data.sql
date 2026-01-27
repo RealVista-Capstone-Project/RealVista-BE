@@ -1,6 +1,6 @@
 -- V8__Insert_sample_listing_data.sql
 -- Insert sample data for listings testing
--- Compatible with both PostgreSQL and H2 databases
+-- Compatible with both PostgreSQL and H2 databases (using standard SQL date literals)
 
 -- ============================================================================
 -- STEP 1: INSERT LOCATIONS (Ho Chi Minh City hierarchy)
@@ -459,8 +459,8 @@ VALUES (
     2500.00,
     3000.00,
     TRUE,
-    CURRENT_DATE + INTERVAL '7 days',
-    NOW() - INTERVAL '2 days',
+    CAST('2026-02-03' AS DATE),
+    NOW(),
     NOW(),
     NOW(),
     FALSE
@@ -493,8 +493,8 @@ VALUES (
     5000000.00,
     6000000.00,
     FALSE,
-    CURRENT_DATE + INTERVAL '30 days',
-    NOW() - INTERVAL '5 days',
+    CAST('2026-02-26' AS DATE),
+    NOW(),
     NOW(),
     NOW(),
     FALSE
@@ -527,8 +527,8 @@ VALUES (
     8000.00,
     9000.00,
     TRUE,
-    CURRENT_DATE + INTERVAL '14 days',
-    NOW() - INTERVAL '1 day',
+    CAST('2026-02-10' AS DATE),
+    NOW(),
     NOW(),
     NOW(),
     FALSE
