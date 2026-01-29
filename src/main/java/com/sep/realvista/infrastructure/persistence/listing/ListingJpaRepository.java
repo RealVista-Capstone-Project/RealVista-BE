@@ -12,16 +12,21 @@ import java.util.UUID;
 
 /**
  * Spring Data JPA repository for Listing entity.
+ * All queries exclude soft-deleted records (deleted = false).
  */
 public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
 
-    List<Listing> findByPropertyId(UUID propertyId);
+    @Query("SELECT l FROM Listing l WHERE l.property.propertyId = :propertyId AND l.deleted = false")
+    List<Listing> findByPropertyId(@Param("propertyId") UUID propertyId);
 
-    List<Listing> findByUserId(UUID userId);
+    @Query("SELECT l FROM Listing l WHERE l.user.userId = :userId AND l.deleted = false")
+    List<Listing> findByUserId(@Param("userId") UUID userId);
 
-    List<Listing> findByStatus(ListingStatus status);
+    @Query("SELECT l FROM Listing l WHERE l.status = :status AND l.deleted = false")
+    List<Listing> findByStatus(@Param("status") ListingStatus status);
 
-    List<Listing> findByListingTypeAndStatus(ListingType listingType, ListingStatus status);
+    @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status AND l.deleted = false")
+    List<Listing> findByListingTypeAndStatus(@Param("listingType") ListingType listingType, @Param("status") ListingStatus status);
 
     @Query("SELECT l FROM Listing l WHERE l.listingId = :id AND l.deleted = false")
     Optional<Listing> findActiveById(@Param("id") UUID id);
