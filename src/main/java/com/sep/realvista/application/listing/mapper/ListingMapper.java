@@ -1,6 +1,11 @@
 package com.sep.realvista.application.listing.mapper;
 
+import com.sep.realvista.application.listing.dto.AgentInfoDTO;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
+import com.sep.realvista.application.listing.dto.LocationInfoDTO;
+import com.sep.realvista.application.listing.dto.MediaDTO;
+import com.sep.realvista.application.listing.dto.PropertyInfoDTO;
+import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.property.PropertyType;
@@ -71,11 +76,11 @@ public interface ListingMapper {
         return response;
     }
 
-    default ListingDetailResponse.PropertyInfoDTO mapPropertyInfo(com.sep.realvista.domain.property.Property property) {
+    default PropertyInfoDTO mapPropertyInfo(com.sep.realvista.domain.property.Property property) {
         if (property == null) {
             return null;
         }
-        return ListingDetailResponse.PropertyInfoDTO.builder()
+        return PropertyInfoDTO.builder()
                 .propertyId(property.getPropertyId())
                 .streetAddress(property.getStreetAddress())
                 .landSizeM2(property.getLandSizeM2())
@@ -87,7 +92,7 @@ public interface ListingMapper {
                 .build();
     }
 
-    default ListingDetailResponse.LocationInfoDTO mapLocationInfo(Location location) {
+    default LocationInfoDTO mapLocationInfo(Location location) {
         if (location == null) {
             return null;
         }
@@ -100,7 +105,7 @@ public interface ListingMapper {
             current = current.getParent();
         }
 
-        return ListingDetailResponse.LocationInfoDTO.builder()
+        return LocationInfoDTO.builder()
                 .locationId(location.getLocationId())
                 .cityName(locationNames.getOrDefault(LocationType.CITY, null))
                 .districtName(locationNames.getOrDefault(LocationType.DISTRICT, null))
@@ -110,16 +115,15 @@ public interface ListingMapper {
                 .build();
     }
 
-    default ListingDetailResponse.PropertyTypeInfoDTO mapPropertyTypeInfo(PropertyType propertyType) {
+    default PropertyTypeInfoDTO mapPropertyTypeInfo(PropertyType propertyType) {
         if (propertyType == null) {
             return null;
         }
 
-        ListingDetailResponse.PropertyTypeInfoDTO.PropertyTypeInfoDTOBuilder builder =
-                ListingDetailResponse.PropertyTypeInfoDTO.builder()
-                        .propertyTypeId(propertyType.getPropertyTypeId())
-                        .propertyTypeName(propertyType.getName())
-                        .propertyTypeCode(propertyType.getCode());
+        var builder = PropertyTypeInfoDTO.builder()
+                .propertyTypeId(propertyType.getPropertyTypeId())
+                .propertyTypeName(propertyType.getName())
+                .propertyTypeCode(propertyType.getCode());
 
         if (propertyType.getPropertyCategory() != null) {
             builder.propertyCategoryId(propertyType.getPropertyCategory().getPropertyCategoryId())
@@ -130,11 +134,11 @@ public interface ListingMapper {
         return builder.build();
     }
 
-    default ListingDetailResponse.AgentInfoDTO mapAgentInfo(com.sep.realvista.domain.user.User user) {
+    default AgentInfoDTO mapAgentInfo(com.sep.realvista.domain.user.User user) {
         if (user == null) {
             return null;
         }
-        return ListingDetailResponse.AgentInfoDTO.builder()
+        return AgentInfoDTO.builder()
                 .userId(user.getUserId())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
@@ -148,7 +152,7 @@ public interface ListingMapper {
                 .build();
     }
 
-    default List<ListingDetailResponse.MediaDTO> toMediaList(List<ListingMedia> listingMedias) {
+    default List<MediaDTO> toMediaList(List<ListingMedia> listingMedias) {
         if (listingMedias == null) {
             return List.of();
         }
@@ -158,12 +162,12 @@ public interface ListingMapper {
                 .collect(Collectors.toList());
     }
 
-    default ListingDetailResponse.MediaDTO toMediaDTO(ListingMedia listingMedia) {
+    default MediaDTO toMediaDTO(ListingMedia listingMedia) {
         if (listingMedia == null || listingMedia.getPropertyMedia() == null) {
             return null;
         }
         PropertyMedia propertyMedia = listingMedia.getPropertyMedia();
-        return ListingDetailResponse.MediaDTO.builder()
+        return MediaDTO.builder()
                 .mediaId(propertyMedia.getPropertyMediaId())
                 .mediaType(propertyMedia.getMediaType())
                 .mediaUrl(propertyMedia.getMediaUrl())
