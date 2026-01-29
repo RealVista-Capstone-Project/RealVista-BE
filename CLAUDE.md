@@ -382,3 +382,6 @@ All endpoints return `ApiResponse<T>` wrapper with:
 - See `src/main/resources/db/migration/` for schema evolution
 - Migrations include: Users, Agents, Listings, Billing, Conversations, Engagements, Profiles
 - Seed data: Default roles and sample users
+
+- When creating Pull Requests, always use 'develop' as the base branch.
+- When creating Pull Requests, follow the template in '.github/pull_request_template.md'

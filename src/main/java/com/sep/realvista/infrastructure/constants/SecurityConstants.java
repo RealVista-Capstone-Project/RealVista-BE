@@ -1,6 +1,5 @@
 package com.sep.realvista.infrastructure.constants;
 
-
 import java.util.List;
 
 /**
@@ -10,7 +9,6 @@ import java.util.List;
  * These are infrastructure concerns, not domain or application logic.
  */
 public final class SecurityConstants {
-
 
     private SecurityConstants() {
         throw new AssertionError("Cannot instantiate constants class");
@@ -36,7 +34,7 @@ public final class SecurityConstants {
     public static final class PublicEndpoints {
         public static final String[] PUBLIC_PATHS = {
                 "/api/v1/auth/**",
-                "/api/v1/listings/**",  // Public listing endpoints
+                "/api/v1/listings/**",
                 "/v1/api-docs/**",
                 "/swagger-ui/**",
                 "/swagger-ui.html",
