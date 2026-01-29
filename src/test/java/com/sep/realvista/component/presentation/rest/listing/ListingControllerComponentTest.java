@@ -1,7 +1,12 @@
 package com.sep.realvista.component.presentation.rest.listing;
 
 import com.sep.realvista.application.auth.service.TokenService;
+import com.sep.realvista.application.listing.dto.AgentInfoDTO;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
+import com.sep.realvista.application.listing.dto.LocationInfoDTO;
+import com.sep.realvista.application.listing.dto.MediaDTO;
+import com.sep.realvista.application.listing.dto.PropertyInfoDTO;
+import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
@@ -63,7 +68,7 @@ class ListingControllerComponentTest {
                 UUID userId = UUID.randomUUID();
 
                 // Prepare test media
-                ListingDetailResponse.MediaDTO media1 = ListingDetailResponse.MediaDTO.builder()
+                MediaDTO media1 = MediaDTO.builder()
                                 .mediaId(UUID.randomUUID())
                                 .mediaType(MediaType.IMAGE)
                                 .mediaUrl("https://example.com/image1.jpg")
@@ -72,7 +77,7 @@ class ListingControllerComponentTest {
                                 .displayOrder(1)
                                 .build();
 
-                ListingDetailResponse.MediaDTO media2 = ListingDetailResponse.MediaDTO.builder()
+                MediaDTO media2 = MediaDTO.builder()
                                 .mediaId(UUID.randomUUID())
                                 .mediaType(MediaType.VIDEO)
                                 .mediaUrl("https://example.com/video1.mp4")
@@ -82,7 +87,7 @@ class ListingControllerComponentTest {
                                 .build();
 
                 // Prepare property info
-                ListingDetailResponse.PropertyInfoDTO propertyInfo = ListingDetailResponse.PropertyInfoDTO.builder()
+                PropertyInfoDTO propertyInfo = PropertyInfoDTO.builder()
                                 .propertyId(propertyId)
                                 .streetAddress("123 Main St")
                                 .landSizeM2(new BigDecimal("100.50"))
@@ -91,7 +96,7 @@ class ListingControllerComponentTest {
                                 .build();
 
                 // Prepare location info
-                ListingDetailResponse.LocationInfoDTO locationInfo = ListingDetailResponse.LocationInfoDTO.builder()
+                LocationInfoDTO locationInfo = LocationInfoDTO.builder()
                                 .locationId(UUID.randomUUID())
                                 .cityName("Ho Chi Minh City")
                                 .districtName("District 1")
@@ -101,7 +106,7 @@ class ListingControllerComponentTest {
                                 .build();
 
                 // Prepare property type info
-                ListingDetailResponse.PropertyTypeInfoDTO propertyTypeInfo = ListingDetailResponse.PropertyTypeInfoDTO
+                PropertyTypeInfoDTO propertyTypeInfo = PropertyTypeInfoDTO
                                 .builder()
                                 .propertyTypeId(UUID.randomUUID())
                                 .propertyTypeName("Apartment")
@@ -112,7 +117,7 @@ class ListingControllerComponentTest {
                                 .build();
 
                 // Prepare agent info
-                ListingDetailResponse.AgentInfoDTO agentInfo = ListingDetailResponse.AgentInfoDTO.builder()
+                AgentInfoDTO agentInfo = AgentInfoDTO.builder()
                                 .userId(userId)
                                 .firstName("John")
                                 .lastName("Doe")
@@ -160,17 +165,17 @@ class ListingControllerComponentTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.success").value(true))
                                 .andExpect(jsonPath("$.message").value("Listing retrieved successfully"))
-                                .andExpect(jsonPath("$.data.listingId").value(listingId.toString()))
-                                .andExpect(jsonPath("$.data.listingType").value("RENT"))
+                                .andExpect(jsonPath("$.data.listing_id").value(listingId.toString()))
+                                .andExpect(jsonPath("$.data.listing_type").value("RENT"))
                                 .andExpect(jsonPath("$.data.status").value("PUBLISHED"))
                                 .andExpect(jsonPath("$.data.price").value(2700.00))
-                                .andExpect(jsonPath("$.data.property.streetAddress").value("123 Main St"))
-                                .andExpect(jsonPath("$.data.location.cityName").value("Ho Chi Minh City"))
+                                .andExpect(jsonPath("$.data.property.street_address").value("123 Main St"))
+                                .andExpect(jsonPath("$.data.location.city_name").value("Ho Chi Minh City"))
                                 .andExpect(jsonPath("$.data.media").isArray())
                                 .andExpect(jsonPath("$.data.media.length()").value(2))
-                                .andExpect(jsonPath("$.data.totalPhotos").value(1))
-                                .andExpect(jsonPath("$.data.totalVideos").value(1))
-                                .andExpect(jsonPath("$.data.agent.fullName").value("John Doe"));
+                                .andExpect(jsonPath("$.data.total_photos").value(1))
+                                .andExpect(jsonPath("$.data.total_videos").value(1))
+                                .andExpect(jsonPath("$.data.agent.full_name").value("John Doe"));
         }
 
         @Test

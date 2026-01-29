@@ -10,7 +10,9 @@
       "Bash(dir:*)",
       "Bash(./mvnw:*)",
       "Bash(javac:*)",
-      "Bash(gh pr edit:*)"
+      "Bash(gh pr edit:*)",
+      "Bash(mvn clean test-compile:*)",
+      "Bash(mvn clean verify:*)"
     ]
   },
   "enabledPlugins": {
