@@ -25,8 +25,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
     @Query("SELECT l FROM Listing l WHERE l.status = :status AND l.deleted = false")
     List<Listing> findByStatus(@Param("status") ListingStatus status);
 
-    @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status AND l.deleted = false")
-    List<Listing> findByListingTypeAndStatus(@Param("listingType") ListingType listingType, @Param("status") ListingStatus status);
+    @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status "
+            + "AND l.deleted = false")
+    List<Listing> findByListingTypeAndStatus(@Param("listingType") ListingType listingType,
+            @Param("status") ListingStatus status);
 
     @Query("SELECT l FROM Listing l WHERE l.listingId = :id AND l.deleted = false")
     Optional<Listing> findActiveById(@Param("id") UUID id);
