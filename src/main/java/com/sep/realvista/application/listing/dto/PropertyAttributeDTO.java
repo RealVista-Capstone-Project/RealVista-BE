@@ -54,6 +54,7 @@ public class PropertyAttributeDTO {
      * Formats the value for display in UI.
      * For example: "3" for bedrooms, "2" for bathrooms, "Yes" for boolean amenities
      */
+    @JsonProperty("display_value")
     public String getDisplayValue() {
         if (valueNumber != null) {
             return unit != null ? valueNumber + " " + unit : valueNumber.toString();
