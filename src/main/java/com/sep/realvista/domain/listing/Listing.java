@@ -93,6 +93,12 @@ public class Listing extends BaseEntity {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    @Column(nullable = false, unique = true, length = 255)
+    private String slug;
+
+    @Column(nullable = false, length = 500)
+    private String name;
+
     public void submitForReview() {
         if (this.status != ListingStatus.DRAFT) {
             throw new IllegalStateException("Only draft listings can be submitted for review");

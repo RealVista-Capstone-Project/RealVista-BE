@@ -30,7 +30,6 @@ public class PropertyInfoDTO {
     @JsonProperty("length_m")
     private BigDecimal lengthM;
     private String description;
-    private String slug;
 
     // Property details for UI display (bedrooms, bathrooms, area)
     @JsonProperty("bedrooms")

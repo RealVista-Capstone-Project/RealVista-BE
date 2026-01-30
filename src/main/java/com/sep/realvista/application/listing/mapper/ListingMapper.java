@@ -147,7 +147,6 @@ public interface ListingMapper {
                 .widthM(property.getWidthM())
                 .lengthM(property.getLengthM())
                 .description(property.getDescriptions())
-                .slug(property.getSlug())
                 .build();
     }
 

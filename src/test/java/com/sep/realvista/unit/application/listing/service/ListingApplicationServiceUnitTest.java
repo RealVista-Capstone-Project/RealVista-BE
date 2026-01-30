@@ -92,6 +92,8 @@ class ListingApplicationServiceUnitTest {
                 .userId(userId)
                 .listingType(ListingType.RENT)
                 .status(ListingStatus.PUBLISHED)
+                .slug("test-listing-slug")
+                .name("Test Listing Name")
                 .price(new BigDecimal("2700.00"))
                 .isNegotiable(false)
                 .build();
@@ -116,6 +118,8 @@ class ListingApplicationServiceUnitTest {
                 .userId(userId)
                 .listingType(ListingType.RENT)
                 .status(ListingStatus.PUBLISHED)
+                .slug("test-listing-slug")
+                .name("Test Listing Name")
                 .price(new BigDecimal("2700.00"))
                 .build();
 
@@ -187,6 +191,8 @@ class ListingApplicationServiceUnitTest {
         // Arrange
         ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
                 .listingId(listingId)
+                .slug("test-listing-slug")
+                .name("Test Listing Name")
                 .media(List.of()) // Empty media list is fine for this test
                 .build();
 
