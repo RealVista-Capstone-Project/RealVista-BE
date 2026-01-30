@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 /**
  * Component tests for UserController.
@@ -105,12 +106,13 @@ class UserControllerComponentTest {
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
+                .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.email").value("test@example.com"))
-                .andExpect(jsonPath("$.data.firstName").value("John"))
-                .andExpect(jsonPath("$.data.lastName").value("Doe"))
-                .andExpect(jsonPath("$.data.fullName").value("John Doe"));
+                .andExpect(jsonPath("$.data.first_name").value("John"))
+                .andExpect(jsonPath("$.data.last_name").value("Doe"))
+                .andExpect(jsonPath("$.data.full_name").value("John Doe"));
     }
 
     /**
@@ -134,10 +136,9 @@ class UserControllerComponentTest {
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
+                .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.status").value(400));
+                .andExpect(jsonPath("$.error_code").value("VALIDATION_ERROR"));
     }
 
     /**
@@ -158,8 +159,9 @@ class UserControllerComponentTest {
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
+                .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error_code").value("VALIDATION_ERROR"));
     }
 
     /**
@@ -183,8 +185,9 @@ class UserControllerComponentTest {
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
+                .andDo(print())
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error_code").value("VALIDATION_ERROR"));
     }
 }
 

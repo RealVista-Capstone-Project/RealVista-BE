@@ -7,7 +7,6 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * MapStruct mapper for Bookmark operations.
@@ -32,8 +31,8 @@ public interface BookmarkMapper {
 
     @org.mapstruct.Named("getPropertyAddress")
     default String getPropertyAddress(Listing listing) {
-        return listing.getProperty() != null ? 
-            listing.getProperty().getStreetAddress() : 
-            "Address not available";
+        return listing.getProperty() != null
+            ? listing.getProperty().getStreetAddress()
+            : "Address not available";
     }
 }
