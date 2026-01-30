@@ -65,6 +65,9 @@ public class ListingDetailResponse {
     // Owner/Agent Information
     private AgentInfoDTO agent;
 
+    // Property Attributes/Features (amenities, facilities, etc.)
+    private List<PropertyAttributeDTO> attributes;
+
     // Statistics
     @JsonProperty("total_photos")
     private Integer totalPhotos;

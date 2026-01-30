@@ -93,6 +93,9 @@ class ListingControllerComponentTest {
                                 .landSizeM2(new BigDecimal("100.50"))
                                 .usableSizeM2(new BigDecimal("85.00"))
                                 .description("Beautiful property")
+                                .bedrooms(3)
+                                .bathrooms(2)
+                                .areaSqft(new BigDecimal("915.00"))
                                 .build();
 
                 // Prepare location info
@@ -144,6 +147,7 @@ class ListingControllerComponentTest {
                                 .propertyType(propertyTypeInfo)
                                 .media(List.of(media1, media2))
                                 .agent(agentInfo)
+                                .attributes(List.of())
                                 .totalPhotos(1)
                                 .totalVideos(1)
                                 .total3DTours(0)
@@ -170,9 +174,12 @@ class ListingControllerComponentTest {
                                 .andExpect(jsonPath("$.data.status").value("PUBLISHED"))
                                 .andExpect(jsonPath("$.data.price").value(2700.00))
                                 .andExpect(jsonPath("$.data.property.street_address").value("123 Main St"))
+                                .andExpect(jsonPath("$.data.property.bedrooms").value(3))
+                                .andExpect(jsonPath("$.data.property.bathrooms").value(2))
                                 .andExpect(jsonPath("$.data.location.city_name").value("Ho Chi Minh City"))
                                 .andExpect(jsonPath("$.data.media").isArray())
                                 .andExpect(jsonPath("$.data.media.length()").value(2))
+                                .andExpect(jsonPath("$.data.attributes").isArray())
                                 .andExpect(jsonPath("$.data.total_photos").value(1))
                                 .andExpect(jsonPath("$.data.total_videos").value(1))
                                 .andExpect(jsonPath("$.data.agent.full_name").value("John Doe"));

@@ -8,12 +8,15 @@ import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyRepository;
+import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -29,11 +32,12 @@ public class ListingApplicationService {
     private final ListingRepository listingRepository;
     private final ListingMediaRepository listingMediaRepository;
     private final PropertyRepository propertyRepository;
+    private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
     private final ListingMapper listingMapper;
 
     /**
      * Get listing detail by ID.
-     * Returns complete listing information including media, property, location, type, category, and agent/owner.
+     * Returns complete listing information including media, property, location, type, category, agent/owner, and attributes.
      *
      * @param listingId the listing ID
      * @return complete listing detail response
@@ -62,11 +66,16 @@ public class ListingApplicationService {
         // Fetch listing media
         var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
 
+        // Fetch property attribute values (bedrooms, bathrooms, amenities, etc.)
+        List<PropertyAttributeValue> attributeValues =
+                propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(property.getPropertyId());
+
         // Attach property and user for DTO mapping (read-only, not persisted)
         listing.attachProperty(property);
 
-        log.info("Successfully fetched listing detail for ID: {}", listingId);
+        log.info("Successfully fetched listing detail for ID: {} with {} attributes",
+                listingId, attributeValues.size());
 
-        return listingMapper.toDetailResponseWithMedia(listing, listingMedias);
+        return listingMapper.toDetailResponseWithMediaAndAttributes(listing, listingMedias, attributeValues);
     }
 }
