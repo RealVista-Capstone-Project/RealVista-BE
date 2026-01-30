@@ -13,6 +13,7 @@ import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -55,13 +56,13 @@ public class BookmarkController {
                          + "Returns details about the user and listing involved in the action."
     )
     public ResponseEntity<ApiResponse<BookmarkResponse>> toggleBookmark(
-            @PathVariable UUID listingId,
-            Authentication authentication
+            @PathVariable UUID listingId
     ) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
-        // Get authenticated user email and find user ID
+        // Get authenticated user email from SecurityContext
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userEmail = authentication.getName();
         UUID userId = userApplicationService.findUserIdByEmail(userEmail);
 
