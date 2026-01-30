@@ -12,6 +12,8 @@ import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyRepository;
+import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,6 +50,9 @@ class ListingApplicationServiceUnitTest {
 
     @Mock
     private PropertyRepository propertyRepository;
+
+    @Mock
+    private PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
 
     @Mock
     private ListingMapper listingMapper;
@@ -117,7 +123,10 @@ class ListingApplicationServiceUnitTest {
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
         when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
                 .thenReturn(List.of(testMedia));
-        when(listingMapper.toDetailResponseWithMedia(any(Listing.class), anyList())).thenReturn(expectedResponse);
+        when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                .thenReturn(new ArrayList<>());
+        when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
+                .thenReturn(expectedResponse);
 
         // Act
         ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
@@ -131,7 +140,8 @@ class ListingApplicationServiceUnitTest {
         verify(listingRepository).findById(listingId);
         verify(propertyRepository).findById(propertyId);
         verify(listingMediaRepository).findByListingIdOrderByDisplayOrderAsc(listingId);
-        verify(listingMapper).toDetailResponseWithMedia(any(Listing.class), anyList());
+        verify(propertyAttributeValueJpaRepository).findByPropertyIdWithAttribute(propertyId);
+        verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
     }
 
     @Test
@@ -184,13 +194,16 @@ class ListingApplicationServiceUnitTest {
         when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
         when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
                 .thenReturn(List.of(testMedia));
-        when(listingMapper.toDetailResponseWithMedia(any(Listing.class), anyList())).thenReturn(expectedResponse);
+        when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                .thenReturn(new ArrayList<>());
+        when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
+                .thenReturn(expectedResponse);
 
         // Act
         ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
 
         // Assert
         assertThat(actualResponse).isNotNull();
-        verify(listingMapper).toDetailResponseWithMedia(any(Listing.class), anyList());
+        verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
     }
 }

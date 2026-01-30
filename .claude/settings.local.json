@@ -14,7 +14,9 @@
       "Bash(mvn clean test-compile:*)",
       "Bash(mvn clean verify:*)",
       "Bash(mvn clean compile:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(mvn test:*)",
+      "Bash(mvn:*)"
     ]
   },
   "enabledPlugins": {

@@ -21,7 +21,8 @@ import java.util.UUID;
 
 /**
  * Application Service for Listing operations.
- * Orchestrates business logic and coordinates between domain and infrastructure layers.
+ * Orchestrates business logic and coordinates between domain and infrastructure
+ * layers.
  */
 @Service
 @RequiredArgsConstructor
@@ -29,53 +30,54 @@ import java.util.UUID;
 @Slf4j
 public class ListingApplicationService {
 
-    private final ListingRepository listingRepository;
-    private final ListingMediaRepository listingMediaRepository;
-    private final PropertyRepository propertyRepository;
-    private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
-    private final ListingMapper listingMapper;
+        private final ListingRepository listingRepository;
+        private final ListingMediaRepository listingMediaRepository;
+        private final PropertyRepository propertyRepository;
+        private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
+        private final ListingMapper listingMapper;
 
-    /**
-     * Get listing detail by ID.
-     * Returns complete listing information including media, property, location, type, category, agent/owner, and attributes.
-     *
-     * @param listingId the listing ID
-     * @return complete listing detail response
-     * @throws ResourceNotFoundException if listing not found
-     */
-    @Cacheable(value = "listings", key = "#listingId")
-    @Transactional(readOnly = true)
-    public ListingDetailResponse getListingDetail(UUID listingId) {
-        log.info("Fetching listing detail for ID: {}", listingId);
+        /**
+         * Get listing detail by ID.
+         * Returns complete listing information including media, property, location,
+         * type, category, agent/owner, and attributes.
+         *
+         * @param listingId the listing ID
+         * @return complete listing detail response
+         * @throws ResourceNotFoundException if listing not found
+         */
+        @Cacheable(value = "listings", key = "#listingId")
+        @Transactional(readOnly = true)
+        public ListingDetailResponse getListingDetail(UUID listingId) {
+                log.info("Fetching listing detail for ID: {}", listingId);
 
-        // Fetch listing with all associations
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> {
-                    log.error("Listing not found with ID: {}", listingId);
-                    return new ResourceNotFoundException("Listing", listingId);
-                });
+                // Fetch listing with all associations
+                Listing listing = listingRepository.findById(listingId)
+                                .orElseThrow(() -> {
+                                        log.error("Listing not found with ID: {}", listingId);
+                                        return new ResourceNotFoundException("Listing", listingId);
+                                });
 
-        // Verify property exists and is accessible
-        Property property = propertyRepository.findById(listing.getPropertyId())
-                .orElseThrow(() -> {
-                    log.error("Property not found for listing ID: {}, property ID: {}",
-                            listingId, listing.getPropertyId());
-                    return new ResourceNotFoundException("Property", listing.getPropertyId());
-                });
+                // Verify property exists and is accessible
+                Property property = propertyRepository.findById(listing.getPropertyId())
+                                .orElseThrow(() -> {
+                                        log.error("Property not found for listing ID: {}, property ID: {}",
+                                                        listingId, listing.getPropertyId());
+                                        return new ResourceNotFoundException("Property", listing.getPropertyId());
+                                });
 
-        // Fetch listing media
-        var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
+                // Fetch listing media
+                var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
 
-        // Fetch property attribute values (bedrooms, bathrooms, amenities, etc.)
-        List<PropertyAttributeValue> attributeValues =
-                propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(property.getPropertyId());
+                // Fetch property attribute values (bedrooms, bathrooms, amenities, etc.)
+                List<PropertyAttributeValue> attributeValues = propertyAttributeValueJpaRepository
+                                .findByPropertyIdWithAttribute(property.getPropertyId());
 
-        // Attach property and user for DTO mapping (read-only, not persisted)
-        listing.attachProperty(property);
+                // Attach property and user for DTO mapping (read-only, not persisted)
+                listing.attachProperty(property);
 
-        log.info("Successfully fetched listing detail for ID: {} with {} attributes",
-                listingId, attributeValues.size());
+                log.info("Successfully fetched listing detail for ID: {} with {} attributes",
+                                listingId, attributeValues.size());
 
-        return listingMapper.toDetailResponseWithMediaAndAttributes(listing, listingMedias, attributeValues);
-    }
+                return listingMapper.toDetailResponseWithMediaAndAttributes(listing, listingMedias, attributeValues);
+        }
 }

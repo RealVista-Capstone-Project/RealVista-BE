@@ -14,15 +14,16 @@ import java.util.UUID;
  */
 public interface PropertyAttributeValueJpaRepository extends JpaRepository<PropertyAttributeValue, UUID> {
 
-        @Query("SELECT pav FROM PropertyAttributeValue pav " +
-                        "LEFT JOIN FETCH pav.propertyAttribute pa " +
-                        "LEFT JOIN FETCH pav.property p " +
-                        "WHERE p.propertyId = :propertyId AND pav.deleted = false " +
-                        "ORDER BY pa.name")
+        @Query("SELECT pav FROM PropertyAttributeValue pav "
+                        + "LEFT JOIN FETCH pav.propertyAttribute pa "
+                        + "LEFT JOIN FETCH pav.property p "
+                        + "WHERE p.propertyId = :propertyId AND pav.deleted = false "
+                        + "ORDER BY pa.name")
         List<PropertyAttributeValue> findByPropertyIdWithAttribute(@Param("propertyId") UUID propertyId);
 
-        @Query("SELECT pav FROM PropertyAttributeValue pav " +
-                        "LEFT JOIN FETCH pav.propertyAttribute pa " +
-                        "WHERE pav.propertyAttributeValueId = :id AND pav.deleted = false")
+        @Query("SELECT pav FROM PropertyAttributeValue pav "
+                        + "LEFT JOIN FETCH pav.propertyAttribute pa "
+                        + "WHERE pav.propertyAttributeValueId = :id AND pav.deleted = false")
         Optional<PropertyAttributeValue> findByIdWithAttribute(@Param("id") UUID id);
+
 }

@@ -39,21 +39,4 @@ public class PropertyInfoDTO {
     private Integer bathrooms;
     @JsonProperty("area_sqft")
     private BigDecimal areaSqft;
-
-    /**
-     * Returns formatted area string for UI display.
-     * Converts m2 to sqft if needed: 1 m2 = 10.764 sqft
-     */
-    public String getFormattedArea() {
-        if (areaSqft != null) {
-            return areaSqft + " sqft";
-        }
-        if (usableSizeM2 != null) {
-            return usableSizeM2 + " m²";
-        }
-        if (landSizeM2 != null) {
-            return landSizeM2 + " m²";
-        }
-        return null;
-    }
 }
