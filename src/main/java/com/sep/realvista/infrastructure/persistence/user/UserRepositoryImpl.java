@@ -3,6 +3,7 @@ package com.sep.realvista.infrastructure.persistence.user;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.role.RoleCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -46,6 +47,11 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Optional<User> findByEmailValue(String email) {
         return jpaRepository.findByEmailValue(email);
+    }
+
+    @Override
+    public boolean hasRole(UUID userId, RoleCode roleCode) {
+        return jpaRepository.hasRole(userId, roleCode);
     }
 }
 

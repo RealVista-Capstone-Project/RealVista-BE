@@ -11,6 +11,8 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserStatus;
+import com.sep.realvista.domain.user.exception.UserNotFoundException;
+import com.sep.realvista.domain.user.role.RoleCode;
 import com.sep.realvista.infrastructure.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -155,6 +157,40 @@ public class UserApplicationService {
 
         userRepository.save(user);
         log.info("User deleted successfully: {}", userId);
+    }
+
+    /**
+     * Find user ID by email.
+     */
+    @Transactional(readOnly = true)
+    public UUID findUserIdByEmail(String email) {
+        log.debug("Finding user ID for email: {}", email);
+        User user = userRepository.findByEmailValue(email)
+                .orElseThrow(() -> new UserNotFoundException(email));
+        return user.getUserId();
+    }
+
+    /**
+     * Check if user has specific role.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasRole(UUID userId, RoleCode roleCode) {
+        log.debug("Checking if user {} has role: {}", userId, roleCode);
+        return userRepository.hasRole(userId, roleCode);
+    }
+
+    /**
+     * Check if user has any of the specified roles.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasAnyRole(UUID userId, RoleCode... roleCodes) {
+        log.debug("Checking if user {} has any of roles: {}", userId, roleCodes);
+        for (RoleCode roleCode : roleCodes) {
+            if (userRepository.hasRole(userId, roleCode)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
