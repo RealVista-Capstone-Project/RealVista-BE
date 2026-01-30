@@ -14,13 +14,15 @@ import java.util.UUID;
  */
 public interface ListingMediaJpaRepository extends JpaRepository<ListingMedia, UUID> {
 
-    List<ListingMedia> findByListingId(UUID listingId);
+        @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId = :listingId "
+                        + "AND lm.deleted = false ORDER BY lm.displayOrder ASC")
+        List<ListingMedia> findByListingId(UUID listingId);
 
-    @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId = :listingId "
-            + "AND lm.deleted = false ORDER BY lm.displayOrder ASC")
-    List<ListingMedia> findByListingIdOrderByDisplayOrder(@Param("listingId") UUID listingId);
+        @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId = :listingId "
+                        + "AND lm.deleted = false ORDER BY lm.displayOrder ASC")
+        List<ListingMedia> findByListingIdOrderByDisplayOrder(@Param("listingId") UUID listingId);
 
-    @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId = :listingId "
-            + "AND lm.isPrimary = true AND lm.deleted = false")
-    Optional<ListingMedia> findPrimaryByListingId(@Param("listingId") UUID listingId);
+        @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId = :listingId "
+                        + "AND lm.isPrimary = true AND lm.deleted = false")
+        Optional<ListingMedia> findPrimaryByListingId(@Param("listingId") UUID listingId);
 }
