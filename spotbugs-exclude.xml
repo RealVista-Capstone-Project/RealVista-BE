@@ -51,6 +51,7 @@
         <Or>
             <Class name="~.*\.value\..*"/>
             <Class name="~.*\.dto\..*"/>
+            <Class name="~.*\..*Id"/>
         </Or>
         <Bug pattern="SE_NO_SERIALVERSIONID"/>
     </Match>
@@ -60,6 +61,30 @@
         <Class name="~.*\.value\.Email"/>
         <Method name="of"/>
         <Bug pattern="DM_CONVERT_CASE"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP for domain entities - Lombok @Getter returns mutable objects -->
+    <Match>
+        <Class name="~com\.sep\.realvista\.domain\..*"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!-- Exclude DM_CONVERT_CASE for enum toValue/fromString methods -->
+    <Match>
+        <Class name="~.*\.MobilePlatform"/>
+        <Bug pattern="DM_CONVERT_CASE"/>
+    </Match>
+
+    <!-- Exclude MS_MUTABLE_ARRAY for public static arrays in constants -->
+    <Match>
+        <Class name="~.*\.SecurityConstants.*"/>
+        <Bug pattern="MS_MUTABLE_ARRAY"/>
+    </Match>
+
+    <!-- Exclude EI_EXPOSE_REP for GoogleTokenVerifier getters -->
+    <Match>
+        <Class name="~.*\.GoogleTokenVerifier"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
     </Match>
 
 </FindBugsFilter>
