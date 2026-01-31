@@ -2,7 +2,7 @@
 -- Insert default system roles
 -- Compatible with both PostgreSQL and H2 databases
 
-INSERT INTO "roles" (role_code, description, is_system_role)
+INSERT INTO roles (role_code, description, is_system_role)
 VALUES 
     ('ADMIN', 'Administrator with full system access', TRUE),
     ('VERIFIER', 'Verifies property documents and agent licenses', TRUE),

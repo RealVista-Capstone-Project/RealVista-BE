@@ -47,10 +47,10 @@ public class User extends BaseEntity {
     @Column(name = "last_name", length = 100)
     private String lastName;
 
-    @Column(name = "business_name", nullable = false, length = 255)
+    @Column(name = "business_name", nullable = false)
     private String businessName;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
     @Embedded

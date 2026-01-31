@@ -6,7 +6,7 @@
 -- USER MANAGEMENT TABLES
 -- ============================================================================
 
-CREATE TABLE "roles"
+CREATE TABLE roles
 (
     role_id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     role_code       VARCHAR(50) NOT NULL UNIQUE,
@@ -19,7 +19,7 @@ CREATE TABLE "roles"
     CONSTRAINT chk_role_code CHECK (role_code IN ('ADMIN', 'VERIFIER', 'AGENT', 'OWNER', 'BUYER', 'TENANT'))
 );
 
-CREATE TABLE "users"
+CREATE TABLE users
 (
     user_id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     first_name        VARCHAR(100),
@@ -39,9 +39,9 @@ CREATE TABLE "users"
     CONSTRAINT chk_user_status CHECK (status IN ('ACTIVE', 'VERIFIED', 'SUSPENDED', 'BANNED'))
 );
 
-CREATE INDEX idx_user_status ON "users"(status);
+CREATE INDEX idx_user_status ON users(status);
 
-CREATE TABLE "user_roles"
+CREATE TABLE user_roles
 (
     user_id     UUID NOT NULL,
     role_id     UUID NOT NULL,
@@ -51,11 +51,11 @@ CREATE TABLE "user_roles"
     deleted     BOOLEAN DEFAULT FALSE,
 
     PRIMARY KEY (user_id, role_id),
-    FOREIGN KEY (user_id) REFERENCES "users" (user_id) ON DELETE CASCADE,
-    FOREIGN KEY (role_id) REFERENCES "roles" (role_id) ON DELETE RESTRICT
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles (role_id) ON DELETE RESTRICT
 );
 
-CREATE TABLE "user_sessions"
+CREATE TABLE user_sessions
 (
     user_session_id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id            UUID NOT NULL,
@@ -71,10 +71,10 @@ CREATE TABLE "user_sessions"
     updated_at         TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted            BOOLEAN DEFAULT FALSE,
 
-    FOREIGN KEY (user_id) REFERENCES "users" (user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_user_session_user_id ON "user_sessions"(user_id);
+CREATE INDEX idx_user_session_user_id ON user_sessions(user_id);
 
 -- ============================================================================
 -- STEP 3: CREATE NEW SCHEMA - PROPERTY & LISTING TABLES
@@ -109,7 +109,7 @@ CREATE TABLE property_types
 CREATE INDEX idx_property_type_category ON property_types(property_category_id);
 CREATE INDEX idx_property_type_status ON property_types(status);
 
-CREATE TABLE "locations"
+CREATE TABLE locations
 (
     location_id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     parent_id   UUID,
@@ -125,14 +125,14 @@ CREATE TABLE "locations"
     updated_at  TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted     BOOLEAN DEFAULT FALSE,
 
-    FOREIGN KEY (parent_id) REFERENCES "locations" (location_id)
+    FOREIGN KEY (parent_id) REFERENCES locations (location_id)
 );
 
-CREATE INDEX idx_location_parent ON "locations"(parent_id);
-CREATE INDEX idx_location_type ON "locations"(type);
-CREATE INDEX idx_location_code ON "locations"(code);
+CREATE INDEX idx_location_parent ON locations(parent_id);
+CREATE INDEX idx_location_type ON locations(type);
+CREATE INDEX idx_location_code ON locations(code);
 
-CREATE TABLE "properties"
+CREATE TABLE properties
 (
     property_id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     owner_id         UUID NOT NULL,
@@ -153,19 +153,19 @@ CREATE TABLE "properties"
     updated_at       TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted          BOOLEAN DEFAULT FALSE,
 
-    FOREIGN KEY (location_id)     REFERENCES "locations" (location_id),
+    FOREIGN KEY (location_id)     REFERENCES locations (location_id),
     FOREIGN KEY (property_type_id) REFERENCES property_types (property_type_id),
 
     CONSTRAINT chk_property_status 
         CHECK (status IN ('DRAFT', 'PENDING', 'VERIFIED', 'REJECTED', 'AVAILABLE', 'RESERVED', 'SOLD'))
 );
 
-CREATE INDEX idx_property_owner ON "properties"(owner_id);
-CREATE INDEX idx_property_location ON "properties"(location_id);
-CREATE INDEX idx_property_type ON "properties"(property_type_id);
-CREATE INDEX idx_property_status ON "properties"(status);
+CREATE INDEX idx_property_owner ON properties(owner_id);
+CREATE INDEX idx_property_location ON properties(location_id);
+CREATE INDEX idx_property_type ON properties(property_type_id);
+CREATE INDEX idx_property_status ON properties(status);
 
-CREATE TABLE "listings"
+CREATE TABLE listings
 (
     listing_id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     property_id    UUID NOT NULL,
@@ -182,14 +182,14 @@ CREATE TABLE "listings"
     updated_at     TIMESTAMP NOT NULL DEFAULT NOW(),
     deleted        BOOLEAN DEFAULT FALSE,
 
-    FOREIGN KEY (property_id) REFERENCES "properties" (property_id),
+    FOREIGN KEY (property_id) REFERENCES properties (property_id),
 
     CONSTRAINT chk_listing_status 
         CHECK (status IN ('DRAFT', 'PENDING', 'PUBLISHED', 'SOLD', 'RENTED', 'EXPIRED'))
 );
 
-CREATE INDEX idx_listing_property ON "listings"(property_id);
-CREATE INDEX idx_listing_user ON "listings"(user_id);
-CREATE INDEX idx_listing_type ON "listings"(listing_type);
-CREATE INDEX idx_listing_status ON "listings"(status);
-CREATE INDEX idx_listing_published ON "listings"(published_at);
+CREATE INDEX idx_listing_property ON listings(property_id);
+CREATE INDEX idx_listing_user ON listings(user_id);
+CREATE INDEX idx_listing_type ON listings(listing_type);
+CREATE INDEX idx_listing_status ON listings(status);
+CREATE INDEX idx_listing_published ON listings(published_at);
