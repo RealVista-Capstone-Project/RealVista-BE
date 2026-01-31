@@ -8,10 +8,10 @@
 
 -- City: Ho Chi Minh City
 INSERT INTO "locations" (location_id, parent_id, type, name, code, north_lat, south_lat, east_lng, west_lng, deleted)
-VALUES ('110e8400-e29b-41d4-a716-446655440100', NULL, 'CITY', 'Ho Chi Minh City', 'HCM', 11.000000, 10.000000, 107.000000, 106.000000, FALSE);
+VALUES ('110e8400-e29b-41d4-a716-446655440100', NULL, 'CITY', 'Thành phố Hồ Chí Minh', 'HCM', 11.000000, 10.000000, 107.000000, 106.000000, FALSE);
 
 -- District 1
-INSERT INTO "locations" (location_id, parent_id, type, name, code, north_lat, south_lat, east_lng, west_lng, deleted) VALUES ('110e8400-e29b-41d4-a716-446655440101', '110e8400-e29b-41d4-a716-446655440100', 'DISTRICT', 'District 1', 'D1', 10.780000, 10.760000, 106.700000, 106.680000, FALSE);
+INSERT INTO "locations" (location_id, parent_id, type, name, code, north_lat, south_lat, east_lng, west_lng, deleted) VALUES ('110e8400-e29b-41d4-a716-446655440101', '110e8400-e29b-41d4-a716-446655440100', 'DISTRICT', 'Quận 1', 'D1', 10.780000, 10.760000, 106.700000, 106.680000, FALSE);
 
 -- District 3
 INSERT INTO "locations" (location_id, parent_id, type, name, code, north_lat, south_lat, east_lng, west_lng, deleted)
@@ -19,7 +19,7 @@ VALUES (
     '110e8400-e29b-41d4-a716-446655440102',
     '110e8400-e29b-41d4-a716-446655440100',
     'DISTRICT',
-    'District 3',
+    'Quận 3',
     'D3',
     10.790000,
     10.770000,
@@ -29,9 +29,9 @@ VALUES (
 );
 
 -- Ward 1 in District 1
-INSERT INTO "locations" (location_id, parent_id, type, name, code, north_lat, south_lat, east_lng, west_lng, deleted) VALUES ('110e8400-e29b-41d4-a716-446655440201', '110e8400-e29b-41d4-a716-446655440101', 'WARD', 'Ward 1', 'W1', 10.775000, 10.765000, 106.695000, 106.685000, FALSE);
+INSERT INTO "locations" (location_id, parent_id, type, name, code, north_lat, south_lat, east_lng, west_lng, deleted) VALUES ('110e8400-e29b-41d4-a716-446655440201', '110e8400-e29b-41d4-a716-446655440101', 'WARD', 'Phường Bến Nghé', 'W1', 10.775000, 10.765000, 106.695000, 106.685000, FALSE);
 
-INSERT INTO "locations" (location_id, parent_id, type, name, code, north_lat, south_lat, east_lng, west_lng, deleted) VALUES ('110e8400-e29b-41d4-a716-446655440202', '110e8400-e29b-41d4-a716-446655440101', 'WARD', 'Ward 2', 'W2', 10.770000, 10.760000, 106.690000, 106.680000, FALSE);
+INSERT INTO "locations" (location_id, parent_id, type, name, code, north_lat, south_lat, east_lng, west_lng, deleted) VALUES ('110e8400-e29b-41d4-a716-446655440202', '110e8400-e29b-41d4-a716-446655440101', 'WARD', 'Phường Đa Kao', 'W2', 10.770000, 10.760000, 106.690000, 106.680000, FALSE);
 
 -- Ward 3 in District 1
 INSERT INTO "locations" (location_id, parent_id, type, name, code, north_lat, south_lat, east_lng, west_lng, deleted)
@@ -39,7 +39,7 @@ VALUES (
     '110e8400-e29b-41d4-a716-446655440203',
     '110e8400-e29b-41d4-a716-446655440101',
     'WARD',
-    'Ward 3',
+    'Phường Tân Định',
     'W3',
     10.770000,
     10.760000,
@@ -54,9 +54,9 @@ VALUES (
 
 INSERT INTO property_categories (property_category_id, name, code, created_at, updated_at, deleted)
 VALUES
-    ('210e8400-e29b-41d4-a716-446655440001', 'Residential', 'RES', NOW(), NOW(), FALSE),
-    ('210e8400-e29b-41d4-a716-446655440002', 'Commercial', 'COM', NOW(), NOW(), FALSE),
-    ('210e8400-e29b-41d4-a716-446655440003', 'Industrial', 'IND', NOW(), NOW(), FALSE);
+    ('210e8400-e29b-41d4-a716-446655440001', 'Căn hộ / Nhà ở', 'RES', NOW(), NOW(), FALSE),
+    ('210e8400-e29b-41d4-a716-446655440002', 'Thương mại', 'COM', NOW(), NOW(), FALSE),
+    ('210e8400-e29b-41d4-a716-446655440003', 'Công nghiệp', 'IND', NOW(), NOW(), FALSE);
 
 -- ============================================================================
 -- STEP 3: INSERT PROPERTY TYPES
@@ -67,9 +67,9 @@ INSERT INTO property_types (property_type_id, property_category_id, name, code, 
 VALUES (
     '310e8400-e29b-41d4-a716-446655440001',
     '210e8400-e29b-41d4-a716-446655440001',
-    'Apartment',
+    'Căn hộ',
     'APT',
-    'Modern apartment in high-rise building',
+    'Căn hộ hiện đại trong tòa nhà chung cư cao tầng',
     'ACTIVE',
     NOW(),
     NOW(),
@@ -81,9 +81,9 @@ INSERT INTO property_types (property_type_id, property_category_id, name, code, 
 VALUES (
     '310e8400-e29b-41d4-a716-446655440002',
     '210e8400-e29b-41d4-a716-446655440001',
-    'House',
+    'Nhà',
     'HOUSE',
-    'Detached or semi-detached house',
+    'Nhà riêng hoặc nhà bán riêng',
     'ACTIVE',
     NOW(),
     NOW(),
@@ -95,9 +95,9 @@ INSERT INTO property_types (property_type_id, property_category_id, name, code, 
 VALUES (
     '310e8400-e29b-41d4-a716-446655440003',
     '210e8400-e29b-41d4-a716-446655440001',
-    'Villa',
+    'Biệt thự',
     'VILLA',
-    'Luxury villa with private garden',
+    'Biệt thự sang trọng với vườn riêng',
     'ACTIVE',
     NOW(),
     NOW(),
@@ -109,9 +109,9 @@ INSERT INTO property_types (property_type_id, property_category_id, name, code, 
 VALUES (
     '310e8400-e29b-41d4-a716-446655440004',
     '210e8400-e29b-41d4-a716-446655440002',
-    'Office',
+    'Văn phòng',
     'OFFICE',
-    'Commercial office space',
+    'Không gian văn phòng thương mại',
     'ACTIVE',
     NOW(),
     NOW(),
@@ -145,9 +145,9 @@ INSERT INTO "properties" (
 VALUES (
     '410e8400-e29b-41d4-a716-446655440001',
     '550e8400-e29b-41d4-a716-446655440003', -- Jane Smith (AGENT)
-    '110e8400-e29b-41d4-a716-446655440201', -- Ward 1, District 1
-    '310e8400-e29b-41d4-a716-446655440001', -- Apartment
-    '123 Nguyen Hue Street, Ben Nghe Ward',
+    '110e8400-e29b-41d4-a716-446655440201', -- Phường Bến Nghé, Quận 1
+    '310e8400-e29b-41d4-a716-446655440001', -- Căn hộ
+    '123 Đường Nguyễn Huệ, Phường Bến Nghé',
     10.776389,
     106.701944,
     100.50,
@@ -155,8 +155,8 @@ VALUES (
     10.00,
     8.50,
     'AVAILABLE',
-    'Luxury 2-bedroom apartment in the heart of Ho Chi Minh City. Modern design with full amenities including swimming pool, gym, and 24/7 security. Close to shopping centers, restaurants, and public transportation.',
-    'luxury-apartment-nguyen-hue',
+    'Căn hộ 2 phòng ngủ cao cấp nằm ở trung tâm Thành phố Hồ Chí Minh. Thiết kế hiện đại với đầy đủ tiện nghi bao gồm hồ bơi, phòng tập gym và bảo vệ 24/7. Gần trung tâm thương mại, nhà hàng và phương tiện giao thông công cộng.',
+    'can-ho-cao-cap-nguyen-hue',
     NOW(),
     NOW(),
     FALSE
@@ -185,9 +185,9 @@ INSERT INTO "properties" (
 VALUES (
     '410e8400-e29b-41d4-a716-446655440002',
     '550e8400-e29b-41d4-a716-446655440004', -- Bob Wilson (OWNER)
-    '110e8400-e29b-41d4-a716-446655440102', -- District 3
-    '310e8400-e29b-41d4-a716-446655440002', -- House
-    '456 Vo Van Tan Street, Ward 6',
+    '110e8400-e29b-41d4-a716-446655440102', -- Quận 3
+    '310e8400-e29b-41d4-a716-446655440002', -- Nhà
+    '456 Đường Võ Văn Tần, Phường 6',
     10.780500,
     106.685000,
     120.00,
@@ -195,8 +195,8 @@ VALUES (
     12.00,
     10.00,
     'AVAILABLE',
-    'Beautiful 3-story house with spacious living areas, 4 bedrooms, and a rooftop garden. Recently renovated with modern kitchen and bathrooms. Located in a quiet neighborhood with easy access to city center.',
-    'modern-house-vo-van-tan',
+    'Nhà 3 tầng đẹp với không gian sống rộng rãi, 4 phòng ngủ và sân vườn trên tầng thượng. Vừa được cải tạo với bếp và phòng tắm hiện đại. Nằm trong khu dân cư yên tĩnh, dễ dàng di chuyển vào trung tâm thành phố.',
+    'nha-hien-dai-vo-van-tan',
     NOW(),
     NOW(),
     FALSE
@@ -225,9 +225,9 @@ INSERT INTO "properties" (
 VALUES (
     '410e8400-e29b-41d4-a716-446655440003',
     '550e8400-e29b-41d4-a716-446655440003', -- Jane Smith (AGENT)
-    '110e8400-e29b-41d4-a716-446655440202', -- Ward 2, District 1
-    '310e8400-e29b-41d4-a716-446655440003', -- Villa
-    '789 Hai Ba Trung Street, Da Kao Ward',
+    '110e8400-e29b-41d4-a716-446655440202', -- Phường Đa Kao, Quận 1
+    '310e8400-e29b-41d4-a716-446655440003', -- Biệt thự
+    '789 Đường Hai Bà Trưng, Phường Đa Kao',
     10.770000,
     106.692000,
     300.00,
@@ -235,8 +235,8 @@ VALUES (
     20.00,
     15.00,
     'AVAILABLE',
-    'Exclusive luxury villa featuring 5 bedrooms, private swimming pool, landscaped garden, and smart home automation system. Perfect for families seeking premium living space in prime location.',
-    'luxury-villa-hai-ba-trung',
+    'Biệt thự sang trọng độc đáo với 5 phòng ngủ, hồ bơi riêng, vườn cảnh quan và hệ thống tự động hóa nhà thông minh. Hoàn hảo cho gia đình tìm kiếm không gian sống cao cấp ở vị trí đắc địa.',
+    'biet-thu-sang-trong-hai-ba-trung',
     NOW(),
     NOW(),
     FALSE
@@ -299,7 +299,7 @@ VALUES (
     FALSE
 );
 
--- Video Tour
+-- Video Tour (Luxury Apartment Walkthrough)
 INSERT INTO property_medias (
     property_media_id,
     property_id,
@@ -317,7 +317,7 @@ VALUES (
     '410e8400-e29b-41d4-a716-446655440001',
     '550e8400-e29b-41d4-a716-446655440003',
     'VIDEO',
-    'https://sample-videos.com/video123/mp4-720p.mp4',
+    'https://www.pexels.com/vi-vn/video/nha-phong-b-p-thi-t-k-nha-5744242/',
     'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=200',
     FALSE,
     NOW(),
@@ -352,6 +352,7 @@ VALUES (
 );
 
 -- Media for Property 2 (House)
+-- Primary Image
 INSERT INTO property_medias (
     property_media_id,
     property_id,
@@ -377,7 +378,34 @@ VALUES (
     FALSE
 );
 
+-- Video Tour (House Walkthrough)
+INSERT INTO property_medias (
+    property_media_id,
+    property_id,
+    upload_by,
+    media_type,
+    media_url,
+    thumbnail_url,
+    is_primary,
+    created_at,
+    updated_at,
+    deleted
+)
+VALUES (
+    '510e8400-e29b-41d4-a716-446655440008',
+    '410e8400-e29b-41d4-a716-446655440002',
+    '550e8400-e29b-41d4-a716-446655440004',
+    'VIDEO',
+    'https://www.pexels.com/vi-vn/video/nha-phong-b-p-thi-t-k-nha-5744242/',
+    'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=200',
+    FALSE,
+    NOW(),
+    NOW(),
+    FALSE
+);
+
 -- Media for Property 3 (Villa)
+-- Primary Image
 INSERT INTO property_medias (
     property_media_id,
     property_id,
@@ -403,6 +431,7 @@ VALUES (
     FALSE
 );
 
+-- Second Image
 INSERT INTO property_medias (
     property_media_id,
     property_id,
@@ -422,6 +451,32 @@ VALUES (
     'IMAGE',
     'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
     'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=200',
+    FALSE,
+    NOW(),
+    NOW(),
+    FALSE
+);
+
+-- Video Tour (Luxury Villa Walkthrough)
+INSERT INTO property_medias (
+    property_media_id,
+    property_id,
+    upload_by,
+    media_type,
+    media_url,
+    thumbnail_url,
+    is_primary,
+    created_at,
+    updated_at,
+    deleted
+)
+VALUES (
+    '510e8400-e29b-41d4-a716-446655440009',
+    '410e8400-e29b-41d4-a716-446655440003',
+    '550e8400-e29b-41d4-a716-446655440003',
+    'VIDEO',
+    'https://www.pexels.com/vi-vn/video/nha-phong-b-p-thi-t-k-nha-5744242/',
+    'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=200',
     FALSE,
     NOW(),
     NOW(),
@@ -567,7 +622,8 @@ INSERT INTO listing_medias (
     deleted
 )
 VALUES
-    ('710e8400-e29b-41d4-a716-446655440005', '610e8400-e29b-41d4-a716-446655440002', '510e8400-e29b-41d4-a716-446655440005', 1, TRUE, NOW(), NOW(), FALSE);
+    ('710e8400-e29b-41d4-a716-446655440005', '610e8400-e29b-41d4-a716-446655440002', '510e8400-e29b-41d4-a716-446655440005', 1, TRUE, NOW(), NOW(), FALSE),
+    ('710e8400-e29b-41d4-a716-446655440008', '610e8400-e29b-41d4-a716-446655440002', '510e8400-e29b-41d4-a716-446655440008', 2, FALSE, NOW(), NOW(), FALSE);
 
 -- Listing 3 Medias
 INSERT INTO listing_medias (
@@ -582,4 +638,5 @@ INSERT INTO listing_medias (
 )
 VALUES
     ('710e8400-e29b-41d4-a716-446655440006', '610e8400-e29b-41d4-a716-446655440003', '510e8400-e29b-41d4-a716-446655440006', 1, TRUE, NOW(), NOW(), FALSE),
-    ('710e8400-e29b-41d4-a716-446655440007', '610e8400-e29b-41d4-a716-446655440003', '510e8400-e29b-41d4-a716-446655440007', 2, FALSE, NOW(), NOW(), FALSE);
+    ('710e8400-e29b-41d4-a716-446655440007', '610e8400-e29b-41d4-a716-446655440003', '510e8400-e29b-41d4-a716-446655440007', 2, FALSE, NOW(), NOW(), FALSE),
+    ('710e8400-e29b-41d4-a716-446655440009', '610e8400-e29b-41d4-a716-446655440003', '510e8400-e29b-41d4-a716-446655440009', 3, FALSE, NOW(), NOW(), FALSE);
