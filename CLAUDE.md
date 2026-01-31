@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-RealVista Backend is a Spring Boot 3.5.9 application using Java 21 that implements Clean Architecture with Domain-Driven Design (DDD) principles. The application provides JWT-based authentication, user management, and a RESTful API with comprehensive CI/CD pipeline.
+RealVista Backend is a Spring Boot 3.5.9 application using Java 21 that implements Clean Architecture with Domain-Driven Design (DDD) principles. The application is a comprehensive real estate platform providing JWT-based authentication, property listings, agent management, billing/subscriptions, messaging, and tenant engagement with WebSocket support and Firebase push notifications.
 
 ## Essential Commands
 
@@ -68,22 +68,79 @@ mvn flyway:info
 
 The codebase follows **Clean Architecture** with four distinct layers. Dependencies flow inward - Domain layer has zero dependencies on outer layers.
 
+### Domain Bounded Contexts
+
+The application is organized into these core domains:
+
+1. **User Management** (`domain/user/`)
+   - User entities with role-based access
+   - User profiles and preferences
+   - Authentication and authorization
+
+2. **Property Agent System** (`domain/agent/`)
+   - Agent profiles and licensing
+   - Agent reviews and ratings
+   - Lead management for agents
+
+3. **Property Listings** (`domain/listing/`)
+   - Property listings with media
+   - Appointments and bookmarks
+   - Listing analytics and views
+
+4. **Billing & Subscriptions** (`domain/billing/`)
+   - Subscription management
+   - Boost packages for listing visibility
+   - Payment transactions
+
+5. **Messaging** (`domain/conversation/`)
+   - Real-time chat conversations
+   - Message persistence
+   - WebSocket-based communication
+
+6. **Tenant Engagement** (`domain/engagement/`)
+   - Rental applications
+   - Proposal management
+   - Application workflow
+
+7. **Customer Profiles** (`domain/profile/`)
+   - Saved searches
+   - Customer preferences
+   - Profile management
+
+8. **Property Management** (`domain/property/`)
+   - Property information
+   - Property details and attributes
+
+9. **Reporting** (`domain/report/`)
+   - Analytics and reporting entities
+
 ### Layer Structure
 
 ```
 src/main/java/com/sep/realvista/
 ├── domain/              # Core business logic (no external dependencies)
 │   ├── user/           # User domain: entity, repository interface, domain service
+│   ├── agent/          # Property agent entities (Agent, AgentLicense, Review, Lead)
+│   ├── listing/        # Property listings (Listing, Media, Appointment, Bookmark, Analytics)
+│   ├── billing/        # Subscriptions, boost packages, transactions
+│   ├── conversation/   # Chat messaging (Conversation, Message)
+│   ├── engagement/     # Tenant applications and proposals
+│   ├── profile/        # Customer profiles and saved searches
+│   ├── property/       # Property information entities
+│   ├── report/         # Reporting entities
 │   └── common/         # Shared: BaseEntity, value objects (Email), exceptions
 ├── application/         # Use cases & orchestration
 │   ├── user/           # UserApplicationService, DTOs, mappers
-│   └── auth/           # AuthService, authentication DTOs
+│   ├── auth/           # AuthService, authentication DTOs
+│   └── common/         # Shared DTOs (ApiResponse, ErrorResponse)
 ├── infrastructure/      # Technical implementation
-│   ├── config/         # Security, JPA, OpenAPI configs
+│   ├── config/         # Security, JPA, OpenAPI, WebSocket, Firebase configs
 │   ├── persistence/    # Repository implementations (UserRepositoryImpl)
-│   └── security/       # JWT, CustomUserDetailsService
+│   ├── security/       # JWT, OAuth2, password services
+│   ├── external/       # External service integrations (email)
+│   └── constants/      # Security constants
 └── presentation/        # REST API layer
-    └── rest/           # Controllers (UserController, AuthenticationController)
+    └── rest/           # Controllers (user, auth, notification)
 ```
 
 ### Key Architectural Patterns
@@ -94,6 +151,9 @@ src/main/java/com/sep/realvista/
    - `*ApplicationService` classes orchestrate use cases and transactions
    - `*DomainService` classes contain business logic that doesn't fit in entities
 4. **Soft Delete**: All entities extend `BaseEntity` with `deleted` flag - never hard-delete records
+5. **Dependency Injection**: Constructor injection throughout using Lombok's `@RequiredArgsConstructor`
+6. **Transaction Management**: `@Transactional` at application service layer, not domain or infrastructure
+7. **Validation**: Jakarta Bean Validation annotations on DTOs, custom validators in domain when needed
 
 ### Domain Entity Example
 
@@ -121,6 +181,18 @@ Configuration uses `spring-dotenv` to load `.env` files. Create a `.env` file in
 
 ### Test Configuration
 Tests use H2 in-memory database with PostgreSQL compatibility mode. Flyway migrations run automatically. Test-specific config in `src/test/resources/application-test.yml`.
+
+### Database Schema State
+Current database version: **V7** (7 migrations)
+- V1: Core tables (user, role, property, listing)
+- V2: Agent and customer tables (agent, customer, media, chat)
+- V3: Billing tables (subscription, boost_package, payment, analytics)
+- V4: Profile tables (saved_search, notification_preference, attribute)
+- V5: Engagement tables (application, proposal)
+- V6: Default roles seed data
+- V7: Sample users seed data
+
+All migrations are compatible with both PostgreSQL (production/dev) and H2 (testing).
 
 ## Testing Strategy
 
@@ -160,12 +232,14 @@ src/test/java/com/sep/realvista/
 - Role-based access control using `@PreAuthorize` annotations
 - Passwords hashed with BCrypt
 - Google OAuth2 integration with redirect at `/oauth2/authorization/google`
+- WebSocket authentication via `JwtHandshakeInterceptor`
 
 ### Key Security Classes
 - `SecurityConfig.java`: Main security configuration
 - `JwtService.java`: Token generation and validation
 - `JwtAuthenticationFilter.java`: Request interceptor
 - `OAuth2AuthenticationSuccessHandler.java`: OAuth2 callback handler
+- `PasswordService.java`: Custom password validation service
 
 ## Common Development Patterns
 
@@ -209,6 +283,9 @@ Follow this sequence to maintain Clean Architecture:
 - **Email validation**: Use `Email.of()` from domain layer - includes regex validation
 - **Exception handling**: Use domain exceptions (`ResourceNotFoundException`, `BusinessConflictException`)
 - **Logging**: Use `@Slf4j` with appropriate levels; trace ID is automatically included
+- **WebSocket security**: Always include JWT token in handshake: `/ws?token=YOUR_JWT`
+- **Firebase notifications**: Use `FirebaseService` for push notifications to mobile clients
+- **Email templates**: Place Thymeleaf templates in `src/main/resources/templates/`
 
 ## CI/CD Pipeline
 
@@ -279,3 +356,32 @@ All endpoints return `ApiResponse<T>` wrapper with:
 - `PUT /api/v1/users/{id}` - Update user profile
 - `PUT /api/v1/users/{id}/password` - Change password
 - `GET /oauth2/authorization/google` - Google OAuth2 login
+
+### WebSocket Support
+- WebSocket endpoint configured at `/ws`
+- Authentication via JWT token in handshake query parameter
+- Used for real-time messaging (conversations)
+- See `WebSocketConfig.java` and `JwtHandshakeInterceptor`
+
+## External Integrations
+
+### Firebase Cloud Messaging (FCM)
+- Push notifications for mobile clients
+- Configuration: `FirebaseConfig.java`
+- Requires: `FIREBASE_SERVICE_ACCOUNT_KEY` environment variable
+- Used for: Listing updates, messages, notifications
+
+### Email Service
+- SMTP-based email sending
+- Thymeleaf templates for HTML emails
+- Configuration: `EmailService.java` in `infrastructure/external/email/`
+- Used for: Notifications, confirmations
+
+### Database State
+- **7 Flyway migrations** covering all bounded contexts
+- See `src/main/resources/db/migration/` for schema evolution
+- Migrations include: Users, Agents, Listings, Billing, Conversations, Engagements, Profiles
+- Seed data: Default roles and sample users
+
+- When creating Pull Requests, always use 'develop' as the base branch.
+- When creating Pull Requests, follow the template in '.github/pull_request_template.md'

@@ -93,6 +93,12 @@ public class Listing extends BaseEntity {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    @Column(nullable = false, unique = true, length = 255)
+    private String slug;
+
+    @Column(nullable = false, length = 500)
+    private String name;
+
     public void submitForReview() {
         if (this.status != ListingStatus.DRAFT) {
             throw new IllegalStateException("Only draft listings can be submitted for review");
@@ -155,7 +161,7 @@ public class Listing extends BaseEntity {
         return this.listingType == ListingType.RENT;
     }
 
-    public void updatePricing(BigDecimal price, BigDecimal minPrice, 
+    public void updatePricing(BigDecimal price, BigDecimal minPrice,
                                BigDecimal maxPrice, Boolean isNegotiable) {
         if (price != null) {
             this.price = price;
@@ -165,6 +171,26 @@ public class Listing extends BaseEntity {
         if (isNegotiable != null) {
             this.isNegotiable = isNegotiable;
         }
+    }
+
+    /**
+     * Attach property entity for DTO mapping purposes.
+     * This does not persist changes - property relationship is managed by JPA.
+     *
+     * @param property the property entity to attach
+     */
+    public void attachProperty(Property property) {
+        this.property = property;
+    }
+
+    /**
+     * Attach user entity for DTO mapping purposes.
+     * This does not persist changes - user relationship is managed by JPA.
+     *
+     * @param user the user entity to attach
+     */
+    public void attachUser(User user) {
+        this.user = user;
     }
 
 }
