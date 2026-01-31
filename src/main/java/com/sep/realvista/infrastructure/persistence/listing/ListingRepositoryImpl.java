@@ -3,10 +3,11 @@ package com.sep.realvista.infrastructure.persistence.listing;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,7 +33,7 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
-    public List<Listing> findAll(Specification<Listing> spec) {
-        return jpaRepository.findAll(spec);
+    public Page<Listing> findAll(Specification<Listing> spec, Pageable pageable) {
+        return jpaRepository.findAll(spec, pageable);
     }
 }

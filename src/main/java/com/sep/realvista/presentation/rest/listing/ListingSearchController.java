@@ -1,21 +1,20 @@
 package com.sep.realvista.presentation.rest.listing;
 
 import com.sep.realvista.application.listing.ListingSearchService;
-import com.sep.realvista.presentation.rest.listing.dto.AdvancedSearchRequest;
-import com.sep.realvista.presentation.rest.listing.dto.ListingSearchResponse;
+import com.sep.realvista.application.listing.dto.AdvancedSearchRequest;
+import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/listings")
@@ -43,7 +42,9 @@ public class ListingSearchController {
             }
     )
     @PostMapping("/search")
-    public ResponseEntity<List<ListingSearchResponse>> search(@RequestBody AdvancedSearchRequest request) {
-        return ResponseEntity.ok(listingSearchService.search(request));
+    public ResponseEntity<Page<ListingSearchResponse>> search(
+            @RequestBody AdvancedSearchRequest request,
+            org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(listingSearchService.search(request, pageable));
     }
 }

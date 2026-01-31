@@ -1,4 +1,4 @@
-package com.sep.realvista.presentation.rest.listing.dto;
+package com.sep.realvista.application.listing.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;

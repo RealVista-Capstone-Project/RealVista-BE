@@ -193,7 +193,7 @@ public class GlobalExceptionHandler {
             IllegalArgumentException ex,
             HttpServletRequest request
     ) {
-        log.error("Illegal argument: {}", ex.getMessage());
+        log.error("Illegal argument: {}", ex.getMessage(), ex); // Added full stack trace
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
