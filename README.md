@@ -215,6 +215,12 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8081"
 ### Database Migration (Flyway)
 
 ```bash
+# 1. Stop PostgreSQL (if running locally)
+# Windows:
+net stop postgresql-x64-14
+# Or kill the process:
+taskkill /F /IM postgres.exe
+
 # Clean database (CAUTION: drops all tables)
 ./mvnw flyway:clean -Dflyway.cleanDisabled=false
 
