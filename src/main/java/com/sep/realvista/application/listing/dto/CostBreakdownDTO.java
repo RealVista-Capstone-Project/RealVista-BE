@@ -16,9 +16,9 @@ import java.util.List;
 @AllArgsConstructor
 public class CostBreakdownDTO {
     /**
-     * Base rental price formatted (e.g., "15,000,000 đ/tháng")
+     * Base rental price in VND (number)
      */
-    private String basePrice;
+    private Long basePrice;
 
     /**
      * Unit for base price (e.g., "đ/tháng")
@@ -31,9 +31,9 @@ public class CostBreakdownDTO {
     private List<PropertyFeeDTO> requiredFees;
 
     /**
-     * Subtotal of required fees formatted (e.g., "305,000 đ/tháng")
+     * Subtotal of required fees in VND (number)
      */
-    private String requiredFeesSubtotal;
+    private Long requiredFeesSubtotal;
 
     /**
      * List of optional fees that user can choose to pay
@@ -41,14 +41,14 @@ public class CostBreakdownDTO {
     private List<PropertyFeeDTO> optionalFees;
 
     /**
-     * Subtotal of optional fees formatted (e.g., "250,000 đ/tháng")
+     * Subtotal of optional fees in VND (number)
      */
-    private String optionalFeesSubtotal;
+    private Long optionalFeesSubtotal;
 
     /**
-     * Total monthly cost including base price and required fees only (e.g., "15,305,000 đ/tháng")
+     * Total monthly cost including base price and required fees only in VND (number)
      */
-    private String totalCost;
+    private Long totalCost;
 
     /**
      * Disclaimer text about estimated costs

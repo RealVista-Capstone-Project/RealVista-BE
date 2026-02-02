@@ -2,6 +2,7 @@ package com.sep.realvista.unit.application.listing.service;
 
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
+import com.sep.realvista.application.listing.service.CostBreakdownService;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
@@ -55,6 +56,9 @@ class ListingApplicationServiceUnitTest {
 
         @Mock
         private ListingMapper listingMapper;
+
+        @Mock
+        private CostBreakdownService costBreakdownService;
 
         @InjectMocks
         private ListingApplicationService listingApplicationService;
@@ -130,6 +134,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(new ArrayList<>());
                 when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
                                 .thenReturn(expectedResponse);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
                 ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
@@ -145,6 +150,7 @@ class ListingApplicationServiceUnitTest {
                 verify(listingMediaRepository).findByListingIdOrderByDisplayOrderAsc(listingId);
                 verify(propertyAttributeValueJpaRepository).findByPropertyIdWithAttribute(propertyId);
                 verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
+                verify(costBreakdownService).calculateCostBreakdown(any(Listing.class));
         }
 
         @Test
@@ -203,6 +209,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(new ArrayList<>());
                 when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
                                 .thenReturn(expectedResponse);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
                 ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
@@ -210,5 +217,6 @@ class ListingApplicationServiceUnitTest {
                 // Assert
                 assertThat(actualResponse).isNotNull();
                 verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
+                verify(costBreakdownService).calculateCostBreakdown(any(Listing.class));
         }
 }

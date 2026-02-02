@@ -10,10 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -26,16 +23,8 @@ public class CostBreakdownService {
 
         private final PropertyFeeServiceRepository propertyFeeServiceRepository;
 
-        private static final DecimalFormat CURRENCY_FORMAT;
         private static final String UNIT = "đ/tháng";
         private static final String DISCLAIMER = "* Các chi phí ước tính, thực tế có thể thay đổi";
-
-        static {
-                DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.US);
-                symbols.setGroupingSeparator(',');
-                symbols.setDecimalSeparator('.');
-                CURRENCY_FORMAT = new DecimalFormat("#,##0", symbols);
-        }
 
         /**
          * Calculate cost breakdown for a listing.
@@ -66,22 +55,22 @@ public class CostBreakdownService {
                 // Calculate totals
                 long basePrice = listing.getPrice().longValue();
                 long requiredFeesTotal = requiredFees.stream()
-                                .mapToLong(fee -> fee.getAmount() != null ? fee.getAmount().longValue() : 0)
+                                .mapToLong(fee -> fee.getAmount() != null ? fee.getAmount().longValue() : 0L)
                                 .sum();
                 long optionalFeesTotal = optionalFees.stream()
-                                .mapToLong(fee -> fee.getAmount() != null ? fee.getAmount().longValue() : 0)
+                                .mapToLong(fee -> fee.getAmount() != null ? fee.getAmount().longValue() : 0L)
                                 .sum();
                 long totalCost = basePrice + requiredFeesTotal;
 
                 // Build DTO
                 return CostBreakdownDTO.builder()
-                                .basePrice(formatCurrency(basePrice) + " " + UNIT)
+                                .basePrice(basePrice)
                                 .basePriceUnit(UNIT)
                                 .requiredFees(mapToDTO(requiredFees))
-                                .requiredFeesSubtotal(formatCurrency(requiredFeesTotal) + " " + UNIT)
+                                .requiredFeesSubtotal(requiredFeesTotal)
                                 .optionalFees(mapToDTO(optionalFees))
-                                .optionalFeesSubtotal(formatCurrency(optionalFeesTotal) + " " + UNIT)
-                                .totalCost(formatCurrency(totalCost) + " " + UNIT)
+                                .optionalFeesSubtotal(optionalFeesTotal)
+                                .totalCost(totalCost)
                                 .disclaimer(DISCLAIMER)
                                 .build();
         }
@@ -96,19 +85,9 @@ public class CostBreakdownService {
                 return fees.stream()
                                 .map(fee -> PropertyFeeDTO.builder()
                                                 .name(fee.getFeeName())
-                                                .amount(formatCurrency(fee.getAmount().longValue()) + " " + UNIT)
+                                                .amount(fee.getAmount() != null ? fee.getAmount().longValue() : 0L)
                                                 .feeType(fee.getFeeType().name())
                                                 .build())
                                 .collect(Collectors.toList());
-        }
-
-        /**
-         * Format amount as Vietnamese currency (e.g., "15,000,000").
-         *
-         * @param amount the amount to format
-         * @return formatted currency string
-         */
-        private String formatCurrency(long amount) {
-                return CURRENCY_FORMAT.format(amount);
         }
 }

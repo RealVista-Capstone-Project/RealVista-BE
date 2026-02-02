@@ -19,9 +19,9 @@ public class PropertyFeeDTO {
     private String name;
 
     /**
-     * Pre-formatted amount with unit (e.g., "250,000 đ/tháng")
+     * Fee amount in VND (number, not formatted)
      */
-    private String amount;
+    private Long amount;
 
     /**
      * Fee type enum value for frontend identification
