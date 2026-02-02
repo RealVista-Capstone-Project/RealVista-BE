@@ -1,5 +1,5 @@
--- V34__Insert_listing_price_histories.sql
--- Migration V34: Create 6 months of listing price history data
+-- V33__Insert_listing_price_histories.sql
+-- Migration V33: Create 6 months of listing price history data
 -- Each listing will have 1 price change record per month for the last 6 months
 
 -- ============================================================================

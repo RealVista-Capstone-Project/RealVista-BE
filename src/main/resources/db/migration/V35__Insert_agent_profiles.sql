@@ -1,5 +1,5 @@
--- V37__Insert_agent_profiles.sql
--- Migration V37: Insert agent profiles for all agents
+-- V35__Insert_agent_profiles.sql
+-- Migration V35: Insert agent profiles for all agents
 -- Uses consistent text values for bio, specialties, and service_areas
 
 -- ============================================================================

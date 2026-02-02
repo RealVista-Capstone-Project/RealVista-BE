@@ -1,5 +1,5 @@
--- V28__Add_unique_constraint_property_fee_services.sql
--- Migration V28: Add UNIQUE constraint to prevent duplicate fee types per property
+-- V9__Add_unique_constraint_property_fee_services.sql
+-- Migration V9: Add UNIQUE constraint to prevent duplicate fee types per property
 -- Ensures: A property cannot have two WATER fees, two ELECTRICITY fees, etc.
 --
 -- This constraint prevents data integrity issues where one property 

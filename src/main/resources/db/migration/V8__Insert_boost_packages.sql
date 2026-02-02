@@ -1,5 +1,5 @@
--- V35__Insert_boost_packages.sql
--- Migration V35: Insert boost package data
+-- V8__Insert_boost_packages.sql
+-- Migration V8: Insert boost package data
 -- Creates Basic, Premium, and Pro boost packages with different quotas and pricing
 
 -- ============================================================================

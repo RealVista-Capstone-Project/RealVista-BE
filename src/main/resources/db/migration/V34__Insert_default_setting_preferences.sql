@@ -1,5 +1,5 @@
--- V36__Insert_default_setting_preferences.sql
--- Migration V36: Insert default setting preferences for all non-admin users
+-- V34__Insert_default_setting_preferences.sql
+-- Migration V34: Insert default setting preferences for all non-admin users
 -- All options set to TRUE except event_preference which is NULL
 
 -- ============================================================================
