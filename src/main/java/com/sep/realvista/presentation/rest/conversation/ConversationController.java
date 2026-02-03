@@ -16,6 +16,8 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -65,5 +67,30 @@ public class ConversationController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Conversation created successfully", conversation));
+    }
+
+    @GetMapping("/users/{otherUserId}")
+    @Operation(summary = "Get conversation between users",
+            description = "Retrieves the conversation between the authenticated user "
+                    + "and another user specified by ID.")
+    public ResponseEntity<ApiResponse<ConversationResponse>> getConversationBetweenUsers(
+            @PathVariable UUID otherUserId,
+            Authentication authentication
+    ) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        String currentUserEmail = authentication.getName();
+        log.info("Getting conversation - traceId: {}, currentUser: {}, otherUser: {}",
+                traceId, currentUserEmail, otherUserId);
+
+        // Get current user ID from email
+        User currentUser = userDomainService.getUserByEmailOrThrow(currentUserEmail);
+
+        ConversationResponse conversation = conversationApplicationService
+                .getConversationBetweenUsers(currentUser.getUserId(), otherUserId);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Conversation retrieved successfully", conversation));
     }
 }

@@ -11,4 +11,6 @@ public interface UserConversationRepository {
     Optional<UserConversation> findByConversationIdAndUserId(UUID conversationId, UUID userId);
 
     List<UserConversation> findByUserId(UUID userId);
+
+    Optional<UUID> findConversationIdBetweenUsers(UUID userId1, UUID userId2);
 }

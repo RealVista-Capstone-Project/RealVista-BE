@@ -102,4 +102,40 @@ public class ConversationApplicationService {
 
         return conversationMapper.toResponse(savedConversation, targetUser);
     }
+
+    /**
+     * Get the conversation between two users.
+     *
+     * @param userId1 first user ID
+     * @param userId2 second user ID
+     * @return the conversation response with details
+     * @throws com.sep.realvista.domain.common.exception.ResourceNotFoundException
+     *         if conversation not found or users don't exist
+     */
+    @Transactional(readOnly = true)
+    public ConversationResponse getConversationBetweenUsers(UUID userId1, UUID userId2) {
+        log.info("Getting conversation between user {} and user {}", userId1, userId2);
+
+        // Validate both users exist
+        userDomainService.getUserOrThrow(userId1);
+        User otherUser = userDomainService.getUserOrThrow(userId2);
+
+        // Find conversation using optimized query
+        UUID conversationId = userConversationRepository
+                .findConversationIdBetweenUsers(userId1, userId2)
+                .orElseThrow(() -> new com.sep.realvista.domain.common.exception
+                        .ResourceNotFoundException(
+                                "Conversation",
+                                "No conversation found between users " + userId1
+                                        + " and " + userId2));
+
+        // Fetch conversation details
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Conversation not found: " + conversationId));
+
+        log.info("Found conversation with ID: {}", conversationId);
+
+        return conversationMapper.toResponse(conversation, otherUser);
+    }
 }
