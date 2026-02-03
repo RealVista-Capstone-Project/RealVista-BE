@@ -1,6 +1,7 @@
 package com.sep.realvista.infrastructure.config;
 
 import com.sep.realvista.infrastructure.constants.SecurityConstants;
+import com.sep.realvista.infrastructure.security.RestAuthenticationEntryPoint;
 import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
 import com.sep.realvista.infrastructure.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
@@ -32,17 +33,20 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final PasswordEncoder passwordEncoder;
+    private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthFilter,
             UserDetailsService userDetailsService,
             OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            RestAuthenticationEntryPoint restAuthenticationEntryPoint
     ) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
         this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
         this.passwordEncoder = passwordEncoder;
+        this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
     }
 
     @Bean
@@ -68,6 +72,9 @@ public class SecurityConfig {
                                 .baseUri(SecurityConstants.Url.LOGIN_GOOGLE)
                         )
                         .successHandler(oAuth2AuthenticationSuccessHandler)
+                )
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(restAuthenticationEntryPoint)
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
