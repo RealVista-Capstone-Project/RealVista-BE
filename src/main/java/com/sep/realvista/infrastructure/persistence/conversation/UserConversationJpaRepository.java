@@ -1,7 +1,6 @@
 package com.sep.realvista.infrastructure.persistence.conversation;
 
 import com.sep.realvista.domain.conversation.UserConversation;
-import com.sep.realvista.domain.conversation.UserConversationRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,16 +12,14 @@ import java.util.UUID;
 
 @Repository
 public interface UserConversationJpaRepository
-        extends JpaRepository<UserConversation, UUID>, UserConversationRepository {
+        extends JpaRepository<UserConversation, UUID> {
 
-    @Override
     @Query("SELECT uc FROM UserConversation uc "
             + "WHERE uc.conversationId = :conversationId AND uc.userId = :userId")
     Optional<UserConversation> findByConversationIdAndUserId(
             @Param("conversationId") UUID conversationId,
             @Param("userId") UUID userId);
 
-    @Override
     @Query("SELECT uc FROM UserConversation uc WHERE uc.userId = :userId")
     List<UserConversation> findByUserId(@Param("userId") UUID userId);
 
@@ -35,7 +32,6 @@ public interface UserConversationJpaRepository
      * @param userId2 second user ID
      * @return Optional containing the conversation ID if exists
      */
-    @Override
     @Query("SELECT uc1.conversationId FROM UserConversation uc1 "
             + "WHERE uc1.userId = :userId1 "
             + "AND EXISTS ("
