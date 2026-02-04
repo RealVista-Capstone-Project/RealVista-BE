@@ -56,7 +56,8 @@ public class ConversationApplicationService {
      * @param userId1 first user ID
      * @param userId2 second user ID will be the other user in the conversation (not the requester)
      * @return the conversation response with details
-     * @throws com.sep.realvista.domain.common.exception.ResourceNotFoundException if conversation not found or users don't exist
+     * @throws com.sep.realvista.domain.common.exception.ResourceNotFoundException
+     *         if conversation not found or users don't exist
      */
     @Transactional(readOnly = true)
     public ConversationResponse getConversationBetweenUsers(UUID userId1, UUID userId2) {
