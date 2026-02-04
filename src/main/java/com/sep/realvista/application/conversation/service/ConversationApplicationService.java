@@ -5,6 +5,8 @@ import com.sep.realvista.application.conversation.dto.CreateConversationRequest;
 import com.sep.realvista.application.conversation.dto.MessagePaginationResponse;
 import com.sep.realvista.application.conversation.dto.MessageResponse;
 import com.sep.realvista.application.conversation.dto.PaginationMetadata;
+import com.sep.realvista.application.conversation.dto.SendMessageRequest;
+import com.sep.realvista.application.conversation.dto.SendMessageResponse;
 import com.sep.realvista.application.conversation.dto.SenderInfo;
 import com.sep.realvista.application.conversation.mapper.ConversationMapper;
 import com.sep.realvista.application.conversation.mapper.MessageMapper;
@@ -292,5 +294,160 @@ public class ConversationApplicationService {
                 .nextCursor(nextCursor)
                 .prevCursor(prevCursor)
                 .build();
+    }
+
+    /**
+     * Send a message to a user. Creates conversation if it doesn't exist.
+     *
+     * @param senderId the sender user ID (authenticated user)
+     * @param request the send message request
+     * @return the send message response
+     */
+    @Transactional
+    public SendMessageResponse sendMessage(UUID senderId, SendMessageRequest request) {
+        log.info("Sending message from {} to {} - type: {}",
+                senderId, request.getRecipientUserId(), request.getMessageType());
+
+        // Validate sender and recipient
+        User sender = userDomainService.getUserOrThrow(senderId);
+        User recipient = userDomainService.getUserOrThrow(request.getRecipientUserId());
+
+        // Prevent self-messaging
+        if (senderId.equals(request.getRecipientUserId())) {
+            throw new BusinessConflictException(
+                    "Cannot send message to yourself",
+                    "SELF_MESSAGING_NOT_ALLOWED"
+            );
+        }
+
+        // Validate message content based on type
+        validateMessageContent(request);
+
+        // Find or create conversation
+        UUID conversationId;
+        boolean conversationCreated = false;
+
+        try {
+            // Try to find existing conversation
+            Conversation existingConversation = getConversationBetweenUsersDomain(
+                    senderId, request.getRecipientUserId());
+            conversationId = existingConversation.getConversationId();
+            log.info("Using existing conversation: {}", conversationId);
+        } catch (com.sep.realvista.domain.common.exception.ResourceNotFoundException e) {
+            // Conversation doesn't exist, create new one
+            Conversation newConversation = Conversation.create();
+            Conversation savedConversation = conversationRepository.save(newConversation);
+            conversationId = savedConversation.getConversationId();
+
+            // Create UserConversation entries for both users
+            UserConversation senderUserConv = UserConversation.create(
+                    conversationId, senderId);
+            UserConversation recipientUserConv = UserConversation.create(
+                    conversationId, request.getRecipientUserId());
+
+            userConversationRepository.save(senderUserConv);
+            userConversationRepository.save(recipientUserConv);
+
+            conversationCreated = true;
+            log.info("Created new conversation: {}", conversationId);
+        }
+
+        // Validate reply message if provided
+        if (request.getReplyToMessageId() != null) {
+            Message replyToMessage = messageRepository.findById(request.getReplyToMessageId())
+                    .orElseThrow(() -> new com.sep.realvista.domain.common.exception
+                            .ResourceNotFoundException(
+                                    "Message",
+                                    "Reply message not found: " + request.getReplyToMessageId()));
+
+            // Validate reply message belongs to same conversation
+            if (!replyToMessage.getConversationId().equals(conversationId)) {
+                throw new BusinessConflictException(
+                        "Reply message must belong to the same conversation",
+                        "INVALID_REPLY_MESSAGE"
+                );
+            }
+        }
+
+        // Create message entity
+        Message message = Message.builder()
+                .conversationId(conversationId)
+                .senderId(senderId)
+                .messageType(request.getMessageType())
+                .content(request.getContent())
+                .metadata(request.getMetadata())
+                .replyToMessageId(request.getReplyToMessageId())
+                .build();
+
+        // Save message
+        Message savedMessage = messageRepository.save(message);
+
+        log.info("Message sent successfully - messageId: {}, conversationId: {}, created: {}",
+                savedMessage.getMessageId(), conversationId, conversationCreated);
+
+        // Build response
+        return SendMessageResponse.builder()
+                .messageId(savedMessage.getMessageId())
+                .conversationId(conversationId)
+                .sender(messageMapper.toSenderInfo(sender))
+                .recipientUserId(request.getRecipientUserId())
+                .messageType(savedMessage.getMessageType())
+                .content(savedMessage.getContent())
+                .metadata(savedMessage.getMetadata())
+                .replyToMessageId(savedMessage.getReplyToMessageId())
+                .createdAt(savedMessage.getCreatedAt())
+                .conversationCreated(conversationCreated)
+                .build();
+    }
+
+    private void validateMessageContent(SendMessageRequest request) {
+        switch (request.getMessageType()) {
+            case TEXT:
+                if (request.getContent() == null || request.getContent().isBlank()) {
+                    throw new BusinessConflictException(
+                            "Content is required for TEXT messages",
+                            "MISSING_MESSAGE_CONTENT"
+                    );
+                }
+                break;
+            case LISTING_CARD:
+            case CONTRACT_CARD:
+                if (request.getMetadata() == null || request.getMetadata().isBlank()) {
+                    throw new BusinessConflictException(
+                            "Metadata is required for " + request.getMessageType() + " messages",
+                            "MISSING_MESSAGE_METADATA"
+                    );
+                }
+                break;
+            case SYSTEM:
+                throw new BusinessConflictException(
+                        "Cannot send SYSTEM messages via API",
+                        "SYSTEM_MESSAGE_NOT_ALLOWED"
+                );
+            default:
+                throw new BusinessConflictException(
+                        "Unsupported message type: " + request.getMessageType(),
+                        "UNSUPPORTED_MESSAGE_TYPE"
+                );
+        }
+    }
+
+    private Conversation getConversationBetweenUsersDomain(
+            UUID userId1,
+            UUID userId2
+    ) {
+        // Reuse existing method but return domain entity
+        UUID conversationId = userConversationRepository
+                .findConversationIdBetweenUsers(userId1, userId2)
+                .orElseThrow(() -> new com.sep.realvista.domain.common.exception
+                        .ResourceNotFoundException(
+                                "Conversation",
+                                "No conversation found between users"));
+
+        return conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new com.sep.realvista.domain.common.exception
+                        .ResourceNotFoundException(
+                                "Conversation",
+                                "Conversation not found: " + conversationId));
     }
 }

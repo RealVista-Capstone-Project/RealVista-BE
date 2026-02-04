@@ -4,6 +4,8 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.conversation.dto.ConversationResponse;
 import com.sep.realvista.application.conversation.dto.CreateConversationRequest;
 import com.sep.realvista.application.conversation.dto.MessagePaginationResponse;
+import com.sep.realvista.application.conversation.dto.SendMessageRequest;
+import com.sep.realvista.application.conversation.dto.SendMessageResponse;
 import com.sep.realvista.application.conversation.service.ConversationApplicationService;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
@@ -129,5 +131,34 @@ public class ConversationController {
 
         return ResponseEntity.ok(
                 ApiResponse.success("Messages retrieved successfully", response));
+    }
+
+    @PostMapping("/messages")
+    @Operation(summary = "Send a message",
+            description = "Sends a message to a user. "
+                    + "If no conversation exists between users, "
+                    + "it will be created automatically. "
+                    + "Supports TEXT, LISTING_CARD, and CONTRACT_CARD message types.")
+    public ResponseEntity<ApiResponse<SendMessageResponse>> sendMessage(
+            @Valid @RequestBody SendMessageRequest request,
+            Authentication authentication
+    ) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        String currentUserEmail = authentication.getName();
+        log.info("Send message request - traceId: {}, from: {}, to: {}, type: {}",
+                traceId, currentUserEmail, request.getRecipientUserId(),
+                request.getMessageType());
+
+        // Get current user ID from email
+        User currentUser = userDomainService.getUserByEmailOrThrow(currentUserEmail);
+
+        SendMessageResponse response = conversationApplicationService
+                .sendMessage(currentUser.getUserId(), request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Message sent successfully", response));
     }
 }

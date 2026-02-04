@@ -2,6 +2,7 @@ package com.sep.realvista.domain.conversation;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -37,4 +38,20 @@ public interface MessageRepository {
      * @return list of messages ordered by created_at ASC
      */
     List<Message> findMessagesAfterCursor(UUID conversationId, LocalDateTime cursor, int limit);
+
+    /**
+     * Save a message.
+     *
+     * @param message the message to save
+     * @return the saved message
+     */
+    Message save(Message message);
+
+    /**
+     * Find a message by ID.
+     *
+     * @param messageId the message ID
+     * @return optional containing the message if found
+     */
+    Optional<Message> findById(UUID messageId);
 }
