@@ -282,7 +282,7 @@ public class ConversationApplicationService {
                     : null;
 
             // prev_cursor points to the newest message (for loading newer)
-            Message newestMessage = messages.get(0);
+            Message newestMessage = messages.getFirst();
             prevCursor = before != null || after != null
                     ? newestMessage.getCreatedAt().format(ISO_FORMATTER)
                     : null;
@@ -313,6 +313,7 @@ public class ConversationApplicationService {
         User recipient = userDomainService.getUserOrThrow(request.getRecipientUserId());
 
         // Prevent self-messaging
+        // TODO: Consider allowing self-messaging for notes in future
         if (senderId.equals(request.getRecipientUserId())) {
             throw new BusinessConflictException(
                     "Cannot send message to yourself",
