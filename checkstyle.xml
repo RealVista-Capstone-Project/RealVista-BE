@@ -84,7 +84,6 @@
 
         <!-- Miscellaneous other checks -->
         <module name="ArrayTypeStyle"/>
-        <module name="TodoComment"/>
         <module name="UpperEll"/>
     </module>
 </module>
