@@ -1,7 +1,8 @@
-package com.sep.realvista.application.conversation.dto;
+package com.sep.realvista.application.conversation.dto.response;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.sep.realvista.application.conversation.dto.PaginationMetadata;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

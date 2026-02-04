@@ -1,6 +1,6 @@
 package com.sep.realvista.application.conversation.mapper;
 
-import com.sep.realvista.application.conversation.dto.MessageResponse;
+import com.sep.realvista.application.conversation.dto.response.MessageResponse;
 import com.sep.realvista.application.conversation.dto.SenderInfo;
 import com.sep.realvista.domain.conversation.Message;
 import com.sep.realvista.domain.user.User;

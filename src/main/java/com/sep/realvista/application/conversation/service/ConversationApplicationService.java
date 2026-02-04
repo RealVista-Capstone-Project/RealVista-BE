@@ -1,12 +1,11 @@
 package com.sep.realvista.application.conversation.service;
 
-import com.sep.realvista.application.conversation.dto.ConversationResponse;
-import com.sep.realvista.application.conversation.dto.CreateConversationRequest;
-import com.sep.realvista.application.conversation.dto.MessagePaginationResponse;
-import com.sep.realvista.application.conversation.dto.MessageResponse;
+import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
+import com.sep.realvista.application.conversation.dto.response.MessagePaginationResponse;
+import com.sep.realvista.application.conversation.dto.response.MessageResponse;
 import com.sep.realvista.application.conversation.dto.PaginationMetadata;
-import com.sep.realvista.application.conversation.dto.SendMessageRequest;
-import com.sep.realvista.application.conversation.dto.SendMessageResponse;
+import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
+import com.sep.realvista.application.conversation.dto.response.SendMessageResponse;
 import com.sep.realvista.application.conversation.dto.SenderInfo;
 import com.sep.realvista.application.conversation.mapper.ConversationMapper;
 import com.sep.realvista.application.conversation.mapper.MessageMapper;
@@ -41,6 +40,9 @@ import java.util.UUID;
 @Slf4j
 public class ConversationApplicationService {
 
+    private static final int MAX_LIMIT = 100;
+    private static final int DEFAULT_LIMIT = 50;
+    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
     private final ConversationRepository conversationRepository;
     private final UserConversationRepository userConversationRepository;
     private final MessageRepository messageRepository;
@@ -48,88 +50,13 @@ public class ConversationApplicationService {
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;
 
-    private static final int MAX_LIMIT = 100;
-    private static final int DEFAULT_LIMIT = 50;
-    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
-
-    /**
-     * Create a new 1-1 conversation between the current user and target user.
-     * If a conversation already exists between these users, returns the existing conversation.
-     *
-     * @param currentUserId the ID of the current user
-     * @param request the create conversation request containing target user ID
-     * @return the conversation response with details
-     * @throws BusinessConflictException if user tries to create conversation with themselves
-     */
-    public ConversationResponse createConversation(UUID currentUserId, CreateConversationRequest request) {
-        log.info("Creating conversation between user {} and user {}", currentUserId, request.getTargetUserId());
-
-        // Validate that user is not creating conversation with themselves
-        if (currentUserId.equals(request.getTargetUserId())) {
-            throw new BusinessConflictException(
-                    "Cannot create conversation with yourself",
-                    "SELF_CONVERSATION_NOT_ALLOWED"
-            );
-        }
-
-        // Validate target user exists
-        User targetUser = userDomainService.getUserOrThrow(request.getTargetUserId());
-        
-        // Validate current user exists
-        userDomainService.getUserOrThrow(currentUserId);
-
-        // Check if conversation already exists between these users
-        List<UserConversation> currentUserConversations = userConversationRepository.findByUserId(currentUserId);
-        
-        for (UserConversation uc : currentUserConversations) {
-            // Check if the other user in this conversation is the target user
-            List<UserConversation> conversationParticipants = 
-                    userConversationRepository.findByUserId(request.getTargetUserId());
-            
-            for (UserConversation targetUc : conversationParticipants) {
-                if (uc.getConversationId().equals(targetUc.getConversationId())) {
-                    log.info("Conversation already exists with ID: {}",
-                            uc.getConversationId());
-                    Conversation existingConversation = conversationRepository
-                            .findById(uc.getConversationId())
-                            .orElseThrow(() -> new IllegalStateException(
-                                    "Conversation not found: " + uc.getConversationId()));
-                    return conversationMapper.toResponse(existingConversation, targetUser);
-                }
-            }
-        }
-
-        // Create new conversation
-        Conversation conversation = Conversation.create();
-        Conversation savedConversation = conversationRepository.save(conversation);
-        log.info("Created conversation with ID: {}", savedConversation.getConversationId());
-
-        // Create UserConversation entries for both participants
-        UserConversation currentUserConversation = UserConversation.create(
-                savedConversation.getConversationId(),
-                currentUserId
-        );
-        userConversationRepository.save(currentUserConversation);
-
-        UserConversation targetUserConversation = UserConversation.create(
-                savedConversation.getConversationId(),
-                request.getTargetUserId()
-        );
-        userConversationRepository.save(targetUserConversation);
-
-        log.info("Created UserConversation entries for users {} and {}", currentUserId, request.getTargetUserId());
-
-        return conversationMapper.toResponse(savedConversation, targetUser);
-    }
-
     /**
      * Get the conversation between two users.
      *
      * @param userId1 first user ID
      * @param userId2 second user ID
      * @return the conversation response with details
-     * @throws com.sep.realvista.domain.common.exception.ResourceNotFoundException
-     *         if conversation not found or users don't exist
+     * @throws com.sep.realvista.domain.common.exception.ResourceNotFoundException if conversation not found or users don't exist
      */
     @Transactional(readOnly = true)
     public ConversationResponse getConversationBetweenUsers(UUID userId1, UUID userId2) {
@@ -144,9 +71,9 @@ public class ConversationApplicationService {
                 .findConversationIdBetweenUsers(userId1, userId2)
                 .orElseThrow(() -> new com.sep.realvista.domain.common.exception
                         .ResourceNotFoundException(
-                                "Conversation",
-                                "No conversation found between users " + userId1
-                                        + " and " + userId2));
+                        "Conversation",
+                        "No conversation found between users " + userId1
+                                + " and " + userId2));
 
         // Fetch conversation details
         Conversation conversation = conversationRepository.findById(conversationId)
@@ -164,9 +91,9 @@ public class ConversationApplicationService {
      * and newer messages (refresh).
      *
      * @param conversationId the conversation ID
-     * @param limit number of messages to return (max 100)
-     * @param before cursor for loading older messages
-     * @param after cursor for loading newer messages
+     * @param limit          number of messages to return (max 100)
+     * @param before         cursor for loading older messages
+     * @param after          cursor for loading newer messages
      * @return paginated message response with cursor metadata
      */
     @Transactional(readOnly = true)
@@ -183,8 +110,8 @@ public class ConversationApplicationService {
         conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new com.sep.realvista.domain.common.exception
                         .ResourceNotFoundException(
-                                "Conversation",
-                                "Conversation not found: " + conversationId));
+                        "Conversation",
+                        "Conversation not found: " + conversationId));
 
         // Validate cursor usage (cannot use both before and after)
         if (before != null && after != null) {
@@ -300,7 +227,7 @@ public class ConversationApplicationService {
      * Send a message to a user. Creates conversation if it doesn't exist.
      *
      * @param senderId the sender user ID (authenticated user)
-     * @param request the send message request
+     * @param request  the send message request
      * @return the send message response
      */
     @Transactional
@@ -358,8 +285,8 @@ public class ConversationApplicationService {
             Message replyToMessage = messageRepository.findById(request.getReplyToMessageId())
                     .orElseThrow(() -> new com.sep.realvista.domain.common.exception
                             .ResourceNotFoundException(
-                                    "Message",
-                                    "Reply message not found: " + request.getReplyToMessageId()));
+                            "Message",
+                            "Reply message not found: " + request.getReplyToMessageId()));
 
             // Validate reply message belongs to same conversation
             if (!replyToMessage.getConversationId().equals(conversationId)) {
@@ -442,13 +369,13 @@ public class ConversationApplicationService {
                 .findConversationIdBetweenUsers(userId1, userId2)
                 .orElseThrow(() -> new com.sep.realvista.domain.common.exception
                         .ResourceNotFoundException(
-                                "Conversation",
-                                "No conversation found between users"));
+                        "Conversation",
+                        "No conversation found between users"));
 
         return conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new com.sep.realvista.domain.common.exception
                         .ResourceNotFoundException(
-                                "Conversation",
-                                "Conversation not found: " + conversationId));
+                        "Conversation",
+                        "Conversation not found: " + conversationId));
     }
 }

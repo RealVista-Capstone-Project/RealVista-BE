@@ -1,6 +1,6 @@
 package com.sep.realvista.application.conversation.mapper;
 
-import com.sep.realvista.application.conversation.dto.ConversationResponse;
+import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
 import com.sep.realvista.domain.conversation.Conversation;
 import com.sep.realvista.domain.user.User;
 import org.mapstruct.Mapper;

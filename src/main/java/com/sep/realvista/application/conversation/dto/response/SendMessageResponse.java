@@ -1,35 +1,35 @@
-package com.sep.realvista.application.conversation.dto;
+package com.sep.realvista.application.conversation.dto.response;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.sep.realvista.application.conversation.dto.SenderInfo;
 import com.sep.realvista.domain.conversation.MessageType;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Request DTO for sending a message.
+ * Response DTO for sent message.
  */
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SendMessageRequest {
+public class SendMessageResponse {
 
-    @NotNull(message = "Recipient user ID is required")
+    private UUID messageId;
+    private UUID conversationId;
+    private SenderInfo sender;
     private UUID recipientUserId;
-
-    @NotNull(message = "Message type is required")
     private MessageType messageType;
-
     private String content;
-
     private String metadata;
-
     private UUID replyToMessageId;
+    private LocalDateTime createdAt;
+    private boolean conversationCreated;
 }

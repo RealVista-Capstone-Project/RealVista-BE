@@ -1,10 +1,10 @@
 package com.sep.realvista.presentation.rest.conversation;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
-import com.sep.realvista.application.conversation.dto.ConversationResponse;
-import com.sep.realvista.application.conversation.dto.MessagePaginationResponse;
-import com.sep.realvista.application.conversation.dto.SendMessageRequest;
-import com.sep.realvista.application.conversation.dto.SendMessageResponse;
+import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
+import com.sep.realvista.application.conversation.dto.response.MessagePaginationResponse;
+import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
+import com.sep.realvista.application.conversation.dto.response.SendMessageResponse;
 import com.sep.realvista.application.conversation.service.ConversationApplicationService;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.presentation.common.util.ControllerUtils;

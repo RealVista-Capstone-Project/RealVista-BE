@@ -1,4 +1,4 @@
-package com.sep.realvista.application.conversation.dto;
+package com.sep.realvista.application.conversation.dto.request;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
