@@ -3,6 +3,7 @@ package com.sep.realvista.presentation.rest.conversation;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.conversation.dto.ConversationResponse;
 import com.sep.realvista.application.conversation.dto.CreateConversationRequest;
+import com.sep.realvista.application.conversation.dto.MessagePaginationResponse;
 import com.sep.realvista.application.conversation.service.ConversationApplicationService;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
@@ -15,13 +16,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDateTime;
 
 import java.util.UUID;
 
@@ -92,5 +97,37 @@ public class ConversationController {
 
         return ResponseEntity.ok(
                 ApiResponse.success("Conversation retrieved successfully", conversation));
+    }
+
+    @GetMapping("/{conversationId}/messages")
+    @Operation(summary = "Get messages from a conversation",
+            description = "Retrieves messages using cursor-based pagination. "
+                    + "Messages are returned in reverse chronological order (newest first). "
+                    + "Use 'before' cursor to load older messages, 'after' cursor to load newer.")
+    public ResponseEntity<ApiResponse<MessagePaginationResponse>> getConversationMessages(
+            @PathVariable UUID conversationId,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime before,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime after,
+            Authentication authentication
+    ) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        String currentUserEmail = authentication.getName();
+        log.info("Getting messages - traceId: {}, conversationId: {}, "
+                        + "limit: {}, before: {}, after: {}, user: {}",
+                traceId, conversationId, limit, before, after, currentUserEmail);
+
+        // Verify user is authenticated
+        userDomainService.getUserByEmailOrThrow(currentUserEmail);
+
+        MessagePaginationResponse response = conversationApplicationService
+                .getConversationMessages(conversationId, limit, before, after);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Messages retrieved successfully", response));
     }
 }
