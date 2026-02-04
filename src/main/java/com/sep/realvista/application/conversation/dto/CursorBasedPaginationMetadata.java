@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PaginationMetadata {
+public class CursorBasedPaginationMetadata {
 
     private int limit;
     private boolean hasMore;

@@ -3,7 +3,7 @@ package com.sep.realvista.application.conversation.service;
 import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
 import com.sep.realvista.application.conversation.dto.response.MessagePaginationResponse;
 import com.sep.realvista.application.conversation.dto.response.MessageResponse;
-import com.sep.realvista.application.conversation.dto.PaginationMetadata;
+import com.sep.realvista.application.conversation.dto.CursorBasedPaginationMetadata;
 import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
 import com.sep.realvista.application.conversation.dto.response.SendMessageResponse;
 import com.sep.realvista.application.conversation.dto.SenderInfo;
@@ -54,7 +54,7 @@ public class ConversationApplicationService {
      * Get the conversation between two users.
      *
      * @param userId1 first user ID
-     * @param userId2 second user ID
+     * @param userId2 second user ID will be the other user in the conversation (not the requester)
      * @return the conversation response with details
      * @throws com.sep.realvista.domain.common.exception.ResourceNotFoundException if conversation not found or users don't exist
      */
@@ -174,7 +174,7 @@ public class ConversationApplicationService {
                 .toList();
 
         // Build pagination metadata
-        PaginationMetadata pagination = buildPaginationMetadata(
+        CursorBasedPaginationMetadata pagination = buildPaginationMetadata(
                 effectiveLimit,
                 hasMore,
                 trimmedMessages,
@@ -191,7 +191,7 @@ public class ConversationApplicationService {
                 .build();
     }
 
-    private PaginationMetadata buildPaginationMetadata(
+    private CursorBasedPaginationMetadata buildPaginationMetadata(
             int limit,
             boolean hasMore,
             List<Message> messages,
@@ -203,7 +203,7 @@ public class ConversationApplicationService {
 
         if (!messages.isEmpty()) {
             // next_cursor points to the oldest message (for loading older)
-            Message oldestMessage = messages.get(messages.size() - 1);
+            Message oldestMessage = messages.getLast();
             nextCursor = hasMore && after == null
                     ? oldestMessage.getCreatedAt().format(ISO_FORMATTER)
                     : null;
@@ -215,7 +215,7 @@ public class ConversationApplicationService {
                     : null;
         }
 
-        return PaginationMetadata.builder()
+        return CursorBasedPaginationMetadata.builder()
                 .limit(limit)
                 .hasMore(hasMore)
                 .nextCursor(nextCursor)
@@ -237,7 +237,7 @@ public class ConversationApplicationService {
 
         // Validate sender and recipient
         User sender = userDomainService.getUserOrThrow(senderId);
-        User recipient = userDomainService.getUserOrThrow(request.getRecipientUserId());
+        userDomainService.getUserOrThrow(request.getRecipientUserId());
 
         // Prevent self-messaging
         // TODO: Consider allowing self-messaging for notes in future

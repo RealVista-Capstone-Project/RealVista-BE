@@ -2,7 +2,7 @@ package com.sep.realvista.application.conversation.dto.response;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import com.sep.realvista.application.conversation.dto.PaginationMetadata;
+import com.sep.realvista.application.conversation.dto.CursorBasedPaginationMetadata;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,5 +21,5 @@ import java.util.List;
 public class MessagePaginationResponse {
 
     private List<MessageResponse> messages;
-    private PaginationMetadata pagination;
+    private CursorBasedPaginationMetadata pagination;
 }
