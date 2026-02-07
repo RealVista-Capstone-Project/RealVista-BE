@@ -1,21 +1,20 @@
 package com.sep.realvista.application.conversation.service;
 
+import com.sep.realvista.application.conversation.dto.CursorBasedPaginationMetadata;
+import com.sep.realvista.application.conversation.dto.SenderInfo;
+import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
 import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
 import com.sep.realvista.application.conversation.dto.response.MessagePaginationResponse;
 import com.sep.realvista.application.conversation.dto.response.MessageResponse;
-import com.sep.realvista.application.conversation.dto.CursorBasedPaginationMetadata;
-import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
 import com.sep.realvista.application.conversation.dto.response.SendMessageResponse;
-import com.sep.realvista.application.conversation.dto.SenderInfo;
 import com.sep.realvista.application.conversation.mapper.ConversationMapper;
 import com.sep.realvista.application.conversation.mapper.MessageMapper;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.conversation.Conversation;
+import com.sep.realvista.domain.conversation.ConversationDomainService;
 import com.sep.realvista.domain.conversation.ConversationRepository;
 import com.sep.realvista.domain.conversation.Message;
 import com.sep.realvista.domain.conversation.MessageRepository;
-import com.sep.realvista.domain.conversation.UserConversation;
-import com.sep.realvista.domain.conversation.UserConversationRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import lombok.RequiredArgsConstructor;
@@ -44,9 +43,9 @@ public class ConversationApplicationService {
     private static final int DEFAULT_LIMIT = 50;
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
     private final ConversationRepository conversationRepository;
-    private final UserConversationRepository userConversationRepository;
     private final MessageRepository messageRepository;
     private final UserDomainService userDomainService;
+    private final ConversationDomainService conversationDomainService;
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;
 
@@ -56,8 +55,7 @@ public class ConversationApplicationService {
      * @param userId1 first user ID
      * @param userId2 second user ID will be the other user in the conversation (not the requester)
      * @return the conversation response with details
-     * @throws com.sep.realvista.domain.common.exception.ResourceNotFoundException
-     *         if conversation not found or users don't exist
+     * @throws com.sep.realvista.domain.common.exception.ResourceNotFoundException if conversation not found or users don't exist
      */
     @Transactional(readOnly = true)
     public ConversationResponse getConversationBetweenUsers(UUID userId1, UUID userId2) {
@@ -67,21 +65,11 @@ public class ConversationApplicationService {
         userDomainService.getUserOrThrow(userId1);
         User otherUser = userDomainService.getUserOrThrow(userId2);
 
-        // Find conversation using optimized query
-        UUID conversationId = userConversationRepository
-                .findConversationIdBetweenUsers(userId1, userId2)
-                .orElseThrow(() -> new com.sep.realvista.domain.common.exception
-                        .ResourceNotFoundException(
-                        "Conversation",
-                        "No conversation found between users " + userId1
-                                + " and " + userId2));
+        // Find conversation using domain service
+        Conversation conversation = conversationDomainService
+                .findConversationBetweenUsers(userId1, userId2);
 
-        // Fetch conversation details
-        Conversation conversation = conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Conversation not found: " + conversationId));
-
-        log.info("Found conversation with ID: {}", conversationId);
+        log.info("Found conversation with ID: {}", conversation.getConversationId());
 
         return conversationMapper.toResponse(conversation, otherUser);
     }
@@ -249,53 +237,26 @@ public class ConversationApplicationService {
             );
         }
 
-        // Validate message content based on type
-        validateMessageContent(request);
+        // Validate message content based on type (delegate to domain service)
+        conversationDomainService.validateMessageContent(
+                request.getMessageType(),
+                request.getContent(),
+                request.getMetadata()
+        );
 
-        // Find or create conversation
-        UUID conversationId;
-        boolean conversationCreated = false;
+        // Find or create conversation (delegate to domain service)
+        ConversationDomainService.ConversationResult result =
+                conversationDomainService.findOrCreateConversation(
+                        senderId, request.getRecipientUserId());
+        UUID conversationId = result.conversation().getConversationId();
+        boolean conversationCreated = result.created();
 
-        try {
-            // Try to find existing conversation
-            Conversation existingConversation = getConversationBetweenUsersDomain(
-                    senderId, request.getRecipientUserId());
-            conversationId = existingConversation.getConversationId();
-            log.info("Using existing conversation: {}", conversationId);
-        } catch (com.sep.realvista.domain.common.exception.ResourceNotFoundException e) {
-            // Conversation doesn't exist, create new one
-            Conversation newConversation = Conversation.create();
-            Conversation savedConversation = conversationRepository.save(newConversation);
-            conversationId = savedConversation.getConversationId();
-
-            // Create UserConversation entries for both users
-            UserConversation senderUserConv = UserConversation.create(
-                    conversationId, senderId);
-            UserConversation recipientUserConv = UserConversation.create(
-                    conversationId, request.getRecipientUserId());
-
-            userConversationRepository.save(senderUserConv);
-            userConversationRepository.save(recipientUserConv);
-
-            conversationCreated = true;
-            log.info("Created new conversation: {}", conversationId);
-        }
-
-        // Validate reply message if provided
+        // Validate reply message if provided (delegate to domain service)
         if (request.getReplyToMessageId() != null) {
-            Message replyToMessage = messageRepository.findById(request.getReplyToMessageId())
-                    .orElseThrow(() -> new com.sep.realvista.domain.common.exception
-                            .ResourceNotFoundException(
-                            "Message",
-                            "Reply message not found: " + request.getReplyToMessageId()));
-
-            // Validate reply message belongs to same conversation
-            if (!replyToMessage.getConversationId().equals(conversationId)) {
-                throw new BusinessConflictException(
-                        "Reply message must belong to the same conversation",
-                        "INVALID_REPLY_MESSAGE"
-                );
-            }
+            conversationDomainService.validateReplyMessage(
+                    request.getReplyToMessageId(),
+                    conversationId
+            );
         }
 
         // Create message entity
@@ -329,54 +290,5 @@ public class ConversationApplicationService {
                 .build();
     }
 
-    private void validateMessageContent(SendMessageRequest request) {
-        switch (request.getMessageType()) {
-            case TEXT:
-                if (request.getContent() == null || request.getContent().isBlank()) {
-                    throw new BusinessConflictException(
-                            "Content is required for TEXT messages",
-                            "MISSING_MESSAGE_CONTENT"
-                    );
-                }
-                break;
-            case LISTING_CARD:
-            case CONTRACT_CARD:
-                if (request.getMetadata() == null || request.getMetadata().isBlank()) {
-                    throw new BusinessConflictException(
-                            "Metadata is required for " + request.getMessageType() + " messages",
-                            "MISSING_MESSAGE_METADATA"
-                    );
-                }
-                break;
-            case SYSTEM:
-                throw new BusinessConflictException(
-                        "Cannot send SYSTEM messages via API",
-                        "SYSTEM_MESSAGE_NOT_ALLOWED"
-                );
-            default:
-                throw new BusinessConflictException(
-                        "Unsupported message type: " + request.getMessageType(),
-                        "UNSUPPORTED_MESSAGE_TYPE"
-                );
-        }
-    }
 
-    private Conversation getConversationBetweenUsersDomain(
-            UUID userId1,
-            UUID userId2
-    ) {
-        // Reuse existing method but return domain entity
-        UUID conversationId = userConversationRepository
-                .findConversationIdBetweenUsers(userId1, userId2)
-                .orElseThrow(() -> new com.sep.realvista.domain.common.exception
-                        .ResourceNotFoundException(
-                        "Conversation",
-                        "No conversation found between users"));
-
-        return conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new com.sep.realvista.domain.common.exception
-                        .ResourceNotFoundException(
-                        "Conversation",
-                        "Conversation not found: " + conversationId));
-    }
 }
