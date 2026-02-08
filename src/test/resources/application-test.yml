@@ -23,16 +23,14 @@ spring:
     properties:
       hibernate:
         format_sql: false
+        # Enable H2 SQL generation from JPA entities
+        hbm2ddl:
+          auto: create-drop
 
-  # Flyway Configuration
+  # Flyway Configuration - Disabled for tests
+  # Tests use JPA's create-drop to generate schema from entities
   flyway:
-    enabled: true
-    # Use test-specific migrations that are H2-compatible
-    locations: classpath:db/migration
-    # Clean database between tests (optional)
-    clean-disabled: false
-    # Validate migrations
-    validate-on-migrate: true
+    enabled: false
 
   # Security Configuration for Tests
   security:
@@ -47,7 +45,7 @@ spring:
           google:
             client-id: test-google-client-id
             client-secret: test-google-client-secret
-            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+            redirect-uri: '{baseUrl}/login/oauth2/code/google'
             scope: profile,email
         provider:
           google:
@@ -77,4 +75,3 @@ spring:
 management:
   security:
     enabled: false
-
