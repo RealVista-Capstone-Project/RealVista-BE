@@ -7,6 +7,7 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,4 +57,34 @@ public class ListingRepositoryImpl implements ListingRepository {
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public List<Listing> findPublishedWithinBounds(
+            BigDecimal northLat,
+            BigDecimal southLat,
+            BigDecimal eastLng,
+            BigDecimal westLng,
+            ListingType listingType,
+            int limit
+    ) {
+        String listingTypeStr = listingType != null ? listingType.name() : null;
+        return jpaRepository.findPublishedWithinBounds(
+                northLat, southLat, eastLng, westLng, listingTypeStr, limit
+        );
+    }
+
+    @Override
+    public Long countPublishedWithinBounds(
+            BigDecimal northLat,
+            BigDecimal southLat,
+            BigDecimal eastLng,
+            BigDecimal westLng,
+            ListingType listingType
+    ) {
+        String listingTypeStr = listingType != null ? listingType.name() : null;
+        return jpaRepository.countPublishedWithinBounds(
+                northLat, southLat, eastLng, westLng, listingTypeStr
+        );
+    }
 }
+
