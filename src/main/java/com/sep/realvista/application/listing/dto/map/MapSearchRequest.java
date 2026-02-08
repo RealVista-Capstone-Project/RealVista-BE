@@ -139,12 +139,12 @@ public class MapSearchRequest {
     private String rentalPeriod;
 
     /**
-     * Page number for pagination (0-indexed).
+     * Page number for pagination (1-indexed).
      */
-    @Schema(description = "Page number (0-indexed)", example = "0", minimum = "0")
-    @Min(value = 0, message = "Page must be non-negative")
+    @Schema(description = "Page number (1-indexed)", example = "1", minimum = "1")
+    @Min(value = 1, message = "Page must be at least 1")
     @Builder.Default
-    private Integer page = 0;
+    private Integer page = 1;
 
     /**
      * Page size for pagination.

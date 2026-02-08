@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Application Service for map-based property searches.
@@ -45,10 +46,10 @@ public class MapSearchApplicationService {
      * @return map search response with markers and metadata
      */
     public MapSearchResponse searchPropertiesOnMap(MapSearchRequest request) {
-        log.info("Map search request - bounds: ({},{}) to ({},{}), type: {}, limit: {}",
+        log.info("Map search request - bounds: ({},{}) to ({},{}), type: {}, page: {}, size: {}",
                 request.getSouthLat(), request.getWestLng(),
                 request.getNorthLat(), request.getEastLng(),
-                request.getListingType(), request.getLimit());
+                request.getListingType(), request.getPage(), request.getSize());
 
         // Validate map bounds
         MapBounds bounds = MapBounds.of(
@@ -69,14 +70,20 @@ public class MapSearchApplicationService {
 
         log.info("Found {} total listings within bounds", totalCount);
 
-        // Fetch listings within bounds (with limit)
+        // Calculate pagination parameters (convert 1-indexed page to 0-indexed offset)
+        int pageSize = request.getSize();
+        int pageNumber = request.getPage();
+        int offset = (pageNumber - 1) * pageSize;
+
+        // Fetch listings within bounds with proper pagination
         List<Listing> listings = listingRepository.findPublishedWithinBounds(
                 request.getNorthLat(),
                 request.getSouthLat(),
                 request.getEastLng(),
                 request.getWestLng(),
                 request.getListingType(),
-                request.getLimit()
+                pageSize,
+                offset
         );
 
         // Apply additional filters if specified
@@ -85,26 +92,31 @@ public class MapSearchApplicationService {
         // Transform to map markers
         List<PropertyMapMarker> markers = filteredListings.stream()
                 .map(this::convertToMapMarker)
-                .filter(marker -> marker != null)
+                .filter(Objects::nonNull)
                 .toList();
 
-        log.info("Returning {} markers (filtered from {} total)", markers.size(), totalCount);
+        log.info("Returning {} markers for page {} (filtered from {} total)", markers.size(), pageNumber, totalCount);
+
+        // Calculate pagination metadata
+        int totalPages = (int) Math.ceil((double) totalCount / pageSize);
+        boolean isFirst = pageNumber == 1;
+        boolean isLast = pageNumber >= totalPages;
 
         return MapSearchResponse.builder()
                 .content(markers)
-                .page(request.getPage())
-                .size(request.getSize())
+                .page(pageNumber)
+                .size(pageSize)
                 .totalElements(totalCount)
-                .totalPages((int) Math.ceil((double) totalCount / request.getSize()))
-                .first(request.getPage() == 0)
-                .last(request.getPage() >= (int) Math.ceil((double) totalCount / request.getSize()) - 1)
+                .totalPages(totalPages)
+                .first(isFirst)
+                .last(isLast)
                 .bounds(MapSearchResponse.MapBoundsDTO.builder()
                         .northLat(request.getNorthLat())
                         .southLat(request.getSouthLat())
                         .eastLng(request.getEastLng())
                         .westLng(request.getWestLng())
                         .build())
-                .hasMore(markers.size() < totalCount)
+                .hasMore(!isLast)
                 .build();
     }
 

@@ -37,6 +37,7 @@ public interface ListingRepository {
      * @param westLng western longitude boundary
      * @param listingType optional listing type filter (RENT/SALE), null for all types
      * @param limit maximum number of results to return
+     * @param offset number of results to skip (for pagination)
      * @return list of published listings within the specified bounds
      */
     List<Listing> findPublishedWithinBounds(
@@ -45,7 +46,8 @@ public interface ListingRepository {
             BigDecimal eastLng,
             BigDecimal westLng,
             ListingType listingType,
-            int limit
+            int limit,
+            int offset
     );
 
     /**

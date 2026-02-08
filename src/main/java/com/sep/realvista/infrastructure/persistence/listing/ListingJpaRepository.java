@@ -55,7 +55,7 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
           AND p.longitude <= :eastLng
           AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
         ORDER BY l.published_at DESC
-        LIMIT :limit
+        LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
     List<Listing> findPublishedWithinBounds(
             @Param("northLat") BigDecimal northLat,
@@ -63,7 +63,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
             @Param("eastLng") BigDecimal eastLng,
             @Param("westLng") BigDecimal westLng,
             @Param("listingType") String listingType,
-            @Param("limit") int limit
+            @Param("limit") int limit,
+            @Param("offset") int offset
     );
 
     /**

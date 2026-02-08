@@ -65,11 +65,12 @@ public class ListingRepositoryImpl implements ListingRepository {
             BigDecimal eastLng,
             BigDecimal westLng,
             ListingType listingType,
-            int limit
+            int limit,
+            int offset
     ) {
         String listingTypeStr = listingType != null ? listingType.name() : null;
         return jpaRepository.findPublishedWithinBounds(
-                northLat, southLat, eastLng, westLng, listingTypeStr, limit
+                northLat, southLat, eastLng, westLng, listingTypeStr, limit, offset
         );
     }
 
