@@ -4,7 +4,7 @@ import com.sep.realvista.application.listing.bookmark.dto.BookmarkResponse;
 import com.sep.realvista.application.listing.bookmark.mapper.BookmarkMapper;
 import com.sep.realvista.application.listing.bookmark.service.BookmarkApplicationService;
 import com.sep.realvista.domain.listing.Listing;
-import com.sep.realvista.domain.listing.ListingRepository;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.bookmark.Bookmark;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.exception.ListingNotFoundException;

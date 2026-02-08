@@ -125,7 +125,7 @@ public interface ListingMapper {
         return response;
     }
 
-    private Object getAttributeValue(PropertyAttributeValue pav) {
+    default Object getAttributeValue(PropertyAttributeValue pav) {
         if (pav.getValueNumber() != null) {
             return pav.getValueNumber();
         }
