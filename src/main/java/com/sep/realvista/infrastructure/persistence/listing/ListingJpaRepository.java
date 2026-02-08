@@ -36,17 +36,23 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
     Optional<Listing> findActiveById(@Param("id") UUID id);
 
     /**
-     * Find published listings within geographical bounds using native SQL for performance.
-     * Uses spatial indexing on lat/lng columns.
+     * Find published listings within geographical bounds using optimized native SQL.
+     * Uses composite spatial index on (latitude, longitude) for better performance.
+     * Query optimizations:
+     * - Composite index on p.latitude, p.longitude for bounding box search
+     * - Index on l.status and l.deleted for quick filtering
+     * - Price index for future price range filtering
      */
     @Query(value = """
         SELECT l.* FROM listings l
-        JOIN properties p ON l.property_id = p.property_id
+        INNER JOIN properties p ON l.property_id = p.property_id
         WHERE l.status = 'PUBLISHED'
           AND l.deleted = false
           AND p.deleted = false
-          AND p.latitude BETWEEN :southLat AND :northLat
-          AND p.longitude BETWEEN :westLng AND :eastLng
+          AND p.latitude >= :southLat
+          AND p.latitude <= :northLat
+          AND p.longitude >= :westLng
+          AND p.longitude <= :eastLng
           AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
         ORDER BY l.published_at DESC
         LIMIT :limit
@@ -62,15 +68,18 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
 
     /**
      * Count published listings within geographical bounds.
+     * Optimized to match the search query structure.
      */
     @Query(value = """
         SELECT COUNT(*) FROM listings l
-        JOIN properties p ON l.property_id = p.property_id
+        INNER JOIN properties p ON l.property_id = p.property_id
         WHERE l.status = 'PUBLISHED'
           AND l.deleted = false
           AND p.deleted = false
-          AND p.latitude BETWEEN :southLat AND :northLat
-          AND p.longitude BETWEEN :westLng AND :eastLng
+          AND p.latitude >= :southLat
+          AND p.latitude <= :northLat
+          AND p.longitude >= :westLng
+          AND p.longitude <= :eastLng
           AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
         """, nativeQuery = true)
     Long countPublishedWithinBounds(
