@@ -97,4 +97,61 @@ public class MapSearchRequest {
     @Schema(description = "Sort direction", example = "desc", allowableValues = {"asc", "desc"})
     @Builder.Default
     private String sortDirection = "desc";
+
+    /**
+     * Optional search text for property name or description.
+     */
+    @Schema(description = "Search text for property name or description", example = "Modern apartment")
+    private String searchText;
+
+    /**
+     * Optional property category/type filter.
+     */
+    @Schema(description = "Property category filter", example = "apartment")
+    private String category;
+
+    /**
+     * Optional filter for number of bedrooms.
+     */
+    @Schema(description = "Number of bedrooms", example = "2")
+    @Min(value = 0, message = "Bedrooms must be non-negative")
+    private Integer bedrooms;
+
+    /**
+     * Optional filter for number of bathrooms.
+     */
+    @Schema(description = "Number of bathrooms", example = "1")
+    @Min(value = 0, message = "Bathrooms must be non-negative")
+    private Integer bathrooms;
+
+    /**
+     * Optional filter for property area/size in square meters.
+     */
+    @Schema(description = "Property area in square meters", example = "85.5")
+    @Min(value = 0, message = "Area must be non-negative")
+    private BigDecimal area;
+
+    /**
+     * Optional filter for rental period (applicable when listingType is RENT).
+     * Format: "min-max" in months, e.g., "1-12" for 1 to 12 months.
+     */
+    @Schema(description = "Rental period in months (format: 'min-max')", example = "1-12")
+    private String rentalPeriod;
+
+    /**
+     * Page number for pagination (0-indexed).
+     */
+    @Schema(description = "Page number (0-indexed)", example = "0", minimum = "0")
+    @Min(value = 0, message = "Page must be non-negative")
+    @Builder.Default
+    private Integer page = 0;
+
+    /**
+     * Page size for pagination.
+     */
+    @Schema(description = "Page size", example = "20", minimum = "1", maximum = "100")
+    @Min(value = 1, message = "Size must be at least 1")
+    @Max(value = 100, message = "Size cannot exceed 100")
+    @Builder.Default
+    private Integer size = 20;
 }

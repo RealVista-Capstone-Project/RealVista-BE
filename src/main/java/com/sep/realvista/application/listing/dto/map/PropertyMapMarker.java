@@ -27,8 +27,12 @@ public class PropertyMapMarker {
     /**
      * Property coordinates for map marker placement.
      */
-    private BigDecimal latitude;
-    private BigDecimal longitude;
+    private CoordinatesDTO coordinates;
+
+    /**
+     * Street address of the property.
+     */
+    private String streetAddress;
 
     /**
      * Price and listing type for display.
@@ -62,4 +66,21 @@ public class PropertyMapMarker {
      * Location name (e.g., "District 1, Ho Chi Minh City").
      */
     private String locationName;
+
+    /**
+     * Indicates if this property is marked as favorite by the current user.
+     */
+    private Boolean isFavorite;
+
+    /**
+     * Nested DTO for coordinates.
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CoordinatesDTO {
+        private BigDecimal latitude;
+        private BigDecimal longitude;
+    }
 }

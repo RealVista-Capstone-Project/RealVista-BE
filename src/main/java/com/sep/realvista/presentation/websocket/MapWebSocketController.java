@@ -59,7 +59,7 @@ public class MapWebSocketController {
             MapSearchResponse response = mapSearchService.searchPropertiesOnMap(request);
 
             log.info("WebSocket map search completed - session: {}, markers: {}, total: {}",
-                    sessionId, response.getMarkers().size(), response.getTotalCount());
+                    sessionId, response.getContent().size(), response.getTotalElements());
 
             // Send response to user-specific queue
             // User will receive this on /user/queue/map/updates
@@ -83,8 +83,13 @@ public class MapWebSocketController {
 
             // Send error response
             MapSearchResponse errorResponse = MapSearchResponse.builder()
-                    .markers(java.util.Collections.emptyList())
-                    .totalCount(0L)
+                    .content(java.util.Collections.emptyList())
+                    .page(0)
+                    .size(0)
+                    .totalElements(0L)
+                    .totalPages(0)
+                    .first(true)
+                    .last(true)
                     .hasMore(false)
                     .build();
 
@@ -123,8 +128,13 @@ public class MapWebSocketController {
                     principal.getName(),
                     "/queue/map/updates",
                     MapSearchResponse.builder()
-                            .markers(java.util.Collections.emptyList())
-                            .totalCount(0L)
+                            .content(java.util.Collections.emptyList())
+                            .page(0)
+                            .size(0)
+                            .totalElements(0L)
+                            .totalPages(0)
+                            .first(true)
+                            .last(true)
                             .hasMore(false)
                             .build()
             );

@@ -62,7 +62,7 @@ public class MapController {
             MapSearchResponse response = mapSearchService.searchPropertiesOnMap(request);
 
             log.info("Map search completed - traceId: {}, markers: {}, total: {}",
-                    traceId, response.getMarkers().size(), response.getTotalCount());
+                    traceId, response.getContent().size(), response.getTotalElements());
 
             return ResponseEntity.ok(
                     ApiResponse.success("Properties retrieved successfully", response)

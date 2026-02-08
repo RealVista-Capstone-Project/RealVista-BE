@@ -91,8 +91,13 @@ public class MapSearchApplicationService {
         log.info("Returning {} markers (filtered from {} total)", markers.size(), totalCount);
 
         return MapSearchResponse.builder()
-                .markers(markers)
-                .totalCount(totalCount)
+                .content(markers)
+                .page(request.getPage())
+                .size(request.getSize())
+                .totalElements(totalCount)
+                .totalPages((int) Math.ceil((double) totalCount / request.getSize()))
+                .first(request.getPage() == 0)
+                .last(request.getPage() >= (int) Math.ceil((double) totalCount / request.getSize()) - 1)
                 .bounds(MapSearchResponse.MapBoundsDTO.builder()
                         .northLat(request.getNorthLat())
                         .southLat(request.getSouthLat())
@@ -167,8 +172,11 @@ public class MapSearchApplicationService {
 
         return PropertyMapMarker.builder()
                 .listingId(listing.getListingId())
-                .latitude(property.getLatitude())
-                .longitude(property.getLongitude())
+                .coordinates(PropertyMapMarker.CoordinatesDTO.builder()
+                        .latitude(property.getLatitude())
+                        .longitude(property.getLongitude())
+                        .build())
+                .streetAddress(property.getStreetAddress())
                 .price(listing.getPrice())
                 .listingType(listing.getListingType())
                 .name(listing.getName())
@@ -182,6 +190,7 @@ public class MapSearchApplicationService {
                 .locationName(property.getLocation() != null
                         ? property.getLocation().getName()
                         : null)
+                .isFavorite(false) // Implement favorite check based on current user
                 .build();
     }
 }
