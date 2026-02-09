@@ -49,20 +49,21 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
         WHERE l.status = 'PUBLISHED'
           AND l.deleted = false
           AND p.deleted = false
-          AND p.latitude >= :southLat
-          AND p.latitude <= :northLat
-          AND p.longitude >= :westLng
-          AND p.longitude <= :eastLng
+          AND p.latitude >= :#{#bounds.southLat}
+          AND p.latitude <= :#{#bounds.northLat}
+          AND p.longitude >= :#{#bounds.westLng}
+          AND p.longitude <= :#{#bounds.eastLng}
           AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
+          AND (:minPrice IS NULL OR l.price >= :minPrice)
+          AND (:maxPrice IS NULL OR l.price <= :maxPrice)
         ORDER BY l.published_at DESC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
     List<Listing> findPublishedWithinBounds(
-            @Param("northLat") BigDecimal northLat,
-            @Param("southLat") BigDecimal southLat,
-            @Param("eastLng") BigDecimal eastLng,
-            @Param("westLng") BigDecimal westLng,
+            @Param("bounds") com.sep.realvista.domain.listing.search.MapBounds bounds,
             @Param("listingType") String listingType,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice,
             @Param("limit") int limit,
             @Param("offset") int offset
     );
@@ -77,18 +78,19 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
         WHERE l.status = 'PUBLISHED'
           AND l.deleted = false
           AND p.deleted = false
-          AND p.latitude >= :southLat
-          AND p.latitude <= :northLat
-          AND p.longitude >= :westLng
-          AND p.longitude <= :eastLng
+          AND p.latitude >= :#{#bounds.southLat}
+          AND p.latitude <= :#{#bounds.northLat}
+          AND p.longitude >= :#{#bounds.westLng}
+          AND p.longitude <= :#{#bounds.eastLng}
           AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
+          AND (:minPrice IS NULL OR l.price >= :minPrice)
+          AND (:maxPrice IS NULL OR l.price <= :maxPrice)
         """, nativeQuery = true)
     Long countPublishedWithinBounds(
-            @Param("northLat") BigDecimal northLat,
-            @Param("southLat") BigDecimal southLat,
-            @Param("eastLng") BigDecimal eastLng,
-            @Param("westLng") BigDecimal westLng,
-            @Param("listingType") String listingType
+            @Param("bounds") com.sep.realvista.domain.listing.search.MapBounds bounds,
+            @Param("listingType") String listingType,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice
     );
 }
 

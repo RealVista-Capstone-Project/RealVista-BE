@@ -4,6 +4,7 @@ import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.listing.search.MapBounds;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -60,31 +61,31 @@ public class ListingRepositoryImpl implements ListingRepository {
 
     @Override
     public List<Listing> findPublishedWithinBounds(
-            BigDecimal northLat,
-            BigDecimal southLat,
-            BigDecimal eastLng,
-            BigDecimal westLng,
+            MapBounds bounds,
             ListingType listingType,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
             int limit,
             int offset
     ) {
         String listingTypeStr = listingType != null ? listingType.name() : null;
         return jpaRepository.findPublishedWithinBounds(
-                northLat, southLat, eastLng, westLng, listingTypeStr, limit, offset
+                bounds, listingTypeStr,
+                minPrice, maxPrice, limit, offset
         );
     }
 
     @Override
     public Long countPublishedWithinBounds(
-            BigDecimal northLat,
-            BigDecimal southLat,
-            BigDecimal eastLng,
-            BigDecimal westLng,
-            ListingType listingType
+            MapBounds bounds,
+            ListingType listingType,
+            BigDecimal minPrice,
+            BigDecimal maxPrice
     ) {
         String listingTypeStr = listingType != null ? listingType.name() : null;
         return jpaRepository.countPublishedWithinBounds(
-                northLat, southLat, eastLng, westLng, listingTypeStr
+                bounds, listingTypeStr,
+                minPrice, maxPrice
         );
     }
 }

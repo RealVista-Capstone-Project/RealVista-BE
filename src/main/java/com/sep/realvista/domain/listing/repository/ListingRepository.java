@@ -3,6 +3,7 @@ package com.sep.realvista.domain.listing.repository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.domain.listing.search.MapBounds;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -31,21 +32,17 @@ public interface ListingRepository {
      * Find published listings within geographical bounds.
      * Used for map-based property searches.
      *
-     * @param northLat northern latitude boundary
-     * @param southLat southern latitude boundary
-     * @param eastLng eastern longitude boundary
-     * @param westLng western longitude boundary
+     * @param bounds geographical bounds
      * @param listingType optional listing type filter (RENT/SALE), null for all types
      * @param limit maximum number of results to return
      * @param offset number of results to skip (for pagination)
      * @return list of published listings within the specified bounds
      */
     List<Listing> findPublishedWithinBounds(
-            BigDecimal northLat,
-            BigDecimal southLat,
-            BigDecimal eastLng,
-            BigDecimal westLng,
+            MapBounds bounds,
             ListingType listingType,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
             int limit,
             int offset
     );
@@ -53,18 +50,14 @@ public interface ListingRepository {
     /**
      * Count published listings within geographical bounds.
      *
-     * @param northLat northern latitude boundary
-     * @param southLat southern latitude boundary
-     * @param eastLng eastern longitude boundary
-     * @param westLng western longitude boundary
+     * @param bounds geographical bounds
      * @param listingType optional listing type filter (RENT/SALE), null for all types
      * @return total count of published listings within bounds
      */
     Long countPublishedWithinBounds(
-            BigDecimal northLat,
-            BigDecimal southLat,
-            BigDecimal eastLng,
-            BigDecimal westLng,
-            ListingType listingType
+            MapBounds bounds,
+            ListingType listingType,
+            BigDecimal minPrice,
+            BigDecimal maxPrice
     );
 }

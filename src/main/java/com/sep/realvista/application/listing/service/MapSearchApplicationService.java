@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,13 +58,12 @@ public class MapSearchApplicationService {
                 request.getWestLng()
         );
 
-        // Get total count first
+        // Get total count first (with price filter)
         Long totalCount = listingRepository.countPublishedWithinBounds(
-                request.getNorthLat(),
-                request.getSouthLat(),
-                request.getEastLng(),
-                request.getWestLng(),
-                request.getListingType()
+                bounds,
+                request.getListingType(),
+                request.getMinPrice(),
+                request.getMaxPrice()
         );
 
         log.info("Found {} total listings within bounds", totalCount);
@@ -75,22 +73,18 @@ public class MapSearchApplicationService {
         int pageNumber = request.getPage();
         int offset = (pageNumber - 1) * pageSize;
 
-        // Fetch listings within bounds with proper pagination
+        // Fetch listings within bounds with proper pagination and price filtering
         List<Listing> listings = listingRepository.findPublishedWithinBounds(
-                request.getNorthLat(),
-                request.getSouthLat(),
-                request.getEastLng(),
-                request.getWestLng(),
+                bounds,
                 request.getListingType(),
+                request.getMinPrice(),
+                request.getMaxPrice(),
                 pageSize,
                 offset
         );
 
-        // Apply additional filters if specified
-        List<Listing> filteredListings = applyPriceFilters(listings, request.getMinPrice(), request.getMaxPrice());
-
         // Transform to map markers
-        List<PropertyMapMarker> markers = filteredListings.stream()
+        List<PropertyMapMarker> markers = listings.stream()
                 .map(this::convertToMapMarker)
                 .filter(Objects::nonNull)
                 .toList();
@@ -101,6 +95,9 @@ public class MapSearchApplicationService {
         int totalPages = (int) Math.ceil((double) totalCount / pageSize);
         boolean isFirst = pageNumber == 1;
         boolean isLast = pageNumber >= totalPages;
+
+        // Build filter metadata
+        MapSearchResponse.FilterMetadataDTO filterMetadata = buildFilterMetadata(request);
 
         return MapSearchResponse.builder()
                 .content(markers)
@@ -116,25 +113,55 @@ public class MapSearchApplicationService {
                         .eastLng(request.getEastLng())
                         .westLng(request.getWestLng())
                         .build())
+                .filterMetadata(filterMetadata)
                 .hasMore(!isLast)
                 .build();
     }
 
+
+
     /**
-     * Apply price range filters to listings.
+     * Build filter metadata from the request.
+     * Note: available_price_range and price_histogram require additional implementation.
      */
-    private List<Listing> applyPriceFilters(List<Listing> listings, BigDecimal minPrice, BigDecimal maxPrice) {
-        return listings.stream()
-                .filter(listing -> {
-                    if (minPrice != null && listing.getPrice().compareTo(minPrice) < 0) {
-                        return false;
-                    }
-                    if (maxPrice != null && listing.getPrice().compareTo(maxPrice) > 0) {
-                        return false;
-                    }
-                    return true;
-                })
-                .toList();
+    private MapSearchResponse.FilterMetadataDTO buildFilterMetadata(MapSearchRequest request) {
+        // Build applied filters
+        MapSearchResponse.AppliedFiltersDTO.AppliedFiltersDTOBuilder appliedFiltersBuilder =
+                MapSearchResponse.AppliedFiltersDTO.builder();
+
+        if (request.getSearchText() != null) {
+            appliedFiltersBuilder.searchText(request.getSearchText());
+        }
+        if (request.getCategory() != null) {
+            appliedFiltersBuilder.category(request.getCategory());
+        }
+        if (request.getMinPrice() != null || request.getMaxPrice() != null) {
+            appliedFiltersBuilder.priceRange(MapSearchResponse.PriceRangeDTO.builder()
+                    .min(request.getMinPrice())
+                    .max(request.getMaxPrice())
+                    .build());
+        }
+        if (request.getBedrooms() != null) {
+            appliedFiltersBuilder.bedrooms(request.getBedrooms());
+        }
+        if (request.getBathrooms() != null) {
+            appliedFiltersBuilder.bathrooms(request.getBathrooms());
+        }
+        if (request.getArea() != null) {
+            appliedFiltersBuilder.area(request.getArea());
+        }
+        if (request.getRentalPeriod() != null) {
+            appliedFiltersBuilder.rentalPeriod(request.getRentalPeriod());
+        }
+        if (request.getListingType() != null) {
+            appliedFiltersBuilder.listingType(request.getListingType().name());
+        }
+
+        return MapSearchResponse.FilterMetadataDTO.builder()
+                .appliedFilters(appliedFiltersBuilder.build())
+                .availablePriceRange(null)
+                .priceHistogram(null)
+                .build();
     }
 
     /**
