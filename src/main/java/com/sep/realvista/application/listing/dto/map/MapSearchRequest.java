@@ -8,7 +8,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,26 +28,22 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class MapSearchRequest {
 
-    @Schema(description = "Northern latitude boundary", example = "10.85", required = true)
-    @NotNull(message = "North latitude is required")
+    @Schema(description = "Northern latitude boundary", example = "10.85", required = false)
     @DecimalMin(value = "-90.0", message = "North latitude must be between -90 and 90")
     @DecimalMax(value = "90.0", message = "North latitude must be between -90 and 90")
     private BigDecimal northLat;
 
-    @Schema(description = "Southern latitude boundary", example = "10.70", required = true)
-    @NotNull(message = "South latitude is required")
+    @Schema(description = "Southern latitude boundary", example = "10.70", required = false)
     @DecimalMin(value = "-90.0", message = "South latitude must be between -90 and 90")
     @DecimalMax(value = "90.0", message = "South latitude must be between -90 and 90")
     private BigDecimal southLat;
 
-    @Schema(description = "Eastern longitude boundary", example = "106.75", required = true)
-    @NotNull(message = "East longitude is required")
+    @Schema(description = "Eastern longitude boundary", example = "106.75", required = false)
     @DecimalMin(value = "-180.0", message = "East longitude must be between -180 and 180")
     @DecimalMax(value = "180.0", message = "East longitude must be between -180 and 180")
     private BigDecimal eastLng;
 
-    @Schema(description = "Western longitude boundary", example = "106.60", required = true)
-    @NotNull(message = "West longitude is required")
+    @Schema(description = "Western longitude boundary", example = "106.60", required = false)
     @DecimalMin(value = "-180.0", message = "West longitude must be between -180 and 180")
     @DecimalMax(value = "180.0", message = "West longitude must be between -180 and 180")
     private BigDecimal westLng;

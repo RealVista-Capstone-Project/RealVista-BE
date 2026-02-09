@@ -46,6 +46,7 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
     @Query(value = """
         SELECT l.* FROM listings l
         INNER JOIN properties p ON l.property_id = p.property_id
+        LEFT JOIN locations loc ON p.location_id = loc.location_id
         WHERE l.status = 'PUBLISHED'
           AND l.deleted = false
           AND p.deleted = false
@@ -56,6 +57,12 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
           AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
           AND (:minPrice IS NULL OR l.price >= :minPrice)
           AND (:maxPrice IS NULL OR l.price <= :maxPrice)
+          AND (:searchText IS NULL OR (
+              LOWER(l.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
+              LOWER(p.street_address) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
+              LOWER(p.descriptions) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
+              LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
+          ))
         ORDER BY l.published_at DESC
         LIMIT :limit OFFSET :offset
         """, nativeQuery = true)
@@ -64,6 +71,7 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
             @Param("listingType") String listingType,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
+            @Param("searchText") String searchText,
             @Param("limit") int limit,
             @Param("offset") int offset
     );
@@ -75,6 +83,7 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
     @Query(value = """
         SELECT COUNT(*) FROM listings l
         INNER JOIN properties p ON l.property_id = p.property_id
+        LEFT JOIN locations loc ON p.location_id = loc.location_id
         WHERE l.status = 'PUBLISHED'
           AND l.deleted = false
           AND p.deleted = false
@@ -85,12 +94,19 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
           AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
           AND (:minPrice IS NULL OR l.price >= :minPrice)
           AND (:maxPrice IS NULL OR l.price <= :maxPrice)
+          AND (:searchText IS NULL OR (
+              LOWER(l.name) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
+              LOWER(p.street_address) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
+              LOWER(p.descriptions) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
+              LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
+          ))
         """, nativeQuery = true)
     Long countPublishedWithinBounds(
             @Param("bounds") com.sep.realvista.domain.listing.search.MapBounds bounds,
             @Param("listingType") String listingType,
             @Param("minPrice") BigDecimal minPrice,
-            @Param("maxPrice") BigDecimal maxPrice
+            @Param("maxPrice") BigDecimal maxPrice,
+            @Param("searchText") String searchText
     );
 }
 

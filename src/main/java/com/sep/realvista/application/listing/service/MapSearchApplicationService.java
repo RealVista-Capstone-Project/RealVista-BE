@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,37 +51,80 @@ public class MapSearchApplicationService {
                 request.getNorthLat(), request.getEastLng(),
                 request.getListingType(), request.getPage(), request.getSize());
 
-        // Validate map bounds
-        MapBounds bounds = MapBounds.of(
-                request.getNorthLat(),
-                request.getSouthLat(),
-                request.getEastLng(),
-                request.getWestLng()
-        );
+        // Determine effective bounds
+        // Priority 1: Search Text (Global Search)
+        // Priority 2: Request Bounds (Map Search)
+        // Priority 3: Fallback (Global Search if no bounds provided)
+        MapBounds bounds;
+        
+        boolean hasSearchText = request.getSearchText() != null && !request.getSearchText().isEmpty();
+        boolean hasRequestBounds = request.getNorthLat() != null && request.getSouthLat() != null
+                && request.getEastLng() != null && request.getWestLng() != null;
 
-        // Get total count first (with price filter)
+        if (hasSearchText) {
+            log.debug("Search text present ('{}'), using global bounds", request.getSearchText());
+            bounds = MapBounds.of(
+                    new BigDecimal("90"),
+                    new BigDecimal("-90"),
+                    new BigDecimal("180"),
+                    new BigDecimal("-180")
+            );
+        } else if (hasRequestBounds) {
+            bounds = MapBounds.of(
+                    request.getNorthLat(),
+                    request.getSouthLat(),
+                    request.getEastLng(),
+                    request.getWestLng()
+            );
+        } else {
+            log.debug("No search text and no map bounds, defaulting to global bounds");
+            bounds = MapBounds.of(
+                    new BigDecimal("90"),
+                    new BigDecimal("-90"),
+                    new BigDecimal("180"),
+                    new BigDecimal("-180")
+            );
+        } // Get total count first (with price and text filter)
         Long totalCount = listingRepository.countPublishedWithinBounds(
                 bounds,
                 request.getListingType(),
                 request.getMinPrice(),
-                request.getMaxPrice()
+                request.getMaxPrice(),
+                request.getSearchText()
         );
 
-        log.info("Found {} total listings within bounds", totalCount);
+        if (totalCount == 0) {
+            return MapSearchResponse.builder()
+                    .content(List.of())
+                    .page(request.getPage())
+                    .size(request.getSize())
+                    .totalElements(0L)
+                    .totalPages(0)
+                    .first(true)
+                    .last(true)
+                    .bounds(MapSearchResponse.MapBoundsDTO.builder()
+                            .northLat(bounds.getNorthLat())
+                            .southLat(bounds.getSouthLat())
+                            .eastLng(bounds.getEastLng())
+                            .westLng(bounds.getWestLng())
+                            .build())
+                    .filterMetadata(buildFilterMetadata(request)) // Reusing existing buildFilterMetadata
+                    .hasMore(false)
+                    .build();
+        }
 
-        // Calculate pagination parameters (convert 1-indexed page to 0-indexed offset)
+        // Fetch paginated listings
+        int pageNumber = request.getPage() < 1 ? 1 : request.getPage();
         int pageSize = request.getSize();
-        int pageNumber = request.getPage();
-        int offset = (pageNumber - 1) * pageSize;
 
-        // Fetch listings within bounds with proper pagination and price filtering
         List<Listing> listings = listingRepository.findPublishedWithinBounds(
                 bounds,
                 request.getListingType(),
                 request.getMinPrice(),
                 request.getMaxPrice(),
-                pageSize,
-                offset
+                request.getSearchText(),
+                pageNumber,
+                pageSize
         );
 
         // Transform to map markers

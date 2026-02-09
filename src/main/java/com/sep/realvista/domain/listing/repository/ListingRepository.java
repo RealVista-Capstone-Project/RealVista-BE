@@ -43,8 +43,9 @@ public interface ListingRepository {
             ListingType listingType,
             BigDecimal minPrice,
             BigDecimal maxPrice,
-            int limit,
-            int offset
+            String searchText,
+            int page,
+            int size
     );
 
     /**
@@ -58,6 +59,7 @@ public interface ListingRepository {
             MapBounds bounds,
             ListingType listingType,
             BigDecimal minPrice,
-            BigDecimal maxPrice
+            BigDecimal maxPrice,
+            String searchText
     );
 }

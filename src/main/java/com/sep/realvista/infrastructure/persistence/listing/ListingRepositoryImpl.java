@@ -60,33 +60,19 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
-    public List<Listing> findPublishedWithinBounds(
-            MapBounds bounds,
-            ListingType listingType,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            int limit,
-            int offset
-    ) {
-        String listingTypeStr = listingType != null ? listingType.name() : null;
-        return jpaRepository.findPublishedWithinBounds(
-                bounds, listingTypeStr,
-                minPrice, maxPrice, limit, offset
-        );
+    public List<Listing> findPublishedWithinBounds(MapBounds bounds, ListingType listingType,
+                                                   BigDecimal minPrice, BigDecimal maxPrice,
+                                                   String searchText, int page, int size) {
+        String typeStr = listingType != null ? listingType.name() : null;
+        int offset = (page - 1) * size;
+        return jpaRepository.findPublishedWithinBounds(bounds, typeStr, minPrice, maxPrice, searchText, size, offset);
     }
 
     @Override
-    public Long countPublishedWithinBounds(
-            MapBounds bounds,
-            ListingType listingType,
-            BigDecimal minPrice,
-            BigDecimal maxPrice
-    ) {
-        String listingTypeStr = listingType != null ? listingType.name() : null;
-        return jpaRepository.countPublishedWithinBounds(
-                bounds, listingTypeStr,
-                minPrice, maxPrice
-        );
+    public Long countPublishedWithinBounds(MapBounds bounds, ListingType listingType,
+                                           BigDecimal minPrice, BigDecimal maxPrice,
+                                           String searchText) {
+        String typeStr = listingType != null ? listingType.name() : null;
+        return jpaRepository.countPublishedWithinBounds(bounds, typeStr, minPrice, maxPrice, searchText);
     }
 }
-
