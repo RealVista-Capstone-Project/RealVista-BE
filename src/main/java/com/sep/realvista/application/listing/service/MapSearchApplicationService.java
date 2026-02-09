@@ -163,7 +163,6 @@ public class MapSearchApplicationService {
     }
 
 
-
     /**
      * Build filter metadata from the request.
      * Note: available_price_range and price_histogram require additional implementation.
@@ -247,6 +246,11 @@ public class MapSearchApplicationService {
         for (PropertyAttributeValue value : attributeValues) {
             if (value.getPropertyAttribute() != null) {
                 String attributeName = value.getPropertyAttribute().getName().toLowerCase();
+                log.info("Attribute for property {}: {} = {} / {}",
+                property.getPropertyId(),
+                        attributeName,
+                        value.getValueNumber(),
+                        value.getValueText());
                 attributes.put(attributeName, value.getValueNumber() != null
                         ? value.getValueNumber()
                         : value.getValueText());
@@ -264,16 +268,12 @@ public class MapSearchApplicationService {
                 .listingType(listing.getListingType())
                 .name(listing.getName())
                 .thumbnailUrl(thumbnailUrl)
-                .bedrooms(getIntAttribute(attributes, "bedrooms"))
-                .bathrooms(getIntAttribute(attributes, "bathrooms"))
-                .sizeM2(property.getUsableSizeM2())
-                .propertyType(property.getPropertyType() != null
-                        ? property.getPropertyType().getName()
-                        : null)
-                .locationName(property.getLocation() != null
-                        ? property.getLocation().getName()
-                        : null)
-                .isFavorite(false) // Implement favorite check based on current user
+                .bedrooms(getIntAttribute(attributes, "phòng ngủ"))
+                .bathrooms(getIntAttribute(attributes, "phòng tắm"))
+                .sizeM2(property.getUsableSizeM2() != null ? property.getUsableSizeM2() : property.getLandSizeM2())
+                .propertyType(property.getPropertyType() != null ? property.getPropertyType().getName() : null)
+                .locationName(property.getLocation() != null ? property.getLocation().getName() : null)
+                .isFavorite(false) // Implement favorite logic later
                 .build();
     }
 }
