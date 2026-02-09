@@ -4,13 +4,15 @@ import com.sep.realvista.application.listing.bookmark.dto.BookmarkResponse;
 import com.sep.realvista.application.listing.bookmark.mapper.BookmarkMapper;
 import com.sep.realvista.application.listing.bookmark.service.BookmarkApplicationService;
 import com.sep.realvista.domain.listing.Listing;
-import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.bookmark.Bookmark;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.exception.ListingNotFoundException;
+import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
+import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +36,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for BookmarkApplicationService.
- * 
+ *
  * Tests bookmark toggle business logic in isolation from infrastructure.
  * Covers scenarios including:
  * - Creating new bookmarks
@@ -60,6 +62,12 @@ class BookmarkApplicationServiceTest {
     private ListingRepository listingRepository;
 
     @Mock
+    private ListingMediaRepository listingMediaRepository;
+
+    @Mock
+    private PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
+
+    @Mock
     private BookmarkMapper bookmarkMapper;
 
     private static final UUID TEST_USER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
@@ -71,6 +79,8 @@ class BookmarkApplicationServiceTest {
                 bookmarkRepository,
                 userRepository,
                 listingRepository,
+                listingMediaRepository,
+                propertyAttributeValueRepository,
                 bookmarkMapper
         );
     }

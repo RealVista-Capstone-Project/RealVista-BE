@@ -202,6 +202,6 @@ class ListingControllerComponentTest {
                 mockMvc.perform(get("/api/v1/listings/{id}", nonExistentId))
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.message").exists())
-                                .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"));
+                                .andExpect(jsonPath("$.error_code").value("RESOURCE_NOT_FOUND"));
         }
 }
