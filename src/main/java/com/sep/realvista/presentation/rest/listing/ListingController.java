@@ -30,6 +30,7 @@ public class ListingController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get listing detail by ID",
+
             description = "Retrieves complete listing information including media, property, "
                     + "location, type, category, and agent/owner")
     public ResponseEntity<ApiResponse<ListingDetailResponse>> getListingDetail(@PathVariable UUID id) {
