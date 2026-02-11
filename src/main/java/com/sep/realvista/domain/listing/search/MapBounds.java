@@ -1,40 +1,25 @@
 package com.sep.realvista.domain.listing.search;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
-
 import java.math.BigDecimal;
 
 /**
  * Value object representing a geographical bounding box for map-based searches.
  * Immutable and validates that bounds are logically correct (north > south, east > west).
  */
-@Getter
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@EqualsAndHashCode
-@ToString
-public class MapBounds {
-
-    private final BigDecimal northLat;
-    private final BigDecimal southLat;
-    private final BigDecimal eastLng;
-    private final BigDecimal westLng;
+public record MapBounds(BigDecimal northLat, BigDecimal southLat, BigDecimal eastLng, BigDecimal westLng) {
 
     /**
      * Factory method to create MapBounds with validation.
      *
      * @param northLat northern latitude boundary
      * @param southLat southern latitude boundary
-     * @param eastLng eastern longitude boundary
-     * @param westLng western longitude boundary
+     * @param eastLng  eastern longitude boundary
+     * @param westLng  western longitude boundary
      * @return validated MapBounds instance
      * @throws IllegalArgumentException if bounds are invalid
      */
     public static MapBounds of(BigDecimal northLat, BigDecimal southLat,
-                                BigDecimal eastLng, BigDecimal westLng) {
+                               BigDecimal eastLng, BigDecimal westLng) {
         validateBounds(northLat, southLat, eastLng, westLng);
         return new MapBounds(northLat, southLat, eastLng, westLng);
     }
@@ -45,7 +30,7 @@ public class MapBounds {
      * @throws IllegalArgumentException if bounds are invalid
      */
     private static void validateBounds(BigDecimal northLat, BigDecimal southLat,
-                                        BigDecimal eastLng, BigDecimal westLng) {
+                                       BigDecimal eastLng, BigDecimal westLng) {
         if (northLat == null || southLat == null || eastLng == null || westLng == null) {
             throw new IllegalArgumentException("All map bounds must be non-null");
         }
@@ -86,7 +71,7 @@ public class MapBounds {
     /**
      * Checks if a coordinate point is within this bounding box.
      *
-     * @param latitude the latitude to check
+     * @param latitude  the latitude to check
      * @param longitude the longitude to check
      * @return true if the point is within bounds, false otherwise
      */

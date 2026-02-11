@@ -28,22 +28,22 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class MapSearchRequest {
 
-    @Schema(description = "Northern latitude boundary", example = "10.85", required = false)
+    @Schema(description = "Northern latitude boundary", example = "10.85")
     @DecimalMin(value = "-90.0", message = "North latitude must be between -90 and 90")
     @DecimalMax(value = "90.0", message = "North latitude must be between -90 and 90")
     private BigDecimal northLat;
 
-    @Schema(description = "Southern latitude boundary", example = "10.70", required = false)
+    @Schema(description = "Southern latitude boundary", example = "10.70")
     @DecimalMin(value = "-90.0", message = "South latitude must be between -90 and 90")
     @DecimalMax(value = "90.0", message = "South latitude must be between -90 and 90")
     private BigDecimal southLat;
 
-    @Schema(description = "Eastern longitude boundary", example = "106.75", required = false)
+    @Schema(description = "Eastern longitude boundary", example = "106.75")
     @DecimalMin(value = "-180.0", message = "East longitude must be between -180 and 180")
     @DecimalMax(value = "180.0", message = "East longitude must be between -180 and 180")
     private BigDecimal eastLng;
 
-    @Schema(description = "Western longitude boundary", example = "106.60", required = false)
+    @Schema(description = "Western longitude boundary", example = "106.60")
     @DecimalMin(value = "-180.0", message = "West longitude must be between -180 and 180")
     @DecimalMax(value = "180.0", message = "West longitude must be between -180 and 180")
     private BigDecimal westLng;

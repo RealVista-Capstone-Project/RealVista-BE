@@ -103,10 +103,10 @@ public class MapSearchApplicationService {
                     .first(true)
                     .last(true)
                     .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                            .northLat(bounds.getNorthLat())
-                            .southLat(bounds.getSouthLat())
-                            .eastLng(bounds.getEastLng())
-                            .westLng(bounds.getWestLng())
+                            .northLat(bounds.northLat())
+                            .southLat(bounds.southLat())
+                            .eastLng(bounds.eastLng())
+                            .westLng(bounds.westLng())
                             .build())
                     .filterMetadata(buildFilterMetadata(request)) // Reusing existing buildFilterMetadata
                     .hasMore(false)
@@ -234,8 +234,8 @@ public class MapSearchApplicationService {
         String thumbnailUrl = null;
         List<ListingMedia> medias = listingMediaRepository
                 .findByListingIdOrderByDisplayOrderAsc(listing.getListingId());
-        if (!medias.isEmpty() && medias.get(0).getPropertyMedia() != null) {
-            thumbnailUrl = medias.get(0).getPropertyMedia().getMediaUrl();
+        if (!medias.isEmpty() && medias.getFirst().getPropertyMedia() != null) {
+            thumbnailUrl = medias.getFirst().getPropertyMedia().getMediaUrl();
         }
 
         // Fetch attributes
