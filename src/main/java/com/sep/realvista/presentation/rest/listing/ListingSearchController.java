@@ -9,11 +9,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.Map;
+
+import com.sep.realvista.application.listing.dto.ListingFilterDTO;
+import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
+import org.springframework.web.bind.annotation.ModelAttribute;
 
 @RestController
 @RequestMapping({"/api/v1/listings", "/listings"})
@@ -23,22 +30,16 @@ public class ListingSearchController {
 
     private final ListingSearchService listingSearchService;
 
-    @Operation(summary = "Search Listings", description = "Search listings with filters. All parameters are optional. Use 'attr_' prefix for dynamic attributes (e.g., attr_direction=EAST)")
+    @Operation(
+        summary = "Search Listings", 
+        description = "Search listings with filters. All parameters are optional. " +
+                      "Use 'attr_' prefix for dynamic attributes (e.g., attr_direction=EAST)"
+    )
     @GetMapping("/search")
     @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "")
     @PreAuthorize("permitAll()")
     public ResponseEntity<Page<ListingSearchResponse>> search(
-            @RequestParam(required = false) String listingType,
-            @RequestParam(required = false) String propertyType,
-            @RequestParam(required = false) String propertyCategory,
-            @RequestParam(required = false) String location,
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) Double minArea,
-            @RequestParam(required = false) Double maxArea,
-            @RequestParam(required = false) Integer bedrooms,
-            @RequestParam(required = false) Integer bathrooms,
-            @RequestParam(required = false) String sortBy,
+            @ModelAttribute ListingFilterDTO filter,
             @RequestParam Map<String, String> allParams,
             @PageableDefault(size = 12) Pageable pageable) {
         
@@ -50,10 +51,21 @@ public class ListingSearchController {
                 Map.Entry::getValue
             ));
         
-        return ResponseEntity.ok(listingSearchService.search(
-            listingType, propertyType, propertyCategory, location,
-            minPrice, maxPrice, minArea, maxArea,
-            bedrooms, bathrooms, dynamicAttributes, sortBy, pageable
-        ));
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+            .listingType(filter.getListingType())
+            .propertyType(filter.getPropertyType())
+            .propertyCategory(filter.getPropertyCategory())
+            .location(filter.getLocation())
+            .minPrice(filter.getMinPrice())
+            .maxPrice(filter.getMaxPrice())
+            .minArea(filter.getMinArea())
+            .maxArea(filter.getMaxArea())
+            .bedrooms(filter.getBedrooms())
+            .bathrooms(filter.getBathrooms())
+            .sortBy(filter.getSortBy())
+            .dynamicAttributes(dynamicAttributes)
+            .build();
+
+        return ResponseEntity.ok(listingSearchService.search(criteria, pageable));
     }
 }

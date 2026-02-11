@@ -1,14 +1,12 @@
 package com.sep.realvista.application.listing.service;
 
-import com.sep.realvista.application.listing.dto.AdvancedSearchRequest;
 import com.sep.realvista.application.listing.dto.ListingSearchResponse;
+import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
-import com.sep.realvista.domain.common.exception.DomainException;
-import com.sep.realvista.domain.billing.boost.BoostType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,7 +16,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import jakarta.persistence.criteria.*;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
+
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -69,35 +69,17 @@ public class ListingSearchService {
     private static final String JSONB_EXTRACT_FUNCTION = "jsonb_extract_path_text";
 
     @Transactional(readOnly = true)
-    public Page<ListingSearchResponse> search(
-            String listingType,
-            String propertyType, 
-            String propertyCategory,
-            String location,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            Double minArea,
-            Double maxArea,
-            Integer bedrooms,
-            Integer bathrooms,
-            Map<String, String> dynamicAttributes,
-            String sortBy,
-            Pageable pageable) {
+    public Page<ListingSearchResponse> search(ListingSearchCriteria criteria, Pageable pageable) {
         
-        log.debug("🔍 Searching with: type={}, propertyType={}, category={}, dynamicAttrs={}", 
-            listingType, propertyType, propertyCategory, dynamicAttributes);
+        log.debug("🔍 Searching with criteria: {}", criteria);
         
         // Handle custom sorting if requested
         Pageable effectivePageable = pageable;
-        if (sortBy != null && !sortBy.isBlank()) {
-            effectivePageable = applySorting(sortBy, pageable);
+        if (criteria.getSortBy() != null && !criteria.getSortBy().isBlank()) {
+            effectivePageable = applySorting(criteria.getSortBy(), pageable);
         }
 
-        Specification<Listing> spec = buildSpecification(
-            listingType, propertyType, propertyCategory, location,
-            minPrice, maxPrice, minArea, maxArea, bedrooms, bathrooms,
-            dynamicAttributes
-        );
+        Specification<Listing> spec = buildSpecification(criteria);
         
         Page<Listing> listings = listingRepository.findAll(spec, effectivePageable);
         
@@ -143,18 +125,7 @@ public class ListingSearchService {
         return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
     }
 
-    private Specification<Listing> buildSpecification(
-            String listingType,
-            String propertyType,
-            String propertyCategory,
-            String location,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            Double minArea,
-            Double maxArea,
-            Integer bedrooms,
-            Integer bathrooms,
-            Map<String, String> dynamicAttributes) {
+    private Specification<Listing> buildSpecification(ListingSearchCriteria criteria) {
         
         return (root, query, cb) -> {
             query.distinct(true);
@@ -167,80 +138,80 @@ public class ListingSearchService {
             Join<Object, Object> propertyJoin = root.join(ListingFields.PROPERTY);
 
             // Listing Type
-            if (listingType != null && !listingType.isBlank()) {
+            if (criteria.getListingType() != null && !criteria.getListingType().isBlank()) {
                 try {
-                    ListingType type = ListingType.valueOf(listingType.toUpperCase());
+                    ListingType type = ListingType.valueOf(criteria.getListingType().toUpperCase());
                     predicates.add(cb.equal(root.get(ListingFields.LISTING_TYPE), type));
                     log.debug("✅ Added listingType filter: {}", type);
                 } catch (IllegalArgumentException e) {
-                    log.warn("❌ Invalid listing type: {}", listingType);
+                    log.warn("❌ Invalid listing type: {}", criteria.getListingType());
                 }
             }
 
             // Property Type
-            if (propertyType != null && !propertyType.isBlank()) {
-                log.debug("🏠 Property Type filter: {}", propertyType);
+            if (criteria.getPropertyType() != null && !criteria.getPropertyType().isBlank()) {
+                log.debug("🏠 Property Type filter: {}", criteria.getPropertyType());
                 predicates.add(cb.equal(
                     propertyJoin.get(PropertyFields.TYPE).get(PropertyTypeFields.CODE), 
-                    propertyType
+                    criteria.getPropertyType()
                 ));
             }
 
             // Property Category
-            if (propertyCategory != null && !propertyCategory.isBlank()) {
+            if (criteria.getPropertyCategory() != null && !criteria.getPropertyCategory().isBlank()) {
                 predicates.add(cb.equal(
                     propertyJoin.get(PropertyFields.TYPE)
                         .get(PropertyTypeFields.CATEGORY)
                         .get(CategoryFields.CODE), 
-                    propertyCategory
+                    criteria.getPropertyCategory()
                 ));
-                log.debug("✅ Added propertyCategory filter: {}", propertyCategory);
+                log.debug("✅ Added propertyCategory filter: {}", criteria.getPropertyCategory());
             }
 
             // Location (LIKE search)
-            if (location != null && !location.isBlank()) {
+            if (criteria.getLocation() != null && !criteria.getLocation().isBlank()) {
                 predicates.add(cb.like(cb.lower(
                     propertyJoin.join(PropertyFields.LOCATION).get(LocationFields.NAME)), 
-                    "%" + location.toLowerCase() + "%"
+                    "%" + criteria.getLocation().toLowerCase() + "%"
                 ));
-                log.debug("✅ Added location LIKE filter: {}", location);
+                log.debug("✅ Added location LIKE filter: {}", criteria.getLocation());
             }
 
             // Price Range
-            if (minPrice != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get(ListingFields.PRICE), minPrice));
+            if (criteria.getMinPrice() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get(ListingFields.PRICE), criteria.getMinPrice()));
             }
-            if (maxPrice != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get(ListingFields.PRICE), maxPrice));
+            if (criteria.getMaxPrice() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get(ListingFields.PRICE), criteria.getMaxPrice()));
             }
 
             // Area Range
-            if (minArea != null) {
-                predicates.add(cb.greaterThanOrEqualTo(propertyJoin.get(PropertyFields.USABLE_SIZE_M2), minArea));
+            if (criteria.getMinArea() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(propertyJoin.get(PropertyFields.USABLE_SIZE_M2), criteria.getMinArea()));
             }
-            if (maxArea != null) {
-                predicates.add(cb.lessThanOrEqualTo(propertyJoin.get(PropertyFields.USABLE_SIZE_M2), maxArea));
+            if (criteria.getMaxArea() != null) {
+                predicates.add(cb.lessThanOrEqualTo(propertyJoin.get(PropertyFields.USABLE_SIZE_M2), criteria.getMaxArea()));
             }
             
             // Bedrooms
-            if (bedrooms != null) {
+            if (criteria.getBedrooms() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(
                     propertyJoin.get(PropertyFields.BEDROOMS),
-                    bedrooms
+                    criteria.getBedrooms()
                 ));
             }
             
             // Bathrooms
-            if (bathrooms != null) {
+            if (criteria.getBathrooms() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(
                     propertyJoin.get(PropertyFields.BATHROOMS),
-                    bathrooms
+                    criteria.getBathrooms()
                 ));
             }
             
             // Dynamic Attributes (JSONB) - Generic handling
-            if (dynamicAttributes != null && !dynamicAttributes.isEmpty()) {
-                dynamicAttributes.forEach((attributeCode, value) -> {
+            if (criteria.getDynamicAttributes() != null && !criteria.getDynamicAttributes().isEmpty()) {
+                criteria.getDynamicAttributes().forEach((attributeCode, value) -> {
                     if (value != null && !value.isBlank()) {
                         predicates.add(cb.equal(
                             cb.function(JSONB_EXTRACT_FUNCTION, String.class,

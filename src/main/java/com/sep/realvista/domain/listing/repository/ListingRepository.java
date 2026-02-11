@@ -3,6 +3,9 @@ package com.sep.realvista.domain.listing.repository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +33,7 @@ public interface ListingRepository {
 
     void deleteAll();
 
-    org.springframework.data.domain.Page<Listing> findAll(org.springframework.data.jpa.domain.Specification<Listing> spec, org.springframework.data.domain.Pageable pageable);
+    Page<Listing> findAll(Specification<Listing> spec, Pageable pageable);
     
     Optional<String> findThumbnailByListingId(UUID listingId);
 }
