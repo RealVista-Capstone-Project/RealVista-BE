@@ -1,6 +1,5 @@
 package com.sep.realvista.component.presentation.rest.map;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.listing.dto.map.MapSearchRequest;
 import com.sep.realvista.application.listing.dto.map.MapSearchResponse;
@@ -53,8 +52,6 @@ class MapControllerComponentTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockitoBean
     private MapSearchApplicationService mapSearchService;

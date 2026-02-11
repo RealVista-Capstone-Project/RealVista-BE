@@ -8,6 +8,7 @@ import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.search.MapBounds;
+import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
@@ -84,14 +85,25 @@ public class MapSearchApplicationService {
                     new BigDecimal("180"),
                     new BigDecimal("-180")
             );
-        } // Get total count first (with price and text filter)
-        Long totalCount = listingRepository.countPublishedWithinBounds(
-                bounds,
-                request.getListingType(),
-                request.getMinPrice(),
-                request.getMaxPrice(),
-                request.getSearchText()
-        );
+        } // Build search criteria
+        MapSearchCriteria criteria = MapSearchCriteria.builder()
+                .bounds(bounds)
+                .listingType(request.getListingType())
+                .minPrice(request.getMinPrice())
+                .maxPrice(request.getMaxPrice())
+                .searchText(request.getSearchText())
+                .category(request.getCategory())
+                .bedrooms(request.getBedrooms())
+                .bathrooms(request.getBathrooms())
+                .area(request.getArea())
+                .sortBy(request.getSortBy())
+                .sortDirection(request.getSortDirection())
+                .page(request.getPage() < 1 ? 1 : request.getPage())
+                .size(request.getSize())
+                .build();
+
+        // Get total count first (with all filters)
+        Long totalCount = listingRepository.countPublishedWithinBounds(criteria);
 
         if (totalCount == 0) {
             return MapSearchResponse.builder()
@@ -108,24 +120,16 @@ public class MapSearchApplicationService {
                             .eastLng(bounds.eastLng())
                             .westLng(bounds.westLng())
                             .build())
-                    .filterMetadata(buildFilterMetadata(request)) // Reusing existing buildFilterMetadata
+                    .filterMetadata(buildFilterMetadata(request))
                     .hasMore(false)
                     .build();
         }
 
         // Fetch paginated listings
-        int pageNumber = request.getPage() < 1 ? 1 : request.getPage();
-        int pageSize = request.getSize();
+        int pageNumber = criteria.getPage();
+        int pageSize = criteria.getSize();
 
-        List<Listing> listings = listingRepository.findPublishedWithinBounds(
-                bounds,
-                request.getListingType(),
-                request.getMinPrice(),
-                request.getMaxPrice(),
-                request.getSearchText(),
-                pageNumber,
-                pageSize
-        );
+        List<Listing> listings = listingRepository.findPublishedWithinBounds(criteria);
 
         // Transform to map markers
         List<PropertyMapMarker> markers = listings.stream()

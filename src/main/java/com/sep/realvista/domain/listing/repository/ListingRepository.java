@@ -3,9 +3,8 @@ package com.sep.realvista.domain.listing.repository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
-import com.sep.realvista.domain.listing.search.MapBounds;
+import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,37 +28,18 @@ public interface ListingRepository {
     void deleteById(UUID id);
 
     /**
-     * Find published listings within geographical bounds.
-     * Used for map-based property searches.
+     * Find published listings within geographical bounds with filters and sorting.
      *
-     * @param bounds geographical bounds
-     * @param listingType optional listing type filter (RENT/SALE), null for all types
-     * @param limit maximum number of results to return
-     * @param offset number of results to skip (for pagination)
-     * @return list of published listings within the specified bounds
+     * @param criteria search criteria including bounds, filters, sort, and pagination
+     * @return list of published listings matching the criteria
      */
-    List<Listing> findPublishedWithinBounds(
-            MapBounds bounds,
-            ListingType listingType,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            String searchText,
-            int page,
-            int size
-    );
+    List<Listing> findPublishedWithinBounds(MapSearchCriteria criteria);
 
     /**
-     * Count published listings within geographical bounds.
+     * Count published listings within geographical bounds with filters.
      *
-     * @param bounds geographical bounds
-     * @param listingType optional listing type filter (RENT/SALE), null for all types
-     * @return total count of published listings within bounds
+     * @param criteria search criteria including bounds and filters
+     * @return total count of matching listings
      */
-    Long countPublishedWithinBounds(
-            MapBounds bounds,
-            ListingType listingType,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            String searchText
-    );
+    Long countPublishedWithinBounds(MapSearchCriteria criteria);
 }
