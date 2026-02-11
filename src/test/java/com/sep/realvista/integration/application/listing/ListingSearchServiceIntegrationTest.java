@@ -1,6 +1,7 @@
 package com.sep.realvista.integration.application.listing;
 
 import com.sep.realvista.application.listing.dto.ListingSearchResponse;
+import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
 import com.sep.realvista.application.listing.service.ListingSearchService;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.listing.Listing;
@@ -90,7 +91,6 @@ class ListingSearchServiceIntegrationTest {
         
         // Clear locations using JPQL because no repository
         entityManager.createQuery("DELETE FROM Location").executeUpdate();
-        userRepository.deleteAll();
 
         // Create User
         testUser = User.builder()
@@ -99,7 +99,7 @@ class ListingSearchServiceIntegrationTest {
                 .passwordHash("hashedpassword")
                 .status(UserStatus.ACTIVE)
                 .build();
-        userRepository.save(testUser);
+        testUser = userRepository.save(testUser);
 
         // Create Location
         testLocation = Location.builder()
@@ -119,14 +119,16 @@ class ListingSearchServiceIntegrationTest {
                 .code("RES")
                 .name("Residential")
                 .build();
-        propertyCategoryRepository.save(residentialCategory);
+        residentialCategory = propertyCategoryRepository.save(residentialCategory);
 
         apartmentType = PropertyType.builder()
                 .code("APT")
                 .name("Apartment")
+                .propertyCategoryId(residentialCategory.getPropertyCategoryId())
+                .name("Apartment")
                 .propertyCategory(residentialCategory)
                 .build();
-        propertyTypeRepository.save(apartmentType);
+        apartmentType = propertyTypeRepository.save(apartmentType);
 
         // Property 1: Apartment with 2 beds, 2 baths, 100m2, South facing, Has Pool
         Map<String, Object> extraAttrs1 = new HashMap<>();
@@ -154,6 +156,7 @@ class ListingSearchServiceIntegrationTest {
                 .bedrooms(beds)
                 .bathrooms(baths)
                 .descriptions("Test description")
+                .propertyTypeId(type.getPropertyTypeId())
                 .propertyType(type)
                 .latitude(BigDecimal.ZERO)
                 .longitude(BigDecimal.ZERO)
@@ -186,10 +189,14 @@ class ListingSearchServiceIntegrationTest {
     @Test
     void search_basicFilters_shouldReturnMatchingListings() {
         // Search by price range
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .minPrice(BigDecimal.valueOf(1500))
+                .maxPrice(BigDecimal.valueOf(2500))
+                .build();
+
         Page<ListingSearchResponse> result = listingSearchService.search(
-                "RENT", null, null, null,
-                BigDecimal.valueOf(1500), BigDecimal.valueOf(2500), // Min 1500, Max 2500
-                null, null, null, null, null, null,
+                criteria,
                 PageRequest.of(0, 10)
         );
 
@@ -202,10 +209,13 @@ class ListingSearchServiceIntegrationTest {
         Map<String, String> dynamicFilters = new HashMap<>();
         dynamicFilters.put("direction", "South");
 
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .dynamicAttributes(dynamicFilters)
+                .build();
+
         Page<ListingSearchResponse> result = listingSearchService.search(
-                "RENT", null, null, null,
-                null, null, null, null, null, null,
-                dynamicFilters, null,
+                criteria,
                 PageRequest.of(0, 10)
         );
 
@@ -218,10 +228,13 @@ class ListingSearchServiceIntegrationTest {
         Map<String, String> dynamicFilters = new HashMap<>();
         dynamicFilters.put("hasPool", "true");
 
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .dynamicAttributes(dynamicFilters)
+                .build();
+
         Page<ListingSearchResponse> result = listingSearchService.search(
-                "RENT", null, null, null,
-                null, null, null, null, null, null,
-                dynamicFilters, null,
+                criteria,
                 PageRequest.of(0, 10)
         );
 
@@ -234,12 +247,18 @@ class ListingSearchServiceIntegrationTest {
         Map<String, String> dynamicFilters = new HashMap<>();
         dynamicFilters.put("direction", "North");
 
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .minPrice(BigDecimal.valueOf(2500))
+                .maxPrice(BigDecimal.valueOf(3500))
+                .minArea(120.0)
+                .maxArea(200.0)
+                .bedrooms(3)
+                .dynamicAttributes(dynamicFilters)
+                .build();
+
         Page<ListingSearchResponse> result = listingSearchService.search(
-                "RENT", null, null, null,
-                BigDecimal.valueOf(2500), BigDecimal.valueOf(3500), // Price range matches listing2
-                120.0, 200.0, // Area match listing2 (150)
-                3, null, // Bedrooms match listing2
-                dynamicFilters, null,
+                criteria,
                 PageRequest.of(0, 10)
         );
 

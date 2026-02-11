@@ -1,6 +1,7 @@
 package com.sep.realvista.unit.application.listing;
 
 import com.sep.realvista.application.listing.dto.ListingSearchResponse;
+import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.application.listing.service.ListingSearchService;
 import com.sep.realvista.domain.listing.Listing;
@@ -68,11 +69,16 @@ class ListingSearchServiceUnitTest {
         when(listingRepository.findThumbnailByListingId(any(UUID.class))).thenReturn(Optional.empty());
 
         // Act
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .minPrice(BigDecimal.valueOf(500))
+                .maxPrice(BigDecimal.valueOf(1500))
+                .dynamicAttributes(Collections.emptyMap())
+                .build();
+
+        // Act
         Page<ListingSearchResponse> result = listingSearchService.search(
-                "RENT", null, null, null,
-                BigDecimal.valueOf(500), BigDecimal.valueOf(1500),
-                null, null, null, null, 
-                Collections.emptyMap(), null,
+                criteria,
                 PageRequest.of(0, 10)
         );
 

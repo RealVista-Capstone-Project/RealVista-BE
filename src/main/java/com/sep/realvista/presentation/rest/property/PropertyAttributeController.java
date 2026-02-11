@@ -23,8 +23,8 @@ public class PropertyAttributeController {
     private final PropertyAttributeService propertyAttributeService;
 
     @Operation(summary = "Get Searchable Attributes by Property Type", 
-               description = "Returns all searchable attributes for a " +
-                             "specific property type (e.g., APARTMENT, VILLA)")
+               description = "Returns all searchable attributes for a "
+                       + "specific property type (e.g., APARTMENT, VILLA)")
     @GetMapping("/property-types/{typeCode}")
     @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "")
     @PreAuthorize("permitAll()")
@@ -36,8 +36,8 @@ public class PropertyAttributeController {
     }
 
     @Operation(summary = "Get Searchable Attributes by Property Category",
-               description = "Returns all searchable attributes for a " +
-                             "property category (e.g., RESIDENTIAL, COMMERCIAL)")
+               description = "Returns all searchable attributes for a "
+                       + "property category (e.g., RESIDENTIAL, COMMERCIAL)")
     @GetMapping("/property-categories/{categoryCode}")
     @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "")
     @PreAuthorize("permitAll()")

@@ -20,10 +20,8 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -70,9 +68,9 @@ public class ListingSearchService {
 
     @Transactional(readOnly = true)
     public Page<ListingSearchResponse> search(ListingSearchCriteria criteria, Pageable pageable) {
-        
+
         log.debug("🔍 Searching with criteria: {}", criteria);
-        
+
         // Handle custom sorting if requested
         Pageable effectivePageable = pageable;
         if (criteria.getSortBy() != null && !criteria.getSortBy().isBlank()) {
@@ -80,23 +78,23 @@ public class ListingSearchService {
         }
 
         Specification<Listing> spec = buildSpecification(criteria);
-        
+
         Page<Listing> listings = listingRepository.findAll(spec, effectivePageable);
-        
+
         // Map to response and populate thumbnails
         return listings.map(listing -> {
             ListingSearchResponse response = listingMapper.toSearchResponse(listing);
-            
+
             // Fetch thumbnail from listing_medias if not already populated
             if (response.getThumbnail() == null || response.getThumbnail().isBlank()) {
                 String thumbnail = fetchThumbnailForListing(listing.getListingId());
                 response.setThumbnail(thumbnail);
             }
-            
+
             return response;
         });
     }
-    
+
     private String fetchThumbnailForListing(UUID listingId) {
         // Query to get the primary media thumbnail
         var result = listingRepository.findThumbnailByListingId(listingId);
@@ -126,11 +124,11 @@ public class ListingSearchService {
     }
 
     private Specification<Listing> buildSpecification(ListingSearchCriteria criteria) {
-        
+
         return (root, query, cb) -> {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
-            
+
             // Only search published listings
             predicates.add(cb.equal(root.get(ListingFields.STATUS), ListingStatus.PUBLISHED));
             log.debug("✅ Added PUBLISHED filter");
@@ -152,7 +150,7 @@ public class ListingSearchService {
             if (criteria.getPropertyType() != null && !criteria.getPropertyType().isBlank()) {
                 log.debug("🏠 Property Type filter: {}", criteria.getPropertyType());
                 predicates.add(cb.equal(
-                    propertyJoin.get(PropertyFields.TYPE).get(PropertyTypeFields.CODE), 
+                    propertyJoin.get(PropertyFields.TYPE).get(PropertyTypeFields.CODE),
                     criteria.getPropertyType()
                 ));
             }
@@ -162,7 +160,7 @@ public class ListingSearchService {
                 predicates.add(cb.equal(
                     propertyJoin.get(PropertyFields.TYPE)
                         .get(PropertyTypeFields.CATEGORY)
-                        .get(CategoryFields.CODE), 
+                        .get(CategoryFields.CODE),
                     criteria.getPropertyCategory()
                 ));
                 log.debug("✅ Added propertyCategory filter: {}", criteria.getPropertyCategory());
@@ -171,7 +169,7 @@ public class ListingSearchService {
             // Location (LIKE search)
             if (criteria.getLocation() != null && !criteria.getLocation().isBlank()) {
                 predicates.add(cb.like(cb.lower(
-                    propertyJoin.join(PropertyFields.LOCATION).get(LocationFields.NAME)), 
+                    propertyJoin.join(PropertyFields.LOCATION).get(LocationFields.NAME)),
                     "%" + criteria.getLocation().toLowerCase() + "%"
                 ));
                 log.debug("✅ Added location LIKE filter: {}", criteria.getLocation());
@@ -187,12 +185,22 @@ public class ListingSearchService {
 
             // Area Range
             if (criteria.getMinArea() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(propertyJoin.get(PropertyFields.USABLE_SIZE_M2), criteria.getMinArea()));
+                predicates.add(
+                        cb.greaterThanOrEqualTo(
+                                propertyJoin.get(PropertyFields.USABLE_SIZE_M2),
+                                criteria.getMinArea()
+                        )
+                );
             }
             if (criteria.getMaxArea() != null) {
-                predicates.add(cb.lessThanOrEqualTo(propertyJoin.get(PropertyFields.USABLE_SIZE_M2), criteria.getMaxArea()));
+                predicates.add(
+                        cb.lessThanOrEqualTo(
+                                propertyJoin.get(PropertyFields.USABLE_SIZE_M2),
+                                criteria.getMaxArea()
+                        )
+                );
             }
-            
+
             // Bedrooms
             if (criteria.getBedrooms() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(
@@ -200,7 +208,7 @@ public class ListingSearchService {
                     criteria.getBedrooms()
                 ));
             }
-            
+
             // Bathrooms
             if (criteria.getBathrooms() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(
@@ -208,7 +216,7 @@ public class ListingSearchService {
                     criteria.getBathrooms()
                 ));
             }
-            
+
             // Dynamic Attributes (JSONB) - Generic handling
             if (criteria.getDynamicAttributes() != null && !criteria.getDynamicAttributes().isEmpty()) {
                 criteria.getDynamicAttributes().forEach((attributeCode, value) -> {

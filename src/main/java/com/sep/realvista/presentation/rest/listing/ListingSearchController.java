@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
 import java.util.Map;
 
 import com.sep.realvista.application.listing.dto.ListingFilterDTO;
@@ -31,9 +30,9 @@ public class ListingSearchController {
     private final ListingSearchService listingSearchService;
 
     @Operation(
-        summary = "Search Listings", 
-        description = "Search listings with filters. All parameters are optional. " +
-                      "Use 'attr_' prefix for dynamic attributes (e.g., attr_direction=EAST)"
+            summary = "Search Listings",
+            description = "Search listings with filters. All parameters are optional. "
+                    + "Use 'attr_' prefix for dynamic attributes (e.g., attr_direction=EAST)"
     )
     @GetMapping("/search")
     @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "")
