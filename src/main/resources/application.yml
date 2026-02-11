@@ -59,9 +59,10 @@ spring:
   # Cache Configuration
   cache:
     type: simple
-    cache-names: 
+    cache-names:
       - users
       - listings
+      - similarListings
 
   # Server Configuration
   server:

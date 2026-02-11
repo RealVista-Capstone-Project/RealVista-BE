@@ -3,6 +3,7 @@ package com.sep.realvista.domain.listing.repository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.domain.listing.similarity.SimilarListing;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,4 +26,14 @@ public interface ListingRepository {
     boolean existsById(UUID id);
 
     void deleteById(UUID id);
+
+    /**
+     * Find similar listings based on property type, price, area, and common attributes.
+     * Returns listings sorted by similarity score (descending) and published date (descending).
+     *
+     * @param listingId the reference listing ID
+     * @param limit maximum number of results to return
+     * @return list of similar listings with similarity scores
+     */
+    List<SimilarListing> findSimilarListings(UUID listingId, int limit);
 }

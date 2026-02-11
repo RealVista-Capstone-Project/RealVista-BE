@@ -4,7 +4,9 @@ import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,9 +15,11 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
+@Slf4j
 public class ListingRepositoryImpl implements ListingRepository {
 
     private final ListingJpaRepository jpaRepository;
+    private final ListingCustomRepository customRepository;
 
     @Override
     public Listing save(Listing listing) {
@@ -55,5 +59,11 @@ public class ListingRepositoryImpl implements ListingRepository {
     @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public List<SimilarListing> findSimilarListings(UUID listingId, int limit) {
+        log.debug("Finding similar listings for listingId: {}, limit: {}", listingId, limit);
+        return customRepository.findSimilarListings(listingId, limit);
     }
 }
