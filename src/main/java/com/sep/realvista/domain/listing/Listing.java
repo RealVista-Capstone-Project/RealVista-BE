@@ -38,7 +38,9 @@ import java.util.UUID;
         @Index(name = "idx_listing_status", columnList = "status"),
         @Index(name = "idx_listing_published", columnList = "published_at")
 })
-@SqlResultSetMapping(name = "SimilarListingMapping", classes = @ConstructorResult(targetClass = SimilarListing.class, columns = {
+@SqlResultSetMapping(
+        name = "SimilarListingMapping",
+        classes = @ConstructorResult(targetClass = SimilarListing.class, columns = {
         @ColumnResult(name = "listing_id", type = UUID.class),
         @ColumnResult(name = "property_id", type = UUID.class),
         @ColumnResult(name = "property_type_id", type = UUID.class),
