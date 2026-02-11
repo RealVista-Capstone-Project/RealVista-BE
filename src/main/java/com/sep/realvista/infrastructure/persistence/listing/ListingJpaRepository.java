@@ -74,7 +74,7 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
               LOWER(p.descriptions) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
               LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
           ))
-          AND (:category IS NULL OR LOWER(pc.code) = LOWER(CAST(:category AS VARCHAR)))
+          AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
           AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
           AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
           AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -88,7 +88,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("searchText") String searchText,
-            @Param("category") String category,
+            @Param("categories") List<String> categories,
+            @Param("filterByCategory") boolean filterByCategory,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area,
@@ -133,7 +134,7 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
               LOWER(p.descriptions) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
               LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
           ))
-          AND (:category IS NULL OR LOWER(pc.code) = LOWER(CAST(:category AS VARCHAR)))
+          AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
           AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
           AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
           AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -147,7 +148,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("searchText") String searchText,
-            @Param("category") String category,
+            @Param("categories") List<String> categories,
+            @Param("filterByCategory") boolean filterByCategory,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area,
@@ -192,7 +194,7 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
               LOWER(p.descriptions) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
               LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
           ))
-          AND (:category IS NULL OR LOWER(pc.code) = LOWER(CAST(:category AS VARCHAR)))
+          AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
           AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
           AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
           AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -206,7 +208,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("searchText") String searchText,
-            @Param("category") String category,
+            @Param("categories") List<String> categories,
+            @Param("filterByCategory") boolean filterByCategory,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area,
@@ -251,7 +254,7 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
               LOWER(p.descriptions) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
               LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
           ))
-          AND (:category IS NULL OR LOWER(pc.code) = LOWER(CAST(:category AS VARCHAR)))
+          AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
           AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
           AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
           AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -265,7 +268,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("searchText") String searchText,
-            @Param("category") String category,
+            @Param("categories") List<String> categories,
+            @Param("filterByCategory") boolean filterByCategory,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area,
@@ -310,7 +314,7 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
               LOWER(p.descriptions) LIKE LOWER(CONCAT('%', :searchText, '%')) OR
               LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
           ))
-          AND (:category IS NULL OR LOWER(pc.code) = LOWER(CAST(:category AS VARCHAR)))
+          AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
           AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
           AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
           AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -322,7 +326,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("searchText") String searchText,
-            @Param("category") String category,
+            @Param("categories") List<String> categories,
+            @Param("filterByCategory") boolean filterByCategory,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area

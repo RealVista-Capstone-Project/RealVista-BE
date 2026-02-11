@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +93,11 @@ public class MapSearchApplicationService {
                 .minPrice(request.getMinPrice())
                 .maxPrice(request.getMaxPrice())
                 .searchText(request.getSearchText())
-                .category(request.getCategory())
+                .categories(request.getCategory() != null
+                        ? Arrays.stream(request.getCategory().split(","))
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty())
+                                .toList() : null)
                 .bedrooms(request.getBedrooms())
                 .bathrooms(request.getBathrooms())
                 .area(request.getArea())

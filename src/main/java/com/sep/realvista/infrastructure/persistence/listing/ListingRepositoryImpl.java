@@ -8,6 +8,7 @@ import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -64,26 +65,31 @@ public class ListingRepositoryImpl implements ListingRepository {
         String typeStr = criteria.getListingTypeStr();
         int offset = criteria.getOffset();
 
+        List<String> categories = criteria.getCategories() != null && !criteria.getCategories().isEmpty()
+                ? criteria.getCategories().stream().map(String::toLowerCase).toList()
+                : Collections.emptyList();
+        boolean filterByCategory = !categories.isEmpty();
+
         if ("price".equalsIgnoreCase(criteria.getSortBy())) {
             if ("asc".equalsIgnoreCase(criteria.getSortDirection())) {
                 return jpaRepository.findPublishedWithinBoundsSortByPriceAsc(
                         criteria.getBounds(), typeStr,
                         criteria.getMinPrice(), criteria.getMaxPrice(),
-                        criteria.getSearchText(), criteria.getCategory(),
+                        criteria.getSearchText(), categories, filterByCategory,
                         criteria.getBedrooms(), criteria.getBathrooms(),
                         criteria.getArea(), criteria.getSize(), offset);
             }
             return jpaRepository.findPublishedWithinBoundsSortByPriceDesc(
                     criteria.getBounds(), typeStr,
                     criteria.getMinPrice(), criteria.getMaxPrice(),
-                    criteria.getSearchText(), criteria.getCategory(),
+                    criteria.getSearchText(), categories, filterByCategory,
                     criteria.getBedrooms(), criteria.getBathrooms(),
                     criteria.getArea(), criteria.getSize(), offset);
         } else if ("createdAt".equalsIgnoreCase(criteria.getSortBy())) {
             return jpaRepository.findPublishedWithinBoundsSortByCreatedAt(
                     criteria.getBounds(), typeStr,
                     criteria.getMinPrice(), criteria.getMaxPrice(),
-                    criteria.getSearchText(), criteria.getCategory(),
+                    criteria.getSearchText(), categories, filterByCategory,
                     criteria.getBedrooms(), criteria.getBathrooms(),
                     criteria.getArea(), criteria.getSize(), offset);
         }
@@ -92,17 +98,22 @@ public class ListingRepositoryImpl implements ListingRepository {
         return jpaRepository.findPublishedWithinBoundsSortByPublishedAt(
                 criteria.getBounds(), typeStr,
                 criteria.getMinPrice(), criteria.getMaxPrice(),
-                criteria.getSearchText(), criteria.getCategory(),
+                criteria.getSearchText(), categories, filterByCategory,
                 criteria.getBedrooms(), criteria.getBathrooms(),
                 criteria.getArea(), criteria.getSize(), offset);
     }
 
     @Override
     public Long countPublishedWithinBounds(MapSearchCriteria criteria) {
+        List<String> categories = criteria.getCategories() != null && !criteria.getCategories().isEmpty()
+                ? criteria.getCategories().stream().map(String::toLowerCase).toList()
+                : Collections.emptyList();
+        boolean filterByCategory = !categories.isEmpty();
+
         return jpaRepository.countPublishedWithinBounds(
                 criteria.getBounds(), criteria.getListingTypeStr(),
                 criteria.getMinPrice(), criteria.getMaxPrice(),
-                criteria.getSearchText(), criteria.getCategory(),
+                criteria.getSearchText(), categories, filterByCategory,
                 criteria.getBedrooms(), criteria.getBathrooms(),
                 criteria.getArea());
     }

@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Encapsulates all search criteria for map-based listing searches.
@@ -19,7 +20,7 @@ public class MapSearchCriteria {
     private final BigDecimal minPrice;
     private final BigDecimal maxPrice;
     private final String searchText;
-    private final String category;
+    private final List<String> categories;
     private final Integer bedrooms;
     private final Integer bathrooms;
     private final BigDecimal area;
