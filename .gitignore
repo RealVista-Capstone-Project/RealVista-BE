@@ -45,3 +45,5 @@ logs/
 ### OS ###
 .DS_Store
 Thumbs.db
+
+firebase-service-account.json

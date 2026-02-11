@@ -13,6 +13,8 @@ public interface ListingRepository {
     Listing save(Listing listing);
 
     Optional<Listing> findById(UUID id);
+    
+    Optional<Listing> findBySlug(String slug);
 
     List<Listing> findByPropertyId(UUID propertyId);
 
@@ -25,4 +27,10 @@ public interface ListingRepository {
     boolean existsById(UUID id);
 
     void deleteById(UUID id);
+
+    void deleteAll();
+
+    org.springframework.data.domain.Page<Listing> findAll(org.springframework.data.jpa.domain.Specification<Listing> spec, org.springframework.data.domain.Pageable pageable);
+    
+    Optional<String> findThumbnailByListingId(UUID listingId);
 }

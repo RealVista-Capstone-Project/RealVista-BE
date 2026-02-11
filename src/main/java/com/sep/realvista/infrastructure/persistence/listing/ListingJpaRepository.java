@@ -14,7 +14,7 @@ import java.util.UUID;
  * Spring Data JPA repository for Listing entity.
  * All queries exclude soft-deleted records (deleted = false).
  */
-public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
+public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Listing> {
 
     @Query("SELECT l FROM Listing l WHERE l.property.propertyId = :propertyId AND l.deleted = false")
     List<Listing> findByPropertyId(@Param("propertyId") UUID propertyId);
@@ -32,4 +32,19 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
 
     @Query("SELECT l FROM Listing l WHERE l.listingId = :id AND l.deleted = false")
     Optional<Listing> findActiveById(@Param("id") UUID id);
+
+    @Query("SELECT l FROM Listing l WHERE l.slug = :slug AND l.deleted = false")
+    Optional<Listing> findBySlug(@Param("slug") String slug);
+
+    @Query("""
+        SELECT COALESCE(pm.thumbnailUrl, pm.mediaUrl)
+        FROM ListingMedia lm
+        JOIN PropertyMedia pm ON lm.propertyMediaId = pm.propertyMediaId
+        WHERE lm.listingId = :listingId
+          AND lm.isPrimary = true
+          AND lm.deleted = false
+          AND pm.deleted = false
+        ORDER BY lm.displayOrder ASC
+        """)
+    Optional<String> findThumbnailByListingId(@Param("listingId") UUID listingId);
 }

@@ -87,6 +87,12 @@ public class Property extends BaseEntity {
     @Column(name = "length_m", precision = 6, scale = 2)
     private BigDecimal lengthM;
 
+    @Column(name = "bedrooms")
+    private Integer bedrooms;
+
+    @Column(name = "bathrooms")
+    private Integer bathrooms;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     @Builder.Default

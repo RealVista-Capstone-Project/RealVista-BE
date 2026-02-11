@@ -56,4 +56,24 @@ public class ListingRepositoryImpl implements ListingRepository {
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public void deleteAll() {
+        jpaRepository.deleteAll();
+    }
+
+    @Override
+    public org.springframework.data.domain.Page<Listing> findAll(org.springframework.data.jpa.domain.Specification<Listing> spec, org.springframework.data.domain.Pageable pageable) {
+        return jpaRepository.findAll(spec, pageable);
+    }
+
+    @Override
+    public Optional<String> findThumbnailByListingId(UUID listingId) {
+        return jpaRepository.findThumbnailByListingId(listingId);
+    }
+
+    @Override
+    public Optional<Listing> findBySlug(String slug) {
+        return jpaRepository.findBySlug(slug);
+    }
 }
