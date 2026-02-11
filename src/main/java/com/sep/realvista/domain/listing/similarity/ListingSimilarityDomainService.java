@@ -85,7 +85,7 @@ public class ListingSimilarityDomainService {
                 + (areaScore * AREA_WEIGHT)
                 + (attributeScore * ATTRIBUTE_WEIGHT);
 
-        log.debug("Similarity calculation - Type: {:.2f}, Price: {:.2f}, Area: {:.2f}, Attr: {:.2f}, Total: {:.2f}",
+        log.debug("Similarity calculation - Type: {}, Price: {}, Area: {}, Attr: {}, Total: {}",
                 propertyTypeScore, priceScore, areaScore, attributeScore, totalScore);
 
         return SimilarityScore.builder()
