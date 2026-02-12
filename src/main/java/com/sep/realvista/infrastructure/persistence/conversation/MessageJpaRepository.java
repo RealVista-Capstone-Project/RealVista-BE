@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -37,4 +38,11 @@ public interface MessageJpaRepository extends JpaRepository<Message, UUID> {
             @Param("conversationId") UUID conversationId,
             @Param("cursor") LocalDateTime cursor,
             @Param("limit") int limit);
+
+    @Query("SELECT m FROM Message m "
+            + "WHERE m.conversationId = :conversationId "
+            + "ORDER BY m.createdAt DESC "
+            + "LIMIT 1")
+    Optional<Message> findLastMessageByConversationId(
+            @Param("conversationId") UUID conversationId);
 }

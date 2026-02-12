@@ -40,4 +40,9 @@ public class MessageRepositoryImpl implements MessageRepository {
     public Optional<Message> findById(UUID messageId) {
         return messageJpaRepository.findById(messageId);
     }
+
+    @Override
+    public Optional<Message> findLastMessageByConversationId(UUID conversationId) {
+        return messageJpaRepository.findLastMessageByConversationId(conversationId);
+    }
 }

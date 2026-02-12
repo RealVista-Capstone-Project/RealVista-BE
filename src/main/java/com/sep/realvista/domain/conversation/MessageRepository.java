@@ -54,4 +54,12 @@ public interface MessageRepository {
      * @return optional containing the message if found
      */
     Optional<Message> findById(UUID messageId);
+
+    /**
+     * Find the most recent message in a conversation.
+     *
+     * @param conversationId the conversation ID
+     * @return optional containing the last message if found
+     */
+    Optional<Message> findLastMessageByConversationId(UUID conversationId);
 }
