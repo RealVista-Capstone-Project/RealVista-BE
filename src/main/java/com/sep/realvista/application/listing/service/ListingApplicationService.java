@@ -1,5 +1,6 @@
 package com.sep.realvista.application.listing.service;
 
+import com.sep.realvista.application.listing.dto.CostBreakdownDTO;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
@@ -35,6 +36,7 @@ public class ListingApplicationService {
         private final PropertyRepository propertyRepository;
         private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
         private final ListingMapper listingMapper;
+        private final CostBreakdownService costBreakdownService;
 
         /**
          * Get listing detail by ID.
@@ -78,6 +80,13 @@ public class ListingApplicationService {
                 log.info("Successfully fetched listing detail for ID: {} with {} attributes",
                                 listingId, attributeValues.size());
 
-                return listingMapper.toDetailResponseWithMediaAndAttributes(listing, listingMedias, attributeValues);
+                ListingDetailResponse response = listingMapper.toDetailResponseWithMediaAndAttributes(
+                                listing, listingMedias, attributeValues);
+
+                // Calculate and add cost breakdown (only for RENT listings)
+                CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
+                response.setCostBreakdown(costBreakdown);
+
+                return response;
         }
 }
