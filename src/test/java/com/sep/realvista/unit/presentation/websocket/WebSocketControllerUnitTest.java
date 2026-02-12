@@ -160,9 +160,9 @@ class WebSocketControllerUnitTest {
 
             Email recipientEmail = mock(Email.class);
 
-            when(senderUser.getUserId()).thenReturn(senderId);
-            when(recipientUser.getEmail()).thenReturn(recipientEmail);
-            when(recipientEmail.getValue()).thenReturn("recipient@example.com");
+            lenient().when(senderUser.getUserId()).thenReturn(senderId);
+            lenient().when(recipientUser.getEmail()).thenReturn(recipientEmail);
+            lenient().when(recipientEmail.getValue()).thenReturn("recipient@example.com");
         }
 
         @Test
