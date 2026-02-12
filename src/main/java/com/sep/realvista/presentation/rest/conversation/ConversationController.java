@@ -1,12 +1,14 @@
 package com.sep.realvista.presentation.rest.conversation;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
+import com.sep.realvista.application.conversation.dto.response.ConversationListItemResponse;
 import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
 import com.sep.realvista.application.conversation.dto.response.MessagePaginationResponse;
 import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
 import com.sep.realvista.application.conversation.dto.response.SendMessageResponse;
 import com.sep.realvista.application.conversation.service.ConversationApplicationService;
 import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserDomainService;
 import com.sep.realvista.presentation.common.util.ControllerUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -15,6 +17,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -42,6 +46,28 @@ public class ConversationController {
 
     private final ConversationApplicationService conversationApplicationService;
     private final ControllerUtils controllerUtils;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final UserDomainService userDomainService;
+
+    @GetMapping
+    @Operation(summary = "List user conversations",
+            description = "Retrieves all conversations for the authenticated user, "
+                    + "sorted by last message time (newest first).")
+    public ResponseEntity<ApiResponse<List<ConversationListItemResponse>>> getUserConversations(
+            Authentication authentication
+    ) {
+        String traceId = controllerUtils.initializeTraceId();
+        User currentUser = controllerUtils.getCurrentUser(authentication);
+
+        log.info("Listing conversations - traceId: {}, user: {}",
+                traceId, currentUser.getEmail());
+
+        List<ConversationListItemResponse> conversations = conversationApplicationService
+                .getUserConversations(currentUser.getUserId());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Conversations retrieved successfully", conversations));
+    }
 
     @GetMapping("/users/{otherUserId}")
     @Operation(summary = "Get conversation between users",
@@ -114,6 +140,23 @@ public class ConversationController {
 
         SendMessageResponse response = conversationApplicationService
                 .sendMessage(currentUser.getUserId(), request);
+
+        // Broadcast via WebSocket for real-time updates to both parties
+        try {
+            messagingTemplate.convertAndSendToUser(
+                    currentUser.getEmail().getValue(),
+                    "/queue/messages",
+                    response
+            );
+            User recipient = userDomainService.getUserOrThrow(request.getRecipientUserId());
+            messagingTemplate.convertAndSendToUser(
+                    recipient.getEmail().getValue(),
+                    "/queue/messages",
+                    response
+            );
+        } catch (Exception e) {
+            log.warn("Failed to broadcast message via WebSocket: {}", e.getMessage());
+        }
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
