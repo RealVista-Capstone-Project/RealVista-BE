@@ -3,6 +3,7 @@ package com.sep.realvista.application.conversation.service;
 import com.sep.realvista.application.conversation.dto.CursorBasedPaginationMetadata;
 import com.sep.realvista.application.conversation.dto.SenderInfo;
 import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
+import com.sep.realvista.application.conversation.dto.response.ConversationListItemResponse;
 import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
 import com.sep.realvista.application.conversation.dto.response.MessagePaginationResponse;
 import com.sep.realvista.application.conversation.dto.response.MessageResponse;
@@ -15,6 +16,8 @@ import com.sep.realvista.domain.conversation.ConversationDomainService;
 import com.sep.realvista.domain.conversation.ConversationRepository;
 import com.sep.realvista.domain.conversation.Message;
 import com.sep.realvista.domain.conversation.MessageRepository;
+import com.sep.realvista.domain.conversation.UserConversation;
+import com.sep.realvista.domain.conversation.UserConversationRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +29,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -44,10 +49,81 @@ public class ConversationApplicationService {
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
+    private final UserConversationRepository userConversationRepository;
     private final UserDomainService userDomainService;
     private final ConversationDomainService conversationDomainService;
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;
+
+    /**
+     * Get all conversations for the authenticated user.
+     * Returns conversations sorted by last message time (newest first).
+     *
+     * @param userId the authenticated user's ID
+     * @return list of conversation summaries
+     */
+    @Transactional(readOnly = true)
+    public List<ConversationListItemResponse> getUserConversations(UUID userId) {
+        log.info("Getting conversations for user {}", userId);
+
+        List<UserConversation> userConversations = userConversationRepository.findByUserId(userId);
+
+        List<ConversationListItemResponse> responses = new ArrayList<>();
+        for (UserConversation uc : userConversations) {
+            if (uc.isArchived()) {
+                continue;
+            }
+
+            // Find the other participant
+            Conversation conversation = conversationRepository.findById(uc.getConversationId())
+                    .orElse(null);
+            if (conversation == null) {
+                continue;
+            }
+
+            // Get the other user in the conversation
+            Optional<User> otherUserOpt = conversation.getParticipants().stream()
+                    .filter(p -> !p.getUserId().equals(userId))
+                    .map(p -> userDomainService.getUserOrThrow(p.getUserId()))
+                    .findFirst();
+
+            if (otherUserOpt.isEmpty()) {
+                continue;
+            }
+            User otherUser = otherUserOpt.get();
+
+            // Get last message
+            Optional<Message> lastMessageOpt = messageRepository
+                    .findLastMessageByConversationId(uc.getConversationId());
+
+            ConversationListItemResponse item = ConversationListItemResponse.builder()
+                    .conversationId(uc.getConversationId())
+                    .otherUser(SenderInfo.builder()
+                            .userId(otherUser.getUserId())
+                            .name(otherUser.getFullName())
+                            .avatarUrl(otherUser.getAvatarUrl())
+                            .build())
+                    .lastMessage(lastMessageOpt.map(Message::getContent).orElse(null))
+                    .lastMessageType(lastMessageOpt
+                            .map(m -> m.getMessageType().name()).orElse(null))
+                    .lastMessageTime(lastMessageOpt
+                            .map(Message::getCreatedAt)
+                            .orElse(conversation.getCreatedAt()))
+                    .unreadCount(uc.getUnreadCount())
+                    .createdAt(conversation.getCreatedAt())
+                    .build();
+
+            responses.add(item);
+        }
+
+        // Sort by last message time descending
+        responses.sort(Comparator.comparing(
+                ConversationListItemResponse::getLastMessageTime,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+
+        log.info("Found {} conversations for user {}", responses.size(), userId);
+        return responses;
+    }
 
     /**
      * Get the conversation between two users.
