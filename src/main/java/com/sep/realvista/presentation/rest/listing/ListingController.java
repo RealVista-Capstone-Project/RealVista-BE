@@ -2,6 +2,7 @@ package com.sep.realvista.presentation.rest.listing;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
+import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,5 +42,19 @@ public class ListingController {
 
         ListingDetailResponse listing = listingApplicationService.getListingDetail(id);
         return ResponseEntity.ok(ApiResponse.success("Listing retrieved successfully", listing));
+    }
+
+    @GetMapping("/{id}/price-history")
+    @Operation(summary = "Get listing price history",
+            description = "Retrieves the price history for a listing including all price changes "
+                    + "with calculated differences and percentages")
+    public ResponseEntity<ApiResponse<PriceHistoryResponse>> getPriceHistory(@PathVariable UUID id) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        log.info("Fetching price history - traceId: {}, listingId: {}", traceId, id);
+
+        PriceHistoryResponse priceHistory = listingApplicationService.getPriceHistory(id);
+        return ResponseEntity.ok(ApiResponse.success("Price history retrieved successfully", priceHistory));
     }
 }

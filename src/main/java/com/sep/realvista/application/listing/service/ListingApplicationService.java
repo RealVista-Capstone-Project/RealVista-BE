@@ -2,10 +2,15 @@ package com.sep.realvista.application.listing.service;
 
 import com.sep.realvista.application.listing.dto.CostBreakdownDTO;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
+import com.sep.realvista.application.listing.dto.PriceChangeType;
+import com.sep.realvista.application.listing.dto.PriceHistoryDTO;
+import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.analytics.ListingPriceHistory;
 import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
+import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyRepository;
@@ -17,6 +22,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +41,7 @@ public class ListingApplicationService {
 
         private final ListingRepository listingRepository;
         private final ListingMediaRepository listingMediaRepository;
+        private final ListingPriceHistoryRepository listingPriceHistoryRepository;
         private final PropertyRepository propertyRepository;
         private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
         private final ListingMapper listingMapper;
@@ -88,5 +97,84 @@ public class ListingApplicationService {
                 response.setCostBreakdown(costBreakdown);
 
                 return response;
+        }
+
+        /**
+         * Get price history for a listing.
+         * Returns all price changes with calculated differences and percentages.
+         *
+         * @param listingId the listing ID
+         * @return price history response with current price and historical entries
+         * @throws ResourceNotFoundException if listing not found
+         */
+        @Transactional(readOnly = true)
+        public PriceHistoryResponse getPriceHistory(UUID listingId) {
+                log.info("Fetching price history for listing ID: {}", listingId);
+
+                // Verify listing exists
+                Listing listing = listingRepository.findById(listingId)
+                                .orElseThrow(() -> {
+                                        log.error("Listing not found with ID: {}", listingId);
+                                        return new ResourceNotFoundException("Listing", listingId);
+                                });
+
+                // Fetch price history entries
+                List<ListingPriceHistory> historyEntries = listingPriceHistoryRepository
+                                .findByListingIdOrderByCreatedAtDesc(listingId);
+
+                // Build price history DTOs with calculated changes
+                List<PriceHistoryDTO> priceHistoryDTOs = new ArrayList<>();
+                BigDecimal previousPrice = null;
+
+                for (ListingPriceHistory entry : historyEntries) {
+                        PriceChangeType changeType;
+                        BigDecimal priceChange = null;
+                        Double priceChangePercent = null;
+
+                        if (previousPrice == null) {
+                                changeType = PriceChangeType.INITIAL;
+                        } else {
+                                int comparison = entry.getPrice().compareTo(previousPrice);
+                                if (comparison > 0) {
+                                        changeType = PriceChangeType.INCREASED;
+                                } else if (comparison < 0) {
+                                        changeType = PriceChangeType.DECREASED;
+                                } else {
+                                        changeType = PriceChangeType.INITIAL;
+                                }
+
+                                priceChange = entry.getPrice().subtract(previousPrice);
+
+                                if (previousPrice.compareTo(BigDecimal.ZERO) > 0) {
+                                        priceChangePercent = priceChange
+                                                        .divide(previousPrice, 4, RoundingMode.HALF_UP)
+                                                        .multiply(BigDecimal.valueOf(100))
+                                                        .doubleValue();
+                                }
+                        }
+
+                        PriceHistoryDTO dto = PriceHistoryDTO.builder()
+                                        .priceHistoryId(entry.getListingPriceHistoryId())
+                                        .price(entry.getPrice())
+                                        .minPrice(entry.getMinPrice())
+                                        .maxPrice(entry.getMaxPrice())
+                                        .changedAt(entry.getCreatedAt())
+                                        .priceChange(priceChange)
+                                        .priceChangePercent(priceChangePercent)
+                                        .changeType(changeType)
+                                        .build();
+
+                        priceHistoryDTOs.add(dto);
+                        previousPrice = entry.getPrice();
+                }
+
+                log.info("Successfully fetched {} price history entries for listing ID: {}",
+                                priceHistoryDTOs.size(), listingId);
+
+                return PriceHistoryResponse.builder()
+                                .listingId(listingId)
+                                .currentPrice(listing.getPrice())
+                                .priceHistory(priceHistoryDTOs)
+                                .build();
         }
 }
