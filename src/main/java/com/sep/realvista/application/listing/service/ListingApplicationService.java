@@ -123,18 +123,20 @@ public class ListingApplicationService {
                                 .findByListingIdOrderByCreatedAtDesc(listingId);
 
                 // Build price history DTOs with calculated changes
+                // Entries are ordered DESC (newest first), so we compare each entry
+                // to the NEXT (older) entry to determine if price increased/decreased
                 List<PriceHistoryDTO> priceHistoryDTOs = new ArrayList<>();
-                BigDecimal previousPrice = null;
 
-                for (ListingPriceHistory entry : historyEntries) {
+                for (int i = 0; i < historyEntries.size(); i++) {
+                        ListingPriceHistory entry = historyEntries.get(i);
                         PriceChangeType changeType;
                         BigDecimal priceChange = null;
                         Double priceChangePercent = null;
 
-                        if (previousPrice == null) {
-                                changeType = PriceChangeType.INITIAL;
-                        } else {
-                                int comparison = entry.getPrice().compareTo(previousPrice);
+                        // Look ahead to the next (older) entry for comparison
+                        if (i + 1 < historyEntries.size()) {
+                                BigDecimal olderPrice = historyEntries.get(i + 1).getPrice();
+                                int comparison = entry.getPrice().compareTo(olderPrice);
                                 if (comparison > 0) {
                                         changeType = PriceChangeType.INCREASED;
                                 } else if (comparison < 0) {
@@ -143,14 +145,17 @@ public class ListingApplicationService {
                                         changeType = PriceChangeType.INITIAL;
                                 }
 
-                                priceChange = entry.getPrice().subtract(previousPrice);
+                                priceChange = entry.getPrice().subtract(olderPrice);
 
-                                if (previousPrice.compareTo(BigDecimal.ZERO) > 0) {
+                                if (olderPrice.compareTo(BigDecimal.ZERO) > 0) {
                                         priceChangePercent = priceChange
-                                                        .divide(previousPrice, 4, RoundingMode.HALF_UP)
+                                                        .divide(olderPrice, 4, RoundingMode.HALF_UP)
                                                         .multiply(BigDecimal.valueOf(100))
                                                         .doubleValue();
                                 }
+                        } else {
+                                // Last entry (oldest in history)
+                                changeType = PriceChangeType.INITIAL;
                         }
 
                         PriceHistoryDTO dto = PriceHistoryDTO.builder()
@@ -165,7 +170,6 @@ public class ListingApplicationService {
                                         .build();
 
                         priceHistoryDTOs.add(dto);
-                        previousPrice = entry.getPrice();
                 }
 
                 log.info("Successfully fetched {} price history entries for listing ID: {}",
