@@ -108,12 +108,13 @@ public class ListingApplicationService {
          * @return similar listings response with scores
          * @throws ResourceNotFoundException if listing not found
          */
-        @Cacheable(value = "similarListings", key = "#listingId + '_' + #limit")
+        @Cacheable(value = "similarListings",
+                key = "#listingId + '_' + T(java.lang.Math).min(T(java.lang.Math).max(1, #limit), 10)")
         @Transactional(readOnly = true)
         public SimilarListingsResponse getSimilarListings(UUID listingId, int limit) {
                 log.info("Fetching similar listings for listingId: {}, limit: {}", listingId, limit);
 
-                // Validate limit
+                // Validate limit (clamped to [1, 10])
                 int validatedLimit = Math.min(Math.max(1, limit), 10);
                 if (validatedLimit != limit) {
                         log.warn("Requested limit {} adjusted to {}", limit, validatedLimit);

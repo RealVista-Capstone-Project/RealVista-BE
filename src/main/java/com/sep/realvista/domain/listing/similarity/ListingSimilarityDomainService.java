@@ -1,7 +1,5 @@
 package com.sep.realvista.domain.listing.similarity;
 
-import com.sep.realvista.domain.listing.Listing;
-import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,18 +14,20 @@ import java.util.stream.Collectors;
 /**
  * Domain Service for calculating similarity between listings.
  * Provides business logic for scoring listings based on:
- * - Property Type (40%)
+ * - Property Type (30%)
+ * - Location (15%): same location=100%, same parent location=50%
  * - Price Range (25%)
- * - Area (20%)
+ * - Area (15%)
  * - Common Attributes (15%)
  */
 @Service
 @Slf4j
 public class ListingSimilarityDomainService {
 
-    private static final double PROPERTY_TYPE_WEIGHT = 0.40;
+    private static final double PROPERTY_TYPE_WEIGHT = 0.30;
+    private static final double LOCATION_WEIGHT = 0.15;
     private static final double PRICE_WEIGHT = 0.25;
-    private static final double AREA_WEIGHT = 0.20;
+    private static final double AREA_WEIGHT = 0.15;
     private static final double ATTRIBUTE_WEIGHT = 0.15;
 
     // Price tolerance thresholds
@@ -43,53 +43,52 @@ public class ListingSimilarityDomainService {
     /**
      * Calculate similarity score between two listings.
      *
-     * @param currentListing the reference listing
-     * @param candidateListing the listing to compare against
-     * @param currentProperty the reference property
-     * @param candidateProperty the candidate property
-     * @param currentAttributes attribute values for reference property
-     * @param candidateAttributes attribute values for candidate property
+     * @param current the reference listing context
+     * @param candidate the candidate listing context
      * @return similarity score between 0.0 and 1.0
      */
-    public SimilarityScore calculateSimilarity(
-            Listing currentListing,
-            Listing candidateListing,
-            Property currentProperty,
-            Property candidateProperty,
-            List<PropertyAttributeValue> currentAttributes,
-            List<PropertyAttributeValue> candidateAttributes) {
+    public SimilarityScore calculateSimilarity(SimilarityContext current, SimilarityContext candidate) {
 
-        // Property Type Score (40%)
+        // Property Type Score (30%)
         double propertyTypeScore = calculatePropertyTypeScore(
-                currentProperty.getPropertyTypeId(),
-                candidateProperty.getPropertyTypeId());
+                current.getPropertyTypeId(),
+                candidate.getPropertyTypeId());
+
+        // Location Score (15%)
+        double locationScore = calculateLocationScore(
+                current.getLocationId(),
+                candidate.getLocationId(),
+                current.getParentLocationId(),
+                candidate.getParentLocationId());
 
         // Price Score (25%)
         double priceScore = calculatePriceScore(
-                currentListing.getPrice(),
-                candidateListing.getPrice());
+                current.getPrice(),
+                candidate.getPrice());
 
-        // Area Score (20%)
+        // Area Score (15%)
         double areaScore = calculateAreaScore(
-                currentProperty.getUsableSizeM2(),
-                candidateProperty.getUsableSizeM2());
+                current.getArea(),
+                candidate.getArea());
 
         // Common Attributes Score (15%)
         double attributeScore = calculateAttributeSimilarityScore(
-                currentAttributes,
-                candidateAttributes);
+                current.getAttributes(),
+                candidate.getAttributes());
 
         // Calculate weighted total
         double totalScore = (propertyTypeScore * PROPERTY_TYPE_WEIGHT)
+                + (locationScore * LOCATION_WEIGHT)
                 + (priceScore * PRICE_WEIGHT)
                 + (areaScore * AREA_WEIGHT)
                 + (attributeScore * ATTRIBUTE_WEIGHT);
 
-        log.debug("Similarity calculation - Type: {}, Price: {}, Area: {}, Attr: {}, Total: {}",
-                propertyTypeScore, priceScore, areaScore, attributeScore, totalScore);
+        log.debug("Similarity calculation - Type: {}, Location: {}, Price: {}, Area: {}, Attr: {}, Total: {}",
+                propertyTypeScore, locationScore, priceScore, areaScore, attributeScore, totalScore);
 
         return SimilarityScore.builder()
                 .propertyTypeScore(propertyTypeScore)
+                .locationScore(locationScore)
                 .priceScore(priceScore)
                 .areaScore(areaScore)
                 .attributeScore(attributeScore)
@@ -106,15 +105,59 @@ public class ListingSimilarityDomainService {
     }
 
     /**
+     * Calculate location similarity score.
+     * - Same location (exact match): 1.0
+     * - Same parent location (same district/area): 0.5
+     * - Different location: 0.0
+     */
+    private double calculateLocationScore(
+            UUID currentLocationId,
+            UUID candidateLocationId,
+            UUID currentParentLocationId,
+            UUID candidateParentLocationId) {
+
+        // Exact location match
+        if (currentLocationId != null && currentLocationId.equals(candidateLocationId)) {
+            return 1.0;
+        }
+
+        // Same parent location (same district/area)
+        if (currentParentLocationId != null
+                && currentParentLocationId.equals(candidateParentLocationId)) {
+            return 0.5;
+        }
+
+        return 0.0;
+    }
+
+    /**
      * Calculate price similarity score based on percentage difference.
      * - Within ±20%: 1.0
      * - Within ±30%: 0.7
      * - Within ±40%: 0.4
      * - Beyond ±40%: 0.0
+     *
+     * Note: NULL price (missing data) is treated differently from zero price (free).
+     * - If either price is NULL: return 0.0 (cannot compare missing data)
+     * - If both prices are zero: return 1.0 (both are free)
+     * - Otherwise: calculate percentage difference
      */
     private double calculatePriceScore(BigDecimal currentPrice, BigDecimal candidatePrice) {
+        // Missing price data - cannot compare
         if (currentPrice == null || candidatePrice == null) {
             return 0.0;
+        }
+
+        // Both are free (price = 0) - perfect match
+        if (currentPrice.compareTo(BigDecimal.ZERO) == 0
+                && candidatePrice.compareTo(BigDecimal.ZERO) == 0) {
+            return 1.0;
+        }
+
+        // One is free, one is not - calculate based on the non-zero price
+        if (currentPrice.compareTo(BigDecimal.ZERO) == 0
+                || candidatePrice.compareTo(BigDecimal.ZERO) == 0) {
+            return 0.0; // Free vs paid is not similar
         }
 
         double percentageDiff = calculatePercentageDifference(currentPrice, candidatePrice);
@@ -245,6 +288,7 @@ public class ListingSimilarityDomainService {
     @lombok.Data
     public static class SimilarityScore {
         private double propertyTypeScore;
+        private double locationScore;
         private double priceScore;
         private double areaScore;
         private double attributeScore;
@@ -256,5 +300,20 @@ public class ListingSimilarityDomainService {
         public int getScorePercentage() {
             return (int) Math.round(totalScore * 100);
         }
+    }
+
+    /**
+     * Context object containing all data needed for similarity calculation.
+     * Reduces parameter count to comply with checkstyle rules.
+     */
+    @lombok.Builder
+    @lombok.Data
+    public static class SimilarityContext {
+        private UUID propertyTypeId;
+        private UUID locationId;
+        private UUID parentLocationId;
+        private BigDecimal price;
+        private BigDecimal area;
+        private List<PropertyAttributeValue> attributes;
     }
 }

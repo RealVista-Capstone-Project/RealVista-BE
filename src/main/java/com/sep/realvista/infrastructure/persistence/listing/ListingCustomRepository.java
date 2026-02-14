@@ -27,6 +27,7 @@ public class ListingCustomRepository {
                         p.usable_size_m2 as area,
                         p.property_type_id,
                         p.location_id,
+                        loc.parent_id as location_parent_id,
                         pt.name as property_type_name,
                         loc.name as location_name
                     FROM listings l
@@ -59,6 +60,7 @@ public class ListingCustomRepository {
                         p.usable_size_m2 as area,
                         p.property_type_id,
                         p.location_id,
+                        loc.parent_id as location_parent_id,
                         pt.name as property_type_name,
                         loc.name as location_name,
                         (SELECT pm.media_url FROM listing_medias lm
@@ -102,32 +104,21 @@ public class ListingCustomRepository {
                                 SELECT property_attribute_id FROM current_attributes
                             )
                             AND (
-                                ca.value_number = (
-                                    SELECT value_number FROM current_attributes
-                                    WHERE property_attribute_id = ca.property_attribute_id
+                                ca.value_number = cur_attr.value_number
+                                OR (
+                                    cur_attr.value_number <= 10
+                                    AND ABS(ca.value_number - cur_attr.value_number) <= 1
                                 )
                                 OR (
-                                    (SELECT value_number FROM current_attributes
-                                     WHERE property_attribute_id = ca.property_attribute_id) <= 10
-                                    AND ABS(ca.value_number - (SELECT value_number
-                                        FROM current_attributes
-                                        WHERE property_attribute_id = ca.property_attribute_id)
-                                    ) <= 1
-                                )
-                                OR (
-                                    (SELECT value_number FROM current_attributes
-                                     WHERE property_attribute_id = ca.property_attribute_id) > 10
-                                    AND ABS(ca.value_number - (SELECT value_number
-                                        FROM current_attributes
-                                        WHERE property_attribute_id = ca.property_attribute_id))
-                                        / ((ca.value_number + (SELECT value_number
-                                            FROM current_attributes
-                                            WHERE property_attribute_id = ca.property_attribute_id)
-                                        ) / 2) <= 0.20
+                                    cur_attr.value_number > 10
+                                    AND ABS(ca.value_number - cur_attr.value_number)
+                                        / ((ca.value_number + cur_attr.value_number) / 2) <= 0.20
                                 )
                             )
                         ) as similar_count
                     FROM candidate_attributes ca
+                    LEFT JOIN current_attributes cur_attr
+                        ON ca.property_attribute_id = cur_attr.property_attribute_id
                     GROUP BY ca.listing_id
                 )
                 SELECT
@@ -146,7 +137,16 @@ public class ListingCustomRepository {
                     cl.thumbnail_url,
                     cl.published_at,
                     (
-                        0.40 +
+                        CASE
+                            WHEN cl.property_type_id = (SELECT property_type_id FROM current_listing) THEN 0.30
+                            ELSE 0.0
+                        END +
+                        CASE
+                            WHEN cl.location_id = (SELECT location_id FROM current_listing) THEN 0.15
+                            WHEN cl.location_parent_id = (SELECT location_parent_id FROM current_listing)
+                                 AND cl.location_parent_id IS NOT NULL THEN 0.075
+                            ELSE 0.0
+                        END +
                         CASE
                             WHEN cl.price IS NOT NULL
                               AND (SELECT price FROM current_listing) IS NOT NULL THEN
@@ -170,13 +170,13 @@ public class ListingCustomRepository {
                                 CASE
                                     WHEN ABS(cl.area - (SELECT area FROM current_listing))
                                         / NULLIF((cl.area + (SELECT area FROM current_listing))
-                                            / 2, 0) <= 0.15 THEN 0.20
+                                            / 2, 0) <= 0.15 THEN 0.15
                                     WHEN ABS(cl.area - (SELECT area FROM current_listing))
                                         / NULLIF((cl.area + (SELECT area FROM current_listing))
-                                            / 2, 0) <= 0.25 THEN 0.12
+                                            / 2, 0) <= 0.25 THEN 0.09
                                     WHEN ABS(cl.area - (SELECT area FROM current_listing))
                                         / NULLIF((cl.area + (SELECT area FROM current_listing))
-                                            / 2, 0) <= 0.40 THEN 0.06
+                                            / 2, 0) <= 0.40 THEN 0.045
                                     ELSE 0.0
                                 END
                             ELSE 0.0
@@ -198,13 +198,14 @@ public class ListingCustomRepository {
     private EntityManager entityManager;
 
     /**
-     * Find similar listings based on property type, price, area, and common attributes.
+     * Find similar listings based on property type, location, price, area, and common attributes.
      * Uses a complex native query with CTEs to calculate similarity scores.
      *
      * Similarity scoring:
-     * - Property Type (40%): exact match
+     * - Property Type (30%): exact match
+     * - Location (15%): same location=100%, same parent location (district)=50%
      * - Price Range (25%): ±20%=100%, ±30%=70%, ±40%=40%
-     * - Area (20%): ±15%=100%, ±25%=60%, ±40%=30%
+     * - Area (15%): ±15%=100%, ±25%=60%, ±40%=30%
      * - Common Attributes (15%): ratio of similar NUMBER attributes
      *
      * @param listingId the reference listing ID
