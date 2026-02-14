@@ -622,7 +622,7 @@ jobs:
 
             # --- 2. Ensure database is running ---
             echo "Starting database..."
-            cd ~/db-non-prod
+            cd ~/compose/db-non-prod
             docker compose up -d
 
             echo "Waiting for database to be healthy..."
@@ -638,7 +638,7 @@ jobs:
 
             # --- 3. Update image tag and deploy backend ---
             echo "Deploying backend..."
-            cd ~/be-non-prod
+            cd ~/compose/be-non-prod
 
             # Update IMAGE_TAG in .env
             if grep -q "^IMAGE_TAG=" .env 2>/dev/null; then
