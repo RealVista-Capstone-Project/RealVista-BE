@@ -617,13 +617,24 @@ jobs:
             echo "  Image Tag: ${DEPLOY_TAG}"
             echo "============================================"
 
+            # --- 0. Detect docker compose command (v2 plugin vs v1 standalone) ---
+            if docker compose version >/dev/null 2>&1; then
+              DC="docker compose"
+            elif docker-compose version >/dev/null 2>&1; then
+              DC="docker-compose"
+            else
+              echo "::error::Neither 'docker compose' nor 'docker-compose' found on the server!"
+              exit 1
+            fi
+            echo "Using compose command: ${DC}"
+
             # --- 1. Login to Docker Hub ---
             echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
 
             # --- 2. Ensure database is running ---
             echo "Starting database..."
             cd ~/compose/db-non-prod
-            docker compose up -d
+            ${DC} up -d
 
             echo "Waiting for database to be healthy..."
             for i in $(seq 1 12); do
@@ -648,8 +659,8 @@ jobs:
             fi
 
             # Pull new image and recreate container
-            docker compose pull
-            docker compose up -d
+            ${DC} pull
+            ${DC} up -d
 
             # --- 4. Health check with retries ---
             echo "Waiting for application to start..."
@@ -677,7 +688,7 @@ jobs:
               echo "  Deployment FAILED - Health check timeout"
               echo "============================================"
               echo "Backend logs (last 80 lines):"
-              docker compose logs --tail 80
+              ${DC} logs --tail 80
               exit 1
             fi
 
