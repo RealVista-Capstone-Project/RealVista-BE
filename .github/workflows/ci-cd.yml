@@ -478,7 +478,8 @@ jobs:
         id: vars
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/realvista"
+          # Docker image references MUST be lowercase
+          IMAGE=$(echo "${{ secrets.DOCKERHUB_USERNAME }}/realvista" | tr '[:upper:]' '[:lower:]')
 
           # Determine the target branch (base_ref for PRs, ref_name for pushes)
           if [ "${{ github.event_name }}" == "pull_request" ]; then
@@ -525,22 +526,19 @@ jobs:
           SHORT_SHA="${{ steps.vars.outputs.short_sha }}"
           PR_TAG="${{ steps.pr.outputs.tag }}"
 
-          # Always include: primary tag + branch-latest
-          TAGS="${IMAGE}:${PRIMARY_TAG}"
-          TAGS="${TAGS},${IMAGE}:${BRANCH}-latest"
-
-          # If from a PR, also add branch-sha as a secondary tag for traceability
-          if [ -n "${PR_TAG}" ]; then
-            TAGS="${TAGS},${IMAGE}:${BRANCH}-${SHORT_SHA}"
-          fi
-
-          # main branch also gets :latest
-          if [ "${BRANCH}" == "main" ]; then
-            TAGS="${TAGS},${IMAGE}:latest"
-          fi
-
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "Computed tags: ${TAGS}"
+          # Use multiline GITHUB_OUTPUT (newline-separated tags)
+          {
+            echo "tags<<TAGS_EOF"
+            echo "${IMAGE}:${PRIMARY_TAG}"
+            echo "${IMAGE}:${BRANCH}-latest"
+            if [ -n "${PR_TAG}" ]; then
+              echo "${IMAGE}:${BRANCH}-${SHORT_SHA}"
+            fi
+            if [ "${BRANCH}" == "main" ]; then
+              echo "${IMAGE}:latest"
+            fi
+            echo "TAGS_EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -551,16 +549,14 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Verify pushed image
         run: |
           echo "Docker Image Tags Pushed:"
-          IFS=',' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.tags }}"
-          for tag in "${TAG_ARRAY[@]}"; do
-            echo "  - ${tag}"
+          echo "${{ steps.tags.outputs.tags }}" | while IFS= read -r tag; do
+            [ -n "${tag}" ] && echo "  - ${tag}"
           done
 
   # Job 7: Deploy to Server via SSH (docker compose)
