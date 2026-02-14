@@ -1,0 +1,823 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+      - "hotfix/**"
+      - "release/**"
+  pull_request:
+    branches:
+      - main
+      - develop
+
+# Required permissions for the workflow
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+env:
+  JAVA_VERSION: "21"
+  JAVA_DISTRIBUTION: "temurin"
+
+# ============================================================================
+# CI STAGE - Runs on all branches and pull requests
+# ============================================================================
+jobs:
+  # Job 1: Code Quality Checks
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for better analysis
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Configure Maven settings
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                        https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-mirror</id>
+                <name>Maven Central Mirror</name>
+                <url>https://repo1.maven.org/maven2</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Download dependencies with retry
+        run: |
+          for i in {1..3}; do
+            echo "Attempt $i: Downloading dependencies..."
+            if mvn dependency:go-offline -B; then
+              echo "Dependencies downloaded successfully"
+              break
+            else
+              echo "Attempt $i failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+        continue-on-error: true
+
+      - name: Run Checkstyle
+        run: mvn checkstyle:check
+        continue-on-error: false
+
+      - name: Run SpotBugs
+        run: mvn spotbugs:check
+        continue-on-error: false
+
+      - name: Upload Checkstyle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-report
+          path: target/checkstyle-result.xml
+          retention-days: 7
+
+      - name: Upload SpotBugs report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-report
+          path: target/spotbugsXml.xml
+          retention-days: 7
+
+  # Job 2: Build and Compile
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Configure Maven settings
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                        https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-mirror</id>
+                <name>Maven Central Mirror</name>
+                <url>https://repo1.maven.org/maven2</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build with Maven (skip tests)
+        run: mvn clean compile -DskipTests
+
+      - name: Verify build artifacts
+        run: |
+          if [ ! -d "target/classes" ]; then
+            echo "Build failed: target/classes directory not found"
+            exit 1
+          fi
+          echo "Build successful: target/classes exists"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: target/classes
+          retention-days: 7
+
+  # Job 3: Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Configure Maven settings
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                        https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-mirror</id>
+                <name>Maven Central Mirror</name>
+                <url>https://repo1.maven.org/maven2</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Run Unit Tests
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        run: mvn test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: target/surefire-reports
+          retention-days: 7
+
+      - name: Check test results
+        if: always()
+        run: |
+          if [ -d "target/surefire-reports" ]; then
+            TEST_FAILURES=$(find target/surefire-reports -name "*.xml" -exec grep -l "failures=\"[1-9]" {} \; | wc -l)
+            TEST_ERRORS=$(find target/surefire-reports -name "*.xml" -exec grep -l "errors=\"[1-9]" {} \; | wc -l)
+            
+            if [ "$TEST_FAILURES" -gt 0 ] || [ "$TEST_ERRORS" -gt 0 ]; then
+              echo "Tests failed or had errors"
+              exit 1
+            fi
+            echo "All tests passed successfully"
+          fi
+
+  # Job 4: Code Coverage
+  code-coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Configure Maven settings
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                        https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-mirror</id>
+                <name>Maven Central Mirror</name>
+                <url>https://repo1.maven.org/maven2</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Download dependencies with retry
+        run: |
+          for i in {1..3}; do
+            echo "Attempt $i: Downloading dependencies..."
+            if mvn dependency:go-offline -B; then
+              echo "Dependencies downloaded successfully"
+              break
+            else
+              echo "Attempt $i failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+
+      - name: Run tests with coverage
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        run: mvn clean test jacoco:report
+
+      - name: Check coverage threshold
+        run: |
+          if [ -f "target/site/jacoco/index.html" ]; then
+            echo "Coverage report generated successfully"
+            
+            # Extract coverage percentage (this is a simple check)
+            COVERAGE=$(grep -oP 'Total[^%]*\K[0-9]+(?=%)' target/site/jacoco/index.html | head -1 || echo "0")
+            echo "Code coverage: ${COVERAGE}%"
+            
+            if [ "$COVERAGE" -lt 70 ]; then
+              echo "Warning: Coverage is below 70% threshold"
+              # Uncomment to fail the build on low coverage
+              # exit 1
+            fi
+          fi
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/site/jacoco
+          retention-days: 30
+
+      - name: Upload coverage to Codecov (optional)
+        if: github.event_name == 'push'
+        uses: codecov/codecov-action@v4
+        with:
+          files: target/site/jacoco/jacoco.xml
+          fail_ci_if_error: false
+
+  # Job 5: Package Application
+  package:
+    name: Package Application
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests, code-coverage]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Configure Maven settings
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'EOF'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                        https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <mirrors>
+              <mirror>
+                <id>central-mirror</id>
+                <name>Maven Central Mirror</name>
+                <url>https://repo1.maven.org/maven2</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          EOF
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Package application
+        run: mvn clean package -DskipTests
+
+      - name: Verify JAR file
+        run: |
+          if [ ! -f "target/realvista-0.0.1-SNAPSHOT.jar" ]; then
+            echo "Package failed: JAR file not found"
+            exit 1
+          fi
+
+          JAR_SIZE=$(du -h target/realvista-0.0.1-SNAPSHOT.jar | cut -f1)
+          echo "JAR file created successfully: $JAR_SIZE"
+
+          # Verify JAR is executable
+          java -jar target/realvista-0.0.1-SNAPSHOT.jar --version || true
+
+      - name: Extract build info
+        run: |
+          echo "Build Information:"
+          echo "=================="
+
+          if [ -f "target/classes/git.properties" ]; then
+            echo "Git Properties:"
+            cat target/classes/git.properties
+          fi
+
+          if [ -f "target/classes/META-INF/build-info.properties" ]; then
+            echo "Build Info:"
+            cat target/classes/META-INF/build-info.properties
+          fi
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-jar
+          path: target/*.jar
+          retention-days: 30
+
+      - name: Upload git properties
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metadata
+          path: |
+            target/classes/git.properties
+            target/classes/META-INF/build-info.properties
+          retention-days: 30
+
+  # ============================================================================
+  # CD STAGE - Only runs on push to 'develop' or 'main' branch (not PRs)
+  # ============================================================================
+
+  # Job 6: Build & Push Docker Image
+  containerize:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [package]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    outputs:
+      image_tag: ${{ steps.vars.outputs.tag }}
+      image_name: ${{ steps.vars.outputs.image }}
+      environment: ${{ steps.vars.outputs.environment }}
+      profile: ${{ steps.vars.outputs.profile }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get PR number from merge commit
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Query GitHub API to find the PR associated with this merge commit
+          PR_NUMBER=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/pulls \
+            --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "${PR_NUMBER}" ]; then
+            echo "number=${PR_NUMBER}" >> $GITHUB_OUTPUT
+            echo "tag=pr-${PR_NUMBER}" >> $GITHUB_OUTPUT
+            echo "Found merged PR #${PR_NUMBER}"
+          else
+            echo "number=" >> $GITHUB_OUTPUT
+            echo "tag=" >> $GITHUB_OUTPUT
+            echo "No associated PR found (direct push)"
+          fi
+
+      - name: Set deployment variables
+        id: vars
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          BRANCH="${{ github.ref_name }}"
+          IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/realvista"
+
+          if [ "${BRANCH}" == "main" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "profile=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "profile=dev" >> $GITHUB_OUTPUT
+          fi
+
+          # Primary tag: branch-pr-<number> if from a merged PR, otherwise branch-sha
+          PR_TAG="${{ steps.pr.outputs.tag }}"
+          if [ -n "${PR_TAG}" ]; then
+            echo "tag=${BRANCH}-${PR_TAG}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${BRANCH}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          fi
+
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute Docker tags
+        id: tags
+        run: |
+          IMAGE="${{ steps.vars.outputs.image }}"
+          PRIMARY_TAG="${{ steps.vars.outputs.tag }}"
+          BRANCH="${{ github.ref_name }}"
+          SHORT_SHA="${{ steps.vars.outputs.short_sha }}"
+          PR_TAG="${{ steps.pr.outputs.tag }}"
+
+          # Always include: primary tag + branch-latest
+          TAGS="${IMAGE}:${PRIMARY_TAG}"
+          TAGS="${TAGS},${IMAGE}:${BRANCH}-latest"
+
+          # If from a PR, also add branch-sha as a secondary tag for traceability
+          if [ -n "${PR_TAG}" ]; then
+            TAGS="${TAGS},${IMAGE}:${BRANCH}-${SHORT_SHA}"
+          fi
+
+          # main branch also gets :latest
+          if [ "${BRANCH}" == "main" ]; then
+            TAGS="${TAGS},${IMAGE}:latest"
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "Computed tags: ${TAGS}"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify pushed image
+        run: |
+          echo "Docker Image Tags Pushed:"
+          IFS=',' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.tags }}"
+          for tag in "${TAG_ARRAY[@]}"; do
+            echo "  - ${tag}"
+          done
+
+  # Job 7: Deploy to Server via SSH
+#  deploy:
+#    name: Deploy to ${{ needs.containerize.outputs.environment == 'production' && 'Production' || 'Staging' }}
+#    runs-on: ubuntu-latest
+#    needs: [containerize]
+#    environment: ${{ needs.containerize.outputs.environment }}
+#    concurrency:
+#      group: deploy-${{ needs.containerize.outputs.environment }}
+#      cancel-in-progress: false
+#
+#    steps:
+#      - name: Set deployment variables
+#        id: deploy-vars
+#        run: |
+#          PROFILE="${{ needs.containerize.outputs.profile }}"
+#          IMAGE="${{ needs.containerize.outputs.image_name }}"
+#          TAG="${{ needs.containerize.outputs.image_tag }}"
+#
+#          if [ "${PROFILE}" == "prod" ]; then
+#            echo "container_name=realvista-prod" >> $GITHUB_OUTPUT
+#            echo "app_port=8080" >> $GITHUB_OUTPUT
+#          else
+#            echo "container_name=realvista-dev" >> $GITHUB_OUTPUT
+#            echo "app_port=8080" >> $GITHUB_OUTPUT
+#          fi
+#
+#          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+#          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+#          echo "profile=${PROFILE}" >> $GITHUB_OUTPUT
+#
+#      - name: Deploy via SSH
+#        uses: appleboy/ssh-action@v1
+#        env:
+#          # Deployment image info
+#          DEPLOY_IMAGE: ${{ steps.deploy-vars.outputs.image }}
+#          DEPLOY_TAG: ${{ steps.deploy-vars.outputs.tag }}
+#          CONTAINER_NAME: ${{ steps.deploy-vars.outputs.container_name }}
+#          SPRING_PROFILE: ${{ steps.deploy-vars.outputs.profile }}
+#          APP_PORT: ${{ steps.deploy-vars.outputs.app_port }}
+#          # Application environment variables
+#          APP_DB_HOST: ${{ secrets.DB_HOST }}
+#          APP_DB_PORT: ${{ secrets.DB_PORT }}
+#          APP_DB_NAME: ${{ secrets.DB_NAME }}
+#          APP_DB_USERNAME: ${{ secrets.DB_USERNAME }}
+#          APP_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+#          APP_JWT_SECRET: ${{ secrets.JWT_SECRET }}
+#          APP_JWT_EXPIRATION_MS: ${{ secrets.JWT_EXPIRATION_MS }}
+#          APP_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+#          APP_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+#          APP_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+#          APP_GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+#          APP_MAIL_HOST: ${{ secrets.MAIL_HOST }}
+#          APP_MAIL_PORT: ${{ secrets.MAIL_PORT }}
+#          APP_MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+#          APP_MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+#          APP_SERVER_PORT: ${{ secrets.SERVER_PORT }}
+#          APP_FIREBASE_KEY_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 }}
+#          APP_FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+#        with:
+#          host: ${{ secrets.SSH_HOST }}
+#          username: ${{ secrets.SSH_USERNAME }}
+#          key: ${{ secrets.SSH_PRIVATE_KEY }}
+#          port: ${{ secrets.SSH_PORT || 22 }}
+#          envs: DEPLOY_IMAGE,DEPLOY_TAG,CONTAINER_NAME,SPRING_PROFILE,APP_PORT,APP_DB_HOST,APP_DB_PORT,APP_DB_NAME,APP_DB_USERNAME,APP_DB_PASSWORD,APP_JWT_SECRET,APP_JWT_EXPIRATION_MS,APP_GOOGLE_CLIENT_ID,APP_GOOGLE_CLIENT_SECRET,APP_GOOGLE_ANDROID_CLIENT_ID,APP_GOOGLE_IOS_CLIENT_ID,APP_MAIL_HOST,APP_MAIL_PORT,APP_MAIL_USERNAME,APP_MAIL_PASSWORD,APP_SERVER_PORT,APP_FIREBASE_KEY_BASE64,APP_FRONTEND_URL
+#          command_timeout: 10m
+#          script: |
+#            set -e
+#            echo "============================================"
+#            echo "  Deploying RealVista (${SPRING_PROFILE})"
+#            echo "  Image: ${DEPLOY_IMAGE}:${DEPLOY_TAG}"
+#            echo "  Container: ${CONTAINER_NAME}"
+#            echo "============================================"
+#
+#            # --- 1. Create deployment directory ---
+#            sudo mkdir -p /opt/realvista
+#
+#            # --- 2. Write application environment file ---
+#            sudo tee /opt/realvista/.env > /dev/null <<-ENVEOF
+#            SPRING_PROFILES_ACTIVE=${SPRING_PROFILE}
+#            SERVER_PORT=${APP_SERVER_PORT:-8080}
+#            DB_HOST=${APP_DB_HOST}
+#            DB_PORT=${APP_DB_PORT:-5432}
+#            DB_NAME=${APP_DB_NAME}
+#            DB_USERNAME=${APP_DB_USERNAME}
+#            DB_PASSWORD=${APP_DB_PASSWORD}
+#            JWT_SECRET=${APP_JWT_SECRET}
+#            JWT_EXPIRATION_MS=${APP_JWT_EXPIRATION_MS:-86400000}
+#            GOOGLE_CLIENT_ID=${APP_GOOGLE_CLIENT_ID}
+#            GOOGLE_CLIENT_SECRET=${APP_GOOGLE_CLIENT_SECRET}
+#            GOOGLE_ANDROID_CLIENT_ID=${APP_GOOGLE_ANDROID_CLIENT_ID}
+#            GOOGLE_IOS_CLIENT_ID=${APP_GOOGLE_IOS_CLIENT_ID}
+#            MAIL_HOST=${APP_MAIL_HOST:-smtp.gmail.com}
+#            MAIL_PORT=${APP_MAIL_PORT:-587}
+#            MAIL_USERNAME=${APP_MAIL_USERNAME}
+#            MAIL_PASSWORD=${APP_MAIL_PASSWORD}
+#            FRONTEND_URL=${APP_FRONTEND_URL:-http://localhost:3000}
+#            ENVEOF
+#            sudo chmod 600 /opt/realvista/.env
+#
+#            # --- 3. Handle Firebase service account JSON ---
+#            FIREBASE_VOLUME=""
+#            if [ -n "${APP_FIREBASE_KEY_BASE64}" ]; then
+#              echo "${APP_FIREBASE_KEY_BASE64}" | base64 -d | sudo tee /opt/realvista/firebase-service-account.json > /dev/null
+#              sudo chmod 600 /opt/realvista/firebase-service-account.json
+#              echo "GOOGLE_APPLICATION_CREDENTIALS=/app/firebase-service-account.json" | sudo tee -a /opt/realvista/.env > /dev/null
+#              FIREBASE_VOLUME="-v /opt/realvista/firebase-service-account.json:/app/firebase-service-account.json:ro"
+#              echo "Firebase service account configured."
+#            else
+#              echo "No Firebase service account provided, skipping."
+#            fi
+#
+#            # --- 4. Pull the new Docker image ---
+#            echo "Pulling image ${DEPLOY_IMAGE}:${DEPLOY_TAG}..."
+#            docker pull ${DEPLOY_IMAGE}:${DEPLOY_TAG}
+#
+#            # --- 5. Stop and remove old container (if running) ---
+#            if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+#              echo "Stopping existing container: ${CONTAINER_NAME}..."
+#              docker stop ${CONTAINER_NAME} 2>/dev/null || true
+#              docker rm ${CONTAINER_NAME} 2>/dev/null || true
+#            fi
+#
+#            # --- 6. Start new container ---
+#            echo "Starting new container: ${CONTAINER_NAME}..."
+#            docker run -d \
+#              --name ${CONTAINER_NAME} \
+#              --restart unless-stopped \
+#              --network host \
+#              --env-file /opt/realvista/.env \
+#              ${FIREBASE_VOLUME} \
+#              ${DEPLOY_IMAGE}:${DEPLOY_TAG}
+#
+#            # --- 7. Health check with retries ---
+#            HEALTH_PORT="${APP_SERVER_PORT:-8080}"
+#            HEALTH_URL="http://localhost:${HEALTH_PORT}/actuator/health"
+#            echo "Waiting for application to start (checking ${HEALTH_URL})..."
+#            sleep 20
+#
+#            HEALTHY=false
+#            for i in $(seq 1 6); do
+#              if curl -sf "${HEALTH_URL}" > /dev/null 2>&1; then
+#                HEALTHY=true
+#                break
+#              fi
+#              echo "  Health check attempt ${i}/6 - not ready, waiting 10s..."
+#              sleep 10
+#            done
+#
+#            if [ "${HEALTHY}" = true ]; then
+#              echo ""
+#              echo "============================================"
+#              echo "  Deployment SUCCESSFUL"
+#              echo "  Health: $(curl -s ${HEALTH_URL})"
+#              echo "============================================"
+#            else
+#              echo ""
+#              echo "============================================"
+#              echo "  Deployment FAILED - Health check timeout"
+#              echo "============================================"
+#              echo "Container logs (last 80 lines):"
+#              docker logs ${CONTAINER_NAME} --tail 80
+#              exit 1
+#            fi
+#
+#            # --- 8. Cleanup dangling images ---
+#            echo "Cleaning up old images..."
+#            docker image prune -f
+#
+#      - name: Deployment summary
+#        if: always()
+#        run: |
+#          echo "============================================"
+#          echo "  Deployment Summary"
+#          echo "============================================"
+#          echo "  Environment : ${{ needs.containerize.outputs.environment }}"
+#          echo "  Profile     : ${{ steps.deploy-vars.outputs.profile }}"
+#          echo "  Image       : ${{ steps.deploy-vars.outputs.image }}:${{ steps.deploy-vars.outputs.tag }}"
+#          echo "  Container   : ${{ steps.deploy-vars.outputs.container_name }}"
+#          echo "  Commit      : ${{ github.sha }}"
+#          echo "  Triggered by: ${{ github.actor }}"
+#          echo "============================================"
+
+  # ============================================================================
+  # SUMMARY - Always runs to report pipeline status
+  # ============================================================================
+
+  # Job 8: CI/CD Summary Report
+  ci-cd-summary:
+    name: CI/CD Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, build, unit-tests, code-coverage, package, containerize]
+    if: always()
+
+    steps:
+      - name: Check job statuses
+        run: |
+          echo "CI/CD Pipeline Summary"
+          echo "======================"
+          echo ""
+          echo "--- CI Stage ---"
+          echo "Code Quality : ${{ needs.code-quality.result }}"
+          echo "Build        : ${{ needs.build.result }}"
+          echo "Unit Tests   : ${{ needs.unit-tests.result }}"
+          echo "Code Coverage: ${{ needs.code-coverage.result }}"
+          echo "Package      : ${{ needs.package.result }}"
+          echo ""
+          echo "--- CD Stage ---"
+          echo "Containerize : ${{ needs.containerize.result }}"
+          echo "Deploy       : ${{ needs.deploy.result }}"
+          echo ""
+
+          # Fail if any critical CI job failed
+          if [[ "${{ needs.code-quality.result }}" != "success" ]] || \
+             [[ "${{ needs.build.result }}" != "success" ]] || \
+             [[ "${{ needs.unit-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.package.result }}" != "success" ]]; then
+            echo "CI Pipeline FAILED!"
+            exit 1
+          fi
+
+          # Check CD stage (only if it was supposed to run)
+          if [[ "${{ needs.containerize.result }}" == "failure" ]] || \
+             [[ "${{ needs.deploy.result }}" == "failure" ]]; then
+            echo "CD Pipeline FAILED!"
+            exit 1
+          fi
+
+          echo "Pipeline completed successfully!"
+
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `
+            ## CI/CD Pipeline Results
+
+            ### CI Stage
+            | Job | Status |
+            |-----|--------|
+            | Code Quality | \`${{ needs.code-quality.result }}\` |
+            | Build | \`${{ needs.build.result }}\` |
+            | Unit Tests | \`${{ needs.unit-tests.result }}\` |
+            | Code Coverage | \`${{ needs.code-coverage.result }}\` |
+            | Package | \`${{ needs.package.result }}\` |
+
+            ### CD Stage
+            | Job | Status |
+            |-----|--------|
+            | Containerize | \`${{ needs.containerize.result }}\` |
+            | Deploy | \`${{ needs.deploy.result }}\` |
+
+            > CD jobs only run on push to \`develop\` or \`main\` branch (skipped for PRs).
+
+            **Overall Status:** \`${{ job.status }}\`
+
+            [View full pipeline run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              });
+              console.log('Comment posted successfully');
+            } catch (error) {
+              console.error('Failed to post comment:', error.message);
+            }
