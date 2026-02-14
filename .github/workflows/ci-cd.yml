@@ -473,6 +473,34 @@ jobs:
             echo "No associated PR found (direct push)"
           fi
 
+      - name: Resolve Docker image name
+        id: image
+        run: |
+          # Sanitize DOCKERHUB_USERNAME:
+          #   1. Remove ALL whitespace (spaces, tabs, newlines, carriage returns)
+          #   2. Strip any registry prefix (docker.io/, https://...)
+          #   3. Remove trailing slashes
+          #   4. Force lowercase (Docker references MUST be lowercase)
+          RAW="${{ secrets.DOCKERHUB_USERNAME }}"
+          CLEAN=$(printf '%s' "${RAW}" | tr -d '[:space:]' | sed 's|https\?://[^/]*/||' | sed 's|/$||' | tr '[:upper:]' '[:lower:]')
+
+          IMAGE="${CLEAN}/realvista"
+
+          # Diagnostic output (lengths help debug hidden chars without leaking the secret)
+          echo "Raw username length : ${#RAW}"
+          echo "Clean username length: ${#CLEAN}"
+          echo "Full image reference : ${#IMAGE} chars"
+
+          # Validate the image name matches Docker reference format
+          if [[ ! "${IMAGE}" =~ ^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$ ]]; then
+            echo "::error::DOCKERHUB_USERNAME produced an invalid Docker image name."
+            echo "::error::Please check the secret — it must be your Docker Hub username only (e.g. 'myuser'), not a URL."
+            exit 1
+          fi
+
+          echo "name=${IMAGE}" >> $GITHUB_OUTPUT
+          echo "Resolved image: ${IMAGE}"
+
       - name: Set deployment variables
         id: vars
         run: |
@@ -513,24 +541,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/realvista
-          tags: |
-            type=raw,value=${{ steps.vars.outputs.tag }}
-            type=raw,value=${{ steps.vars.outputs.branch }}-latest
-            type=raw,value=${{ steps.vars.outputs.branch }}-${{ steps.vars.outputs.short_sha }},enable=${{ steps.pr.outputs.tag != '' }}
-            type=raw,value=latest,enable=${{ steps.vars.outputs.branch == 'main' }}
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ steps.vars.outputs.tag }}
+            ${{ steps.image.outputs.name }}:${{ steps.vars.outputs.branch }}-latest
           provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -538,9 +556,8 @@ jobs:
       - name: Verify pushed image
         run: |
           echo "Docker Image Tags Pushed:"
-          echo "${{ steps.meta.outputs.tags }}" | while IFS= read -r tag; do
-            [ -n "${tag}" ] && echo "  - ${tag}"
-          done
+          echo "  - ${{ steps.image.outputs.name }}:${{ steps.vars.outputs.tag }}"
+          echo "  - ${{ steps.image.outputs.name }}:${{ steps.vars.outputs.branch }}-latest"
 
   # Job 7: Deploy to Server via SSH (docker compose)
   deploy:
