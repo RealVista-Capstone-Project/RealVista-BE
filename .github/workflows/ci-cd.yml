@@ -601,6 +601,7 @@ jobs:
         uses: appleboy/ssh-action@v1
         env:
           DEPLOY_TAG: ${{ needs.containerize.outputs.image_tag }}
+          DEPLOY_PROFILE: ${{ needs.containerize.outputs.profile }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         with:
@@ -608,7 +609,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          envs: DEPLOY_TAG,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
+          envs: DEPLOY_TAG,DEPLOY_PROFILE,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
           command_timeout: 10m
           script: |
             set -e
@@ -617,16 +618,19 @@ jobs:
             echo "  Image Tag: ${DEPLOY_TAG}"
             echo "============================================"
 
-            # --- 0. Detect docker compose command (v2 plugin vs v1 standalone) ---
+            # --- 0. Ensure Docker Compose v2 is installed ---
+            # docker-compose v1 has a known KeyError bug with BuildKit images
             if docker compose version >/dev/null 2>&1; then
-              DC="docker compose"
-            elif docker-compose version >/dev/null 2>&1; then
-              DC="docker-compose"
+              echo "Docker Compose v2 already installed: $(docker compose version)"
             else
-              echo "::error::Neither 'docker compose' nor 'docker-compose' found on the server!"
-              exit 1
+              echo "Installing Docker Compose v2 plugin..."
+              COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d'"' -f4)
+              mkdir -p ~/.docker/cli-plugins
+              curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" \
+                -o ~/.docker/cli-plugins/docker-compose
+              chmod +x ~/.docker/cli-plugins/docker-compose
+              echo "Installed: $(docker compose version)"
             fi
-            echo "Using compose command: ${DC}"
 
             # --- 1. Login to Docker Hub ---
             echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
@@ -634,7 +638,7 @@ jobs:
             # --- 2. Ensure database is running ---
             echo "Starting database..."
             cd ~/compose/db-non-prod
-            ${DC} up -d
+            docker compose up -d
 
             echo "Waiting for database to be healthy..."
             for i in $(seq 1 12); do
@@ -651,8 +655,8 @@ jobs:
             echo "Deploying backend..."
             cd ~/compose/be-non-prod
 
-            # Update DOCKERHUB_USERNAME and IMAGE_TAG in .env
-            for KV in "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}" "IMAGE_TAG=${DEPLOY_TAG}"; do
+            # Update deployment variables in .env
+            for KV in "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}" "IMAGE_TAG=${DEPLOY_TAG}" "SPRING_PROFILES_ACTIVE=${DEPLOY_PROFILE}"; do
               KEY="${KV%%=*}"
               if grep -q "^${KEY}=" .env 2>/dev/null; then
                 sed -i "s|^${KEY}=.*|${KV}|" .env
@@ -660,11 +664,12 @@ jobs:
                 echo "${KV}" >> .env
               fi
             done
-            echo "Image: ${DOCKERHUB_USERNAME}/realvista:${DEPLOY_TAG}"
+            echo "Image  : ${DOCKERHUB_USERNAME}/realvista:${DEPLOY_TAG}"
+            echo "Profile: ${DEPLOY_PROFILE}"
 
             # Pull new image and recreate container
-            ${DC} pull
-            ${DC} up -d
+            docker compose pull
+            docker compose up -d
 
             # --- 4. Health check with retries ---
             echo "Waiting for application to start..."
@@ -692,7 +697,7 @@ jobs:
               echo "  Deployment FAILED - Health check timeout"
               echo "============================================"
               echo "Backend logs (last 80 lines):"
-              ${DC} logs --tail 80
+              docker compose logs --tail 80
               exit 1
             fi
 
