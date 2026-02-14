@@ -2,6 +2,7 @@ package com.sep.realvista.unit.application.listing.service;
 
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
+import com.sep.realvista.application.listing.service.CostBreakdownService;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
@@ -12,7 +13,6 @@ import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyRepository;
-import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,174 +42,181 @@ import static org.mockito.Mockito.*;
 @DisplayName("ListingApplicationService Unit Tests")
 class ListingApplicationServiceUnitTest {
 
-    @Mock
-    private ListingRepository listingRepository;
+        @Mock
+        private ListingRepository listingRepository;
 
-    @Mock
-    private ListingMediaRepository listingMediaRepository;
+        @Mock
+        private ListingMediaRepository listingMediaRepository;
 
-    @Mock
-    private PropertyRepository propertyRepository;
+        @Mock
+        private PropertyRepository propertyRepository;
 
-    @Mock
-    private PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
+        @Mock
+        private PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
 
-    @Mock
-    private ListingMapper listingMapper;
+        @Mock
+        private ListingMapper listingMapper;
 
-    @InjectMocks
-    private ListingApplicationService listingApplicationService;
+        @Mock
+        private CostBreakdownService costBreakdownService;
 
-    private Listing testListing;
-    private Property testProperty;
-    private ListingMedia testMedia;
-    private UUID listingId;
-    private UUID propertyId;
-    private UUID userId;
+        @InjectMocks
+        private ListingApplicationService listingApplicationService;
 
-    @BeforeEach
-    void setUp() {
-        listingId = UUID.randomUUID();
-        propertyId = UUID.randomUUID();
-        userId = UUID.randomUUID();
+        private Listing testListing;
+        private Property testProperty;
+        private ListingMedia testMedia;
+        private UUID listingId;
+        private UUID propertyId;
+        private UUID userId;
 
-        // Create test property
-        testProperty = Property.builder()
-                .propertyId(propertyId)
-                .ownerId(userId)
-                .streetAddress("123 Main St")
-                .latitude(new BigDecimal("10.776389"))
-                .longitude(new BigDecimal("106.701944"))
-                .landSizeM2(new BigDecimal("100.50"))
-                .usableSizeM2(new BigDecimal("85.00"))
-                .descriptions("Beautiful property")
-                .build();
+        @BeforeEach
+        void setUp() {
+                listingId = UUID.randomUUID();
+                propertyId = UUID.randomUUID();
+                userId = UUID.randomUUID();
 
-        // Create test listing
-        testListing = Listing.builder()
-                .listingId(listingId)
-                .propertyId(propertyId)
-                .userId(userId)
-                .listingType(ListingType.RENT)
-                .status(ListingStatus.PUBLISHED)
-                .slug("test-listing-slug")
-                .name("Test Listing Name")
-                .price(new BigDecimal("2700.00"))
-                .isNegotiable(false)
-                .build();
+                // Create test property
+                testProperty = Property.builder()
+                                .propertyId(propertyId)
+                                .ownerId(userId)
+                                .streetAddress("123 Main St")
+                                .latitude(new BigDecimal("10.776389"))
+                                .longitude(new BigDecimal("106.701944"))
+                                .landSizeM2(new BigDecimal("100.50"))
+                                .usableSizeM2(new BigDecimal("85.00"))
+                                .descriptions("Beautiful property")
+                                .build();
 
-        // Create test media
-        testMedia = ListingMedia.builder()
-                .listingMediaId(UUID.randomUUID())
-                .listingId(listingId)
-                .propertyMediaId(UUID.randomUUID())
-                .displayOrder(1)
-                .isPrimary(true)
-                .build();
-    }
+                // Create test listing
+                testListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.PUBLISHED)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .price(new BigDecimal("2700.00"))
+                                .isNegotiable(false)
+                                .build();
 
-    @Test
-    @DisplayName("Should return listing detail when listing exists")
-    void getListingDetail_whenListingExists_shouldReturnDetail() {
-        // Arrange
-        ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
-                .listingId(listingId)
-                .propertyId(propertyId)
-                .userId(userId)
-                .listingType(ListingType.RENT)
-                .status(ListingStatus.PUBLISHED)
-                .slug("test-listing-slug")
-                .name("Test Listing Name")
-                .price(new BigDecimal("2700.00"))
-                .build();
+                // Create test media
+                testMedia = ListingMedia.builder()
+                                .listingMediaId(UUID.randomUUID())
+                                .listingId(listingId)
+                                .propertyMediaId(UUID.randomUUID())
+                                .displayOrder(1)
+                                .isPrimary(true)
+                                .build();
+        }
 
-        when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
-        when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
-        when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
-                .thenReturn(List.of(testMedia));
-        when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
-                .thenReturn(new ArrayList<>());
-        when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
-                .thenReturn(expectedResponse);
+        @Test
+        @DisplayName("Should return listing detail when listing exists")
+        void getListingDetail_whenListingExists_shouldReturnDetail() {
+                // Arrange
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.PUBLISHED)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .price(new BigDecimal("2700.00"))
+                                .build();
 
-        // Act
-        ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(List.of(testMedia));
+                when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
+                                .thenReturn(expectedResponse);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
-        // Assert
-        assertThat(actualResponse).isNotNull();
-        assertThat(actualResponse.getListingId()).isEqualTo(listingId);
-        assertThat(actualResponse.getListingType()).isEqualTo(ListingType.RENT);
-        assertThat(actualResponse.getStatus()).isEqualTo(ListingStatus.PUBLISHED);
+                // Act
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
 
-        verify(listingRepository).findById(listingId);
-        verify(propertyRepository).findById(propertyId);
-        verify(listingMediaRepository).findByListingIdOrderByDisplayOrderAsc(listingId);
-        verify(propertyAttributeValueJpaRepository).findByPropertyIdWithAttribute(propertyId);
-        verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
-    }
+                // Assert
+                assertThat(actualResponse).isNotNull();
+                assertThat(actualResponse.getListingId()).isEqualTo(listingId);
+                assertThat(actualResponse.getListingType()).isEqualTo(ListingType.RENT);
+                assertThat(actualResponse.getStatus()).isEqualTo(ListingStatus.PUBLISHED);
 
-    @Test
-    @DisplayName("Should throw ResourceNotFoundException when listing does not exist")
-    void getListingDetail_whenListingDoesNotExist_shouldThrowException() {
-        // Arrange
-        UUID nonExistentId = UUID.randomUUID();
-        when(listingRepository.findById(nonExistentId)).thenReturn(Optional.empty());
+                verify(listingRepository).findById(listingId);
+                verify(propertyRepository).findById(propertyId);
+                verify(listingMediaRepository).findByListingIdOrderByDisplayOrderAsc(listingId);
+                verify(propertyAttributeValueJpaRepository).findByPropertyIdWithAttribute(propertyId);
+                verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
+                verify(costBreakdownService).calculateCostBreakdown(any(Listing.class));
+        }
 
-        // Act & Assert
-        assertThatThrownBy(() -> listingApplicationService.getListingDetail(nonExistentId))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Listing")
-                .hasMessageContaining(nonExistentId.toString());
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when listing does not exist")
+        void getListingDetail_whenListingDoesNotExist_shouldThrowException() {
+                // Arrange
+                UUID nonExistentId = UUID.randomUUID();
+                when(listingRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
-        verify(listingRepository).findById(nonExistentId);
-        verify(propertyRepository, never()).findById(any());
-        verify(listingMapper, never()).toDetailResponse(any());
-    }
+                // Act & Assert
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(nonExistentId))
+                                .isInstanceOf(ResourceNotFoundException.class)
+                                .hasMessageContaining("Listing")
+                                .hasMessageContaining(nonExistentId.toString());
 
-    @Test
-    @DisplayName("Should throw ResourceNotFoundException when property does not exist")
-    void getListingDetail_whenPropertyDoesNotExist_shouldThrowException() {
-        // Arrange
-        when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
-        when(propertyRepository.findById(propertyId)).thenReturn(Optional.empty());
+                verify(listingRepository).findById(nonExistentId);
+                verify(propertyRepository, never()).findById(any());
+                verify(listingMapper, never()).toDetailResponse(any());
+        }
 
-        // Act & Assert
-        assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Property")
-                .hasMessageContaining(propertyId.toString());
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when property does not exist")
+        void getListingDetail_whenPropertyDoesNotExist_shouldThrowException() {
+                // Arrange
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.empty());
 
-        verify(listingRepository).findById(listingId);
-        verify(propertyRepository).findById(propertyId);
-        verify(listingMediaRepository, never()).findByListingIdOrderByDisplayOrderAsc(any());
-        verify(listingMapper, never()).toDetailResponse(any());
-    }
+                // Act & Assert
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId))
+                                .isInstanceOf(ResourceNotFoundException.class)
+                                .hasMessageContaining("Property")
+                                .hasMessageContaining(propertyId.toString());
 
-    @Test
-    @DisplayName("Should pass media list to mapper when media exists")
-    void getListingDetail_whenMediaExists_shouldPassMediaToMapper() {
-        // Arrange
-        ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
-                .listingId(listingId)
-                .slug("test-listing-slug")
-                .name("Test Listing Name")
-                .media(List.of()) // Empty media list is fine for this test
-                .build();
+                verify(listingRepository).findById(listingId);
+                verify(propertyRepository).findById(propertyId);
+                verify(listingMediaRepository, never()).findByListingIdOrderByDisplayOrderAsc(any());
+                verify(listingMapper, never()).toDetailResponse(any());
+        }
 
-        when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
-        when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
-        when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
-                .thenReturn(List.of(testMedia));
-        when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
-                .thenReturn(new ArrayList<>());
-        when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
-                .thenReturn(expectedResponse);
+        @Test
+        @DisplayName("Should pass media list to mapper when media exists")
+        void getListingDetail_whenMediaExists_shouldPassMediaToMapper() {
+                // Arrange
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .media(List.of()) // Empty media list is fine for this test
+                                .build();
 
-        // Act
-        ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(List.of(testMedia));
+                when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
+                                .thenReturn(expectedResponse);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
-        // Assert
-        assertThat(actualResponse).isNotNull();
-        verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
-    }
+                // Act
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
+
+                // Assert
+                assertThat(actualResponse).isNotNull();
+                verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
+                verify(costBreakdownService).calculateCostBreakdown(any(Listing.class));
+        }
 }

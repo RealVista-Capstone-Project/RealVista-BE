@@ -77,4 +77,7 @@ public class ListingDetailResponse {
     private Integer totalVideos;
     @JsonProperty("total_3d_tours")
     private Integer total3DTours;
+
+    // Cost Breakdown (for RENT listings)
+    private CostBreakdownDTO costBreakdown;
 }
