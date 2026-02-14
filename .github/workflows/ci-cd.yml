@@ -651,12 +651,16 @@ jobs:
             echo "Deploying backend..."
             cd ~/compose/be-non-prod
 
-            # Update IMAGE_TAG in .env
-            if grep -q "^IMAGE_TAG=" .env 2>/dev/null; then
-              sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${DEPLOY_TAG}|" .env
-            else
-              echo "IMAGE_TAG=${DEPLOY_TAG}" >> .env
-            fi
+            # Update DOCKERHUB_USERNAME and IMAGE_TAG in .env
+            for KV in "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}" "IMAGE_TAG=${DEPLOY_TAG}"; do
+              KEY="${KV%%=*}"
+              if grep -q "^${KEY}=" .env 2>/dev/null; then
+                sed -i "s|^${KEY}=.*|${KV}|" .env
+              else
+                echo "${KV}" >> .env
+              fi
+            done
+            echo "Image: ${DOCKERHUB_USERNAME}/realvista:${DEPLOY_TAG}"
 
             # Pull new image and recreate container
             ${DC} pull

@@ -16,12 +16,15 @@ RUN mvn clean package -DskipTests -Dmaven.gitcommitid.skip=true
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Create non-root user
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
+# Create non-root user and logs directory
+RUN addgroup -S spring && adduser -S spring -G spring \
+    && mkdir -p /app/logs && chown spring:spring /app/logs
 
 # Copy JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
+
+# Switch to non-root user
+USER spring:spring
 
 # Default Spring profile (overridden at runtime via -e SPRING_PROFILES_ACTIVE=dev|prod)
 ENV SPRING_PROFILES_ACTIVE=prod
