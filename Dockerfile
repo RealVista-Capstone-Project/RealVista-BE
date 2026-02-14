@@ -4,13 +4,13 @@
 FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 
-# Copy pom.xml and download dependencies
-COPY pom.xml .
+# Copy pom.xml and build config files needed by Maven plugins
+COPY pom.xml checkstyle.xml spotbugs-exclude.xml ./
 RUN mvn dependency:go-offline -B
 
 # Copy source code and build
 COPY src ./src
-RUN mvn clean package -DskipTests -Dgit.skip=true
+RUN mvn clean package -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:21-jre-alpine
