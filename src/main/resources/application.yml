@@ -58,7 +58,6 @@ spring:
       write-dates-as-timestamps: false
     time-zone: UTC
     default-property-inclusion: non_null
-    property-naming-strategy: LOWER_CAMEL_CASE
 
   # Cache Configuration
   cache:
