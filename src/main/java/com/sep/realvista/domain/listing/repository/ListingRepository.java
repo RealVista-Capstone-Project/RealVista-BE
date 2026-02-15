@@ -3,6 +3,7 @@ package com.sep.realvista.domain.listing.repository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 
 import java.util.List;
@@ -28,11 +29,30 @@ public interface ListingRepository {
     void deleteById(UUID id);
 
     /**
-     * Find similar listings based on property type, price, area, and common attributes.
-     * Returns listings sorted by similarity score (descending) and published date (descending).
+     * Find published listings within geographical bounds with filters and sorting.
+     *
+     * @param criteria search criteria including bounds, filters, sort, and
+     *                 pagination
+     * @return list of published listings matching the criteria
+     */
+    List<Listing> findPublishedWithinBounds(MapSearchCriteria criteria);
+
+    /**
+     * Count published listings within geographical bounds with filters.
+     *
+     * @param criteria search criteria including bounds and filters
+     * @return total count of matching listings
+     */
+    Long countPublishedWithinBounds(MapSearchCriteria criteria);
+
+    /**
+     * Find similar listings based on property type, price, area, and common
+     * attributes.
+     * Returns listings sorted by similarity score (descending) and published date
+     * (descending).
      *
      * @param listingId the reference listing ID
-     * @param limit maximum number of results to return
+     * @param limit     maximum number of results to return
      * @return list of similar listings with similarity scores
      */
     List<SimilarListing> findSimilarListings(UUID listingId, int limit);
