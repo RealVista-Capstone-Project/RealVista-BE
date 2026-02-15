@@ -205,6 +205,13 @@
 			<artifactId>firebase-admin</artifactId>
 			<version>9.2.0</version>
 		</dependency>
+
+		<!-- Hypersistence Utils for JSONB -->
+		<dependency>
+			<groupId>io.hypersistence</groupId>
+			<artifactId>hypersistence-utils-hibernate-63</artifactId>
+			<version>3.7.3</version>
+		</dependency>
 	</dependencies>
 
 	<build>

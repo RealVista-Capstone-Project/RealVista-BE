@@ -4,6 +4,9 @@ import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -55,5 +58,25 @@ public class ListingRepositoryImpl implements ListingRepository {
     @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public void deleteAll() {
+        jpaRepository.deleteAll();
+    }
+
+    @Override
+    public Page<Listing> findAll(Specification<Listing> spec, Pageable pageable) {
+        return jpaRepository.findAll(spec, pageable);
+    }
+
+    @Override
+    public Optional<String> findThumbnailByListingId(UUID listingId) {
+        return jpaRepository.findThumbnailByListingId(listingId);
+    }
+
+    @Override
+    public Optional<Listing> findBySlug(String slug) {
+        return jpaRepository.findBySlug(slug);
     }
 }

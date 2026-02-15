@@ -33,4 +33,9 @@ public class PropertyRepositoryImpl implements PropertyRepository {
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }
+
+    @Override
+    public void deleteAll() {
+        jpaRepository.deleteAll();
+    }
 }

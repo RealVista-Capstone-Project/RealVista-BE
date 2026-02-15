@@ -12,4 +12,6 @@ public interface PropertyRepository {
     boolean existsById(UUID id);
 
     void deleteById(UUID id);
+
+    void deleteAll();
 }
