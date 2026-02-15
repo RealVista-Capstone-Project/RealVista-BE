@@ -294,45 +294,4 @@ public interface ListingMapper {
                 .valueBoolean(attributeValue.getValueBoolean())
                 .build();
     }
-
-    /**
-     * Map Listing to ListingSearchResponse for search results
-     */
-    default com.sep.realvista.application.listing.dto.ListingSearchResponse toSearchResponse(Listing listing) {
-        if (listing == null) {
-            return null;
-        }
-
-        var response = com.sep.realvista.application.listing.dto.ListingSearchResponse.builder()
-                .listingId(listing.getListingId())
-                .name(listing.getName())
-                .slug(listing.getSlug())
-                .listingType(listing.getListingType())
-                .status(listing.getStatus())
-                .price(listing.getPrice())
-                .publishedAt(listing.getPublishedAt())
-                .userType(listing.getUser() != null ? "USER" : null); // Default to USER, can be enhanced later
-
-        // Add property details if available
-        if (listing.getProperty() != null) {
-            if (listing.getProperty().getUsableSizeM2() != null) {
-                response.area(listing.getProperty().getUsableSizeM2().doubleValue());
-            }
-            response.bedrooms(listing.getProperty().getBedrooms())
-                    .bathrooms(listing.getProperty().getBathrooms());
-
-            // Add location
-            if (listing.getProperty().getLocation() != null) {
-                response.location(listing.getProperty().getLocation().getName());
-            }
-        }
-
-        // Thumbnail will be populated by the service layer
-        // Add boost information
-        // Note: Boost information would need to be fetched separately or joined
-        // For now, setting default values
-        response.isBoosted(false);
-
-        return response.build();
-    }
 }

@@ -43,8 +43,9 @@ public final class SecurityConstants {
                 "/oauth2/**",
                 "/login/oauth2/**",
                 "/ws/**",
-                "/api/test/**",
-                "/api/v1/test/**"
+                "api/test/**",
+                "/api/v1/test/**",
+                "/api/v1/map/**"
         };
 
         private PublicEndpoints() {

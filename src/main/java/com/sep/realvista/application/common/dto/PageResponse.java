@@ -1,17 +1,18 @@
 package com.sep.realvista.application.common.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
 /**
  * Paginated response wrapper.
+ * Can be extended by other response DTOs that need pagination.
  */
 @Data
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class PageResponse<T> {
@@ -23,4 +24,3 @@ public class PageResponse<T> {
     private boolean first;
     private boolean last;
 }
-
