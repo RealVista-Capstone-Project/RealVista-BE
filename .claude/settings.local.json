@@ -16,12 +16,21 @@
       "Bash(mvn clean compile:*)",
       "Bash(ls:*)",
       "Bash(mvn test:*)",
-      "Bash(mvn:*)"
+      "Bash(mvn:*)",
+      "Bash(claude plugin install:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "Bash(claude plugin search:*)",
+      "Bash(claude plugin --help:*)",
+      "Bash(claude plugin marketplace:*)",
+      "mcp__atlassian__getAccessibleAtlassianResources",
+      "mcp__atlassian__getJiraIssue",
+      "Bash(curl:*)"
     ]
   },
   "enabledPlugins": {
     "context7@claude-plugins-official": true,
-    "atlassian@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true
+    "code-review@claude-plugins-official": true,
+    "atlassian@claude-plugins-official": true
   }
 }
