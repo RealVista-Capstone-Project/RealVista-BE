@@ -22,13 +22,16 @@ public class OpenApiConfig {
     @Value("${server.port:8080}")
     private String serverPort;
 
+    @Value("${app.base-url:}")
+    private String baseUrl;
+
     @Bean
     public OpenAPI customOpenAPI() {
         String apiDescription = "RESTful API for RealVista Real Estate Platform";
         String jwtDescription = "Enter JWT token obtained from /api/v1/auth/login endpoint";
 
-        return new OpenAPI()
-                .openapi("3.0.1") // Explicitly set OpenAPI version
+        OpenAPI openAPI = new OpenAPI()
+                .openapi("3.0.1")
                 .info(new Info()
                         .title("RealVista API")
                         .version("1.0.0")
@@ -40,9 +43,6 @@ public class OpenApiConfig {
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
-                .addServersItem(new Server()
-                        .url("http://localhost:" + serverPort)
-                        .description("Development Server"))
                 .addSecurityItem(new SecurityRequirement().addList("Bearer Authentication"))
                 .components(new Components()
                         .addSecuritySchemes("Bearer Authentication",
@@ -52,6 +52,14 @@ public class OpenApiConfig {
                                         .bearerFormat("JWT")
                                         .name("Authorization")
                                         .description(jwtDescription)));
+
+        // Use relative URL so Swagger sends requests to the same host the UI is served from
+        if (baseUrl != null && !baseUrl.isBlank()) {
+            openAPI.addServersItem(new Server().url(baseUrl).description("Configured Server"));
+        }
+        openAPI.addServersItem(new Server().url("/").description("Current Server"));
+
+        return openAPI;
     }
 }
 
