@@ -701,7 +701,8 @@ jobs:
             # the app is still functional — we check that DB is UP as the critical component
             HEALTHY=false
             for i in $(seq 1 12); do
-              HEALTH_RESPONSE=$(curl -s --max-time 5 http://localhost:8080/actuator/health 2>/dev/null || echo "")
+              # Health check via docker exec since port is not exposed to host
+              HEALTH_RESPONSE=$(docker exec be-non-prod wget -qO- --timeout=5 http://localhost:8080/actuator/health 2>/dev/null || echo "")
               if [ -n "${HEALTH_RESPONSE}" ]; then
                 echo "  Got health response: ${HEALTH_RESPONSE}"
                 # App is responding — check that DB (the critical component) is UP
