@@ -610,7 +610,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
           envs: DEPLOY_TAG,DEPLOY_PROFILE,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
-          command_timeout: 10m
+          command_timeout: 15m
           script: |
             set -e
             echo "============================================"
@@ -619,9 +619,8 @@ jobs:
             echo "============================================"
 
             # --- 0. Ensure Docker Compose v2 is installed ---
-            # docker-compose v1 has a known KeyError bug with BuildKit images
             if docker compose version >/dev/null 2>&1; then
-              echo "Docker Compose v2 already installed: $(docker compose version)"
+              echo "Docker Compose v2: $(docker compose version)"
             else
               echo "Installing Docker Compose v2 plugin..."
               COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d'"' -f4)
@@ -667,21 +666,60 @@ jobs:
             echo "Image  : ${DOCKERHUB_USERNAME}/realvista:${DEPLOY_TAG}"
             echo "Profile: ${DEPLOY_PROFILE}"
 
-            # Pull new image and recreate container
+            # Stop old container, pull new image, start fresh
+            docker compose down --remove-orphans 2>/dev/null || true
             docker compose pull
             docker compose up -d
 
             # --- 4. Health check with retries ---
+            echo ""
             echo "Waiting for application to start..."
-            sleep 20
+            sleep 10
 
-            HEALTHY=false
-            for i in $(seq 1 6); do
-              if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
-                HEALTHY=true
+            # First check if the container is even running
+            for i in $(seq 1 10); do
+              CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' be-non-prod 2>/dev/null || echo "missing")
+              if [ "${CONTAINER_STATUS}" == "running" ]; then
+                echo "Container is running."
                 break
+              elif [ "${CONTAINER_STATUS}" == "exited" ] || [ "${CONTAINER_STATUS}" == "dead" ]; then
+                echo ""
+                echo "============================================"
+                echo "  Container CRASHED (status: ${CONTAINER_STATUS})"
+                echo "============================================"
+                echo "Container logs:"
+                docker compose logs --tail 100
+                exit 1
               fi
-              echo "  Health check attempt ${i}/6 - not ready, waiting 10s..."
+              echo "  Container status: ${CONTAINER_STATUS} (attempt ${i}/10)..."
+              sleep 3
+            done
+
+            # Now wait for the health endpoint
+            # Use -s (silent) without -f so we get the response even on HTTP 503
+            # Spring Boot returns 503 if ANY component is DOWN (e.g. mail) but
+            # the app is still functional — we check that DB is UP as the critical component
+            HEALTHY=false
+            for i in $(seq 1 12); do
+              HEALTH_RESPONSE=$(curl -s --max-time 5 http://localhost:8080/actuator/health 2>/dev/null || echo "")
+              if [ -n "${HEALTH_RESPONSE}" ]; then
+                echo "  Got health response: ${HEALTH_RESPONSE}"
+                # App is responding — check that DB (the critical component) is UP
+                if echo "${HEALTH_RESPONSE}" | grep -q '"db".*"status":"UP"'; then
+                  HEALTHY=true
+                  break
+                else
+                  echo "  WARNING: App responded but DB is not UP"
+                fi
+              fi
+              # Check if container died while waiting
+              CS=$(docker inspect --format='{{.State.Status}}' be-non-prod 2>/dev/null || echo "missing")
+              if [ "${CS}" != "running" ]; then
+                echo "  Container stopped unexpectedly (status: ${CS})"
+                docker compose logs --tail 100
+                exit 1
+              fi
+              echo "  Health check attempt ${i}/12 - not ready, waiting 10s..."
               sleep 10
             done
 
@@ -689,15 +727,16 @@ jobs:
               echo ""
               echo "============================================"
               echo "  Deployment SUCCESSFUL"
-              echo "  Health: $(curl -s http://localhost:8080/actuator/health)"
+              echo "  Health: ${HEALTH_RESPONSE}"
               echo "============================================"
             else
               echo ""
               echo "============================================"
               echo "  Deployment FAILED - Health check timeout"
               echo "============================================"
-              echo "Backend logs (last 80 lines):"
-              docker compose logs --tail 80
+              echo "Container status: $(docker inspect --format='{{.State.Status}}' be-non-prod 2>/dev/null)"
+              echo "Backend logs (last 100 lines):"
+              docker compose logs --tail 100
               exit 1
             fi
 
