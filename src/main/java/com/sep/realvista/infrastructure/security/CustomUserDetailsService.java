@@ -33,20 +33,17 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .map(ur -> new SimpleGrantedAuthority("ROLE_" + ur.getRole().getRoleCode().name()))
                 .collect(Collectors.toList());
 
-        // Default to BUYER role if no roles assigned
         if (authorities.isEmpty()) {
-            authorities = List.of(new SimpleGrantedAuthority("ROLE_BUYER"));
+            authorities.add(new SimpleGrantedAuthority("ROLE_BUYER"));
         }
 
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getEmail().getValue())
-                .password(user.getPasswordHash())
-                .authorities(authorities)
-                .accountExpired(false)
-                .accountLocked(!user.isActive())
-                .credentialsExpired(false)
-                .disabled(!user.isActive())
-                .build();
+        return new SecurityUserDetails(
+                user.getUserId(),
+                user.getEmail().getValue(),
+                user.getPasswordHash(),
+                authorities,
+                user.isActive()
+        );
     }
 }
 
