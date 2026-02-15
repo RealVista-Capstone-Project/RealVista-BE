@@ -3,6 +3,7 @@ package com.sep.realvista.domain.listing.repository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,4 +26,20 @@ public interface ListingRepository {
     boolean existsById(UUID id);
 
     void deleteById(UUID id);
+
+    /**
+     * Find published listings within geographical bounds with filters and sorting.
+     *
+     * @param criteria search criteria including bounds, filters, sort, and pagination
+     * @return list of published listings matching the criteria
+     */
+    List<Listing> findPublishedWithinBounds(MapSearchCriteria criteria);
+
+    /**
+     * Count published listings within geographical bounds with filters.
+     *
+     * @param criteria search criteria including bounds and filters
+     * @return total count of matching listings
+     */
+    Long countPublishedWithinBounds(MapSearchCriteria criteria);
 }
