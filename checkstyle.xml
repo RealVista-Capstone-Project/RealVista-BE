@@ -86,6 +86,12 @@
         <module name="ArrayTypeStyle"/>
         <module name="TodoComment"/>
         <module name="UpperEll"/>
+
+        <!-- Support @SuppressWarnings annotation -->
+        <module name="SuppressWarningsHolder"/>
     </module>
+
+    <!-- Allow @SuppressWarnings to suppress checkstyle violations -->
+    <module name="SuppressWarningsFilter"/>
 </module>
 
