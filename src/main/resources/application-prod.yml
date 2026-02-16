@@ -9,6 +9,10 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+  # Flyway - NEVER allow clean in production
+  flyway:
+    clean-disabled: true
+
   # JPA Configuration
   jpa:
     show-sql: false
