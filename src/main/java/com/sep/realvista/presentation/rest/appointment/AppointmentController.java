@@ -6,6 +6,7 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.infrastructure.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -52,7 +53,7 @@ public class AppointmentController {
     @PostMapping
     @Operation(summary = "Book a tour", description = "Schedule a property tour for a listing")
     public ResponseEntity<ApiResponse<Void>> bookTour(
-            @RequestBody BookTourRequest request,
+            @Valid @RequestBody BookTourRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser
     ) {
         String traceId = UUID.randomUUID().toString();
@@ -60,7 +61,18 @@ public class AppointmentController {
         log.info("Request to book tour - traceId: {}, userId: {}, listingId: {}", 
                 traceId, currentUser.getUserId(), request.getListingId());
 
-        appointmentApplicationService.bookTour(currentUser.getUserId(), request);
-        return ResponseEntity.ok(ApiResponse.success("Tour booked successfully", null));
+        try {
+            appointmentApplicationService.bookTour(currentUser.getUserId(), request);
+            
+            log.info("Tour booked successfully - traceId: {}, userId: {}, listingId: {}", 
+                    traceId, currentUser.getUserId(), request.getListingId());
+            
+            return ResponseEntity.ok(ApiResponse.success("Tour booked successfully", null));
+        } catch (Exception e) {
+            log.error("Error booking tour - traceId: {}, error: {}", traceId, e.getMessage());
+            throw e;
+        } finally {
+            MDC.remove("traceId");
+        }
     }
 }
