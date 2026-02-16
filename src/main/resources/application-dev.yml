@@ -9,6 +9,11 @@ spring:
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
   
+  # Flyway - allow clean on validation error for dev (re-creates DB if migrations change)
+  flyway:
+    clean-disabled: false
+    clean-on-validation-error: true
+
   # JPA Configuration
   jpa:
     show-sql: true

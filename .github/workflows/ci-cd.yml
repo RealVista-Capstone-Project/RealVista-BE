@@ -436,7 +436,10 @@ jobs:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
     needs: [package]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    # TODO: Remove pull_request condition after deployment is verified
+    if: >-
+      (github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'))
+#      || (github.event_name == 'pull_request' && github.base_ref == 'develop')
     outputs:
       image_tag: ${{ steps.vars.outputs.tag }}
       environment: ${{ steps.vars.outputs.environment }}
