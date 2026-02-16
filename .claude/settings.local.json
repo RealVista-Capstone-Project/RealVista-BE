@@ -25,7 +25,11 @@
       "Bash(claude plugin marketplace:*)",
       "mcp__atlassian__getAccessibleAtlassianResources",
       "mcp__atlassian__getJiraIssue",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(docker exec:*)",
+      "Bash(powershell:*)",
+      "mcp__atlassian__addCommentToJiraIssue",
+      "mcp__atlassian__editJiraIssue"
     ]
   },
   "enabledPlugins": {
