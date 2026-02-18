@@ -10,7 +10,7 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.search.MapBounds;
 import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 import com.sep.realvista.domain.property.Property;
-import com.sep.realvista.domain.property.PropertyRepository;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;

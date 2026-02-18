@@ -5,6 +5,9 @@ import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +18,10 @@ public interface ListingRepository {
     Listing save(Listing listing);
 
     Optional<Listing> findById(UUID id);
+
+    Page<Listing> findAll(Specification<Listing> spec, Pageable pageable);
+
+    Optional<String> findThumbnailByListingId(UUID listingId);
 
     List<Listing> findByPropertyId(UUID propertyId);
 
@@ -27,6 +34,8 @@ public interface ListingRepository {
     boolean existsById(UUID id);
 
     void deleteById(UUID id);
+
+    void deleteAll();
 
     /**
      * Find published listings within geographical bounds with filters and sorting.

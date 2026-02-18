@@ -10,16 +10,16 @@ import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyCategory;
+import com.sep.realvista.domain.property.repository.PropertyCategoryRepository;
 import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.PropertyType;
+import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
 import com.sep.realvista.domain.property.attribute.AttributeDataType;
 import com.sep.realvista.domain.property.attribute.PropertyAttribute;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationType;
-import com.sep.realvista.domain.property.repository.PropertyCategoryRepository;
-import com.sep.realvista.domain.property.PropertyRepository;
-import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserStatus;
@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -222,6 +223,22 @@ class ListingSearchServiceIntegrationTest {
                 .publishedAt(LocalDateTime.now())
                 .build();
         return listingRepository.save(listing);
+    }
+
+    @Test
+    void debug_json_storage() {
+        List<Object[]> results = entityManager.createNativeQuery("SELECT property_id, extra_attributes FROM properties").getResultList();
+        System.out.println("DEBUG: Found " + results.size() + " properties");
+        for (Object[] row : results) {
+            Object jsonValue = row[1];
+            String content = "null";
+            if (jsonValue instanceof byte[] bytes) {
+                content = new String(bytes);
+            } else if (jsonValue != null) {
+                content = jsonValue.toString();
+            }
+            System.out.println("Property " + row[0] + " extra_attributes: " + content + " (type: " + (jsonValue != null ? jsonValue.getClass().getName() : "null") + ")");
+        }
     }
 
     @Test

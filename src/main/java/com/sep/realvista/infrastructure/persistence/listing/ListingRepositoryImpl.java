@@ -8,6 +8,9 @@ import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
@@ -22,6 +25,16 @@ public class ListingRepositoryImpl implements ListingRepository {
 
     private final ListingJpaRepository jpaRepository;
     private final ListingCustomRepository customRepository;
+
+    @Override
+    public Page<Listing> findAll(Specification<Listing> spec, Pageable pageable) {
+        return jpaRepository.findAll(spec, pageable);
+    }
+
+    @Override
+    public Optional<String> findThumbnailByListingId(UUID listingId) {
+        return jpaRepository.findThumbnailByListingId(listingId);
+    }
 
     @Override
     public Listing save(Listing listing) {
@@ -50,7 +63,7 @@ public class ListingRepositoryImpl implements ListingRepository {
 
     @Override
     public List<Listing> findByListingTypeAndStatus(ListingType listingType,
-            ListingStatus status) {
+                                                    ListingStatus status) {
         return jpaRepository.findByListingTypeAndStatus(listingType, status);
     }
 
@@ -62,6 +75,11 @@ public class ListingRepositoryImpl implements ListingRepository {
     @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public void deleteAll() {
+        jpaRepository.deleteAll();
     }
 
     @Override
