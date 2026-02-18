@@ -7,6 +7,7 @@ import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,8 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -45,8 +49,7 @@ public class ListingSearchService {
         static final String TYPE = "propertyType";
         static final String LOCATION = "location";
         static final String USABLE_SIZE_M2 = "usableSizeM2";
-        static final String BEDROOMS = "bedrooms";
-        static final String BATHROOMS = "bathrooms";
+        static final String PROPERTY_ID = "propertyId";
         static final String EXTRA_ATTRIBUTES = "extraAttributes";
     }
 
@@ -64,12 +67,16 @@ public class ListingSearchService {
         static final String NAME = "name";
     }
 
+    // Attribute codes in property_attributes table
+    private static final String ATTR_CODE_BEDROOMS = "BEDROOMS";
+    private static final String ATTR_CODE_BATHROOMS = "BATHROOMS";
+
     private static final String JSONB_EXTRACT_FUNCTION = "jsonb_extract_path_text";
 
     @Transactional(readOnly = true)
     public Page<ListingSearchResponse> search(ListingSearchCriteria criteria, Pageable pageable) {
 
-        log.debug("🔍 Searching with criteria: {}", criteria);
+        log.debug("Searching with criteria: {}", criteria);
 
         // Handle custom sorting if requested
         Pageable effectivePageable = pageable;
@@ -131,7 +138,7 @@ public class ListingSearchService {
 
             // Only search published listings
             predicates.add(cb.equal(root.get(ListingFields.STATUS), ListingStatus.PUBLISHED));
-            log.debug("✅ Added PUBLISHED filter");
+            log.debug("Added PUBLISHED filter");
 
             Join<Object, Object> propertyJoin = root.join(ListingFields.PROPERTY);
 
@@ -140,15 +147,15 @@ public class ListingSearchService {
                 try {
                     ListingType type = ListingType.valueOf(criteria.getListingType().toUpperCase());
                     predicates.add(cb.equal(root.get(ListingFields.LISTING_TYPE), type));
-                    log.debug("✅ Added listingType filter: {}", type);
+                    log.debug("Added listingType filter: {}", type);
                 } catch (IllegalArgumentException e) {
-                    log.warn("❌ Invalid listing type: {}", criteria.getListingType());
+                    log.warn("Invalid listing type: {}", criteria.getListingType());
                 }
             }
 
             // Property Type
             if (criteria.getPropertyType() != null && !criteria.getPropertyType().isBlank()) {
-                log.debug("🏠 Property Type filter: {}", criteria.getPropertyType());
+                log.debug("Property type filter: {}", criteria.getPropertyType());
                 predicates.add(cb.equal(
                     propertyJoin.get(PropertyFields.TYPE).get(PropertyTypeFields.CODE),
                     criteria.getPropertyType()
@@ -163,7 +170,7 @@ public class ListingSearchService {
                         .get(CategoryFields.CODE),
                     criteria.getPropertyCategory()
                 ));
-                log.debug("✅ Added propertyCategory filter: {}", criteria.getPropertyCategory());
+                log.debug("Added propertyCategory filter: {}", criteria.getPropertyCategory());
             }
 
             // Location (LIKE search)
@@ -172,7 +179,7 @@ public class ListingSearchService {
                     propertyJoin.join(PropertyFields.LOCATION).get(LocationFields.NAME)),
                     "%" + criteria.getLocation().toLowerCase() + "%"
                 ));
-                log.debug("✅ Added location LIKE filter: {}", criteria.getLocation());
+                log.debug("Added location LIKE filter: {}", criteria.getLocation());
             }
 
             // Price Range
@@ -201,20 +208,38 @@ public class ListingSearchService {
                 );
             }
 
-            // Bedrooms
+            // Bedrooms - query via property_attribute_values table
             if (criteria.getBedrooms() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(
-                    propertyJoin.get(PropertyFields.BEDROOMS),
-                    criteria.getBedrooms()
-                ));
+                Subquery<UUID> bedroomSubquery = query.subquery(UUID.class);
+                Root<PropertyAttributeValue> pavRoot = bedroomSubquery.from(PropertyAttributeValue.class);
+                Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
+                bedroomSubquery.select(pavRoot.get("propertyId"))
+                    .where(
+                        cb.equal(paJoin.get("code"), ATTR_CODE_BEDROOMS),
+                        cb.greaterThanOrEqualTo(
+                            pavRoot.get("valueNumber"),
+                            BigDecimal.valueOf(criteria.getBedrooms())
+                        )
+                    );
+                predicates.add(propertyJoin.get(PropertyFields.PROPERTY_ID).in(bedroomSubquery));
+                log.debug("Added bedrooms filter via attribute values: >= {}", criteria.getBedrooms());
             }
 
-            // Bathrooms
+            // Bathrooms - query via property_attribute_values table
             if (criteria.getBathrooms() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(
-                    propertyJoin.get(PropertyFields.BATHROOMS),
-                    criteria.getBathrooms()
-                ));
+                Subquery<UUID> bathroomSubquery = query.subquery(UUID.class);
+                Root<PropertyAttributeValue> pavRoot = bathroomSubquery.from(PropertyAttributeValue.class);
+                Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
+                bathroomSubquery.select(pavRoot.get("propertyId"))
+                    .where(
+                        cb.equal(paJoin.get("code"), ATTR_CODE_BATHROOMS),
+                        cb.greaterThanOrEqualTo(
+                            pavRoot.get("valueNumber"),
+                            BigDecimal.valueOf(criteria.getBathrooms())
+                        )
+                    );
+                predicates.add(propertyJoin.get(PropertyFields.PROPERTY_ID).in(bathroomSubquery));
+                log.debug("Added bathrooms filter via attribute values: >= {}", criteria.getBathrooms());
             }
 
             // Dynamic Attributes (JSONB) - Generic handling
@@ -227,7 +252,7 @@ public class ListingSearchService {
                                 cb.literal(attributeCode)),
                             value
                         ));
-                        log.debug("✅ Added dynamic attribute filter: {}={}", attributeCode, value);
+                        log.debug("Added dynamic attribute filter: {}={}", attributeCode, value);
                     }
                 });
             }

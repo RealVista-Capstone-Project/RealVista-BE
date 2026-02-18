@@ -12,6 +12,9 @@ import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyCategory;
 import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.PropertyType;
+import com.sep.realvista.domain.property.attribute.AttributeDataType;
+import com.sep.realvista.domain.property.attribute.PropertyAttribute;
+import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationType;
 import com.sep.realvista.domain.property.repository.PropertyCategoryRepository;
@@ -68,6 +71,8 @@ class ListingSearchServiceIntegrationTest {
 
     private PropertyType apartmentType;
     private PropertyCategory residentialCategory;
+    private PropertyAttribute bedroomsAttribute;
+    private PropertyAttribute bathroomsAttribute;
     private Listing listing1;
     private Listing listing2;
     private User testUser;
@@ -85,10 +90,12 @@ class ListingSearchServiceIntegrationTest {
 
         // Clear data
         listingRepository.deleteAll();
+        entityManager.createQuery("DELETE FROM PropertyAttributeValue").executeUpdate();
         propertyRepository.deleteAll();
         propertyTypeRepository.deleteAll();
         propertyCategoryRepository.deleteAll();
-        
+        entityManager.createQuery("DELETE FROM PropertyAttribute").executeUpdate();
+
         // Clear locations using JPQL because no repository
         entityManager.createQuery("DELETE FROM Location").executeUpdate();
 
@@ -130,12 +137,34 @@ class ListingSearchServiceIntegrationTest {
                 .build();
         apartmentType = propertyTypeRepository.save(apartmentType);
 
+        // Create property attribute definitions (BEDROOMS, BATHROOMS)
+        bedroomsAttribute = PropertyAttribute.builder()
+                .name("Bedrooms")
+                .code("BEDROOMS")
+                .dataType(AttributeDataType.NUMBER)
+                .isSearchable(true)
+                .unit("rooms")
+                .build();
+        entityManager.persist(bedroomsAttribute);
+
+        bathroomsAttribute = PropertyAttribute.builder()
+                .name("Bathrooms")
+                .code("BATHROOMS")
+                .dataType(AttributeDataType.NUMBER)
+                .isSearchable(true)
+                .unit("rooms")
+                .build();
+        entityManager.persist(bathroomsAttribute);
+        entityManager.flush();
+
         // Property 1: Apartment with 2 beds, 2 baths, 100m2, South facing, Has Pool
         Map<String, Object> extraAttrs1 = new HashMap<>();
         extraAttrs1.put("direction", "South");
         extraAttrs1.put("hasPool", "true");
         
-        Property property1 = createProperty("123 Main St", 100.0, 2, 2, apartmentType, extraAttrs1);
+        Property property1 = createProperty("123 Main St", 100.0, apartmentType, extraAttrs1);
+        createAttributeValue(property1, bedroomsAttribute, 2);
+        createAttributeValue(property1, bathroomsAttribute, 2);
         listing1 = createListing(property1, "Luxury Apt", 2000.0);
         
         // Property 2: Apartment with 3 beds, 2 baths, 150m2, North facing, No Pool
@@ -143,18 +172,18 @@ class ListingSearchServiceIntegrationTest {
         extraAttrs2.put("direction", "North");
         extraAttrs2.put("hasPool", "false");
 
-        Property property2 = createProperty("456 High St", 150.0, 3, 2, apartmentType, extraAttrs2);
+        Property property2 = createProperty("456 High St", 150.0, apartmentType, extraAttrs2);
+        createAttributeValue(property2, bedroomsAttribute, 3);
+        createAttributeValue(property2, bathroomsAttribute, 2);
         listing2 = createListing(property2, "Spacious Apt", 3000.0);
         
         entityManager.flush();
     }
 
-    private Property createProperty(String address, Double area, Integer beds, Integer baths, PropertyType type, Map<String, Object> extraAttributes) {
+    private Property createProperty(String address, Double area, PropertyType type, Map<String, Object> extraAttributes) {
         Property property = Property.builder()
                 .streetAddress(address)
                 .usableSizeM2(BigDecimal.valueOf(area))
-                .bedrooms(beds)
-                .bathrooms(baths)
                 .descriptions("Test description")
                 .propertyTypeId(type.getPropertyTypeId())
                 .propertyType(type)
@@ -169,6 +198,15 @@ class ListingSearchServiceIntegrationTest {
                 .lengthM(BigDecimal.ZERO)
                 .build();
         return propertyRepository.save(property);
+    }
+
+    private void createAttributeValue(Property property, PropertyAttribute attribute, int value) {
+        PropertyAttributeValue pav = PropertyAttributeValue.builder()
+                .propertyId(property.getPropertyId())
+                .propertyAttributeId(attribute.getPropertyAttributeId())
+                .valueNumber(BigDecimal.valueOf(value))
+                .build();
+        entityManager.persist(pav);
     }
 
     private Listing createListing(Property property, String name, Double price) {
@@ -264,5 +302,60 @@ class ListingSearchServiceIntegrationTest {
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getListingId()).isEqualTo(listing2.getListingId());
+    }
+
+    @Test
+    @DisplayName("Should filter by bedrooms attribute value")
+    void search_bedroomsFilter_shouldReturnMatchingListings() {
+        // Property 1 has 2 bedrooms, Property 2 has 3 bedrooms
+        // Search for >= 3 bedrooms should return only listing2
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .bedrooms(3)
+                .build();
+
+        Page<ListingSearchResponse> result = listingSearchService.search(
+                criteria,
+                PageRequest.of(0, 10)
+        );
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getListingId()).isEqualTo(listing2.getListingId());
+    }
+
+    @Test
+    @DisplayName("Should filter by bathrooms attribute value")
+    void search_bathroomsFilter_shouldReturnMatchingListings() {
+        // Both properties have 2 bathrooms
+        // Search for >= 2 bathrooms should return both
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .bathrooms(2)
+                .build();
+
+        Page<ListingSearchResponse> result = listingSearchService.search(
+                criteria,
+                PageRequest.of(0, 10)
+        );
+
+        assertThat(result.getContent()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Should filter by both bedrooms and bathrooms")
+    void search_bedroomsAndBathroomsFilter_shouldReturnMatchingListings() {
+        // Search for >= 2 bedrooms AND >= 2 bathrooms: both match
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .bedrooms(2)
+                .bathrooms(2)
+                .build();
+
+        Page<ListingSearchResponse> result = listingSearchService.search(
+                criteria,
+                PageRequest.of(0, 10)
+        );
+
+        assertThat(result.getContent()).hasSize(2);
     }
 }
