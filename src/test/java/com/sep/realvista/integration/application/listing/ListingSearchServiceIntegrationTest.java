@@ -301,6 +301,7 @@ class ListingSearchServiceIntegrationTest {
     void search_combinedFilters_shouldReturnMatchingListings() {
         Map<String, String> dynamicFilters = new HashMap<>();
         dynamicFilters.put("direction", "North");
+        dynamicFilters.put("BEDROOMS", "3");
 
         ListingSearchCriteria criteria = ListingSearchCriteria.builder()
                 .listingType("RENT")
@@ -308,7 +309,6 @@ class ListingSearchServiceIntegrationTest {
                 .maxPrice(BigDecimal.valueOf(3500))
                 .minArea(120.0)
                 .maxArea(200.0)
-                .bedrooms(3)
                 .dynamicAttributes(dynamicFilters)
                 .build();
 
@@ -326,9 +326,11 @@ class ListingSearchServiceIntegrationTest {
     void search_bedroomsFilter_shouldReturnMatchingListings() {
         // Property 1 has 2 bedrooms, Property 2 has 3 bedrooms
         // Search for >= 3 bedrooms should return only listing2
+        Map<String, String> dynamicFilters = new HashMap<>();
+        dynamicFilters.put("BEDROOMS", "3");
         ListingSearchCriteria criteria = ListingSearchCriteria.builder()
                 .listingType("RENT")
-                .bedrooms(3)
+                .dynamicAttributes(dynamicFilters)
                 .build();
 
         Page<ListingSearchResponse> result = listingSearchService.search(
@@ -345,9 +347,11 @@ class ListingSearchServiceIntegrationTest {
     void search_bathroomsFilter_shouldReturnMatchingListings() {
         // Both properties have 2 bathrooms
         // Search for >= 2 bathrooms should return both
+        Map<String, String> dynamicFilters = new HashMap<>();
+        dynamicFilters.put("BATHROOMS", "2");
         ListingSearchCriteria criteria = ListingSearchCriteria.builder()
                 .listingType("RENT")
-                .bathrooms(2)
+                .dynamicAttributes(dynamicFilters)
                 .build();
 
         Page<ListingSearchResponse> result = listingSearchService.search(
@@ -362,10 +366,12 @@ class ListingSearchServiceIntegrationTest {
     @DisplayName("Should filter by both bedrooms and bathrooms")
     void search_bedroomsAndBathroomsFilter_shouldReturnMatchingListings() {
         // Search for >= 2 bedrooms AND >= 2 bathrooms: both match
+        Map<String, String> dynamicFilters = new HashMap<>();
+        dynamicFilters.put("BEDROOMS", "2");
+        dynamicFilters.put("BATHROOMS", "2");
         ListingSearchCriteria criteria = ListingSearchCriteria.builder()
                 .listingType("RENT")
-                .bedrooms(2)
-                .bathrooms(2)
+                .dynamicAttributes(dynamicFilters)
                 .build();
 
         Page<ListingSearchResponse> result = listingSearchService.search(

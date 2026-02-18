@@ -22,10 +22,10 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -67,11 +67,14 @@ public class ListingSearchService {
         static final String NAME = "name";
     }
 
-    // Attribute codes in property_attributes table
-    private static final String ATTR_CODE_BEDROOMS = "BEDROOMS";
-    private static final String ATTR_CODE_BATHROOMS = "BATHROOMS";
-
     private static final String JSONB_EXTRACT_FUNCTION = "jsonb_extract_path_text";
+
+    /**
+     * Attribute codes that represent numeric quantities and should use >= (min) semantics
+     * when passed via dynamicAttributes. Clients pass e.g. {"BEDROOMS": "2"} to mean
+     * "at least 2 bedrooms".
+     */
+    private static final Set<String> NUMERIC_MIN_ATTRIBUTE_CODES = Set.of("BEDROOMS", "BATHROOMS");
 
     @Transactional(readOnly = true)
     public Page<ListingSearchResponse> search(ListingSearchCriteria criteria, Pageable pageable) {
@@ -208,44 +211,38 @@ public class ListingSearchService {
                 );
             }
 
-            // Bedrooms - query via property_attribute_values table
-            if (criteria.getBedrooms() != null) {
-                Subquery<UUID> bedroomSubquery = query.subquery(UUID.class);
-                Root<PropertyAttributeValue> pavRoot = bedroomSubquery.from(PropertyAttributeValue.class);
-                Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
-                bedroomSubquery.select(pavRoot.get("propertyId"))
-                    .where(
-                        cb.equal(paJoin.get("code"), ATTR_CODE_BEDROOMS),
-                        cb.greaterThanOrEqualTo(
-                            pavRoot.get("valueNumber"),
-                            BigDecimal.valueOf(criteria.getBedrooms())
-                        )
-                    );
-                predicates.add(propertyJoin.get(PropertyFields.PROPERTY_ID).in(bedroomSubquery));
-                log.debug("Added bedrooms filter via attribute values: >= {}", criteria.getBedrooms());
-            }
-
-            // Bathrooms - query via property_attribute_values table
-            if (criteria.getBathrooms() != null) {
-                Subquery<UUID> bathroomSubquery = query.subquery(UUID.class);
-                Root<PropertyAttributeValue> pavRoot = bathroomSubquery.from(PropertyAttributeValue.class);
-                Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
-                bathroomSubquery.select(pavRoot.get("propertyId"))
-                    .where(
-                        cb.equal(paJoin.get("code"), ATTR_CODE_BATHROOMS),
-                        cb.greaterThanOrEqualTo(
-                            pavRoot.get("valueNumber"),
-                            BigDecimal.valueOf(criteria.getBathrooms())
-                        )
-                    );
-                predicates.add(propertyJoin.get(PropertyFields.PROPERTY_ID).in(bathroomSubquery));
-                log.debug("Added bathrooms filter via attribute values: >= {}", criteria.getBathrooms());
-            }
-
-            // Dynamic Attributes (JSONB) - Generic handling
+            // Dynamic Attributes
+            // - Numeric-min codes (BEDROOMS, BATHROOMS): use subquery with >= on property_attribute_values.value_number
+            //   so {"BEDROOMS": "2"} means "at least 2 bedrooms"
+            // - All other codes: use jsonb_extract_path_text for exact match on extra_attributes JSONB column
             if (criteria.getDynamicAttributes() != null && !criteria.getDynamicAttributes().isEmpty()) {
                 criteria.getDynamicAttributes().forEach((attributeCode, value) -> {
-                    if (value != null && !value.isBlank()) {
+                    if (value == null || value.isBlank()) {
+                        return;
+                    }
+
+                    if (NUMERIC_MIN_ATTRIBUTE_CODES.contains(attributeCode.toUpperCase())) {
+                        // Use >= subquery on property_attribute_values table
+                        try {
+                            BigDecimal minValue = new BigDecimal(value);
+                            Subquery<UUID> subquery = query.subquery(UUID.class);
+                            Root<PropertyAttributeValue> pavRoot = subquery.from(PropertyAttributeValue.class);
+                            Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
+                            subquery.select(pavRoot.get("propertyId"))
+                                .where(
+                                    cb.equal(paJoin.get("code"), attributeCode.toUpperCase()),
+                                    cb.greaterThanOrEqualTo(
+                                        pavRoot.get("valueNumber"),
+                                        minValue
+                                    )
+                                );
+                            predicates.add(propertyJoin.get(PropertyFields.PROPERTY_ID).in(subquery));
+                            log.debug("Added numeric-min attribute filter: {} >= {}", attributeCode, minValue);
+                        } catch (NumberFormatException e) {
+                            log.warn("Invalid numeric value for attribute {}: {}", attributeCode, value);
+                        }
+                    } else {
+                        // Use JSONB exact match on extra_attributes column
                         predicates.add(cb.equal(
                             cb.function(JSONB_EXTRACT_FUNCTION, String.class,
                                 propertyJoin.get(PropertyFields.EXTRA_ATTRIBUTES),
