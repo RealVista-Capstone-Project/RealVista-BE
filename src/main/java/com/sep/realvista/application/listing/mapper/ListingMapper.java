@@ -294,7 +294,6 @@ public interface ListingMapper {
                 .valueBoolean(attributeValue.getValueBoolean())
                 .build();
     }
-
     /**
      * Map Listing to ListingSearchResponse for search results
      */
