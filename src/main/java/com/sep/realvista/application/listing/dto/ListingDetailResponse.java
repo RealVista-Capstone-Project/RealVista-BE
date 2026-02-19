@@ -67,8 +67,11 @@ public class ListingDetailResponse {
     // Owner/Agent Information
     private AgentInfoDTO agent;
 
-    // Property Attributes/Features (amenities, facilities, etc.)
+    // Property Attributes/Features (bedrooms, bathrooms, etc.)
     private List<PropertyAttributeDTO> attributes;
+
+    // Property Amenities (gym, pool, security, etc.) - dynamic based on property type
+    private List<AmenityDTO> amenities;
 
     // Statistics
     @JsonProperty("total_photos")

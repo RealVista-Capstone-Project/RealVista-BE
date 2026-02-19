@@ -18,7 +18,9 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyRepository;
+import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.infrastructure.persistence.property.amenity.PropertyAmenityJpaRepository;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +53,7 @@ public class ListingApplicationService {
         private final ListingPriceHistoryRepository listingPriceHistoryRepository;
         private final PropertyRepository propertyRepository;
         private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
+        private final PropertyAmenityJpaRepository propertyAmenityJpaRepository;
         private final ListingMapper listingMapper;
         private final CostBreakdownService costBreakdownService;
 
@@ -86,18 +89,22 @@ public class ListingApplicationService {
                 // Fetch listing media
                 var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
 
-                // Fetch property attribute values (bedrooms, bathrooms, amenities, etc.)
+                // Fetch property attribute values (bedrooms, bathrooms, etc.)
                 List<PropertyAttributeValue> attributeValues = propertyAttributeValueJpaRepository
                                 .findByPropertyIdWithAttribute(property.getPropertyId());
+
+                // Fetch property amenities (gym, pool, security, etc.)
+                List<PropertyAmenity> propertyAmenities = propertyAmenityJpaRepository
+                                .findByPropertyIdWithAmenity(property.getPropertyId());
 
                 // Attach property and user for DTO mapping (read-only, not persisted)
                 listing.attachProperty(property);
 
-                log.info("Successfully fetched listing detail for ID: {} with {} attributes",
-                                listingId, attributeValues.size());
+                log.info("Successfully fetched listing detail for ID: {} with {} attributes and {} amenities",
+                                listingId, attributeValues.size(), propertyAmenities.size());
 
-                ListingDetailResponse response = listingMapper.toDetailResponseWithMediaAndAttributes(
-                                listing, listingMedias, attributeValues);
+                ListingDetailResponse response = listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
+                                listing, listingMedias, attributeValues, propertyAmenities);
 
                 // Calculate and add cost breakdown (only for RENT listings)
                 CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
