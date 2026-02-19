@@ -1,9 +1,13 @@
 package com.sep.realvista.presentation.rest.listing;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
+import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
+import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
+import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
+import com.sep.realvista.application.listing.service.ListingSearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +36,52 @@ import java.util.UUID;
 public class ListingController {
 
     private final ListingApplicationService listingApplicationService;
+    private final ListingSearchService listingSearchService;
+
+    @Operation(
+            summary = "Search Listings",
+            description = "Search for published listings using various filter criteria.",
+            responses = {
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully retrieved matching listings",
+                            content = @io.swagger.v3.oas.annotations.media.Content(
+                                    mediaType = "application/json",
+                                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                                            implementation = PageResponse.class
+                                    )
+                            )
+                    ),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid search criteria provided",
+                            content = @io.swagger.v3.oas.annotations.media.Content
+                    )
+            }
+    )
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<PageResponse<ListingSearchResponse>>> search(
+            @org.springdoc.core.annotations.ParameterObject ListingSearchCriteria criteria,
+            @org.springframework.data.web.PageableDefault(size = 20)
+            org.springframework.data.domain.Pageable pageable) {
+
+        log.info("Searching listings with criteria: {}", criteria);
+
+        org.springframework.data.domain.Page<ListingSearchResponse> results =
+                listingSearchService.search(criteria, pageable);
+
+        PageResponse<ListingSearchResponse> pageResponse = PageResponse.<ListingSearchResponse>builder()
+                .content(results.getContent())
+                .page(results.getNumber())
+                .size(results.getSize())
+                .totalElements(results.getTotalElements())
+                .totalPages(results.getTotalPages())
+                .first(results.isFirst())
+                .last(results.isLast())
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success("Listings retrieved successfully", pageResponse));
+    }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get listing detail by ID",

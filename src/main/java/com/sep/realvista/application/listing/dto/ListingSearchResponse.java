@@ -25,6 +25,8 @@ public class ListingSearchResponse {
     private BigDecimal price;
     private Double area; // Usable size
     private String location; // Short address or district
+    
+    // NOTE: These attributes will be dynamic, not only bedrooms and bathrooms
     private Integer bedrooms;
     private Integer bathrooms;
     private String thumbnail; // Main image

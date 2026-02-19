@@ -1,6 +1,12 @@
 package com.sep.realvista.component.presentation.rest.listing;
 
 import com.sep.realvista.application.auth.service.TokenService;
+import com.sep.realvista.application.listing.dto.ListingSearchResponse;
+import com.sep.realvista.application.listing.service.ListingSearchService;
+import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import com.sep.realvista.application.listing.dto.AgentInfoDTO;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.LocationInfoDTO;
@@ -61,6 +67,9 @@ class ListingControllerComponentTest {
 
         @MockitoBean
         private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+        @MockitoBean
+        private ListingSearchService listingSearchService;
 
         private ListingDetailResponse mockListingResponse;
         private SimilarListingsResponse mockSimilarListingsResponse;
@@ -365,5 +374,29 @@ class ListingControllerComponentTest {
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.message").exists())
                                 .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"));
+        }
+
+        @Test
+        @DisplayName("Should return 200 OK when searching listings")
+        void searchListings_shouldReturnOk() throws Exception {
+                // Arrange
+                ListingSearchResponse searchResponse = ListingSearchResponse.builder()
+                                .listingId(UUID.randomUUID())
+                                .name("Test Listing")
+                                .build();
+
+                Page<ListingSearchResponse> pageResult = new PageImpl<>(List.of(searchResponse));
+
+                when(listingSearchService.search(any(ListingSearchCriteria.class), any(Pageable.class)))
+                        .thenReturn(pageResult);
+
+                // Act & Assert
+                mockMvc.perform(get("/api/v1/listings/search")
+                                .param("q", "test"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.success").value(true))
+                        .andExpect(jsonPath("$.data.content").isArray())
+                        .andExpect(jsonPath("$.data.content.length()").value(1))
+                        .andExpect(jsonPath("$.data.content[0].name").value("Test Listing"));
         }
 }
