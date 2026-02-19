@@ -294,7 +294,6 @@ public interface ListingMapper {
                 .valueBoolean(attributeValue.getValueBoolean())
                 .build();
     }
-
     /**
      * Map Listing to ListingSearchResponse for search results
      */
@@ -318,9 +317,6 @@ public interface ListingMapper {
             if (listing.getProperty().getUsableSizeM2() != null) {
                 response.area(listing.getProperty().getUsableSizeM2().doubleValue());
             }
-            response.bedrooms(listing.getProperty().getBedrooms())
-                    .bathrooms(listing.getProperty().getBathrooms());
-
             // Add location
             if (listing.getProperty().getLocation() != null) {
                 response.location(listing.getProperty().getLocation().getName());

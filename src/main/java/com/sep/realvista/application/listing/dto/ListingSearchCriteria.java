@@ -16,8 +16,6 @@ public class ListingSearchCriteria {
     private BigDecimal maxPrice;
     private Double minArea;
     private Double maxArea;
-    private Integer bedrooms;
-    private Integer bathrooms;
     private String sortBy;
     private Map<String, String> dynamicAttributes;
 }

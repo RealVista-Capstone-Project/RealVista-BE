@@ -1,7 +1,7 @@
 package com.sep.realvista.infrastructure.persistence.property;
 
 import com.sep.realvista.domain.property.Property;
-import com.sep.realvista.domain.property.PropertyRepository;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 

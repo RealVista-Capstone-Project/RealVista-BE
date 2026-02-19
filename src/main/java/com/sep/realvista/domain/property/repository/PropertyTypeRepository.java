@@ -1,13 +1,12 @@
 package com.sep.realvista.domain.property.repository;
 
 import com.sep.realvista.domain.property.PropertyType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.Optional;
 import java.util.UUID;
 
-@Repository
-public interface PropertyTypeRepository extends JpaRepository<PropertyType, UUID> {
+public interface PropertyTypeRepository {
+    PropertyType save(PropertyType propertyType);
+    Optional<PropertyType> findById(UUID id);
     Optional<PropertyType> findByCode(String code);
+    void deleteAll();
 }

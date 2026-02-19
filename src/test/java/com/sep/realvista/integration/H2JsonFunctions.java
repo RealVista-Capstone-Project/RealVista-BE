@@ -1,30 +1,34 @@
 package com.sep.realvista.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 
 public class H2JsonFunctions {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    /**
+     * H2 implementation for PostgreSQL jsonb_extract_path_text
+     * Usage: jsonb_extract_path_text(column, 'key')
+     */
+    private static final com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
-    public static String jsonbExtractPathText(String json, String key) {
-        if (json == null || key == null) {
+    public static String jsonbExtractPathText(String json, String path) {
+        if (json == null || path == null) {
             return null;
         }
+
         try {
-            JsonNode root = objectMapper.readTree(json);
-            if (root.isTextual()) {
-                // Handle double-encoded JSON (e.g. H2 JSON type as string)
-                try {
-                    root = objectMapper.readTree(root.asText());
-                } catch (Exception e) {
-                    // Ignore, maybe it's just a string
-                }
+            com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(json);
+            
+            // If the node is textual, it might be a double-wrapped JSON string
+            if (node.isTextual()) {
+                node = mapper.readTree(node.asText());
             }
-            JsonNode value = root.get(key);
-            if (value != null) {
-                 return value.asText();
+            
+            com.fasterxml.jackson.databind.JsonNode attributeNode = node.get(path);
+            
+            if (attributeNode == null || attributeNode.isNull()) {
+                return null;
             }
-            return null;
+            
+            return attributeNode.asText();
         } catch (Exception e) {
             return null;
         }

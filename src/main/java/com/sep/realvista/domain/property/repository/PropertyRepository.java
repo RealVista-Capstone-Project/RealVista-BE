@@ -1,5 +1,6 @@
-package com.sep.realvista.domain.property;
+package com.sep.realvista.domain.property.repository;
 
+import com.sep.realvista.domain.property.Property;
 import java.util.Optional;
 import java.util.UUID;
 
