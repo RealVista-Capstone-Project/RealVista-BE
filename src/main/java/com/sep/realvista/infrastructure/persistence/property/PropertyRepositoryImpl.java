@@ -1,7 +1,7 @@
 package com.sep.realvista.infrastructure.persistence.property;
 
 import com.sep.realvista.domain.property.Property;
-import com.sep.realvista.domain.property.PropertyRepository;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -32,5 +32,10 @@ public class PropertyRepositoryImpl implements PropertyRepository {
     @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public void deleteAll() {
+        jpaRepository.deleteAll();
     }
 }

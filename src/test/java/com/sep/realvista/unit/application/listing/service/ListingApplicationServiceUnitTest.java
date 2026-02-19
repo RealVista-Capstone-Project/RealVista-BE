@@ -16,7 +16,7 @@ import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
-import com.sep.realvista.domain.property.PropertyRepository;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.attribute.AttributeDataType;
 import com.sep.realvista.domain.property.attribute.PropertyAttribute;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;

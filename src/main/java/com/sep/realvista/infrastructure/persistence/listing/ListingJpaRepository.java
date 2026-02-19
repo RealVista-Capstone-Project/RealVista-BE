@@ -4,6 +4,7 @@ import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,7 +17,13 @@ import java.util.UUID;
  * Spring Data JPA repository for Listing entity.
  * All queries exclude soft-deleted records (deleted = false).
  */
-public interface ListingJpaRepository extends JpaRepository<Listing, UUID> {
+public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaSpecificationExecutor<Listing> {
+
+    @Query("SELECT pm.mediaUrl FROM ListingMedia lm "
+            + "JOIN lm.propertyMedia pm "
+            + "WHERE lm.listing.listingId = :listingId "
+            + "AND lm.isPrimary = true AND lm.deleted = false AND pm.deleted = false")
+    Optional<String> findThumbnailByListingId(@Param("listingId") UUID listingId);
 
     @Query("SELECT l FROM Listing l WHERE l.property.propertyId = :propertyId AND l.deleted = false")
     List<Listing> findByPropertyId(@Param("propertyId") UUID propertyId);
