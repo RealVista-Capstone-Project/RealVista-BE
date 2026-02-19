@@ -2,6 +2,7 @@ package com.sep.realvista.component.presentation.rest.listing;
 
 import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.listing.dto.AgentInfoDTO;
+import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
@@ -141,6 +142,28 @@ class ListingControllerComponentTest {
                                 .isVerified(true)
                                 .build();
 
+                // Prepare amenities
+                AmenityDTO amenity1 = AmenityDTO.builder()
+                                .amenityId(UUID.randomUUID())
+                                .amenityName("Swimming Pool")
+                                .amenityType("ONSITE")
+                                .description("Outdoor swimming pool")
+                                .build();
+
+                AmenityDTO amenity2 = AmenityDTO.builder()
+                                .amenityId(UUID.randomUUID())
+                                .amenityName("Gym")
+                                .amenityType("ONSITE")
+                                .description("Fitness center")
+                                .build();
+
+                AmenityDTO amenity3 = AmenityDTO.builder()
+                                .amenityId(UUID.randomUUID())
+                                .amenityName("Near MRT Station")
+                                .amenityType("OFFSITE")
+                                .description("Within 500m of MRT")
+                                .build();
+
                 // Prepare main listing response
                 mockListingResponse = ListingDetailResponse.builder()
                                 .listingId(listingId)
@@ -158,6 +181,7 @@ class ListingControllerComponentTest {
                                 .media(List.of(media1, media2))
                                 .agent(agentInfo)
                                 .attributes(List.of())
+                                .amenities(List.of(amenity1, amenity2, amenity3))
                                 .totalPhotos(1)
                                 .totalVideos(1)
                                 .total3DTours(0)
@@ -247,6 +271,11 @@ class ListingControllerComponentTest {
                                 .andExpect(jsonPath("$.data.media").isArray())
                                 .andExpect(jsonPath("$.data.media.length()").value(2))
                                 .andExpect(jsonPath("$.data.attributes").isArray())
+                                .andExpect(jsonPath("$.data.amenities").isArray())
+                                .andExpect(jsonPath("$.data.amenities.length()").value(3))
+                                .andExpect(jsonPath("$.data.amenities[0].amenity_name").value("Swimming Pool"))
+                                .andExpect(jsonPath("$.data.amenities[0].amenity_type").value("ONSITE"))
+                                .andExpect(jsonPath("$.data.amenities[2].amenity_type").value("OFFSITE"))
                                 .andExpect(jsonPath("$.data.total_photos").value(1))
                                 .andExpect(jsonPath("$.data.total_videos").value(1))
                                 .andExpect(jsonPath("$.data.agent.full_name").value("John Doe"));

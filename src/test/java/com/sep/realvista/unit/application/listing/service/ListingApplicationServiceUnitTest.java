@@ -21,9 +21,13 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyRepository;
+import com.sep.realvista.domain.property.amenity.Amenity;
+import com.sep.realvista.domain.property.amenity.AmenityType;
+import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.AttributeDataType;
 import com.sep.realvista.domain.property.attribute.PropertyAttribute;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.infrastructure.persistence.property.amenity.PropertyAmenityJpaRepository;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -73,6 +77,9 @@ class ListingApplicationServiceUnitTest {
         private PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
 
         @Mock
+        private PropertyAmenityJpaRepository propertyAmenityJpaRepository;
+
+        @Mock
         private ListingMapper listingMapper;
 
         @Mock
@@ -89,6 +96,7 @@ class ListingApplicationServiceUnitTest {
         private UUID userId;
         private List<SimilarListing> mockSimilarListings;
         private List<PropertyAttributeValue> mockAttributes;
+        private List<PropertyAmenity> mockAmenities;
 
         @BeforeEach
         void setUp() {
@@ -206,6 +214,51 @@ class ListingApplicationServiceUnitTest {
                                 .build();
 
                 mockAttributes = List.of(attributeValue1, attributeValue2);
+
+                // Create mock amenities
+                Amenity gymAmenity = Amenity.builder()
+                                .amenityId(UUID.randomUUID())
+                                .amenityName("Gym")
+                                .amenityType(AmenityType.ONSITE)
+                                .description("Fitness center")
+                                .build();
+
+                Amenity poolAmenity = Amenity.builder()
+                                .amenityId(UUID.randomUUID())
+                                .amenityName("Swimming Pool")
+                                .amenityType(AmenityType.ONSITE)
+                                .description("Outdoor swimming pool")
+                                .build();
+
+                Amenity nearMrtAmenity = Amenity.builder()
+                                .amenityId(UUID.randomUUID())
+                                .amenityName("Near MRT Station")
+                                .amenityType(AmenityType.OFFSITE)
+                                .description("Within 500m of MRT")
+                                .build();
+
+                PropertyAmenity propertyAmenity1 = PropertyAmenity.builder()
+                                .propertyAmenityId(UUID.randomUUID())
+                                .propertyId(propertyId)
+                                .amenityId(gymAmenity.getAmenityId())
+                                .amenity(gymAmenity)
+                                .build();
+
+                PropertyAmenity propertyAmenity2 = PropertyAmenity.builder()
+                                .propertyAmenityId(UUID.randomUUID())
+                                .propertyId(propertyId)
+                                .amenityId(poolAmenity.getAmenityId())
+                                .amenity(poolAmenity)
+                                .build();
+
+                PropertyAmenity propertyAmenity3 = PropertyAmenity.builder()
+                                .propertyAmenityId(UUID.randomUUID())
+                                .propertyId(propertyId)
+                                .amenityId(nearMrtAmenity.getAmenityId())
+                                .amenity(nearMrtAmenity)
+                                .build();
+
+                mockAmenities = List.of(propertyAmenity1, propertyAmenity2, propertyAmenity3);
         }
 
         @Test
@@ -229,7 +282,10 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(List.of(testMedia));
                 when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
-                when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
+                when(propertyAmenityJpaRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList()))
                                 .thenReturn(expectedResponse);
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
@@ -246,7 +302,9 @@ class ListingApplicationServiceUnitTest {
                 verify(propertyRepository).findById(propertyId);
                 verify(listingMediaRepository).findByListingIdOrderByDisplayOrderAsc(listingId);
                 verify(propertyAttributeValueJpaRepository).findByPropertyIdWithAttribute(propertyId);
-                verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
+                verify(propertyAmenityJpaRepository).findByPropertyIdWithAmenity(propertyId);
+                verify(listingMapper).toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList());
                 verify(costBreakdownService).calculateCostBreakdown(any(Listing.class));
         }
 
@@ -304,7 +362,10 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(List.of(testMedia));
                 when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
-                when(listingMapper.toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList()))
+                when(propertyAmenityJpaRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList()))
                                 .thenReturn(expectedResponse);
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
@@ -313,8 +374,73 @@ class ListingApplicationServiceUnitTest {
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
-                verify(listingMapper).toDetailResponseWithMediaAndAttributes(any(Listing.class), anyList(), anyList());
+                verify(listingMapper).toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList());
                 verify(costBreakdownService).calculateCostBreakdown(any(Listing.class));
+        }
+
+        @Test
+        @DisplayName("Should fetch and include amenities when listing has amenities")
+        void getListingDetail_whenAmenitiesExist_shouldIncludeAmenities() {
+                // Arrange
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(List.of(testMedia));
+                when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(propertyAmenityJpaRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(mockAmenities);
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList()))
+                                .thenReturn(expectedResponse);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
+
+                // Act
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
+
+                // Assert
+                assertThat(actualResponse).isNotNull();
+                verify(propertyAmenityJpaRepository).findByPropertyIdWithAmenity(propertyId);
+                verify(listingMapper).toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList());
+        }
+
+        @Test
+        @DisplayName("Should return empty amenities when property has no amenities")
+        void getListingDetail_whenNoAmenities_shouldReturnEmptyAmenities() {
+                // Arrange
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(List.of(testMedia));
+                when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(propertyAmenityJpaRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList()))
+                                .thenReturn(expectedResponse);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
+
+                // Act
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
+
+                // Assert
+                assertThat(actualResponse).isNotNull();
+                verify(propertyAmenityJpaRepository).findByPropertyIdWithAmenity(propertyId);
         }
 
         // ==================== Price History Tests ====================
