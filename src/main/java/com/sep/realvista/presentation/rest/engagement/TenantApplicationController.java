@@ -23,7 +23,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/tenant-applications")
 @RequiredArgsConstructor
 @Tag(name = "Tenant Applications", description = "APIs for managing tenant applications")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = "Bearer Authentication")
 public class TenantApplicationController {
 
     private final TenantApplicationService tenantApplicationService;

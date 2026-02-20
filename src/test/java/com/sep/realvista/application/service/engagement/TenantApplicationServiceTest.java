@@ -6,6 +6,7 @@ import com.sep.realvista.domain.engagement.rental.TenantApplication;
 import com.sep.realvista.domain.engagement.rental.TenantApplicationStatus;
 import com.sep.realvista.domain.engagement.rental.repository.TenantApplicationRepository;
 import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.application.engagement.mapper.TenantApplicationMapper;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class TenantApplicationServiceTest {
     private TenantApplicationRepository tenantApplicationRepository;
 
     @Mock
-    private ListingRepository listingRepository;
+    private TenantApplicationMapper tenantApplicationMapper;
 
     @InjectMocks
     private TenantApplicationService tenantApplicationService;
@@ -51,15 +52,15 @@ class TenantApplicationServiceTest {
                 .status(TenantApplicationStatus.DRAFT)
                 .build();
 
-        Listing listing = Listing.builder()
-                .listingId(listingId)
-                .name("Test Listing")
-                .property(Property.builder().streetAddress("123 Main St").build())
+        TenantApplicationDto dto = TenantApplicationDto.builder()
+                .tenantApplicationId(applicationId)
+                .title("Test Listing")
+                .propertyAddress("123 Main St")
+                .propertyImageUrl("http://image.url")
                 .build();
 
         when(tenantApplicationRepository.findByUserId(userId)).thenReturn(List.of(application));
-        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
-        when(listingRepository.findThumbnailByListingId(listingId)).thenReturn(Optional.of("http://image.url"));
+        when(tenantApplicationMapper.toDto(application)).thenReturn(dto);
 
         // Act
         List<TenantApplicationDto> result = tenantApplicationService.getMyApplications(userId);
@@ -73,7 +74,7 @@ class TenantApplicationServiceTest {
         assertEquals("http://image.url", result.get(0).getPropertyImageUrl());
 
         verify(tenantApplicationRepository).findByUserId(userId);
-        verify(listingRepository).findById(listingId);
+        verify(tenantApplicationMapper).toDto(application);
     }
 
     @Test
