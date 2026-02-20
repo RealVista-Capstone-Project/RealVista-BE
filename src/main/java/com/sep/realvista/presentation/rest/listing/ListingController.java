@@ -50,8 +50,9 @@ public class ListingController {
     }
 
     @GetMapping("/{id}/price-history")
-    @Operation(summary = "Get listing price history", description = "Retrieves the price history for a listing including all price changes "
-            + "with calculated differences and percentages")
+    @Operation(summary = "Get listing price history",
+            description = "Retrieves the price history for a listing including all price changes "
+                    + "with calculated differences and percentages")
     public ResponseEntity<ApiResponse<PriceHistoryResponse>> getPriceHistory(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
@@ -63,12 +64,14 @@ public class ListingController {
     }
 
     @GetMapping("/{id}/similar")
-    @Operation(summary = "Get similar listings by ID", description = "Retrieves listings similar to the given listing based on property type, "
-            + "price range, area, and common attributes. Results are sorted by similarity score "
-            + "(descending) and published date (descending).")
+    @Operation(summary = "Get similar listings by ID", description = "Retrieves listings similar to the given listing "
+            + "based on property type, price range, area, and common attributes. "
+            + "Results are sorted by similarity score (descending) "
+            + "and published date (descending).")
     public ResponseEntity<ApiResponse<SimilarListingsResponse>> getSimilarListings(
             @PathVariable UUID id,
-            @Parameter(description = "Maximum number of results to return (default: 5, max: 10)") @RequestParam(defaultValue = "5") @Min(1) @Max(10) int limit) {
+            @Parameter(description = "Maximum number of results to return (default: 5, max: 10)")
+            @RequestParam(defaultValue = "5") @Min(1) @Max(10) int limit) {
 
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);

@@ -176,8 +176,7 @@ public class MapSearchApplicationService {
      */
     private MapSearchResponse.FilterMetadataDTO buildFilterMetadata(MapSearchRequest request) {
         // Build applied filters
-        MapSearchResponse.AppliedFiltersDTO.AppliedFiltersDTOBuilder appliedFiltersBuilder = MapSearchResponse.AppliedFiltersDTO
-                .builder();
+        var appliedFiltersBuilder = MapSearchResponse.AppliedFiltersDTO.builder();
 
         if (request.getSearchText() != null) {
             appliedFiltersBuilder.searchText(request.getSearchText());
