@@ -26,7 +26,7 @@ public class FirebaseConfig {
         try {
             InputStream serviceAccount = resolveServiceAccount();
             if (serviceAccount == null) {
-                log.warn("Firebase service account not found — push notifications will be disabled. "
+                log.warn("Firebase service account not found - push notifications will be disabled. "
                         + "Place {} on the classpath or mount it at {}", FIREBASE_JSON, FIREBASE_FILE_PATH);
                 return;
             }

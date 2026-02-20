@@ -14,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -24,6 +25,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -153,6 +155,9 @@ public class Property extends BaseEntity {
         this.widthM = widthM;
         this.lengthM = lengthM;
     }
+
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY)
+    private List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> attributeValues;
 
     public void updateCoordinates(BigDecimal latitude, BigDecimal longitude) {
         this.latitude = latitude;
