@@ -39,14 +39,26 @@ public class ListingController {
     private final ListingApplicationService listingApplicationService;
     private final ListingSearchService listingSearchService;
 
-    @Operation(summary = "Search Listings", description = "Search for published listings using various filter criteria.", responses = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved matching listings", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = PageResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid search criteria provided", content = @io.swagger.v3.oas.annotations.media.Content)
-    })
+    @Operation(summary = "Search Listings",
+            description = "Search for published listings using various filter criteria.",
+            responses = {
+                @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                        responseCode = "200",
+                        description = "Successfully retrieved matching listings",
+                        content = @io.swagger.v3.oas.annotations.media.Content(
+                                mediaType = "application/json",
+                                schema = @io.swagger.v3.oas.annotations.media.Schema(
+                                        implementation = PageResponse.class))),
+                @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                        responseCode = "400",
+                        description = "Invalid search criteria provided",
+                        content = @io.swagger.v3.oas.annotations.media.Content)
+            })
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<PageResponse<ListingSearchResponse>>> search(
             @org.springdoc.core.annotations.ParameterObject ListingSearchCriteria criteria,
-            @org.springframework.data.web.PageableDefault(size = 20) org.springframework.data.domain.Pageable pageable) {
+            @org.springframework.data.web.PageableDefault(size = 20)
+            org.springframework.data.domain.Pageable pageable) {
 
         log.info("Searching listings with criteria: {}", criteria);
 
@@ -82,8 +94,9 @@ public class ListingController {
     }
 
     @GetMapping("/{id}/price-history")
-    @Operation(summary = "Get listing price history", description = "Retrieves the price history for a listing including all price changes "
-            + "with calculated differences and percentages")
+    @Operation(summary = "Get listing price history",
+            description = "Retrieves the price history for a listing including all price changes "
+                    + "with calculated differences and percentages")
     public ResponseEntity<ApiResponse<PriceHistoryResponse>> getPriceHistory(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
@@ -101,7 +114,8 @@ public class ListingController {
             + "and published date (descending).")
     public ResponseEntity<ApiResponse<SimilarListingsResponse>> getSimilarListings(
             @PathVariable UUID id,
-            @Parameter(description = "Maximum number of results to return (default: 5, max: 10)") @RequestParam(defaultValue = "5") @Min(1) @Max(10) int limit) {
+            @Parameter(description = "Maximum number of results to return (default: 5, max: 10)")
+            @RequestParam(defaultValue = "5") @Min(1) @Max(10) int limit) {
 
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);

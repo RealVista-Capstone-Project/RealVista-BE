@@ -404,6 +404,7 @@ class MapControllerComponentTest {
                                                         .westLng(new BigDecimal("106.60"))
                                                         .build())
                                         .last(false)
+                                        .hasMore(true)
                                         .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                         .appliedFilters(MapSearchResponse.AppliedFiltersDTO
                                                                         .builder().build())
