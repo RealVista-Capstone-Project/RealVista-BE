@@ -8,9 +8,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import com.sep.realvista.application.listing.dto.AgentInfoDTO;
+import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
+import com.sep.realvista.application.listing.dto.PriceChangeType;
+import com.sep.realvista.application.listing.dto.PriceHistoryDTO;
+import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyInfoDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
@@ -147,6 +151,28 @@ class ListingControllerComponentTest {
                                 .isVerified(true)
                                 .build();
 
+                // Prepare amenities
+                AmenityDTO amenity1 = AmenityDTO.builder()
+                                .amenityId(UUID.randomUUID())
+                                .amenityName("Swimming Pool")
+                                .amenityType("ONSITE")
+                                .description("Outdoor swimming pool")
+                                .build();
+
+                AmenityDTO amenity2 = AmenityDTO.builder()
+                                .amenityId(UUID.randomUUID())
+                                .amenityName("Gym")
+                                .amenityType("ONSITE")
+                                .description("Fitness center")
+                                .build();
+
+                AmenityDTO amenity3 = AmenityDTO.builder()
+                                .amenityId(UUID.randomUUID())
+                                .amenityName("Near MRT Station")
+                                .amenityType("OFFSITE")
+                                .description("Within 500m of MRT")
+                                .build();
+
                 // Prepare main listing response
                 mockListingResponse = ListingDetailResponse.builder()
                                 .listingId(listingId)
@@ -164,6 +190,7 @@ class ListingControllerComponentTest {
                                 .media(List.of(media1, media2))
                                 .agent(agentInfo)
                                 .attributes(List.of())
+                                .amenities(List.of(amenity1, amenity2, amenity3))
                                 .totalPhotos(1)
                                 .totalVideos(1)
                                 .total3DTours(0)
@@ -253,6 +280,11 @@ class ListingControllerComponentTest {
                                 .andExpect(jsonPath("$.data.media").isArray())
                                 .andExpect(jsonPath("$.data.media.length()").value(2))
                                 .andExpect(jsonPath("$.data.attributes").isArray())
+                                .andExpect(jsonPath("$.data.amenities").isArray())
+                                .andExpect(jsonPath("$.data.amenities.length()").value(3))
+                                .andExpect(jsonPath("$.data.amenities[0].amenity_name").value("Swimming Pool"))
+                                .andExpect(jsonPath("$.data.amenities[0].amenity_type").value("ONSITE"))
+                                .andExpect(jsonPath("$.data.amenities[2].amenity_type").value("OFFSITE"))
                                 .andExpect(jsonPath("$.data.total_photos").value(1))
                                 .andExpect(jsonPath("$.data.total_videos").value(1))
                                 .andExpect(jsonPath("$.data.agent.full_name").value("John Doe"));
@@ -272,6 +304,98 @@ class ListingControllerComponentTest {
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.message").exists())
                                 .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"));
+        }
+
+        // ==================== Price History Tests ====================
+
+        @Test
+        @DisplayName("Should return 200 OK when getting price history with valid ID")
+        void getPriceHistory_withValidId_shouldReturnOk() throws Exception {
+                // Arrange
+                UUID listingId = UUID.randomUUID();
+
+                PriceHistoryDTO history1 = PriceHistoryDTO.builder()
+                                .priceHistoryId(UUID.randomUUID())
+                                .price(new BigDecimal("1250000000.00"))
+                                .changedAt(LocalDateTime.now().minusDays(15))
+                                .priceChange(new BigDecimal("50000000.00"))
+                                .priceChangePercent(4.17)
+                                .changeType(PriceChangeType.INCREASED)
+                                .build();
+
+                PriceHistoryDTO history2 = PriceHistoryDTO.builder()
+                                .priceHistoryId(UUID.randomUUID())
+                                .price(new BigDecimal("1200000000.00"))
+                                .changedAt(LocalDateTime.now().minusDays(60))
+                                .priceChange(null)
+                                .priceChangePercent(null)
+                                .changeType(PriceChangeType.INITIAL)
+                                .build();
+
+                PriceHistoryResponse mockResponse = PriceHistoryResponse.builder()
+                                .listingId(listingId)
+                                .currentPrice(new BigDecimal("1250000000.00"))
+                                .priceHistory(List.of(history1, history2))
+                                .build();
+
+                when(listingApplicationService.getPriceHistory(any(UUID.class)))
+                                .thenReturn(mockResponse);
+
+                // Act & Assert
+                mockMvc.perform(get("/api/v1/listings/{id}/price-history", listingId))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true))
+                                .andExpect(jsonPath("$.message").value("Price history retrieved successfully"))
+                                .andExpect(jsonPath("$.data.listing_id").value(listingId.toString()))
+                                .andExpect(jsonPath("$.data.current_price").value(1.25E9))
+                                .andExpect(jsonPath("$.data.price_history").isArray())
+                                .andExpect(jsonPath("$.data.price_history.length()").value(2))
+                                .andExpect(jsonPath("$.data.price_history[0].price").value(1.25E9))
+                                .andExpect(jsonPath("$.data.price_history[0].change_type").value("INCREASED"))
+                                .andExpect(jsonPath("$.data.price_history[0].price_change").value(5.0E7))
+                                .andExpect(jsonPath("$.data.price_history[0].price_change_percent").value(4.17))
+                                .andExpect(jsonPath("$.data.price_history[1].change_type").value("INITIAL"));
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when listing does not exist for price history")
+        void getPriceHistory_withNonExistentId_shouldReturnNotFound() throws Exception {
+                // Arrange
+                UUID nonExistentId = UUID.randomUUID();
+                when(listingApplicationService.getPriceHistory(any(UUID.class)))
+                                .thenThrow(new com.sep.realvista.domain.common.exception.ResourceNotFoundException(
+                                                "Listing", nonExistentId));
+
+                // Act & Assert
+                mockMvc.perform(get("/api/v1/listings/{id}/price-history", nonExistentId))
+                                .andExpect(status().isNotFound())
+                                .andExpect(jsonPath("$.message").exists())
+                                .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"));
+        }
+
+        @Test
+        @DisplayName("Should return empty price history when no history exists")
+        void getPriceHistory_withNoHistory_shouldReturnEmptyList() throws Exception {
+                // Arrange
+                UUID listingId = UUID.randomUUID();
+
+                PriceHistoryResponse mockResponse = PriceHistoryResponse.builder()
+                                .listingId(listingId)
+                                .currentPrice(new BigDecimal("2700.00"))
+                                .priceHistory(List.of())
+                                .build();
+
+                when(listingApplicationService.getPriceHistory(any(UUID.class)))
+                                .thenReturn(mockResponse);
+
+                // Act & Assert
+                mockMvc.perform(get("/api/v1/listings/{id}/price-history", listingId))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true))
+                                .andExpect(jsonPath("$.data.listing_id").value(listingId.toString()))
+                                .andExpect(jsonPath("$.data.current_price").value(2700.00))
+                                .andExpect(jsonPath("$.data.price_history").isArray())
+                                .andExpect(jsonPath("$.data.price_history.length()").value(0));
         }
 
         // ==================== Similar Listings Tests ====================

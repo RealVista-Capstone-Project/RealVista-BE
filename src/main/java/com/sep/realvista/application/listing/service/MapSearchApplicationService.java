@@ -27,7 +27,8 @@ import java.util.Objects;
 
 /**
  * Application Service for map-based property searches.
- * Orchestrates fetching listings within geographical bounds and transforming to map markers.
+ * Orchestrates fetching listings within geographical bounds and transforming to
+ * map markers.
  */
 @Service
 @RequiredArgsConstructor
@@ -58,7 +59,7 @@ public class MapSearchApplicationService {
         // Priority 2: Request Bounds (Map Search)
         // Priority 3: Fallback (Global Search if no bounds provided)
         MapBounds bounds;
-        
+
         boolean hasSearchText = request.getSearchText() != null && !request.getSearchText().isEmpty();
         boolean hasRequestBounds = request.getNorthLat() != null && request.getSouthLat() != null
                 && request.getEastLng() != null && request.getWestLng() != null;
@@ -69,23 +70,20 @@ public class MapSearchApplicationService {
                     new BigDecimal("90"),
                     new BigDecimal("-90"),
                     new BigDecimal("180"),
-                    new BigDecimal("-180")
-            );
+                    new BigDecimal("-180"));
         } else if (hasRequestBounds) {
             bounds = MapBounds.of(
                     request.getNorthLat(),
                     request.getSouthLat(),
                     request.getEastLng(),
-                    request.getWestLng()
-            );
+                    request.getWestLng());
         } else {
             log.debug("No search text and no map bounds, defaulting to global bounds");
             bounds = MapBounds.of(
                     new BigDecimal("90"),
                     new BigDecimal("-90"),
                     new BigDecimal("180"),
-                    new BigDecimal("-180")
-            );
+                    new BigDecimal("-180"));
         } // Build search criteria
         MapSearchCriteria criteria = MapSearchCriteria.builder()
                 .bounds(bounds)
@@ -97,7 +95,8 @@ public class MapSearchApplicationService {
                         ? Arrays.stream(request.getCategory().split(","))
                                 .map(String::trim)
                                 .filter(s -> !s.isEmpty())
-                                .toList() : null)
+                                .toList()
+                        : null)
                 .bedrooms(request.getBedrooms())
                 .bathrooms(request.getBathrooms())
                 .area(request.getArea())
@@ -126,7 +125,6 @@ public class MapSearchApplicationService {
                             .westLng(bounds.westLng())
                             .build())
                     .filterMetadata(buildFilterMetadata(request))
-                    .hasMore(false)
                     .build();
         }
 
@@ -167,19 +165,17 @@ public class MapSearchApplicationService {
                         .westLng(request.getWestLng())
                         .build())
                 .filterMetadata(filterMetadata)
-                .hasMore(!isLast)
                 .build();
     }
 
-
     /**
      * Build filter metadata from the request.
-     * Note: available_price_range and price_histogram require additional implementation.
+     * Note: available_price_range and price_histogram require additional
+     * implementation.
      */
     private MapSearchResponse.FilterMetadataDTO buildFilterMetadata(MapSearchRequest request) {
         // Build applied filters
-        MapSearchResponse.AppliedFiltersDTO.AppliedFiltersDTOBuilder appliedFiltersBuilder =
-                MapSearchResponse.AppliedFiltersDTO.builder();
+        var appliedFiltersBuilder = MapSearchResponse.AppliedFiltersDTO.builder();
 
         if (request.getSearchText() != null) {
             appliedFiltersBuilder.searchText(request.getSearchText());
@@ -256,7 +252,7 @@ public class MapSearchApplicationService {
             if (value.getPropertyAttribute() != null) {
                 String attributeName = value.getPropertyAttribute().getName().toLowerCase();
                 log.info("Attribute for property {}: {} = {} / {}",
-                property.getPropertyId(),
+                        property.getPropertyId(),
                         attributeName,
                         value.getValueNumber(),
                         value.getValueText());

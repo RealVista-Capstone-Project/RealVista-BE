@@ -29,12 +29,18 @@
       "Bash(docker exec:*)",
       "Bash(powershell:*)",
       "mcp__atlassian__addCommentToJiraIssue",
-      "mcp__atlassian__editJiraIssue"
+      "mcp__atlassian__editJiraIssue",
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(git commit:*)",
+      "mcp__github__pull_request_read"
     ]
   },
   "enabledPlugins": {
     "context7@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
-    "atlassian@claude-plugins-official": true
+    "atlassian@claude-plugins-official": true,
+    "jdtls-lsp@claude-plugins-official": true,
+    "coderabbit@claude-plugins-official": true
   }
 }
