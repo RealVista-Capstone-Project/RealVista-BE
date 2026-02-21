@@ -87,10 +87,14 @@ public class ListingController {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
-        log.info("Fetching listing detail - traceId: {}, listingId: {}", traceId, id);
+        try {
+            log.info("Fetching listing detail - traceId: {}, listingId: {}", traceId, id);
 
-        ListingDetailResponse listing = listingApplicationService.getListingDetail(id);
-        return ResponseEntity.ok(ApiResponse.success("Listing retrieved successfully", listing));
+            ListingDetailResponse listing = listingApplicationService.getListingDetail(id);
+            return ResponseEntity.ok(ApiResponse.success("Listing retrieved successfully", listing));
+        } finally {
+            MDC.remove("traceId");
+        }
     }
 
     @GetMapping("/{id}/price-history")
@@ -101,10 +105,14 @@ public class ListingController {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
-        log.info("Fetching price history - traceId: {}, listingId: {}", traceId, id);
+        try {
+            log.info("Fetching price history - traceId: {}, listingId: {}", traceId, id);
 
-        PriceHistoryResponse priceHistory = listingApplicationService.getPriceHistory(id);
-        return ResponseEntity.ok(ApiResponse.success("Price history retrieved successfully", priceHistory));
+            PriceHistoryResponse priceHistory = listingApplicationService.getPriceHistory(id);
+            return ResponseEntity.ok(ApiResponse.success("Price history retrieved successfully", priceHistory));
+        } finally {
+            MDC.remove("traceId");
+        }
     }
 
     @GetMapping("/{id}/similar")
@@ -120,9 +128,13 @@ public class ListingController {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
-        log.info("Fetching similar listings - traceId: {}, listingId: {}, limit: {}", traceId, id, limit);
+        try {
+            log.info("Fetching similar listings - traceId: {}, listingId: {}, limit: {}", traceId, id, limit);
 
-        SimilarListingsResponse similarListings = listingApplicationService.getSimilarListings(id, limit);
-        return ResponseEntity.ok(ApiResponse.success("Similar listings retrieved successfully", similarListings));
+            SimilarListingsResponse similarListings = listingApplicationService.getSimilarListings(id, limit);
+            return ResponseEntity.ok(ApiResponse.success("Similar listings retrieved successfully", similarListings));
+        } finally {
+            MDC.remove("traceId");
+        }
     }
 }

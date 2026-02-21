@@ -123,7 +123,6 @@ class MapControllerComponentTest {
                                                 .eastLng(new BigDecimal("106.75"))
                                                 .westLng(new BigDecimal("106.60"))
                                                 .build())
-                                .last(true)
                                 .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                 .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder()
                                                                 .build())
@@ -144,7 +143,6 @@ class MapControllerComponentTest {
                                                 .eastLng(new BigDecimal("106.75"))
                                                 .westLng(new BigDecimal("106.60"))
                                                 .build())
-                                .last(true)
                                 .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                 .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder()
                                                                 .build())
@@ -165,7 +163,6 @@ class MapControllerComponentTest {
                                                 .eastLng(new BigDecimal("106.75"))
                                                 .westLng(new BigDecimal("106.60"))
                                                 .build())
-                                .last(true)
                                 .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                 .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder()
                                                                 .build())
@@ -223,7 +220,6 @@ class MapControllerComponentTest {
                                                         .eastLng(new BigDecimal("180"))
                                                         .westLng(new BigDecimal("-180"))
                                                         .build())
-                                        .last(true)
                                         .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                         .appliedFilters(MapSearchResponse.AppliedFiltersDTO
                                                                         .builder()
@@ -265,7 +261,6 @@ class MapControllerComponentTest {
                                                         .eastLng(new BigDecimal("106.75"))
                                                         .westLng(new BigDecimal("106.60"))
                                                         .build())
-                                        .last(true)
                                         .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                         .appliedFilters(MapSearchResponse.AppliedFiltersDTO
                                                                         .builder()
@@ -403,7 +398,6 @@ class MapControllerComponentTest {
                                                         .eastLng(new BigDecimal("106.75"))
                                                         .westLng(new BigDecimal("106.60"))
                                                         .build())
-                                        .last(false)
                                         .hasMore(true)
                                         .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                         .appliedFilters(MapSearchResponse.AppliedFiltersDTO
@@ -844,7 +838,6 @@ class MapControllerComponentTest {
                                                         .eastLng(new BigDecimal("106.75"))
                                                         .westLng(new BigDecimal("106.60"))
                                                         .build())
-                                        .last(true)
                                         .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                         .appliedFilters(MapSearchResponse.AppliedFiltersDTO
                                                                         .builder()

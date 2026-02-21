@@ -19,8 +19,8 @@ import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
-import com.sep.realvista.infrastructure.persistence.property.amenity.PropertyAmenityJpaRepository;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +53,7 @@ public class ListingApplicationService {
         private final ListingPriceHistoryRepository listingPriceHistoryRepository;
         private final PropertyRepository propertyRepository;
         private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
-        private final PropertyAmenityJpaRepository propertyAmenityJpaRepository;
+        private final PropertyAmenityRepository propertyAmenityRepository;
         private final ListingMapper listingMapper;
         private final CostBreakdownService costBreakdownService;
 
@@ -94,7 +94,7 @@ public class ListingApplicationService {
                                 .findByPropertyIdWithAttribute(property.getPropertyId());
 
                 // Fetch property amenities (gym, pool, security, etc.)
-                List<PropertyAmenity> propertyAmenities = propertyAmenityJpaRepository
+                List<PropertyAmenity> propertyAmenities = propertyAmenityRepository
                                 .findByPropertyIdWithAmenity(property.getPropertyId());
 
                 // Attach property and user for DTO mapping (read-only, not persisted)
@@ -265,28 +265,43 @@ public class ListingApplicationService {
                         BigDecimal priceChange = null;
                         Double priceChangePercent = null;
 
+                        // Null safety check for entry price
+                        if (entry.getPrice() == null) {
+                                log.warn("Skipping price history entry with null price for listing ID: {}",
+                                                listingId);
+                                continue;
+                        }
+
                         // Look ahead to the next (older) entry for comparison
                         if (i + 1 < historyEntries.size()) {
                                 BigDecimal olderPrice = historyEntries.get(i + 1).getPrice();
-                                int comparison = entry.getPrice().compareTo(olderPrice);
-                                if (comparison > 0) {
-                                        changeType = PriceChangeType.INCREASED;
-                                } else if (comparison < 0) {
-                                        changeType = PriceChangeType.DECREASED;
+
+                                // Null safety check for older price
+                                if (olderPrice == null) {
+                                        changeType = PriceChangeType.UNCHANGED;
+                                        priceChange = BigDecimal.ZERO;
+                                        priceChangePercent = 0d;
                                 } else {
-                                        changeType = PriceChangeType.INITIAL;
-                                }
+                                        int comparison = entry.getPrice().compareTo(olderPrice);
+                                        if (comparison > 0) {
+                                                changeType = PriceChangeType.INCREASED;
+                                        } else if (comparison < 0) {
+                                                changeType = PriceChangeType.DECREASED;
+                                        } else {
+                                                changeType = PriceChangeType.UNCHANGED;
+                                        }
 
-                                priceChange = entry.getPrice().subtract(olderPrice);
+                                        priceChange = entry.getPrice().subtract(olderPrice);
 
-                                if (olderPrice.compareTo(BigDecimal.ZERO) > 0) {
-                                        priceChangePercent = priceChange
-                                                        .divide(olderPrice, 4, RoundingMode.HALF_UP)
-                                                        .multiply(BigDecimal.valueOf(100))
-                                                        .doubleValue();
+                                        if (olderPrice.compareTo(BigDecimal.ZERO) > 0) {
+                                                priceChangePercent = priceChange
+                                                                .divide(olderPrice, 4, RoundingMode.HALF_UP)
+                                                                .multiply(BigDecimal.valueOf(100))
+                                                                .doubleValue();
+                                        }
                                 }
                         } else {
-                                // Last entry (oldest in history)
+                                // Last entry (oldest in history) - this is the initial price
                                 changeType = PriceChangeType.INITIAL;
                         }
 

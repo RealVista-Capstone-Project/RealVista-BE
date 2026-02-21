@@ -32,7 +32,8 @@
       "mcp__atlassian__editJiraIssue",
       "Bash(git add:*)",
       "Bash(git restore:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__github__pull_request_read"
     ]
   },
   "enabledPlugins": {

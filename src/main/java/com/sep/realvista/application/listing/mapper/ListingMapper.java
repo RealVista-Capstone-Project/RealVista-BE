@@ -320,6 +320,7 @@ public interface ListingMapper {
         }
         return propertyAmenities.stream()
                 .map(this::toAmenityDTO)
+                .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
     }
 

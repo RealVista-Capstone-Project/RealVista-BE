@@ -6,5 +6,6 @@ package com.sep.realvista.application.listing.dto;
 public enum PriceChangeType {
     INCREASED,
     DECREASED,
+    UNCHANGED,
     INITIAL
 }

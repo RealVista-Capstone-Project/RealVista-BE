@@ -125,7 +125,6 @@ public class MapSearchApplicationService {
                             .westLng(bounds.westLng())
                             .build())
                     .filterMetadata(buildFilterMetadata(request))
-                    .last(true)
                     .build();
         }
 

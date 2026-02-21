@@ -26,8 +26,8 @@ import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.AttributeDataType;
 import com.sep.realvista.domain.property.attribute.PropertyAttribute;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
-import com.sep.realvista.infrastructure.persistence.property.amenity.PropertyAmenityJpaRepository;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -77,7 +77,7 @@ class ListingApplicationServiceUnitTest {
         private PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
 
         @Mock
-        private PropertyAmenityJpaRepository propertyAmenityJpaRepository;
+        private PropertyAmenityRepository propertyAmenityRepository;
 
         @Mock
         private ListingMapper listingMapper;
@@ -282,7 +282,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(List.of(testMedia));
                 when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
-                when(propertyAmenityJpaRepository.findByPropertyIdWithAmenity(propertyId))
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(new ArrayList<>());
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
                                 any(Listing.class), anyList(), anyList(), anyList()))
@@ -302,7 +302,7 @@ class ListingApplicationServiceUnitTest {
                 verify(propertyRepository).findById(propertyId);
                 verify(listingMediaRepository).findByListingIdOrderByDisplayOrderAsc(listingId);
                 verify(propertyAttributeValueJpaRepository).findByPropertyIdWithAttribute(propertyId);
-                verify(propertyAmenityJpaRepository).findByPropertyIdWithAmenity(propertyId);
+                verify(propertyAmenityRepository).findByPropertyIdWithAmenity(propertyId);
                 verify(listingMapper).toDetailResponseWithMediaAttributesAndAmenities(
                                 any(Listing.class), anyList(), anyList(), anyList());
                 verify(costBreakdownService).calculateCostBreakdown(any(Listing.class));
@@ -362,7 +362,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(List.of(testMedia));
                 when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
-                when(propertyAmenityJpaRepository.findByPropertyIdWithAmenity(propertyId))
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(new ArrayList<>());
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
                                 any(Listing.class), anyList(), anyList(), anyList()))
@@ -395,7 +395,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(List.of(testMedia));
                 when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
-                when(propertyAmenityJpaRepository.findByPropertyIdWithAmenity(propertyId))
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(mockAmenities);
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
                                 any(Listing.class), anyList(), anyList(), anyList()))
@@ -407,7 +407,7 @@ class ListingApplicationServiceUnitTest {
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
-                verify(propertyAmenityJpaRepository).findByPropertyIdWithAmenity(propertyId);
+                verify(propertyAmenityRepository).findByPropertyIdWithAmenity(propertyId);
                 verify(listingMapper).toDetailResponseWithMediaAttributesAndAmenities(
                                 any(Listing.class), anyList(), anyList(), anyList());
         }
@@ -428,7 +428,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(List.of(testMedia));
                 when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
-                when(propertyAmenityJpaRepository.findByPropertyIdWithAmenity(propertyId))
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(new ArrayList<>());
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
                                 any(Listing.class), anyList(), anyList(), anyList()))
@@ -440,7 +440,7 @@ class ListingApplicationServiceUnitTest {
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
-                verify(propertyAmenityJpaRepository).findByPropertyIdWithAmenity(propertyId);
+                verify(propertyAmenityRepository).findByPropertyIdWithAmenity(propertyId);
         }
 
         // ==================== Price History Tests ====================
