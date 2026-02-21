@@ -7,8 +7,9 @@ import com.sep.realvista.domain.engagement.rental.TenantApplicationStatus;
 import com.sep.realvista.domain.engagement.rental.repository.TenantApplicationRepository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.application.engagement.mapper.TenantApplicationMapper;
+import com.sep.realvista.domain.engagement.rental.TenantRentalProfileRepository;
+import com.sep.realvista.domain.engagement.rental.TenantRentalProfile;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
-import com.sep.realvista.domain.property.Property;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,7 +17,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +33,12 @@ class TenantApplicationServiceTest {
 
     @Mock
     private TenantApplicationMapper tenantApplicationMapper;
+
+    @Mock
+    private TenantRentalProfileRepository tenantRentalProfileRepository;
+
+    @Mock
+    private ListingRepository listingRepository;
 
     @InjectMocks
     private TenantApplicationService tenantApplicationService;
@@ -130,5 +136,44 @@ class TenantApplicationServiceTest {
         // Act & Assert
         assertThrows(ResourceNotFoundException.class, () ->
                 tenantApplicationService.softDeleteApplication(applicationId, userId));
+    }
+
+    @Test
+    void submitApplication_ShouldCreateAndReturnDto_WhenValid() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        UUID listingId = UUID.randomUUID();
+        UUID profileId = UUID.randomUUID();
+
+        TenantRentalProfile profile = TenantRentalProfile.builder()
+                .profileId(profileId)
+                .userId(userId)
+                .title("My Profile")
+                .monthlyIncome(BigDecimal.valueOf(5000))
+                .build();
+
+        Listing listing = Listing.builder()
+                .listingId(listingId)
+                .name("Luxury Apartment")
+                .build();
+
+        TenantApplicationDto expectedDto = TenantApplicationDto.builder()
+                .title("Luxury Apartment - My Profile")
+                .build();
+
+        when(tenantRentalProfileRepository.findByProfileIdAndUserIdAndDeletedFalse(profileId, userId))
+                .thenReturn(Optional.of(profile));
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(tenantApplicationRepository.save(any(TenantApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(tenantApplicationMapper.toDto(any(TenantApplication.class))).thenReturn(expectedDto);
+
+        // Act
+        TenantApplicationDto result = tenantApplicationService.submitApplication(listingId, profileId, userId);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("Luxury Apartment - My Profile", result.getTitle());
+        verify(tenantApplicationRepository).save(any(TenantApplication.class));
     }
 }

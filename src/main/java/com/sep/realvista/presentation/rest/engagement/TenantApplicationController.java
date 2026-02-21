@@ -13,6 +13,7 @@ import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -44,5 +45,17 @@ public class TenantApplicationController {
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
         tenantApplicationService.softDeleteApplication(id, userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/listings/{listingId}/profiles/{profileId}")
+    @Operation(summary = "Submit application", 
+               description = "Submit a tenant application for a rental listing using a selected profile")
+    public ResponseEntity<ApiResponse<TenantApplicationDto>> submitApplication(
+            @PathVariable UUID listingId,
+            @PathVariable UUID profileId,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(
+                tenantApplicationService.submitApplication(listingId, profileId, userDetails.getUserId())
+        ));
     }
 }

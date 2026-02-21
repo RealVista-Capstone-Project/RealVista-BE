@@ -35,6 +35,7 @@ public class TenantApplicationMapper {
         return TenantApplicationDto.builder()
                 .tenantApplicationId(app.getTenantApplicationId())
                 .userId(app.getUserId())
+                .rentalProfileId(app.getRentalProfileId())
                 .listingId(app.getListingId())
                 .title(title)
                 .propertyAddress(propertyAddress)

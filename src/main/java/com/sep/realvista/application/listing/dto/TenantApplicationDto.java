@@ -16,6 +16,7 @@ import java.util.UUID;
 public class TenantApplicationDto {
     private UUID tenantApplicationId;
     private UUID userId;
+    private UUID rentalProfileId;
     private UUID listingId;
     private String title; // Listing Name
     private String propertyAddress;

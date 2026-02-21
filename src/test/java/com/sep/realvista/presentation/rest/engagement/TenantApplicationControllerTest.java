@@ -28,6 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -124,5 +125,25 @@ class TenantApplicationControllerTest {
                 .andExpect(jsonPath("$.success").value(true));
 
         verify(tenantApplicationService, times(1)).softDeleteApplication(applicationId, userId);
+    }
+
+    @Test
+    void submitApplication_Success() throws Exception {
+        UUID listingId = UUID.randomUUID();
+        UUID profileId = UUID.randomUUID();
+        TenantApplicationDto expectedDto = TenantApplicationDto.builder()
+                .title("Luxury Apartment - My Profile")
+                .build();
+
+        when(tenantApplicationService.submitApplication(listingId, profileId, userId))
+                .thenReturn(expectedDto);
+
+        mockMvc.perform(post("/api/v1/tenant-applications/listings/{listingId}/profiles/{profileId}", listingId, profileId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.title").value("Luxury Apartment - My Profile"));
+
+        verify(tenantApplicationService, times(1)).submitApplication(listingId, profileId, userId);
     }
 }

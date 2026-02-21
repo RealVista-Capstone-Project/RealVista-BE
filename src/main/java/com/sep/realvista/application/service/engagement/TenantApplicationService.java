@@ -12,12 +12,20 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+import com.sep.realvista.domain.engagement.rental.TenantApplicationStatus;
+import com.sep.realvista.domain.engagement.rental.TenantRentalProfileRepository;
+import com.sep.realvista.domain.engagement.rental.TenantRentalProfile;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.listing.Listing;
+
 @Service
 @RequiredArgsConstructor
 public class TenantApplicationService {
 
     private final TenantApplicationRepository tenantApplicationRepository;
     private final TenantApplicationMapper tenantApplicationMapper;
+    private final TenantRentalProfileRepository tenantRentalProfileRepository;
+    private final ListingRepository listingRepository;
 
     @Transactional(readOnly = true)
     public List<TenantApplicationDto> getMyApplications(UUID userId) {
@@ -37,5 +45,29 @@ public class TenantApplicationService {
         }
 
         tenantApplicationRepository.delete(application);
+    }
+
+    @Transactional
+    public TenantApplicationDto submitApplication(UUID listingId, UUID profileId, UUID userId) {
+        TenantRentalProfile profile = tenantRentalProfileRepository
+                .findByProfileIdAndUserIdAndDeletedFalse(profileId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tenant Rental Profile", profileId));
+
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
+
+        TenantApplication application = TenantApplication.builder()
+                .userId(userId)
+                .listingId(listingId)
+                .rentalProfileId(profileId)
+                .title(listing.getName() + " - " + profile.getTitle())
+                .monthlyIncome(profile.getMonthlyIncome())
+                .moveInDate(profile.getMoveInDate())
+                .leaseTermMonths(profile.getLeaseTermMonths())
+                .note(profile.getNote())
+                .status(TenantApplicationStatus.ACTIVE)
+                .build();
+
+        return tenantApplicationMapper.toDto(tenantApplicationRepository.save(application));
     }
 }
