@@ -42,6 +42,7 @@ public interface ListingMapper {
     @Mapping(target = "totalPhotos", ignore = true)
     @Mapping(target = "totalVideos", ignore = true)
     @Mapping(target = "total3DTours", ignore = true)
+    @Mapping(target = "costBreakdown", ignore = true)
     ListingDetailResponse toDetailResponse(Listing listing);
 
     default ListingDetailResponse toDetailResponseWithMedia(
