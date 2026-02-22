@@ -11,7 +11,8 @@ import java.util.UUID;
 
 /**
  * Property attribute/amenity nested DTO.
- * Represents a single attribute like bedroom count, bathroom count, amenities, etc.
+ * Represents a single attribute like bedroom count, bathroom count, amenities,
+ * etc.
  */
 @Data
 @Builder
@@ -57,10 +58,10 @@ public class PropertyAttributeDTO {
     @JsonProperty("display_value")
     public String getDisplayValue() {
         if (valueNumber != null) {
-            return unit != null ? valueNumber + " " + unit : valueNumber.toString();
+            return unit != null ? valueNumber.toBigInteger() + " " + unit : valueNumber.toString();
         }
         if (valueBoolean != null) {
-            return valueBoolean ? "Yes" : "No";
+            return valueBoolean ? "Có" : "Không";
         }
         return valueText;
     }

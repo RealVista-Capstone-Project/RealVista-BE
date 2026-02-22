@@ -26,4 +26,24 @@ public interface PropertyAttributeValueJpaRepository extends JpaRepository<Prope
                         + "WHERE pav.propertyAttributeValueId = :id AND pav.deleted = false")
         Optional<PropertyAttributeValue> findByIdWithAttribute(@Param("id") UUID id);
 
+        /**
+         * Fetch required attributes for multiple properties in a single batch query.
+         * Only returns attributes marked as is_required = true in
+         * property_type_attributes
+         * for each property's type. Used for similar listings cards.
+         */
+        @Query("SELECT pav FROM PropertyAttributeValue pav "
+                        + "JOIN FETCH pav.propertyAttribute pa "
+                        + "JOIN pav.property p "
+                        + "WHERE p.propertyId IN :propertyIds "
+                        + "AND pav.deleted = false "
+                        + "AND EXISTS (SELECT 1 FROM PropertyTypeAttribute pta "
+                        + "  WHERE pta.propertyAttributeId = pa.propertyAttributeId "
+                        + "  AND pta.propertyTypeId = p.propertyTypeId "
+                        + "  AND pta.isRequired = true "
+                        + "  AND pta.deleted = false) "
+                        + "ORDER BY p.propertyId, pa.name")
+        List<PropertyAttributeValue> findRequiredAttributesByPropertyIds(
+                        @Param("propertyIds") List<UUID> propertyIds);
+
 }

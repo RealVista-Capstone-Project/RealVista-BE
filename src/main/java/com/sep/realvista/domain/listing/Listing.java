@@ -1,9 +1,12 @@
 package com.sep.realvista.domain.listing;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
+import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.user.User;
 import jakarta.persistence.Column;
+import jakarta.persistence.ColumnResult;
+import jakarta.persistence.ConstructorResult;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -14,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SqlResultSetMapping;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -34,6 +38,25 @@ import java.util.UUID;
         @Index(name = "idx_listing_status", columnList = "status"),
         @Index(name = "idx_listing_published", columnList = "published_at")
 })
+@SqlResultSetMapping(
+        name = "SimilarListingMapping",
+        classes = @ConstructorResult(targetClass = SimilarListing.class, columns = {
+        @ColumnResult(name = "listing_id", type = UUID.class),
+        @ColumnResult(name = "property_id", type = UUID.class),
+        @ColumnResult(name = "property_type_id", type = UUID.class),
+        @ColumnResult(name = "location_id", type = UUID.class),
+        @ColumnResult(name = "name", type = String.class),
+        @ColumnResult(name = "slug", type = String.class),
+        @ColumnResult(name = "listing_type", type = String.class),
+        @ColumnResult(name = "status", type = String.class),
+        @ColumnResult(name = "price", type = BigDecimal.class),
+        @ColumnResult(name = "area", type = BigDecimal.class),
+        @ColumnResult(name = "location_name", type = String.class),
+        @ColumnResult(name = "property_type_name", type = String.class),
+        @ColumnResult(name = "thumbnail_url", type = String.class),
+        @ColumnResult(name = "published_at", type = LocalDateTime.class),
+        @ColumnResult(name = "similarity_score", type = Double.class)
+}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -162,7 +185,7 @@ public class Listing extends BaseEntity {
     }
 
     public void updatePricing(BigDecimal price, BigDecimal minPrice,
-                               BigDecimal maxPrice, Boolean isNegotiable) {
+            BigDecimal maxPrice, Boolean isNegotiable) {
         if (price != null) {
             this.price = price;
         }
