@@ -27,6 +27,21 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByEmailValue(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
-        return new UserPrincipal(user);
+        List<SimpleGrantedAuthority> authorities = user.getUserRoles().stream()
+                .filter(ur -> ur.getRole() != null)
+                .map(ur -> new SimpleGrantedAuthority("ROLE_" + ur.getRole().getRoleCode().name()))
+                .collect(Collectors.toList());
+
+        if (authorities.isEmpty()) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_BUYER"));
+        }
+
+        return new SecurityUserDetails(
+                user.getUserId(),
+                user.getEmail().getValue(),
+                user.getPasswordHash(),
+                authorities,
+                user.isActive()
+        );
     }
 }

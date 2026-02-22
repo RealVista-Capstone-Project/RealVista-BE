@@ -1,12 +1,15 @@
 package com.sep.realvista.application.listing.mapper;
 
 import com.sep.realvista.application.listing.dto.AgentInfoDTO;
+import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyInfoDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
+import com.sep.realvista.domain.property.amenity.Amenity;
+import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.property.PropertyType;
@@ -39,9 +42,11 @@ public interface ListingMapper {
     @Mapping(target = "agent", ignore = true)
     @Mapping(target = "media", ignore = true)
     @Mapping(target = "attributes", ignore = true)
+    @Mapping(target = "amenities", ignore = true)
     @Mapping(target = "totalPhotos", ignore = true)
     @Mapping(target = "totalVideos", ignore = true)
     @Mapping(target = "total3DTours", ignore = true)
+    @Mapping(target = "costBreakdown", ignore = true)
     ListingDetailResponse toDetailResponse(Listing listing);
 
     default ListingDetailResponse toDetailResponseWithMedia(
@@ -99,8 +104,7 @@ public interface ListingMapper {
                         .collect(Collectors.toMap(
                                 pav -> pav.getPropertyAttribute().getCode(),
                                 pav -> (Object) getAttributeValue(pav),
-                                (a, b) -> a
-                        ));
+                                (a, b) -> a));
 
                 PropertyInfoDTO propertyInfo = response.getProperty();
                 if (attributeMap.containsKey("bedrooms")) {
@@ -120,6 +124,21 @@ public interface ListingMapper {
                         .setScale(2, RoundingMode.HALF_UP);
                 response.getProperty().setAreaSqft(areaSqft);
             }
+        }
+
+        return response;
+    }
+
+    default ListingDetailResponse toDetailResponseWithMediaAttributesAndAmenities(
+            Listing listing,
+            List<ListingMedia> mediaList,
+            List<PropertyAttributeValue> attributeValues,
+            List<PropertyAmenity> propertyAmenities) {
+        ListingDetailResponse response = toDetailResponseWithMediaAndAttributes(listing, mediaList, attributeValues);
+
+        // Map amenities
+        if (propertyAmenities != null && !propertyAmenities.isEmpty()) {
+            response.setAmenities(toAmenityList(propertyAmenities));
         }
 
         return response;
@@ -293,5 +312,67 @@ public interface ListingMapper {
                 .valueText(attributeValue.getValueText())
                 .valueBoolean(attributeValue.getValueBoolean())
                 .build();
+    }
+
+    // Amenity mapping methods
+    default List<AmenityDTO> toAmenityList(List<PropertyAmenity> propertyAmenities) {
+        if (propertyAmenities == null) {
+            return List.of();
+        }
+        return propertyAmenities.stream()
+                .map(this::toAmenityDTO)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    default AmenityDTO toAmenityDTO(PropertyAmenity propertyAmenity) {
+        if (propertyAmenity == null || propertyAmenity.getAmenity() == null) {
+            return null;
+        }
+        Amenity amenity = propertyAmenity.getAmenity();
+        return AmenityDTO.builder()
+                .amenityId(amenity.getAmenityId())
+                .amenityName(amenity.getAmenityName())
+                .amenityType(amenity.getAmenityType() != null ? amenity.getAmenityType().name() : null)
+                .description(amenity.getDescription())
+                .build();
+    }
+
+    /**
+     * Map Listing to ListingSearchResponse for search results
+     */
+    default com.sep.realvista.application.listing.dto.ListingSearchResponse toSearchResponse(Listing listing) {
+        if (listing == null) {
+            return null;
+        }
+
+        var response = com.sep.realvista.application.listing.dto.ListingSearchResponse.builder()
+                .listingId(listing.getListingId())
+                .name(listing.getName())
+                .slug(listing.getSlug())
+                .listingType(listing.getListingType())
+                .status(listing.getStatus())
+                .price(listing.getPrice())
+                .publishedAt(listing.getPublishedAt())
+                .userType(listing.getUser() != null ? "USER" : null); // Default to USER, can be enhanced later
+
+        // Add property details if available
+        if (listing.getProperty() != null) {
+            if (listing.getProperty().getUsableSizeM2() != null) {
+                response.area(listing.getProperty().getUsableSizeM2().doubleValue());
+            }
+            // Add location
+            if (listing.getProperty().getLocation() != null) {
+                response.location(listing.getProperty().getLocation().getName());
+            }
+        }
+
+        // Thumbnail will be populated by the service layer
+        // Add boost information
+        // Note: Boost information would need to be fetched separately or joined
+        // For now, setting default values
+        response.isBoosted(false);
+
+        return response.build();
     }
 }

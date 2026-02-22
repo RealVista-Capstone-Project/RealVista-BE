@@ -56,7 +56,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(req -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(SecurityConstants.Cors.ALLOWED_ORIGINS);
+                    config.setAllowedOrigins(SecurityConstants.Cors.getAllowedOrigins());
                     config.setAllowCredentials(true);
                     config.setAllowedMethods(SecurityConstants.Cors.ALLOWED_METHODS);
                     config.setAllowedHeaders(SecurityConstants.Cors.ALLOWED_HEADERS);
