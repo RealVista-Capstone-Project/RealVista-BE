@@ -107,8 +107,8 @@ public class BookmarkApplicationService {
     @Transactional(readOnly = true)
     public PageResponse<BookmarkListingCardDTO> getBookmarks(UUID userId, GetBookmarksRequest request) {
         log.info("Getting bookmarks for user: {} with filters - listingType: {}, "
-                        + "propertyTypeIds: {}, sort: {}, page: {}, size: {}",
-                userId, request.getListingType(), request.getPropertyTypeIds(),
+                        + "propertyTypes: {}, sort: {}, page: {}, size: {}",
+                userId, request.getListingType(), request.getPropertyTypes(),
                 request.getSortDirection(), request.getPage(), request.getSize());
 
         // Create pageable with sort direction
@@ -121,7 +121,7 @@ public class BookmarkApplicationService {
         // Fetch bookmarks with filters
         Page<Bookmark> bookmarksPage = bookmarkRepository.findBookmarksByUserWithFilters(
                 userId,
-                request.getPropertyTypeIds(),
+                request.getPropertyTypes(),
                 request.getListingType(),
                 pageable
         );

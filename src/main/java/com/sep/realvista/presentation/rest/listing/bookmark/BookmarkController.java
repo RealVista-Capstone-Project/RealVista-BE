@@ -47,7 +47,7 @@ public class BookmarkController {
     /**
      * Get all bookmarks for the authenticated user with filters and pagination.
      *
-     * @param propertyTypeIds optional list of property type IDs to filter by
+     * @param propertyTypes optional property type codes to filter by (e.g. APARTMENT)
      * @param listingType optional listing type filter (SALE or RENT)
      * @param sortDirection sort direction (NEWEST or OLDEST)
      * @param page page number (0-indexed)
@@ -64,8 +64,8 @@ public class BookmarkController {
     public ResponseEntity<ApiResponse<PageResponse<BookmarkListingCardDTO>>> getBookmarks(
             @AuthenticationPrincipal SecurityUserDetails userDetails,
 
-            @Parameter(description = "Property type IDs to filter by (multiple selection)")
-            @RequestParam(required = false) List<UUID> propertyTypeIds,
+            @Parameter(description = "Property type codes to filter by (e.g. APARTMENT, VILLA)")
+            @RequestParam(required = false) List<String> propertyTypes,
 
             @Parameter(description = "Listing type filter: SALE or RENT")
             @RequestParam(required = false) ListingType listingType,
@@ -85,11 +85,11 @@ public class BookmarkController {
         UUID userId = userDetails.getUserId();
 
         log.info("Get bookmarks request - traceId: {}, userId: {}, "
-                        + "propertyTypeIds: {}, listingType: {}, sort: {}, page: {}, size: {}",
-                traceId, userId, propertyTypeIds, listingType, sortDirection, page, size);
+                        + "propertyTypes: {}, listingType: {}, sort: {}, page: {}, size: {}",
+                traceId, userId, propertyTypes, listingType, sortDirection, page, size);
 
         GetBookmarksRequest request = GetBookmarksRequest.builder()
-                .propertyTypeIds(propertyTypeIds)
+                .propertyTypes(propertyTypes)
                 .listingType(listingType)
                 .sortDirection(sortDirection)
                 .page(page)

@@ -46,17 +46,16 @@ public class BookmarkRepositoryImpl implements BookmarkRepository {
     @Override
     public Page<Bookmark> findBookmarksByUserWithFilters(
             UUID userId,
-            List<UUID> propertyTypeIds,
+            List<String> propertyTypes,
             ListingType listingType,
             Pageable pageable
     ) {
         // Empty list should be treated as null for the query
-        List<UUID> effectivePropertyTypeIds = (propertyTypeIds != null && !propertyTypeIds.isEmpty())
-                ? propertyTypeIds
+        List<String> effectivePropertyTypes = (propertyTypes != null && !propertyTypes.isEmpty())
+                ? propertyTypes
                 : null;
 
         // Determine sort direction from pageable
-        // If no sort specified or if sorting by createdAt ascending, use ascending query
         boolean isAscending = pageable.getSort().stream()
                 .anyMatch(order -> "createdAt".equals(order.getProperty())
                         && order.isAscending());
@@ -64,7 +63,7 @@ public class BookmarkRepositoryImpl implements BookmarkRepository {
         if (isAscending) {
             return jpaRepository.findByUserIdWithFiltersOrderByCreatedAtAsc(
                     userId,
-                    effectivePropertyTypeIds,
+                    effectivePropertyTypes,
                     listingType,
                     pageable
             );
@@ -72,7 +71,7 @@ public class BookmarkRepositoryImpl implements BookmarkRepository {
             // Default to newest first (descending)
             return jpaRepository.findByUserIdWithFiltersOrderByCreatedAtDesc(
                     userId,
-                    effectivePropertyTypeIds,
+                    effectivePropertyTypes,
                     listingType,
                     pageable
             );

@@ -10,7 +10,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Request DTO for getting bookmarked listings with filters and pagination.
@@ -21,11 +20,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class GetBookmarksRequest {
 
-    @Schema(
-            description = "Property type IDs to filter by (multiple selection allowed)",
-            example = "[\"123e4567-e89b-12d3-a456-426614174000\"]"
-    )
-    private List<UUID> propertyTypeIds;
+    @Schema(description = "Property type codes to filter by", example = "[\"APARTMENT\", \"VILLA\"]")
+    private List<String> propertyTypes;
 
     @Schema(description = "Listing type filter: SALE or RENT", example = "RENT")
     private ListingType listingType;

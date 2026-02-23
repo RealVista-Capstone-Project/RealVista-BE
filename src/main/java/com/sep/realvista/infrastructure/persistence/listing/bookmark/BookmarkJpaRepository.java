@@ -56,7 +56,7 @@ public interface BookmarkJpaRepository extends JpaRepository<Bookmark, BookmarkI
      * Eagerly fetches listing, property, property type, and location data for efficient querying.
      *
      * @param userId the user ID
-     * @param propertyTypeIds optional property type filter
+     * @param propertyTypes optional property type codes filter (e.g. APARTMENT, VILLA)
      * @param listingType optional listing type filter
      * @param pageable pagination and sorting
      * @return page of bookmarks
@@ -71,12 +71,12 @@ public interface BookmarkJpaRepository extends JpaRepository<Bookmark, BookmarkI
             AND b.deleted = false
             AND l.deleted = false
             AND (:listingType IS NULL OR l.listingType = :listingType)
-            AND (:propertyTypeIds IS NULL OR p.propertyTypeId IN :propertyTypeIds)
+            AND (:propertyTypes IS NULL OR pt.code IN :propertyTypes)
             ORDER BY b.createdAt DESC
             """)
     Page<Bookmark> findByUserIdWithFiltersOrderByCreatedAtDesc(
             @Param("userId") UUID userId,
-            @Param("propertyTypeIds") List<UUID> propertyTypeIds,
+            @Param("propertyTypes") List<String> propertyTypes,
             @Param("listingType") ListingType listingType,
             Pageable pageable
     );
@@ -86,7 +86,7 @@ public interface BookmarkJpaRepository extends JpaRepository<Bookmark, BookmarkI
      * Eagerly fetches listing, property, property type, and location data for efficient querying.
      *
      * @param userId the user ID
-     * @param propertyTypeIds optional property type filter
+     * @param propertyTypes optional property type codes filter (e.g. APARTMENT, VILLA)
      * @param listingType optional listing type filter
      * @param pageable pagination
      * @return page of bookmarks
@@ -101,12 +101,12 @@ public interface BookmarkJpaRepository extends JpaRepository<Bookmark, BookmarkI
             AND b.deleted = false
             AND l.deleted = false
             AND (:listingType IS NULL OR l.listingType = :listingType)
-            AND (:propertyTypeIds IS NULL OR p.propertyTypeId IN :propertyTypeIds)
+            AND (:propertyTypes IS NULL OR pt.code IN :propertyTypes)
             ORDER BY b.createdAt ASC
             """)
     Page<Bookmark> findByUserIdWithFiltersOrderByCreatedAtAsc(
             @Param("userId") UUID userId,
-            @Param("propertyTypeIds") List<UUID> propertyTypeIds,
+            @Param("propertyTypes") List<String> propertyTypes,
             @Param("listingType") ListingType listingType,
             Pageable pageable
     );

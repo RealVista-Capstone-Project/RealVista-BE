@@ -54,14 +54,14 @@ public interface BookmarkRepository {
      * Finds all bookmarks for a user with filters and pagination.
      *
      * @param userId the user ID
-     * @param propertyTypeIds optional list of property type IDs to filter by
+     * @param propertyTypes optional list of property type codes to filter by (e.g. APARTMENT, VILLA)
      * @param listingType optional listing type filter (SALE or RENT)
      * @param pageable pagination and sorting parameters
      * @return page of bookmarks with full listing and property data
      */
     Page<Bookmark> findBookmarksByUserWithFilters(
             UUID userId,
-            List<UUID> propertyTypeIds,
+            List<String> propertyTypes,
             ListingType listingType,
             Pageable pageable
     );
