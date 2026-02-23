@@ -6,8 +6,8 @@ import com.sep.realvista.application.listing.bookmark.dto.BookmarkListingCardDTO
 import com.sep.realvista.application.listing.bookmark.dto.BookmarkResponse;
 import com.sep.realvista.application.listing.bookmark.dto.GetBookmarksRequest;
 import com.sep.realvista.application.listing.bookmark.service.BookmarkApplicationService;
-import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -17,8 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,7 +43,6 @@ import java.util.UUID;
 public class BookmarkController {
 
     private final BookmarkApplicationService bookmarkApplicationService;
-    private final UserApplicationService userApplicationService;
 
     /**
      * Get all bookmarks for the authenticated user with filters and pagination.
@@ -64,6 +62,8 @@ public class BookmarkController {
                     + "Supports filtering by property type and listing type, with pagination and sorting."
     )
     public ResponseEntity<ApiResponse<PageResponse<BookmarkListingCardDTO>>> getBookmarks(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+
             @Parameter(description = "Property type IDs to filter by (multiple selection)")
             @RequestParam(required = false) List<UUID> propertyTypeIds,
 
@@ -82,14 +82,11 @@ public class BookmarkController {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
-        // Get authenticated user email from SecurityContext
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userEmail = authentication.getName();
-        UUID userId = userApplicationService.findUserIdByEmail(userEmail);
+        UUID userId = userDetails.getUserId();
 
-        log.info("Get bookmarks request - traceId: {}, userEmail: {}, userId: {}, "
+        log.info("Get bookmarks request - traceId: {}, userId: {}, "
                         + "propertyTypeIds: {}, listingType: {}, sort: {}, page: {}, size: {}",
-                traceId, userEmail, userId, propertyTypeIds, listingType, sortDirection, page, size);
+                traceId, userId, propertyTypeIds, listingType, sortDirection, page, size);
 
         GetBookmarksRequest request = GetBookmarksRequest.builder()
                 .propertyTypeIds(propertyTypeIds)
@@ -121,18 +118,16 @@ public class BookmarkController {
                          + "Returns details about the user and listing involved in the action."
     )
     public ResponseEntity<ApiResponse<BookmarkResponse>> toggleBookmark(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
             @PathVariable UUID listingId
     ) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
-        // Get authenticated user email from SecurityContext
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userEmail = authentication.getName();
-        UUID userId = userApplicationService.findUserIdByEmail(userEmail);
+        UUID userId = userDetails.getUserId();
 
-        log.info("Toggle bookmark request - traceId: {}, userEmail: {}, userId: {}, listingId: {}",
-                traceId, userEmail, userId, listingId);
+        log.info("Toggle bookmark request - traceId: {}, userId: {}, listingId: {}",
+                traceId, userId, listingId);
 
         BookmarkResponse response = bookmarkApplicationService.toggleBookmark(userId, listingId);
 
