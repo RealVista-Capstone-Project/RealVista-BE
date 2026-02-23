@@ -46,4 +46,20 @@ public interface PropertyAttributeValueJpaRepository extends JpaRepository<Prope
         List<PropertyAttributeValue> findRequiredAttributesByPropertyIds(
                         @Param("propertyIds") List<UUID> propertyIds);
 
+        /**
+         * Fetch all attributes for multiple properties in a single batch query.
+         * Returns all non-deleted attribute values ordered by priority then name.
+         * Used for search listing cards to display dynamic attributes.
+         */
+        @Query("SELECT pav FROM PropertyAttributeValue pav "
+                        + "JOIN FETCH pav.propertyAttribute pa "
+                        + "JOIN pav.property p "
+                        + "WHERE p.propertyId IN :propertyIds "
+                        + "AND pav.deleted = false "
+                        + "ORDER BY p.propertyId, "
+                        + "CASE WHEN pav.priority IS NULL THEN 1 ELSE 0 END, "
+                        + "pav.priority, pa.name")
+        List<PropertyAttributeValue> findAllAttributesByPropertyIds(
+                        @Param("propertyIds") List<UUID> propertyIds);
+
 }

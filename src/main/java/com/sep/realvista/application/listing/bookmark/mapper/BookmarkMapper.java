@@ -63,6 +63,7 @@ public interface BookmarkMapper {
                 .price(listing.getPrice())
                 .listingType(listing.getListingType())
                 .isNegotiable(listing.getIsNegotiable())
+                .status(listing.getStatus())
                 .bookmarkedAt(bookmark.getCreatedAt());
 
         // Set primary image URL

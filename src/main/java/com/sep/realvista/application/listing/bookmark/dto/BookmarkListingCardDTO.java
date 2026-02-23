@@ -2,6 +2,7 @@ package com.sep.realvista.application.listing.bookmark.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -94,4 +95,6 @@ public class BookmarkListingCardDTO {
 
     @JsonProperty("usable_size_m2")
     private BigDecimal usableSizeM2;
+
+    private ListingStatus status;
 }

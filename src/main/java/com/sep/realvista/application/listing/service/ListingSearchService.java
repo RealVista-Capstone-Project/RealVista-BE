@@ -109,7 +109,7 @@ public class ListingSearchService {
             bookmarkedIds = bookmarkRepository.findBookmarkedListingIds(userId, pageListingIds);
         }
 
-        // Bulk fetch required attributes for all properties on this page (avoids N+1)
+        // Bulk fetch all attributes for all properties on this page (avoids N+1)
         List<UUID> propertyIds = listings.stream()
                 .map(l -> l.getProperty() != null ? l.getProperty().getPropertyId() : null)
                 .filter(Objects::nonNull)
@@ -119,7 +119,7 @@ public class ListingSearchService {
         final Map<UUID, List<PropertyAttributeValue>> attributesByPropertyId;
         if (!propertyIds.isEmpty()) {
             attributesByPropertyId = propertyAttributeValueRepository
-                    .findRequiredAttributesByPropertyIds(propertyIds)
+                    .findAllAttributesByPropertyIds(propertyIds)
                     .stream()
                     .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId));
         } else {
