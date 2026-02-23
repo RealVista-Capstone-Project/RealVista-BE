@@ -9,6 +9,7 @@ import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
 import com.sep.realvista.application.listing.service.ListingSearchService;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,12 +60,14 @@ public class ListingController {
     public ResponseEntity<ApiResponse<PageResponse<ListingSearchResponse>>> search(
             @org.springdoc.core.annotations.ParameterObject ListingSearchCriteria criteria,
             @org.springframework.data.web.PageableDefault(size = 20)
-            org.springframework.data.domain.Pageable pageable) {
+            org.springframework.data.domain.Pageable pageable,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Searching listings with criteria: {}", criteria);
 
+        UUID userId = userDetails != null ? userDetails.getUserId() : null;
         org.springframework.data.domain.Page<ListingSearchResponse> results = listingSearchService.search(criteria,
-                pageable);
+                pageable, userId);
 
         PageResponse<ListingSearchResponse> pageResponse = PageResponse.<ListingSearchResponse>builder()
                 .content(results.getContent())

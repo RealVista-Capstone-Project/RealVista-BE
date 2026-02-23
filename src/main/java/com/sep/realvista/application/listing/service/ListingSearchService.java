@@ -6,6 +6,7 @@ import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +25,11 @@ import jakarta.persistence.criteria.Subquery;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -35,6 +38,7 @@ public class ListingSearchService {
 
     private final ListingRepository listingRepository;
     private final ListingMapper listingMapper;
+    private final BookmarkRepository bookmarkRepository;
 
     private static final class ListingFields {
         static final String STATUS = "status";
@@ -77,7 +81,7 @@ public class ListingSearchService {
     private static final Set<String> NUMERIC_MIN_ATTRIBUTE_CODES = Set.of("BEDROOMS", "BATHROOMS");
 
     @Transactional(readOnly = true)
-    public Page<ListingSearchResponse> search(ListingSearchCriteria criteria, Pageable pageable) {
+    public Page<ListingSearchResponse> search(ListingSearchCriteria criteria, Pageable pageable, UUID userId) {
 
         log.debug("Searching with criteria: {}", criteria);
 
@@ -91,7 +95,19 @@ public class ListingSearchService {
 
         Page<Listing> listings = listingRepository.findAll(spec, effectivePageable);
 
-        // Map to response and populate thumbnails
+        // Bulk fetch bookmarked listing IDs for this page (single query, avoids N+1)
+        Set<UUID> bookmarkedIds = Collections.emptySet();
+        if (userId != null && !listings.isEmpty()) {
+            List<UUID> pageListingIds = listings.stream()
+                    .map(Listing::getListingId)
+                    .collect(Collectors.toList());
+            bookmarkedIds = bookmarkRepository.findBookmarkedListingIds(userId, pageListingIds);
+        }
+
+        // Final reference for use inside lambda
+        final Set<UUID> finalBookmarkedIds = bookmarkedIds;
+
+        // Map to response and populate thumbnails + isFavorite
         return listings.map(listing -> {
             ListingSearchResponse response = listingMapper.toSearchResponse(listing);
 
@@ -100,6 +116,8 @@ public class ListingSearchService {
                 String thumbnail = fetchThumbnailForListing(listing.getListingId());
                 response.setThumbnail(thumbnail);
             }
+
+            response.setIsFavorite(finalBookmarkedIds.contains(listing.getListingId()));
 
             return response;
         });

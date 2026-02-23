@@ -11,8 +11,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -50,6 +52,13 @@ public interface BookmarkJpaRepository extends JpaRepository<Bookmark, BookmarkI
      * @return true if exists
      */
     boolean existsByUserIdAndListingId(UUID userId, UUID listingId);
+
+    /**
+     * Returns the subset of listingIds that the user has bookmarked.
+     * Used for bulk isFavorite population in search results.
+     */
+    @Query("SELECT b.listingId FROM Bookmark b WHERE b.userId = :userId AND b.listingId IN :listingIds AND b.deleted = false")
+    Set<UUID> findBookmarkedListingIds(@Param("userId") UUID userId, @Param("listingIds") Collection<UUID> listingIds);
 
     /**
      * Finds bookmarks for a user with optional filters.

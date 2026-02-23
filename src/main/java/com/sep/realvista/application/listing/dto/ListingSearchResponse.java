@@ -2,6 +2,7 @@ package com.sep.realvista.application.listing.dto;
 
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,9 +34,14 @@ public class ListingSearchResponse {
     private LocalDateTime publishedAt;
     
     // Boost info
-    private boolean isBoosted;
+    @JsonProperty("is_boosted")
+    private Boolean isBoosted;
     private String boostPackage; // e.g., "FEATURED", "HOT_BADGE"
-    
+
     // User info (for display/sorting context)
     private String userType; // AGENT or USER
+
+    // Bookmark status for the requesting user (false for anonymous)
+    @JsonProperty("is_favorite")
+    private Boolean isFavorite;
 }
