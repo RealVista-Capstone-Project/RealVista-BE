@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -28,8 +28,7 @@ public class ListingSearchResponse {
     private String location; // Short address or district
     
     // NOTE: These attributes will be dynamic, not only bedrooms and bathrooms
-    private Integer bedrooms;
-    private Integer bathrooms;
+    private List<PropertyAttributeDTO> attributes;
     private String thumbnail; // Main image
     private LocalDateTime publishedAt;
     

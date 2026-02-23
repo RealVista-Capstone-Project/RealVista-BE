@@ -9,6 +9,7 @@ import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,7 +27,10 @@ import jakarta.persistence.criteria.Subquery;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -39,6 +43,7 @@ public class ListingSearchService {
     private final ListingRepository listingRepository;
     private final ListingMapper listingMapper;
     private final BookmarkRepository bookmarkRepository;
+    private final PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
 
     private static final class ListingFields {
         static final String STATUS = "status";
@@ -104,10 +109,27 @@ public class ListingSearchService {
             bookmarkedIds = bookmarkRepository.findBookmarkedListingIds(userId, pageListingIds);
         }
 
+        // Bulk fetch required attributes for all properties on this page (avoids N+1)
+        List<UUID> propertyIds = listings.stream()
+                .map(l -> l.getProperty() != null ? l.getProperty().getPropertyId() : null)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        final Map<UUID, List<PropertyAttributeValue>> attributesByPropertyId;
+        if (!propertyIds.isEmpty()) {
+            attributesByPropertyId = propertyAttributeValueRepository
+                    .findRequiredAttributesByPropertyIds(propertyIds)
+                    .stream()
+                    .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId));
+        } else {
+            attributesByPropertyId = Collections.emptyMap();
+        }
+
         // Final reference for use inside lambda
         final Set<UUID> finalBookmarkedIds = bookmarkedIds;
 
-        // Map to response and populate thumbnails + isFavorite
+        // Map to response and populate thumbnails + isFavorite + attributes
         return listings.map(listing -> {
             ListingSearchResponse response = listingMapper.toSearchResponse(listing);
 
@@ -118,6 +140,12 @@ public class ListingSearchService {
             }
 
             response.setIsFavorite(finalBookmarkedIds.contains(listing.getListingId()));
+
+            UUID propertyId = listing.getProperty() != null ? listing.getProperty().getPropertyId() : null;
+            List<PropertyAttributeValue> attrs = propertyId != null
+                    ? attributesByPropertyId.getOrDefault(propertyId, List.of())
+                    : List.of();
+            response.setAttributes(listingMapper.toAttributeList(attrs));
 
             return response;
         });

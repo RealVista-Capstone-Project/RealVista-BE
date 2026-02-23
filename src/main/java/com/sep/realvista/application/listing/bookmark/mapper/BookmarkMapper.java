@@ -14,6 +14,8 @@ import org.mapstruct.Mapping;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -97,11 +99,21 @@ public interface BookmarkMapper {
             }
         }
 
-        // Map attributes
+        // Map attributes: sort by priority, then re-number from 1
         if (attributes != null && !attributes.isEmpty()) {
-            List<PropertyAttributeDTO> attributeDTOs = attributes.stream()
-                    .map(this::toAttributeDTO)
+            List<PropertyAttributeValue> sorted = attributes.stream()
+                    .sorted(Comparator.comparingInt(
+                            pav -> pav.getPriority() != null ? pav.getPriority() : Integer.MAX_VALUE))
                     .collect(Collectors.toList());
+
+            List<PropertyAttributeDTO> attributeDTOs = new ArrayList<>();
+            for (int i = 0; i < sorted.size(); i++) {
+                PropertyAttributeDTO dto = toAttributeDTO(sorted.get(i));
+                if (dto != null) {
+                    dto.setPriority(i + 1);
+                    attributeDTOs.add(dto);
+                }
+            }
             builder.attributes(attributeDTOs);
         }
 
@@ -137,6 +149,7 @@ public interface BookmarkMapper {
                 .dataType(attribute.getDataType() != null ? attribute.getDataType().name() : null)
                 .icon(attribute.getIcon())
                 .unit(attribute.getUnit())
+                .priority(attributeValue.getPriority())
                 .valueNumber(attributeValue.getValueNumber())
                 .valueText(attributeValue.getValueText())
                 .valueBoolean(attributeValue.getValueBoolean())
