@@ -56,9 +56,6 @@ public class PropertyAttributeValue extends BaseEntity {
     @JoinColumn(name = "property_attribute_id", insertable = false, updatable = false)
     private PropertyAttribute propertyAttribute;
 
-    @Column(name = "priority")
-    private Integer priority;
-
     @Column(name = "value_number", precision = 12, scale = 2)
     private BigDecimal valueNumber;
 

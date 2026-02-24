@@ -59,6 +59,10 @@ public class PropertyTypeAttribute extends BaseEntity {
     @Builder.Default
     private Boolean isRequired = false;
 
+    @Column(name = "priority", nullable = false)
+    @Builder.Default
+    private Integer priority = 0;
+
     public void markAsRequired() {
         this.isRequired = true;
     }

@@ -18,7 +18,12 @@ public interface PropertyAttributeValueJpaRepository extends JpaRepository<Prope
                         + "LEFT JOIN FETCH pav.propertyAttribute pa "
                         + "LEFT JOIN FETCH pav.property p "
                         + "WHERE p.propertyId = :propertyId AND pav.deleted = false "
-                        + "ORDER BY pa.name")
+                        + "ORDER BY "
+                        + "(SELECT COALESCE(pta.priority, 99999) FROM PropertyTypeAttribute pta "
+                        + " WHERE pta.propertyAttributeId = pav.propertyAttributeId "
+                        + " AND pta.propertyTypeId = p.propertyTypeId "
+                        + " AND pta.deleted = false), "
+                        + "pa.code")
         List<PropertyAttributeValue> findByPropertyIdWithAttribute(@Param("propertyId") UUID propertyId);
 
         @Query("SELECT pav FROM PropertyAttributeValue pav "
@@ -42,14 +47,19 @@ public interface PropertyAttributeValueJpaRepository extends JpaRepository<Prope
                         + "  AND pta.propertyTypeId = p.propertyTypeId "
                         + "  AND pta.isRequired = true "
                         + "  AND pta.deleted = false) "
-                        + "ORDER BY p.propertyId, pa.name")
+                        + "ORDER BY p.propertyId, "
+                        + "(SELECT COALESCE(pta2.priority, 99999) FROM PropertyTypeAttribute pta2 "
+                        + " WHERE pta2.propertyAttributeId = pav.propertyAttributeId "
+                        + " AND pta2.propertyTypeId = p.propertyTypeId "
+                        + " AND pta2.deleted = false), "
+                        + "pa.name")
         List<PropertyAttributeValue> findRequiredAttributesByPropertyIds(
                         @Param("propertyIds") List<UUID> propertyIds);
 
         /**
          * Fetch all attributes for multiple properties in a single batch query.
-         * Returns all non-deleted attribute values ordered by priority then name.
-         * Used for search listing cards to display dynamic attributes.
+         * Returns all non-deleted attribute values ordered by property_type_attributes.priority
+         * then name. Used for search listing cards to display dynamic attributes.
          */
         @Query("SELECT pav FROM PropertyAttributeValue pav "
                         + "JOIN FETCH pav.propertyAttribute pa "
@@ -57,8 +67,11 @@ public interface PropertyAttributeValueJpaRepository extends JpaRepository<Prope
                         + "WHERE p.propertyId IN :propertyIds "
                         + "AND pav.deleted = false "
                         + "ORDER BY p.propertyId, "
-                        + "CASE WHEN pav.priority IS NULL THEN 1 ELSE 0 END, "
-                        + "pav.priority, pa.name")
+                        + "(SELECT COALESCE(pta.priority, 99999) FROM PropertyTypeAttribute pta "
+                        + " WHERE pta.propertyAttributeId = pav.propertyAttributeId "
+                        + " AND pta.propertyTypeId = p.propertyTypeId "
+                        + " AND pta.deleted = false), "
+                        + "pa.name")
         List<PropertyAttributeValue> findAllAttributesByPropertyIds(
                         @Param("propertyIds") List<UUID> propertyIds);
 

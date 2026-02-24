@@ -3,8 +3,10 @@ package com.sep.realvista.application.listing.service;
 import com.sep.realvista.application.listing.dto.map.MapSearchRequest;
 import com.sep.realvista.application.listing.dto.map.MapSearchResponse;
 import com.sep.realvista.application.listing.dto.map.PropertyMapMarker;
+import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
+import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.search.MapBounds;
@@ -20,10 +22,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Application Service for map-based property searches.
@@ -40,15 +45,18 @@ public class MapSearchApplicationService {
     private final PropertyRepository propertyRepository;
     private final ListingMediaRepository listingMediaRepository;
     private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
+    private final BookmarkRepository bookmarkRepository;
+    private final ListingMapper listingMapper;
 
     /**
      * Search for property listings within map bounds.
      * Returns lightweight map markers for efficient rendering.
      *
      * @param request map search request with bounds and filters
+     * @param userId  current user ID (nullable, for isFavorite population)
      * @return map search response with markers and metadata
      */
-    public MapSearchResponse searchPropertiesOnMap(MapSearchRequest request) {
+    public MapSearchResponse searchPropertiesOnMap(MapSearchRequest request, UUID userId) {
         log.info("Map search request - bounds: ({},{}) to ({},{}), type: {}, page: {}, size: {}",
                 request.getSouthLat(), request.getWestLng(),
                 request.getNorthLat(), request.getEastLng(),
@@ -134,9 +142,39 @@ public class MapSearchApplicationService {
 
         List<Listing> listings = listingRepository.findPublishedWithinBounds(criteria);
 
+        // Bulk fetch all attributes for this page's properties (avoids N+1)
+        List<UUID> propertyIds = listings.stream()
+                .map(Listing::getPropertyId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        final Map<UUID, List<PropertyAttributeValue>> attributesByPropertyId;
+        if (!propertyIds.isEmpty()) {
+            attributesByPropertyId = propertyAttributeValueJpaRepository
+                    .findAllAttributesByPropertyIds(propertyIds)
+                    .stream()
+                    .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId));
+        } else {
+            attributesByPropertyId = Collections.emptyMap();
+        }
+
+        // Bulk fetch bookmarked listing IDs for this page (avoids N+1)
+        final Set<UUID> bookmarkedIds;
+        if (userId != null && !listings.isEmpty()) {
+            List<UUID> pageListingIds = listings.stream()
+                    .map(Listing::getListingId)
+                    .collect(Collectors.toList());
+            bookmarkedIds = bookmarkRepository.findBookmarkedListingIds(userId, pageListingIds);
+        } else {
+            bookmarkedIds = Collections.emptySet();
+        }
+
         // Transform to map markers
         List<PropertyMapMarker> markers = listings.stream()
-                .map(this::convertToMapMarker)
+                .map(l -> convertToMapMarker(l,
+                        attributesByPropertyId.getOrDefault(l.getPropertyId(), List.of()),
+                        bookmarkedIds.contains(l.getListingId())))
                 .filter(Objects::nonNull)
                 .toList();
 
@@ -213,21 +251,10 @@ public class MapSearchApplicationService {
     }
 
     /**
-     * Helper to extract integer attribute safely.
+     * Convert listing to map marker using pre-fetched attribute values.
      */
-    private Integer getIntAttribute(Map<String, Object> attributes, String key) {
-        Object value = attributes.get(key);
-        if (value instanceof Number) {
-            return ((Number) value).intValue();
-        }
-        return null;
-    }
-
-    /**
-     * Convert listing to map marker.
-     * Fetches associated property, thumbnail, and attributes.
-     */
-    private PropertyMapMarker convertToMapMarker(Listing listing) {
+    private PropertyMapMarker convertToMapMarker(Listing listing,
+            List<PropertyAttributeValue> attrValues, boolean isFavorite) {
         // Fetch property
         Property property = propertyRepository.findById(listing.getPropertyId()).orElse(null);
         if (property == null) {
@@ -243,25 +270,6 @@ public class MapSearchApplicationService {
             thumbnailUrl = medias.getFirst().getPropertyMedia().getMediaUrl();
         }
 
-        // Fetch attributes
-        List<PropertyAttributeValue> attributeValues = propertyAttributeValueJpaRepository
-                .findByPropertyIdWithAttribute(property.getPropertyId());
-
-        Map<String, Object> attributes = new HashMap<>();
-        for (PropertyAttributeValue value : attributeValues) {
-            if (value.getPropertyAttribute() != null) {
-                String attributeName = value.getPropertyAttribute().getName().toLowerCase();
-                log.info("Attribute for property {}: {} = {} / {}",
-                        property.getPropertyId(),
-                        attributeName,
-                        value.getValueNumber(),
-                        value.getValueText());
-                attributes.put(attributeName, value.getValueNumber() != null
-                        ? value.getValueNumber()
-                        : value.getValueText());
-            }
-        }
-
         return PropertyMapMarker.builder()
                 .listingId(listing.getListingId())
                 .coordinates(PropertyMapMarker.CoordinatesDTO.builder()
@@ -273,12 +281,11 @@ public class MapSearchApplicationService {
                 .listingType(listing.getListingType())
                 .name(listing.getName())
                 .thumbnailUrl(thumbnailUrl)
-                .bedrooms(getIntAttribute(attributes, "phòng ngủ"))
-                .bathrooms(getIntAttribute(attributes, "phòng tắm"))
                 .sizeM2(property.getUsableSizeM2() != null ? property.getUsableSizeM2() : property.getLandSizeM2())
                 .propertyType(property.getPropertyType() != null ? property.getPropertyType().getName() : null)
                 .locationName(property.getLocation() != null ? property.getLocation().getName() : null)
-                .isFavorite(false) // Implement favorite logic later
+                .isFavorite(isFavorite)
+                .attributes(listingMapper.toAttributeList(attrValues))
                 .build();
     }
 }

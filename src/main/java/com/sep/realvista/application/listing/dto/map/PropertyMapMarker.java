@@ -1,5 +1,6 @@
 package com.sep.realvista.application.listing.dto.map;
 
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.domain.listing.ListingType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -71,6 +73,11 @@ public class PropertyMapMarker {
      * Indicates if this property is marked as favorite by the current user.
      */
     private Boolean isFavorite;
+
+    /**
+     * Dynamic property attributes for card display.
+     */
+    private List<PropertyAttributeDTO> attributes;
 
     /**
      * Nested DTO for coordinates.

@@ -26,7 +26,6 @@ import org.mapstruct.Mapping;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -293,17 +292,12 @@ public interface ListingMapper {
         if (attributeValues == null) {
             return List.of();
         }
-        // Sort by existing priority (preserves intended display order),
-        // then re-number from 1 so the returned list is always 1, 2, 3, ...
+        // Data arrives pre-ordered by property_type_attributes.priority from the DB query.
+        // Re-number from 1 so the returned list is always 1, 2, 3, ...
         // regardless of how many attributes were filtered out upstream.
-        List<PropertyAttributeValue> sorted = attributeValues.stream()
-                .sorted(Comparator.comparingInt(
-                        pav -> pav.getPriority() != null ? pav.getPriority() : Integer.MAX_VALUE))
-                .collect(Collectors.toList());
-
         List<PropertyAttributeDTO> result = new ArrayList<>();
-        for (int i = 0; i < sorted.size(); i++) {
-            PropertyAttributeDTO dto = toAttributeDTO(sorted.get(i));
+        for (int i = 0; i < attributeValues.size(); i++) {
+            PropertyAttributeDTO dto = toAttributeDTO(attributeValues.get(i));
             if (dto != null) {
                 dto.setPriority(i + 1);
                 result.add(dto);
@@ -324,7 +318,6 @@ public interface ListingMapper {
                 .dataType(attribute.getDataType() != null ? attribute.getDataType().name() : null)
                 .icon(attribute.getIcon())
                 .unit(attribute.getUnit())
-                .priority(attributeValue.getPriority())
                 .valueNumber(attributeValue.getValueNumber())
                 .valueText(attributeValue.getValueText())
                 .valueBoolean(attributeValue.getValueBoolean())
