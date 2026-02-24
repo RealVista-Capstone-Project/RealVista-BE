@@ -25,8 +25,40 @@ public class ListingSearchResponse {
     private ListingStatus status;
     private BigDecimal price;
     private Double area; // Usable size
-    private String location; // Short address or district
-    
+
+    @JsonProperty("street_address")
+    private String streetAddress;
+
+    @JsonProperty("ward_name")
+    private String wardName;
+
+    @JsonProperty("district_name")
+    private String districtName;
+
+    @JsonProperty("city_name")
+    private String cityName;
+
+    @JsonProperty("full_address")
+    public String getFullAddress() {
+        StringBuilder address = new StringBuilder();
+        if (streetAddress != null && !streetAddress.isBlank()) {
+            address.append(streetAddress);
+        }
+        if (wardName != null && !wardName.isBlank()) {
+            if (address.length() > 0) address.append(", ");
+            address.append(wardName);
+        }
+        if (districtName != null && !districtName.isBlank()) {
+            if (address.length() > 0) address.append(", ");
+            address.append(districtName);
+        }
+        if (cityName != null && !cityName.isBlank()) {
+            if (address.length() > 0) address.append(", ");
+            address.append(cityName);
+        }
+        return address.toString();
+    }
+
     // NOTE: These attributes will be dynamic, not only bedrooms and bathrooms
     private List<PropertyAttributeDTO> attributes;
     private String thumbnail; // Main image

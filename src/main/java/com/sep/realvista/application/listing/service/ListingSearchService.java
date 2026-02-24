@@ -9,6 +9,7 @@ import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -132,6 +133,22 @@ public class ListingSearchService {
         // Map to response and populate thumbnails + isFavorite + attributes
         return listings.map(listing -> {
             ListingSearchResponse response = listingMapper.toSearchResponse(listing);
+
+            // Populate address fields explicitly here (within @Transactional) to ensure
+            // lazy-loaded property.location chain is resolved within the open session.
+            if (listing.getProperty() != null) {
+                response.setStreetAddress(listing.getProperty().getStreetAddress());
+                Location loc = listing.getProperty().getLocation();
+                while (loc != null) {
+                    switch (loc.getType()) {
+                        case CITY -> response.setCityName(loc.getName());
+                        case DISTRICT -> response.setDistrictName(loc.getName());
+                        case WARD -> response.setWardName(loc.getName());
+                        default -> { }
+                    }
+                    loc = loc.getParent();
+                }
+            }
 
             // Fetch thumbnail from listing_medias if not already populated
             if (response.getThumbnail() == null || response.getThumbnail().isBlank()) {

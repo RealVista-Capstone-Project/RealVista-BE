@@ -14,6 +14,7 @@ import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -277,15 +278,28 @@ public class MapSearchApplicationService {
                         .longitude(property.getLongitude())
                         .build())
                 .streetAddress(property.getStreetAddress())
+                .wardName(extractLocationName(property.getLocation(), "WARD"))
+                .districtName(extractLocationName(property.getLocation(), "DISTRICT"))
+                .cityName(extractLocationName(property.getLocation(), "CITY"))
                 .price(listing.getPrice())
                 .listingType(listing.getListingType())
                 .name(listing.getName())
                 .thumbnailUrl(thumbnailUrl)
                 .sizeM2(property.getUsableSizeM2() != null ? property.getUsableSizeM2() : property.getLandSizeM2())
                 .propertyType(property.getPropertyType() != null ? property.getPropertyType().getName() : null)
-                .locationName(property.getLocation() != null ? property.getLocation().getName() : null)
                 .isFavorite(isFavorite)
                 .attributes(listingMapper.toAttributeList(attrValues))
                 .build();
+    }
+
+    private String extractLocationName(Location location, String type) {
+        Location current = location;
+        while (current != null) {
+            if (current.getType().name().equals(type)) {
+                return current.getName();
+            }
+            current = current.getParent();
+        }
+        return null;
     }
 }

@@ -371,10 +371,9 @@ public interface ListingMapper {
             if (listing.getProperty().getUsableSizeM2() != null) {
                 response.area(listing.getProperty().getUsableSizeM2().doubleValue());
             }
-            // Add location
-            if (listing.getProperty().getLocation() != null) {
-                response.location(listing.getProperty().getLocation().getName());
-            }
+            // Address fields (streetAddress, wardName, districtName, cityName) are populated
+            // by the service layer after this mapper call to ensure lazy-loading works correctly
+            // within the @Transactional boundary.
         }
 
         // Thumbnail will be populated by the service layer
