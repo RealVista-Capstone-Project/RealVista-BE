@@ -87,14 +87,17 @@ public class ListingController {
 
             description = "Retrieves complete listing information including media, property, "
                     + "location, type, category, and agent/owner")
-    public ResponseEntity<ApiResponse<ListingDetailResponse>> getListingDetail(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<ListingDetailResponse>> getListingDetail(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
         try {
             log.info("Fetching listing detail - traceId: {}, listingId: {}", traceId, id);
 
-            ListingDetailResponse listing = listingApplicationService.getListingDetail(id);
+            UUID userId = userDetails != null ? userDetails.getUserId() : null;
+            ListingDetailResponse listing = listingApplicationService.getListingDetail(id, userId);
             return ResponseEntity.ok(ApiResponse.success("Listing retrieved successfully", listing));
         } finally {
             MDC.remove("traceId");

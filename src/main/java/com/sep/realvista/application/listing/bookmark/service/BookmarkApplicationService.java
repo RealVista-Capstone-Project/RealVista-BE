@@ -17,6 +17,7 @@ import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -62,6 +63,7 @@ public class BookmarkApplicationService {
      * @throws UserNotFoundException if user doesn't exist
      * @throws ListingNotFoundException if listing doesn't exist
      */
+    @CacheEvict(value = "listings", key = "#listingId + '_' + #userId.toString()")
     public BookmarkResponse toggleBookmark(UUID userId, UUID listingId) {
         log.info("Toggling bookmark - userId: {}, listingId: {}", userId, listingId);
 

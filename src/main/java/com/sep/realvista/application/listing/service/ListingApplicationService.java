@@ -15,6 +15,7 @@ import com.sep.realvista.domain.listing.analytics.ListingPriceHistory;
 import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
@@ -56,6 +57,7 @@ public class ListingApplicationService {
         private final PropertyAmenityRepository propertyAmenityRepository;
         private final ListingMapper listingMapper;
         private final CostBreakdownService costBreakdownService;
+        private final BookmarkRepository bookmarkRepository;
 
         /**
          * Get listing detail by ID.
@@ -66,9 +68,9 @@ public class ListingApplicationService {
          * @return complete listing detail response
          * @throws ResourceNotFoundException if listing not found
          */
-        @Cacheable(value = "listings", key = "#listingId")
+        @Cacheable(value = "listings", key = "#listingId + '_' + (#userId != null ? #userId.toString() : 'anon')")
         @Transactional(readOnly = true)
-        public ListingDetailResponse getListingDetail(UUID listingId) {
+        public ListingDetailResponse getListingDetail(UUID listingId, UUID userId) {
                 log.info("Fetching listing detail for ID: {}", listingId);
 
                 // Fetch listing with all associations
@@ -109,6 +111,14 @@ public class ListingApplicationService {
                 // Calculate and add cost breakdown (only for RENT listings)
                 CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
                 response.setCostBreakdown(costBreakdown);
+
+                // Populate isFavorite for authenticated users
+                if (userId != null) {
+                        boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
+                        response.setIsFavorite(isFavorite);
+                } else {
+                        response.setIsFavorite(false);
+                }
 
                 return response;
         }
