@@ -259,7 +259,7 @@ class ListingControllerComponentTest {
         void getListingDetail_withValidId_shouldReturnOk() throws Exception {
                 // Arrange
                 UUID listingId = mockListingResponse.getListingId();
-                when(listingApplicationService.getListingDetail(any(UUID.class)))
+                when(listingApplicationService.getListingDetail(any(UUID.class), any()))
                                 .thenReturn(mockListingResponse);
 
                 // Act & Assert
@@ -295,7 +295,7 @@ class ListingControllerComponentTest {
         void getListingDetail_withNonExistentId_shouldReturnNotFound() throws Exception {
                 // Arrange
                 UUID nonExistentId = UUID.randomUUID();
-                when(listingApplicationService.getListingDetail(any(UUID.class)))
+                when(listingApplicationService.getListingDetail(any(UUID.class), any()))
                                 .thenThrow(new com.sep.realvista.domain.common.exception.ResourceNotFoundException(
                                                 "Listing", nonExistentId));
 
@@ -370,7 +370,7 @@ class ListingControllerComponentTest {
                 mockMvc.perform(get("/api/v1/listings/{id}/price-history", nonExistentId))
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.message").exists())
-                                .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"));
+                                .andExpect(jsonPath("$.error_code").value("RESOURCE_NOT_FOUND"));
         }
 
         @Test
@@ -497,7 +497,7 @@ class ListingControllerComponentTest {
                 mockMvc.perform(get("/api/v1/listings/{id}/similar", nonExistentId))
                                 .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.message").exists())
-                                .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"));
+                                .andExpect(jsonPath("$.error_code").value("RESOURCE_NOT_FOUND"));
         }
 
         @Test
@@ -511,7 +511,7 @@ class ListingControllerComponentTest {
 
                 Page<ListingSearchResponse> pageResult = new PageImpl<>(List.of(searchResponse));
 
-                when(listingSearchService.search(any(ListingSearchCriteria.class), any(Pageable.class)))
+                when(listingSearchService.search(any(ListingSearchCriteria.class), any(Pageable.class), any()))
                         .thenReturn(pageResult);
 
                 // Act & Assert

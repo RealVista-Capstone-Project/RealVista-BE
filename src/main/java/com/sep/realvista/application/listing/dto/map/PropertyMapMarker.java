@@ -54,15 +54,21 @@ public class PropertyMapMarker {
             address.append(streetAddress);
         }
         if (wardName != null && !wardName.isBlank()) {
-            if (address.length() > 0) address.append(", ");
+            if (address.length() > 0) {
+                address.append(", ");
+            }
             address.append(wardName);
         }
         if (districtName != null && !districtName.isBlank()) {
-            if (address.length() > 0) address.append(", ");
+            if (address.length() > 0) {
+                address.append(", ");
+            }
             address.append(districtName);
         }
         if (cityName != null && !cityName.isBlank()) {
-            if (address.length() > 0) address.append(", ");
+            if (address.length() > 0) {
+                address.append(", ");
+            }
             address.append(cityName);
         }
         return address.toString();

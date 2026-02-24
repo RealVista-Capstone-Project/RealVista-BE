@@ -57,7 +57,8 @@ public interface BookmarkJpaRepository extends JpaRepository<Bookmark, BookmarkI
      * Returns the subset of listingIds that the user has bookmarked.
      * Used for bulk isFavorite population in search results.
      */
-    @Query("SELECT b.listingId FROM Bookmark b WHERE b.userId = :userId AND b.listingId IN :listingIds AND b.deleted = false")
+    @Query("SELECT b.listingId FROM Bookmark b "
+            + "WHERE b.userId = :userId AND b.listingId IN :listingIds AND b.deleted = false")
     Set<UUID> findBookmarkedListingIds(@Param("userId") UUID userId, @Param("listingIds") Collection<UUID> listingIds);
 
     /**

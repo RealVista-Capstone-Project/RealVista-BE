@@ -252,7 +252,8 @@ class ListingSearchServiceIntegrationTest {
 
         Page<ListingSearchResponse> result = listingSearchService.search(
                 criteria,
-                PageRequest.of(0, 10)
+                PageRequest.of(0, 10),
+                null
         );
 
         assertThat(result.getContent()).hasSize(1);
@@ -271,7 +272,8 @@ class ListingSearchServiceIntegrationTest {
 
         Page<ListingSearchResponse> result = listingSearchService.search(
                 criteria,
-                PageRequest.of(0, 10)
+                PageRequest.of(0, 10),
+                null
         );
 
         assertThat(result.getContent()).hasSize(1);
@@ -290,7 +292,8 @@ class ListingSearchServiceIntegrationTest {
 
         Page<ListingSearchResponse> result = listingSearchService.search(
                 criteria,
-                PageRequest.of(0, 10)
+                PageRequest.of(0, 10),
+                null
         );
 
         assertThat(result.getContent()).hasSize(1);
@@ -314,7 +317,8 @@ class ListingSearchServiceIntegrationTest {
 
         Page<ListingSearchResponse> result = listingSearchService.search(
                 criteria,
-                PageRequest.of(0, 10)
+                PageRequest.of(0, 10),
+                null
         );
 
         assertThat(result.getContent()).hasSize(1);
@@ -335,7 +339,8 @@ class ListingSearchServiceIntegrationTest {
 
         Page<ListingSearchResponse> result = listingSearchService.search(
                 criteria,
-                PageRequest.of(0, 10)
+                PageRequest.of(0, 10),
+                null
         );
 
         assertThat(result.getContent()).hasSize(1);
@@ -356,7 +361,8 @@ class ListingSearchServiceIntegrationTest {
 
         Page<ListingSearchResponse> result = listingSearchService.search(
                 criteria,
-                PageRequest.of(0, 10)
+                PageRequest.of(0, 10),
+                null
         );
 
         assertThat(result.getContent()).hasSize(2);
@@ -376,7 +382,8 @@ class ListingSearchServiceIntegrationTest {
 
         Page<ListingSearchResponse> result = listingSearchService.search(
                 criteria,
-                PageRequest.of(0, 10)
+                PageRequest.of(0, 10),
+                null
         );
 
         assertThat(result.getContent()).hasSize(2);

@@ -4,9 +4,11 @@ import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.listing.bookmark.dto.BookmarkResponse;
 import com.sep.realvista.application.listing.bookmark.service.BookmarkApplicationService;
 import com.sep.realvista.application.user.service.UserApplicationService;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
 import com.sep.realvista.presentation.exception.GlobalExceptionHandler;
 import com.sep.realvista.presentation.rest.listing.bookmark.BookmarkController;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,11 +16,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -67,6 +72,14 @@ class BookmarkControllerComponentTest {
 
     @BeforeEach
     void setUp() {
+        // Set up SecurityContext with SecurityUserDetails as principal
+        SecurityUserDetails userDetails = new SecurityUserDetails(
+                TEST_USER_ID, TEST_USER_EMAIL, "password",
+                List.of(new SimpleGrantedAuthority("ROLE_BUYER")), true);
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
         // Prepare test bookmark response - created state
         mockBookmarkResponse = BookmarkResponse.builder()
                 .userId(TEST_USER_ID)
@@ -79,13 +92,14 @@ class BookmarkControllerComponentTest {
                 .actionTimestamp(LocalDateTime.now())
                 .build();
 
-        // Mock user service to return user ID when email is provided
-        when(userApplicationService.findUserIdByEmail(TEST_USER_EMAIL))
-                .thenReturn(TEST_USER_ID);
-
         // Mock bookmark service to return response
         when(bookmarkApplicationService.toggleBookmark(any(UUID.class), any(UUID.class)))
                 .thenReturn(mockBookmarkResponse);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     /**
@@ -93,7 +107,6 @@ class BookmarkControllerComponentTest {
      * Expected: 200 OK with bookmark data showing bookmarked=true
      */
     @Test
-    @WithMockUser(username = TEST_USER_EMAIL, roles = {"BUYER"})
     @DisplayName("Should create bookmark and return 200 OK with bookmarked=true")
     void toggleBookmark_whenNotBookmarked_shouldCreateAndReturn200() throws Exception {
         // Act & Assert
@@ -116,7 +129,6 @@ class BookmarkControllerComponentTest {
      * Expected: 200 OK with bookmark data showing bookmarked=false
      */
     @Test
-    @WithMockUser(username = TEST_USER_EMAIL, roles = {"BUYER"})
     @DisplayName("Should remove bookmark and return 200 OK with bookmarked=false")
     void toggleBookmark_whenBookmarked_shouldRemoveAndReturn200() throws Exception {
         // Arrange: Mock bookmark removal response
@@ -147,7 +159,6 @@ class BookmarkControllerComponentTest {
      * Expected: 200 OK with correct UUID in response
      */
     @Test
-    @WithMockUser(username = TEST_USER_EMAIL, roles = {"BUYER"})
     @DisplayName("Should handle UUID path variable correctly")
     void toggleBookmark_withValidUuid_shouldParseCorrectly() throws Exception {
         // Arrange
@@ -174,17 +185,16 @@ class BookmarkControllerComponentTest {
     }
 
     /**
-     * Test Case: User not found error
+     * Test Case: User not found error (service throws when user doesn't exist)
      * Expected: 404 Not Found
      */
     @Test
-    @WithMockUser(username = TEST_USER_EMAIL, roles = {"BUYER"})
     @DisplayName("Should return 404 when user not found")
     void toggleBookmark_whenUserNotFound_shouldReturn404() throws Exception {
-        // Arrange: Mock user not found
-        when(userApplicationService.findUserIdByEmail(TEST_USER_EMAIL))
+        // Arrange: Service throws not found when user doesn't exist in the system
+        when(bookmarkApplicationService.toggleBookmark(any(UUID.class), any(UUID.class)))
                 .thenThrow(new com.sep.realvista.domain.common.exception.ResourceNotFoundException(
-                        "User", TEST_USER_EMAIL));
+                        "User", TEST_USER_ID));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/listings/bookmark/{listingId}", TEST_LISTING_ID))
@@ -198,7 +208,6 @@ class BookmarkControllerComponentTest {
      * Expected: 404 Not Found
      */
     @Test
-    @WithMockUser(username = TEST_USER_EMAIL, roles = {"BUYER"})
     @DisplayName("Should return 404 when listing not found")
     void toggleBookmark_whenListingNotFound_shouldReturn404() throws Exception {
         // Arrange: Mock listing not found
@@ -218,7 +227,6 @@ class BookmarkControllerComponentTest {
      * Expected: All fields present in response
      */
     @Test
-    @WithMockUser(username = TEST_USER_EMAIL, roles = {"BUYER"})
     @DisplayName("Should return complete bookmark response with all required fields")
     void toggleBookmark_shouldReturnCompleteResponseStructure() throws Exception {
         // Act & Assert

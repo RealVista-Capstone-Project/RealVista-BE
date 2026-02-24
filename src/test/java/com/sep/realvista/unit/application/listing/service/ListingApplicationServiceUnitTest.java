@@ -28,6 +28,7 @@ import com.sep.realvista.domain.property.attribute.PropertyAttribute;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
+import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -84,6 +85,9 @@ class ListingApplicationServiceUnitTest {
 
         @Mock
         private CostBreakdownService costBreakdownService;
+
+        @Mock
+        private BookmarkRepository bookmarkRepository;
 
         @InjectMocks
         private ListingApplicationService listingApplicationService;
@@ -290,7 +294,7 @@ class ListingApplicationServiceUnitTest {
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
-                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null);
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
@@ -316,7 +320,7 @@ class ListingApplicationServiceUnitTest {
                 when(listingRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
                 // Act & Assert
-                assertThatThrownBy(() -> listingApplicationService.getListingDetail(nonExistentId))
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(nonExistentId, null))
                                 .isInstanceOf(ResourceNotFoundException.class)
                                 .hasMessageContaining("Listing")
                                 .hasMessageContaining(nonExistentId.toString());
@@ -334,7 +338,7 @@ class ListingApplicationServiceUnitTest {
                 when(propertyRepository.findById(propertyId)).thenReturn(Optional.empty());
 
                 // Act & Assert
-                assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId))
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId, null))
                                 .isInstanceOf(ResourceNotFoundException.class)
                                 .hasMessageContaining("Property")
                                 .hasMessageContaining(propertyId.toString());
@@ -370,7 +374,7 @@ class ListingApplicationServiceUnitTest {
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
-                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null);
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
@@ -403,7 +407,7 @@ class ListingApplicationServiceUnitTest {
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
-                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null);
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
@@ -436,7 +440,7 @@ class ListingApplicationServiceUnitTest {
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
-                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId);
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null);
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
