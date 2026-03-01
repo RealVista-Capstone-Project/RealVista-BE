@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,7 +38,7 @@ public class AppointmentController {
     private final AppointmentApplicationService appointmentApplicationService;
 
     @GetMapping("/slots")
-    @Operation(summary = "Get available time slots", 
+    @Operation(summary = "Get available time slots",
             description = "Retrieves available appointment slots for a given listing on a specific date")
     public ResponseEntity<ApiResponse<List<LocalTime>>> getAvailableSlots(
             @RequestParam("listing_id") UUID listingId,
@@ -45,11 +46,15 @@ public class AppointmentController {
     ) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
-        log.info("Request to get available slots - traceId: {}, listingId: {}, date: {}", 
-                traceId, listingId, date);
+        try {
+            log.info("Request to get available slots - traceId: {}, listingId: {}, date: {}",
+                    traceId, listingId, date);
 
-        List<LocalTime> slots = appointmentApplicationService.getAvailableSlots(listingId, date);
-        return ResponseEntity.ok(ApiResponse.success("Available slots retrieved successfully", slots));
+            List<LocalTime> slots = appointmentApplicationService.getAvailableSlots(listingId, date);
+            return ResponseEntity.ok(ApiResponse.success("Available slots retrieved successfully", slots));
+        } finally {
+            MDC.remove("traceId");
+        }
     }
 
     @PostMapping
@@ -60,19 +65,17 @@ public class AppointmentController {
     ) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
-        log.info("Request to book tour - traceId: {}, userId: {}, listingId: {}", 
-                traceId, currentUser.getUserId(), request.getListingId());
-
         try {
-            appointmentApplicationService.bookTour(currentUser.getUserId(), request);
-            
-            log.info("Tour booked successfully - traceId: {}, userId: {}, listingId: {}", 
+            log.info("Request to book tour - traceId: {}, userId: {}, listingId: {}",
                     traceId, currentUser.getUserId(), request.getListingId());
-            
-            return ResponseEntity.ok(ApiResponse.success("Tour booked successfully", null));
-        } catch (Exception e) {
-            log.error("Error booking tour - traceId: {}, error: {}", traceId, e.getMessage());
-            throw e;
+
+            appointmentApplicationService.bookTour(currentUser.getUserId(), request);
+
+            log.info("Tour booked successfully - traceId: {}, userId: {}, listingId: {}",
+                    traceId, currentUser.getUserId(), request.getListingId());
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Tour booked successfully", null));
         } finally {
             MDC.remove("traceId");
         }
