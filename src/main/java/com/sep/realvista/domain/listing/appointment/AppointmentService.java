@@ -1,5 +1,8 @@
 package com.sep.realvista.domain.listing.appointment;
 
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.common.exception.InvalidBookingRequestException;
+import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.repository.AppointmentRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
@@ -26,21 +29,19 @@ public class AppointmentService {
 
     @Transactional(readOnly = true)
     public List<LocalTime> getAvailableSlots(UUID listingId, LocalDate date) {
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new IllegalArgumentException("Listing not found"));
-
-        User owner = listing.getUser(); // Assuming listing has User relation loaded
-        if (owner == null) {
-             // Fallback if lazy loading issue, though repository should handle it if EntityGraph used
-             // For now assuming it is loaded or we fetch it. 
-             // Better to fetch owner directly if needed, but Listing.getUser() is @ManyToOne
-             owner = userRepository.findById(listing.getUserId())
-                     .orElseThrow(() -> new IllegalArgumentException("Owner not found"));
+        if (date.isBefore(LocalDate.now())) {
+            throw new InvalidBookingRequestException("Cannot query slots for a past date");
         }
+
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
+
+        User owner = userRepository.findById(listing.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("Owner", listing.getUserId()));
 
         LocalTime start = owner.getWorkingStartTime();
         LocalTime end = owner.getWorkingEndTime();
-        
+
         if (start == null) {
             start = LocalTime.of(8, 0);
         }
@@ -67,16 +68,11 @@ public class AppointmentService {
 
         List<LocalTime> availableSlots = new ArrayList<>();
         for (LocalTime slotTime : allSlots) {
-            LocalDateTime slotDateTime = date.atTime(slotTime);
-            boolean isBooked = existingAppointments.stream().anyMatch(appt -> {
-                // Check if slot overlaps with appointment
-                // Simple case: exact match of start time
-                // Extended: intersection logic if appointments vary in length
-                // For now assuming 30 min slots match
-                return appt.getStartTime().isEqual(slotDateTime)
-                        || (appt.getStartTime().isBefore(slotDateTime.plusMinutes(30))
-                        && appt.getEndTime().isAfter(slotDateTime));
-            });
+            LocalDateTime slotStart = date.atTime(slotTime);
+            LocalDateTime slotEnd = slotStart.plusMinutes(30);
+            boolean isBooked = existingAppointments.stream().anyMatch(appt ->
+                    appt.getStartTime().isBefore(slotEnd) && appt.getEndTime().isAfter(slotStart)
+            );
 
             if (!isBooked) {
                 availableSlots.add(slotTime);
@@ -88,33 +84,48 @@ public class AppointmentService {
 
     @Transactional
     public void bookTour(UUID listingId, UUID senderId, List<LocalDateTime> selectedSlots, String notes) {
-        // Simple implementation: book all selected slots as separate appointments or one? 
-        // Plan said "Select up to 3 times", usually implies alternative options.
-        // But if they are distinct slots, we create appointments.
-        // Let's create one appointment per slot for now, or maybe the user meant "preferable times"?
-        // "Select up to 3 times" -> usually implies requesting *one* tour but giving 3 options.
-        // However, the requirement says "Book Tour". 
-        // Let's assume we create PENDING appointments for all of them, and owner picks one?
-        // Or if it's "Direct Booking" (auto verify), but user said "Approved by agent".
-        // So we create 3 PENDING appointments. Agent accepts one, others might be auto-rejected? 
-        // Or just create 3 requests.
-        
         Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new IllegalArgumentException("Listing not found"));
-        
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
+
         User sender = userRepository.findById(senderId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User", senderId));
+
+        User owner = userRepository.findById(listing.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("Owner", listing.getUserId()));
+
+        if (listing.getUserId().equals(senderId)) {
+            throw new InvalidBookingRequestException("Owner cannot book a tour of their own listing");
+        }
+
+        LocalTime workStart = owner.getWorkingStartTime() != null ? owner.getWorkingStartTime() : LocalTime.of(8, 0);
+        LocalTime workEnd = owner.getWorkingEndTime() != null ? owner.getWorkingEndTime() : LocalTime.of(17, 0);
 
         for (LocalDateTime slot : selectedSlots) {
-            List<Appointment> existing = appointmentRepository.findByReceiverIdAndStartTimeBetweenAndStatusIn(
-                    listing.getUserId(),
-                    slot,
-                    slot,
+            if (slot.isBefore(LocalDateTime.now())) {
+                throw new InvalidBookingRequestException("Cannot book a tour in the past: " + slot);
+            }
+
+            LocalTime slotTime = slot.toLocalTime();
+            if (slotTime.isBefore(workStart) || slotTime.plusMinutes(30).isAfter(workEnd)) {
+                throw new InvalidBookingRequestException(
+                        "Slot " + slot + " is outside working hours (" + workStart + " - " + workEnd + ")"
+                );
+            }
+
+            LocalDateTime slotEnd = slot.plusMinutes(30);
+            List<Appointment> overlapping = appointmentRepository.findByReceiverIdAndStartTimeBetweenAndStatusIn(
+                    owner.getUserId(),
+                    slot.toLocalDate().atStartOfDay(),
+                    slot.toLocalDate().atTime(LocalTime.MAX),
                     List.of(AppointmentStatus.PENDING, AppointmentStatus.ACCEPTED)
             );
 
-            if (!existing.isEmpty()) {
-                throw new IllegalStateException("Slot " + slot + " is already booked.");
+            boolean hasConflict = overlapping.stream().anyMatch(appt ->
+                    appt.getStartTime().isBefore(slotEnd) && appt.getEndTime().isAfter(slot)
+            );
+
+            if (hasConflict) {
+                throw new BusinessConflictException("Slot " + slot + " is already booked");
             }
 
             Appointment appointment = Appointment.builder()
@@ -122,10 +133,10 @@ public class AppointmentService {
                     .listing(listing)
                     .senderId(senderId)
                     .sender(sender)
-                    .receiverId(listing.getUserId())
-                    .receiver(listing.getUser())
+                    .receiverId(owner.getUserId())
+                    .receiver(owner)
                     .startTime(slot)
-                    .endTime(slot.plusMinutes(30))
+                    .endTime(slotEnd)
                     .status(AppointmentStatus.PENDING)
                     .appointmentType(AppointmentType.TOUR)
                     .senderNotes(notes)

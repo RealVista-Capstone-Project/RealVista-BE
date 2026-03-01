@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,6 +27,7 @@ public class BookTourRequest {
     @Schema(description = "List of preferred time slots for the tour", example = "[\"2023-10-27T10:00:00\"]")
     @JsonProperty("selected_slots")
     @NotEmpty(message = "At least one time slot must be selected")
+    @Size(max = 3, message = "Maximum 3 time slots allowed")
     private List<LocalDateTime> selectedSlots;
 
     @Schema(description = "Optional notes for the agent/owner", example = "I prefer a morning tour if possible.")
