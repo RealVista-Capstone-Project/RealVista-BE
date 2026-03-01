@@ -3,8 +3,9 @@ package com.sep.realvista.presentation.rest.appointment;
 import com.sep.realvista.application.appointment.dto.BookTourRequest;
 import com.sep.realvista.application.appointment.service.AppointmentApplicationService;
 import com.sep.realvista.application.common.dto.ApiResponse;
-import com.sep.realvista.infrastructure.security.UserPrincipal;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/appointments")
 @RequiredArgsConstructor
 @Tag(name = "Appointment Management", description = "Endpoints for scheduling and managing property tours")
+@SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 public class AppointmentController {
 
@@ -54,7 +56,7 @@ public class AppointmentController {
     @Operation(summary = "Book a tour", description = "Schedule a property tour for a listing")
     public ResponseEntity<ApiResponse<Void>> bookTour(
             @Valid @RequestBody BookTourRequest request,
-            @AuthenticationPrincipal UserPrincipal currentUser
+            @AuthenticationPrincipal SecurityUserDetails currentUser
     ) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
