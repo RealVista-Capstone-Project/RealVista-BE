@@ -17,6 +17,8 @@ import com.sep.realvista.domain.conversation.ConversationRepository;
 import com.sep.realvista.domain.conversation.Message;
 import com.sep.realvista.domain.conversation.MessageRepository;
 import com.sep.realvista.domain.conversation.MessageType;
+import com.sep.realvista.domain.conversation.UserConversation;
+import com.sep.realvista.domain.conversation.UserConversationRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +57,9 @@ class ConversationApplicationServiceTest {
 
     @Mock
     private MessageRepository messageRepository;
+
+    @Mock
+    private UserConversationRepository userConversationRepository;
 
     @Mock
     private UserDomainService userDomainService;
@@ -265,6 +270,8 @@ class ConversationApplicationServiceTest {
 
             when(conversationRepository.findById(conversationId))
                     .thenReturn(Optional.of(conversation));
+            when(userConversationRepository.findByConversationIdAndUserId(conversationId, userId1))
+                    .thenReturn(Optional.of(UserConversation.builder().conversationId(conversationId).userId(userId1).build()));
             when(messageRepository.findLatestMessages(conversationId, 51))
                     .thenReturn(messages);
             when(messageMapper.toSenderInfo(any(User.class)))
@@ -285,7 +292,7 @@ class ConversationApplicationServiceTest {
 
             // Act
             MessagePaginationResponse result = conversationApplicationService
-                    .getConversationMessages(conversationId, null, null, null);
+                    .getConversationMessages(conversationId, userId1, null, null, null);
 
             // Assert
             assertThat(result).isNotNull();
@@ -305,6 +312,8 @@ class ConversationApplicationServiceTest {
 
             when(conversationRepository.findById(conversationId))
                     .thenReturn(Optional.of(conversation));
+            when(userConversationRepository.findByConversationIdAndUserId(conversationId, userId1))
+                    .thenReturn(Optional.of(UserConversation.builder().conversationId(conversationId).userId(userId1).build()));
             when(messageRepository.findMessagesBeforeCursor(eq(conversationId), eq(beforeCursor), eq(51)))
                     .thenReturn(messages);
             when(messageMapper.toSenderInfo(any(User.class)))
@@ -321,7 +330,7 @@ class ConversationApplicationServiceTest {
 
             // Act
             MessagePaginationResponse result = conversationApplicationService
-                    .getConversationMessages(conversationId, null, beforeCursor, null);
+                    .getConversationMessages(conversationId, userId1, null, beforeCursor, null);
 
             // Assert
             assertThat(result).isNotNull();
@@ -338,6 +347,8 @@ class ConversationApplicationServiceTest {
 
             when(conversationRepository.findById(conversationId))
                     .thenReturn(Optional.of(conversation));
+            when(userConversationRepository.findByConversationIdAndUserId(conversationId, userId1))
+                    .thenReturn(Optional.of(UserConversation.builder().conversationId(conversationId).userId(userId1).build()));
             when(messageRepository.findMessagesAfterCursor(eq(conversationId), eq(afterCursor), eq(51)))
                     .thenReturn(messages);
             when(messageMapper.toSenderInfo(any(User.class)))
@@ -354,7 +365,7 @@ class ConversationApplicationServiceTest {
 
             // Act
             MessagePaginationResponse result = conversationApplicationService
-                    .getConversationMessages(conversationId, null, null, afterCursor);
+                    .getConversationMessages(conversationId, userId1, null, null, afterCursor);
 
             // Assert
             assertThat(result).isNotNull();
@@ -371,10 +382,12 @@ class ConversationApplicationServiceTest {
 
             when(conversationRepository.findById(conversationId))
                     .thenReturn(Optional.of(conversation));
+            when(userConversationRepository.findByConversationIdAndUserId(conversationId, userId1))
+                    .thenReturn(Optional.of(UserConversation.builder().conversationId(conversationId).userId(userId1).build()));
 
             // Act & Assert
             assertThatThrownBy(() -> conversationApplicationService
-                    .getConversationMessages(conversationId, null, beforeCursor, afterCursor))
+                    .getConversationMessages(conversationId, userId1, null, beforeCursor, afterCursor))
                     .isInstanceOf(BusinessConflictException.class)
                     .hasMessageContaining("Cannot use both 'before' and 'after' cursors simultaneously");
 
@@ -394,7 +407,7 @@ class ConversationApplicationServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> conversationApplicationService
-                    .getConversationMessages(conversationId, null, null, null))
+                    .getConversationMessages(conversationId, userId1, null, null, null))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("Conversation not found");
 
@@ -408,12 +421,14 @@ class ConversationApplicationServiceTest {
             // Arrange
             when(conversationRepository.findById(conversationId))
                     .thenReturn(Optional.of(conversation));
+            when(userConversationRepository.findByConversationIdAndUserId(conversationId, userId1))
+                    .thenReturn(Optional.of(UserConversation.builder().conversationId(conversationId).userId(userId1).build()));
             when(messageRepository.findLatestMessages(conversationId, 51))
                     .thenReturn(new ArrayList<>());
 
             // Act
             MessagePaginationResponse result = conversationApplicationService
-                    .getConversationMessages(conversationId, null, null, null);
+                    .getConversationMessages(conversationId, userId1, null, null, null);
 
             // Assert
             assertThat(result).isNotNull();
@@ -429,6 +444,8 @@ class ConversationApplicationServiceTest {
 
             when(conversationRepository.findById(conversationId))
                     .thenReturn(Optional.of(conversation));
+            when(userConversationRepository.findByConversationIdAndUserId(conversationId, userId1))
+                    .thenReturn(Optional.of(UserConversation.builder().conversationId(conversationId).userId(userId1).build()));
             when(messageRepository.findLatestMessages(conversationId, 101))
                     .thenReturn(messages);
             when(messageMapper.toSenderInfo(any(User.class)))
@@ -445,7 +462,7 @@ class ConversationApplicationServiceTest {
 
             // Act
             MessagePaginationResponse result = conversationApplicationService
-                    .getConversationMessages(conversationId, 150, null, null);
+                    .getConversationMessages(conversationId, userId1, 150, null, null);
 
             // Assert
             assertThat(result).isNotNull();
@@ -461,6 +478,8 @@ class ConversationApplicationServiceTest {
 
             when(conversationRepository.findById(conversationId))
                     .thenReturn(Optional.of(conversation));
+            when(userConversationRepository.findByConversationIdAndUserId(conversationId, userId1))
+                    .thenReturn(Optional.of(UserConversation.builder().conversationId(conversationId).userId(userId1).build()));
             when(messageRepository.findLatestMessages(conversationId, 51))
                     .thenReturn(messages);
             when(messageMapper.toSenderInfo(any(User.class)))
@@ -477,7 +496,7 @@ class ConversationApplicationServiceTest {
 
             // Act
             MessagePaginationResponse result = conversationApplicationService
-                    .getConversationMessages(conversationId, null, null, null);
+                    .getConversationMessages(conversationId, userId1, null, null, null);
 
             // Assert
             assertThat(result).isNotNull();
@@ -492,6 +511,8 @@ class ConversationApplicationServiceTest {
 
             when(conversationRepository.findById(conversationId))
                     .thenReturn(Optional.of(conversation));
+            when(userConversationRepository.findByConversationIdAndUserId(conversationId, userId1))
+                    .thenReturn(Optional.of(UserConversation.builder().conversationId(conversationId).userId(userId1).build()));
             when(messageRepository.findLatestMessages(eq(conversationId), eq(51)))
                     .thenReturn(messages);
             when(messageMapper.toSenderInfo(any(User.class)))
@@ -508,7 +529,7 @@ class ConversationApplicationServiceTest {
 
             // Act
             MessagePaginationResponse result = conversationApplicationService
-                    .getConversationMessages(conversationId, null, null, null);
+                    .getConversationMessages(conversationId, userId1, null, null, null);
 
             // Assert
             assertThat(result).isNotNull();
