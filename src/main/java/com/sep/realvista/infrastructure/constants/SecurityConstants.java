@@ -44,7 +44,8 @@ public final class SecurityConstants {
                 "/login/oauth2/**",
                 "/ws/**",
                 "api/test/**",
-                "/api/v1/test/**"
+                "/api/v1/test/**",
+                "/api/v1/map/**"
         };
 
         private PublicEndpoints() {
@@ -90,13 +91,33 @@ public final class SecurityConstants {
 
     /**
      * CORS configuration.
+     * Allowed origins can be extended via the CORS_ALLOWED_ORIGINS environment variable
+     * (comma-separated list, e.g. "http://localhost:3000,http://152.42.235.208:8080").
      */
     public static final class Cors {
-        public static final List<String> ALLOWED_ORIGINS = List.of("http://localhost:3000");
+        public static final List<String> DEFAULT_ORIGINS = List.of("http://localhost:3000");
         public static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
         public static final List<String> ALLOWED_HEADERS = List.of("Authorization", "Content-Type", "Accept", "Origin");
         public static final List<String> EXPOSED_HEADERS = List.of("Authorization", "Content-Disposition");
         public static final long MAX_AGE_SECONDS = 3600L;
+
+        /**
+         * Builds the allowed origins list from DEFAULT_ORIGINS + CORS_ALLOWED_ORIGINS env var.
+         */
+        public static List<String> getAllowedOrigins() {
+            String extra = System.getenv("CORS_ALLOWED_ORIGINS");
+            if (extra == null || extra.isBlank()) {
+                return DEFAULT_ORIGINS;
+            }
+            List<String> origins = new java.util.ArrayList<>(DEFAULT_ORIGINS);
+            for (String origin : extra.split(",")) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty() && !origins.contains(trimmed)) {
+                    origins.add(trimmed);
+                }
+            }
+            return List.copyOf(origins);
+        }
 
         private Cors() {
             throw new AssertionError("Cannot instantiate constants class");

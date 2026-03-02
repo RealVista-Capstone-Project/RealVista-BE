@@ -16,6 +16,9 @@ spring:
           auth: true
           starttls:
             enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
@@ -59,9 +62,10 @@ spring:
   # Cache Configuration
   cache:
     type: simple
-    cache-names: 
+    cache-names:
       - users
       - listings
+      - similarListings
 
   # Server Configuration
   server:
