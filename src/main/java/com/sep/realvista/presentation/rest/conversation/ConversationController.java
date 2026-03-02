@@ -9,18 +9,19 @@ import com.sep.realvista.application.conversation.dto.response.SendMessageRespon
 import com.sep.realvista.application.conversation.service.ConversationApplicationService;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
-import com.sep.realvista.presentation.common.util.ControllerUtils;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,9 +34,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * REST Controller for Conversation operations.
- */
 @RestController
 @RequestMapping("/api/v1/conversations")
 @RequiredArgsConstructor
@@ -45,7 +43,6 @@ import java.util.UUID;
 public class ConversationController {
 
     private final ConversationApplicationService conversationApplicationService;
-    private final ControllerUtils controllerUtils;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserDomainService userDomainService;
 
@@ -54,19 +51,21 @@ public class ConversationController {
             description = "Retrieves all conversations for the authenticated user, "
                     + "sorted by last message time (newest first).")
     public ResponseEntity<ApiResponse<List<ConversationListItemResponse>>> getUserConversations(
-            Authentication authentication
+            @AuthenticationPrincipal SecurityUserDetails currentUser
     ) {
-        String traceId = controllerUtils.initializeTraceId();
-        User currentUser = controllerUtils.getCurrentUser(authentication);
+        String traceId = initializeTraceId();
+        try {
+            log.info("Listing conversations - traceId: {}, userId: {}",
+                    traceId, currentUser.getUserId());
 
-        log.info("Listing conversations - traceId: {}, user: {}",
-                traceId, currentUser.getEmail());
+            List<ConversationListItemResponse> conversations = conversationApplicationService
+                    .getUserConversations(currentUser.getUserId());
 
-        List<ConversationListItemResponse> conversations = conversationApplicationService
-                .getUserConversations(currentUser.getUserId());
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Conversations retrieved successfully", conversations));
+            return ResponseEntity.ok(
+                    ApiResponse.success("Conversations retrieved successfully", conversations));
+        } finally {
+            MDC.clear();
+        }
     }
 
     @GetMapping("/users/{otherUserId}")
@@ -75,19 +74,21 @@ public class ConversationController {
                     + "and another user specified by ID.")
     public ResponseEntity<ApiResponse<ConversationResponse>> getConversationBetweenUsers(
             @PathVariable UUID otherUserId,
-            Authentication authentication
+            @AuthenticationPrincipal SecurityUserDetails currentUser
     ) {
-        String traceId = controllerUtils.initializeTraceId();
-        User currentUser = controllerUtils.getCurrentUser(authentication);
+        String traceId = initializeTraceId();
+        try {
+            log.info("Getting conversation - traceId: {}, currentUserId: {}, otherUser: {}",
+                    traceId, currentUser.getUserId(), otherUserId);
 
-        log.info("Getting conversation - traceId: {}, currentUser: {}, otherUser: {}",
-                traceId, currentUser.getEmail(), otherUserId);
+            ConversationResponse conversation = conversationApplicationService
+                    .getConversationBetweenUsers(currentUser.getUserId(), otherUserId);
 
-        ConversationResponse conversation = conversationApplicationService
-                .getConversationBetweenUsers(currentUser.getUserId(), otherUserId);
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Conversation retrieved successfully", conversation));
+            return ResponseEntity.ok(
+                    ApiResponse.success("Conversation retrieved successfully", conversation));
+        } finally {
+            MDC.clear();
+        }
     }
 
     @GetMapping("/{conversationId}/messages")
@@ -102,23 +103,22 @@ public class ConversationController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime before,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime after,
-            Authentication authentication
+            @AuthenticationPrincipal SecurityUserDetails currentUser
     ) {
-        String traceId = controllerUtils.initializeTraceId();
-        String currentUserEmail = authentication.getName();
+        String traceId = initializeTraceId();
+        try {
+            log.info("Getting messages - traceId: {}, conversationId: {}, "
+                            + "limit: {}, before: {}, after: {}, userId: {}",
+                    traceId, conversationId, limit, before, after, currentUser.getUserId());
 
-        log.info("Getting messages - traceId: {}, conversationId: {}, "
-                        + "limit: {}, before: {}, after: {}, user: {}",
-                traceId, conversationId, limit, before, after, currentUserEmail);
+            MessagePaginationResponse response = conversationApplicationService
+                    .getConversationMessages(conversationId, currentUser.getUserId(), limit, before, after);
 
-        // Verify user is authenticated
-        controllerUtils.getCurrentUser(authentication);
-
-        MessagePaginationResponse response = conversationApplicationService
-                .getConversationMessages(conversationId, limit, before, after);
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Messages retrieved successfully", response));
+            return ResponseEntity.ok(
+                    ApiResponse.success("Messages retrieved successfully", response));
+        } finally {
+            MDC.clear();
+        }
     }
 
     @PostMapping("/messages")
@@ -129,37 +129,51 @@ public class ConversationController {
                     + "Supports TEXT, LISTING_CARD, and CONTRACT_CARD message types.")
     public ResponseEntity<ApiResponse<SendMessageResponse>> sendMessage(
             @Valid @RequestBody SendMessageRequest request,
-            Authentication authentication
+            @AuthenticationPrincipal SecurityUserDetails currentUser
     ) {
-        String traceId = controllerUtils.initializeTraceId();
-        User currentUser = controllerUtils.getCurrentUser(authentication);
-
-        log.info("Send message request - traceId: {}, from: {}, to: {}, type: {}",
-                traceId, currentUser.getEmail(), request.getRecipientUserId(),
-                request.getMessageType());
-
-        SendMessageResponse response = conversationApplicationService
-                .sendMessage(currentUser.getUserId(), request);
-
-        // Broadcast via WebSocket for real-time updates to both parties
+        String traceId = initializeTraceId();
         try {
+            log.info("Send message request - traceId: {}, from: {}, to: {}, type: {}",
+                    traceId, currentUser.getUserId(), request.getRecipientUserId(),
+                    request.getMessageType());
+
+            SendMessageResponse response = conversationApplicationService
+                    .sendMessage(currentUser.getUserId(), request);
+
+            broadcastViaWebSocket(currentUser.getUserId(), request.getRecipientUserId(), response);
+
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Message sent successfully", response));
+        } finally {
+            MDC.clear();
+        }
+    }
+
+    private void broadcastViaWebSocket(UUID senderId, UUID recipientId, SendMessageResponse response) {
+        try {
+            User sender = userDomainService.getUserOrThrow(senderId);
             messagingTemplate.convertAndSendToUser(
-                    currentUser.getEmail().getValue(),
+                    sender.getEmail().getValue(),
                     "/queue/messages",
                     response
             );
-            User recipient = userDomainService.getUserOrThrow(request.getRecipientUserId());
+
+            User recipient = userDomainService.getUserOrThrow(recipientId);
             messagingTemplate.convertAndSendToUser(
                     recipient.getEmail().getValue(),
                     "/queue/messages",
                     response
             );
         } catch (Exception e) {
-            log.warn("Failed to broadcast message via WebSocket: {}", e.getMessage());
+            log.error("Failed to deliver message via WebSocket - senderId: {}, recipientId: {}: {}",
+                    senderId, recipientId, e.getMessage(), e);
         }
+    }
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Message sent successfully", response));
+    private String initializeTraceId() {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+        return traceId;
     }
 }

@@ -23,6 +23,7 @@ import com.sep.realvista.domain.user.UserDomainService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -157,20 +158,23 @@ public class ConversationApplicationService {
      * and newer messages (refresh).
      *
      * @param conversationId the conversation ID
+     * @param userId         the authenticated user's ID (for authorization)
      * @param limit          number of messages to return (max 100)
      * @param before         cursor for loading older messages
      * @param after          cursor for loading newer messages
      * @return paginated message response with cursor metadata
+     * @throws AccessDeniedException if user is not a participant of the conversation
      */
     @Transactional(readOnly = true)
     public MessagePaginationResponse getConversationMessages(
             UUID conversationId,
+            UUID userId,
             Integer limit,
             LocalDateTime before,
             LocalDateTime after
     ) {
-        log.info("Getting messages for conversation {} - limit: {}, before: {}, after: {}",
-                conversationId, limit, before, after);
+        log.info("Getting messages for conversation {} - userId: {}, limit: {}, before: {}, after: {}",
+                conversationId, userId, limit, before, after);
 
         // Validate conversation exists
         conversationRepository.findById(conversationId)
@@ -178,6 +182,11 @@ public class ConversationApplicationService {
                         .ResourceNotFoundException(
                         "Conversation",
                         "Conversation not found: " + conversationId));
+
+        // Verify user is a participant of this conversation
+        userConversationRepository.findByConversationIdAndUserId(conversationId, userId)
+                .orElseThrow(() -> new AccessDeniedException(
+                        "User is not a participant of this conversation"));
 
         // Validate cursor usage (cannot use both before and after)
         if (before != null && after != null) {
