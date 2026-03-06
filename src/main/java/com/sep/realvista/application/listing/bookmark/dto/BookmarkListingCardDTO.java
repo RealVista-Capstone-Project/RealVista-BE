@@ -27,6 +27,8 @@ public class BookmarkListingCardDTO {
     @JsonProperty("listing_id")
     private UUID listingId;
 
+    private String slug;
+
     private String title;
 
     private BigDecimal price;

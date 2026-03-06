@@ -57,6 +57,7 @@ public interface BookmarkMapper {
 
         BookmarkListingCardDTO.BookmarkListingCardDTOBuilder builder = BookmarkListingCardDTO.builder()
                 .listingId(listing.getListingId())
+                .slug(listing.getSlug())
                 .title(listing.getName())
                 .price(listing.getPrice())
                 .listingType(listing.getListingType())
