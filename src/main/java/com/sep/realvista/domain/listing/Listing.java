@@ -216,4 +216,16 @@ public class Listing extends BaseEntity {
         this.user = user;
     }
 
+    /**
+     * Update slug for SEO-friendly URLs
+     *
+     * @param slug the new slug value
+     */
+    public void updateSlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            throw new IllegalArgumentException("Slug cannot be empty");
+        }
+        this.slug = slug;
+    }
+
 }
