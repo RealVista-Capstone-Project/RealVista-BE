@@ -124,6 +124,31 @@ public class ListingApplicationService {
         }
 
         /**
+         * Get listing detail by slug.
+         * Returns complete listing information using SEO-friendly slug.
+         *
+         * @param slug the listing slug (format: {name}-{short-uuid})
+         * @param userId optional user ID for bookmark status
+         * @return complete listing detail response
+         * @throws ResourceNotFoundException if listing not found
+         */
+        @Cacheable(value = "listings", key = "'slug_' + #slug + '_' + (#userId != null ? #userId.toString() : 'anon')")
+        @Transactional(readOnly = true)
+        public ListingDetailResponse getListingBySlug(String slug, UUID userId) {
+                log.info("Fetching listing detail for slug: {}", slug);
+
+                // Find listing by slug
+                Listing listing = listingRepository.findBySlug(slug)
+                                .orElseThrow(() -> {
+                                        log.error("Listing not found with slug: {}", slug);
+                                        return new ResourceNotFoundException("Listing with slug: " + slug);
+                                });
+
+                // Delegate to getListingDetail for the rest
+                return getListingDetail(listing.getListingId(), userId);
+        }
+
+        /**
          * Get similar listings based on property type, price, area, and common
          * attributes.
          * Returns listings sorted by similarity score (descending) and published date
