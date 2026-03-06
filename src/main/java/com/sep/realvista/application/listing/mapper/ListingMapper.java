@@ -102,6 +102,8 @@ public interface ListingMapper {
             if (response.getProperty() != null) {
                 Map<String, Object> attributeMap = attributeValues.stream()
                         .filter(pav -> pav.getPropertyAttribute() != null)
+                        .filter(pav -> pav.getPropertyAttribute().getCode() != null)
+                        .filter(pav -> getAttributeValue(pav) != null)
                         .collect(Collectors.toMap(
                                 pav -> pav.getPropertyAttribute().getCode(),
                                 pav -> (Object) getAttributeValue(pav),
