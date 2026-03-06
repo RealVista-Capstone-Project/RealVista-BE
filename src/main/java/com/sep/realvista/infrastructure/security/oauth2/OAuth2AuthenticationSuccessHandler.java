@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -75,17 +76,25 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             // Find or create user
             User user = findOrCreateUser(email, firstName, lastName, avatarUrl);
 
-            // Generate JWT token
-            String jwtToken = tokenService.generateToken(
+            // Extract roles from user
+            java.util.List<String> roles = user.getUserRoles().stream()
+                    .filter(ur -> ur.getRole() != null)
+                    .map(ur -> ur.getRole().getRoleCode().name())
+                    .toList();
+
+            // Generate JWT token with roles in claims
+            java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+            extraClaims.put("roles", roles);
+            org.springframework.security.core.userdetails.UserDetails userDetails =
                     new org.springframework.security.core.userdetails.User(
                             user.getEmail().getValue(),
                             user.getPasswordHash(),
                             java.util.Collections.emptyList()
-                    )
-            );
+                    );
+            String jwtToken = tokenService.generateToken(extraClaims, userDetails);
 
-            // Redirect to frontend with token
-            String redirectUrl = buildSuccessRedirectUrl(jwtToken, user.getUserId(), email);
+            // Redirect to frontend with token and roles
+            String redirectUrl = buildSuccessRedirectUrl(jwtToken, user.getUserId(), email, roles);
 
             log.info("Redirecting to: {}", redirectUrl);
             response.sendRedirect(redirectUrl);
@@ -129,13 +138,14 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         return savedUser;
     }
 
-    private String buildSuccessRedirectUrl(String jwtToken, UUID userId, String email) {
+    private String buildSuccessRedirectUrl(String jwtToken, UUID userId, String email, List<String> roles) {
         return UriComponentsBuilder
                 .fromUriString(frontendUrl)
                 .path(SecurityConstants.OAuth2.CALLBACK_PATH)
                 .queryParam(SecurityConstants.OAuth2.PARAM_ACCESS_TOKEN, jwtToken)
                 .queryParam(SecurityConstants.OAuth2.PARAM_USER_ID, userId)
                 .queryParam(SecurityConstants.OAuth2.PARAM_EMAIL, email)
+                .queryParam(SecurityConstants.OAuth2.PARAM_ROLES, String.join(",", roles))
                 .build()
                 .toUriString();
     }

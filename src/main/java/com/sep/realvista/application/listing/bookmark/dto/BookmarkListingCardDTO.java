@@ -1,8 +1,9 @@
-package com.sep.realvista.application.listing.dto;
+package com.sep.realvista.application.listing.bookmark.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,30 +14,43 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Response DTO for bookmarked listing card display.
+ * Contains essential information to display a favorite/bookmarked listing card.
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ListingSearchResponse {
+public class BookmarkListingCardDTO {
+
+    @JsonProperty("listing_id")
     private UUID listingId;
-    private String name;
-    private String slug;
-    private ListingType listingType;
-    private ListingStatus status;
+
+    private String title;
+
     private BigDecimal price;
-    private Double area; // Usable size
+
+    @JsonProperty("listing_type")
+    private ListingType listingType;
+
+    @JsonProperty("is_negotiable")
+    private Boolean isNegotiable;
+
+    @JsonProperty("primary_image_url")
+    private String primaryImageUrl;
 
     @JsonProperty("street_address")
     private String streetAddress;
 
-    @JsonProperty("ward_name")
-    private String wardName;
+    @JsonProperty("city_name")
+    private String cityName;
 
     @JsonProperty("district_name")
     private String districtName;
 
-    @JsonProperty("city_name")
-    private String cityName;
+    @JsonProperty("ward_name")
+    private String wardName;
 
     @JsonProperty("full_address")
     public String getFullAddress() {
@@ -65,20 +79,22 @@ public class ListingSearchResponse {
         return address.toString();
     }
 
-    // NOTE: These attributes will be dynamic, not only bedrooms and bathrooms
+    @JsonProperty("property_type_name")
+    private String propertyTypeName;
+
+    @JsonProperty("property_category_name")
+    private String propertyCategoryName;
+
     private List<PropertyAttributeDTO> attributes;
-    private String thumbnail; // Main image
-    private LocalDateTime publishedAt;
-    
-    // Boost info
-    @JsonProperty("is_boosted")
-    private Boolean isBoosted;
-    private String boostPackage; // e.g., "FEATURED", "HOT_BADGE"
 
-    // User info (for display/sorting context)
-    private String userType; // AGENT or USER
+    @JsonProperty("bookmarked_at")
+    private LocalDateTime bookmarkedAt;
 
-    // Bookmark status for the requesting user (false for anonymous)
-    @JsonProperty("is_favorite")
-    private Boolean isFavorite;
+    @JsonProperty("area_sqft")
+    private BigDecimal areaSqft;
+
+    @JsonProperty("usable_size_m2")
+    private BigDecimal usableSizeM2;
+
+    private ListingStatus status;
 }

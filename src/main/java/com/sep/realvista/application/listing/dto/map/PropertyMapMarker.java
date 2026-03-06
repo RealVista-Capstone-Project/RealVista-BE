@@ -1,5 +1,7 @@
 package com.sep.realvista.application.listing.dto.map;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.domain.listing.ListingType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -32,7 +35,44 @@ public class PropertyMapMarker {
     /**
      * Street address of the property.
      */
+    @JsonProperty("street_address")
     private String streetAddress;
+
+    @JsonProperty("ward_name")
+    private String wardName;
+
+    @JsonProperty("district_name")
+    private String districtName;
+
+    @JsonProperty("city_name")
+    private String cityName;
+
+    @JsonProperty("full_address")
+    public String getFullAddress() {
+        StringBuilder address = new StringBuilder();
+        if (streetAddress != null && !streetAddress.isBlank()) {
+            address.append(streetAddress);
+        }
+        if (wardName != null && !wardName.isBlank()) {
+            if (address.length() > 0) {
+                address.append(", ");
+            }
+            address.append(wardName);
+        }
+        if (districtName != null && !districtName.isBlank()) {
+            if (address.length() > 0) {
+                address.append(", ");
+            }
+            address.append(districtName);
+        }
+        if (cityName != null && !cityName.isBlank()) {
+            if (address.length() > 0) {
+                address.append(", ");
+            }
+            address.append(cityName);
+        }
+        return address.toString();
+    }
 
     /**
      * Price and listing type for display.
@@ -63,14 +103,14 @@ public class PropertyMapMarker {
     private String propertyType;
 
     /**
-     * Location name (e.g., "District 1, Ho Chi Minh City").
-     */
-    private String locationName;
-
-    /**
      * Indicates if this property is marked as favorite by the current user.
      */
     private Boolean isFavorite;
+
+    /**
+     * Dynamic property attributes for card display.
+     */
+    private List<PropertyAttributeDTO> attributes;
 
     /**
      * Nested DTO for coordinates.
