@@ -47,6 +47,16 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
+    public Optional<Listing> findBySlug(String slug) {
+        return jpaRepository.findBySlugAndDeletedFalse(slug);
+    }
+
+    @Override
+    public List<Listing> findAll() {
+        return jpaRepository.findByDeletedFalse();
+    }
+
+    @Override
     public List<Listing> findByPropertyId(UUID propertyId) {
         return jpaRepository.findByPropertyId(propertyId);
     }
