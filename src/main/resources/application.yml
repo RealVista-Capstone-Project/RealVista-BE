@@ -66,13 +66,7 @@ spring:
       - users
       - listings
       - similarListings
-
-  # Server Configuration
-  server:
-    port: ${SERVER_PORT:8080}
-    error:
-      include-message: always
-      include-binding-errors: always
+      - recommendations
 
   # Security Configuration
   security:
@@ -96,6 +90,22 @@ spring:
             client-id: ${GOOGLE_ANDROID_CLIENT_ID:your_google_android_client_id}
           ios:
             client-id: ${GOOGLE_IOS_CLIENT_ID:your_google_ios_client_id}
+
+# ── Server Configuration ──
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# ── AI Microservice Configuration ──
+realvista:
+  ai:
+    service-url: ${AI_SERVICE_URL:http://localhost:3001}
+    api-key: ${AI_SERVICE_API_KEY:your-secure-internal-api-key}
+  recommendation:
+    threshold: ${RECOMMENDATION_THRESHOLD:5}
+    default-limit: ${RECOMMENDATION_DEFAULT_LIMIT:10}
 
 # Actuator Configuration
 management:
