@@ -48,6 +48,43 @@ public class RecommendationController {
             description = "Receives user behavior data (views, clicks, bookmarks) from PostHog "
                     + "and forwards them to the AI microservice for vector storage in Qdrant."
     )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                    mediaType = "application/json",
+                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                            value = """
+                                    {
+                                      "user_id": "will_be_overridden",
+                                      "events": [
+                                        {
+                                          "event_type": "view",
+                                          "listing_id": "LST-1001",
+                                          "duration_seconds": 120,
+                                          "metadata": {
+                                            "source": "homepage",
+                                            "scroll_depth_percent": 80
+                                          }
+                                        },
+                                        {
+                                          "event_type": "click",
+                                          "listing_id": "LST-1002",
+                                          "duration_seconds": 10,
+                                          "metadata": {
+                                            "source": "search_results",
+                                            "position": 3
+                                          }
+                                        },
+                                        {
+                                          "event_type": "bookmark",
+                                          "listing_id": "LST-1003",
+                                          "duration_seconds": null,
+                                          "metadata": null
+                                        }
+                                      ]
+                                    }"""
+                    )
+            )
+    )
     public ResponseEntity<ApiResponse<Map<String, Object>>> ingestBehavior(
             @Valid @RequestBody UserBehaviorRequest request,
             Authentication authentication) {
