@@ -1,6 +1,7 @@
 package com.sep.realvista.infrastructure.persistence.property.attribute;
 
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,8 +12,10 @@ import java.util.UUID;
 
 /**
  * Spring Data JPA repository for PropertyAttributeValue entity.
+ * Extends both JpaRepository (for Spring Data) and PropertyAttributeValueRepository (domain interface).
  */
-public interface PropertyAttributeValueJpaRepository extends JpaRepository<PropertyAttributeValue, UUID> {
+public interface PropertyAttributeValueJpaRepository
+        extends JpaRepository<PropertyAttributeValue, UUID>, PropertyAttributeValueRepository {
 
         @Query("SELECT pav FROM PropertyAttributeValue pav "
                         + "LEFT JOIN FETCH pav.propertyAttribute pa "
