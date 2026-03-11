@@ -29,7 +29,7 @@ import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
-import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
+import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -75,7 +75,7 @@ class ListingApplicationServiceUnitTest {
         private PropertyRepository propertyRepository;
 
         @Mock
-        private PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
+        private PropertyAttributeValueRepository propertyAttributeValueRepository;
 
         @Mock
         private PropertyAmenityRepository propertyAmenityRepository;
@@ -104,6 +104,8 @@ class ListingApplicationServiceUnitTest {
 
         @BeforeEach
         void setUp() {
+                setField(listingApplicationService, "self", listingApplicationService);
+
                 listingId = UUID.randomUUID();
                 propertyId = UUID.randomUUID();
                 userId = UUID.randomUUID();
@@ -284,7 +286,7 @@ class ListingApplicationServiceUnitTest {
                 when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
                 when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
                                 .thenReturn(List.of(testMedia));
-                when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
                 when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(new ArrayList<>());
@@ -305,7 +307,7 @@ class ListingApplicationServiceUnitTest {
                 verify(listingRepository).findById(listingId);
                 verify(propertyRepository).findById(propertyId);
                 verify(listingMediaRepository).findByListingIdOrderByDisplayOrderAsc(listingId);
-                verify(propertyAttributeValueJpaRepository).findByPropertyIdWithAttribute(propertyId);
+                verify(propertyAttributeValueRepository).findByPropertyIdWithAttribute(propertyId);
                 verify(propertyAmenityRepository).findByPropertyIdWithAmenity(propertyId);
                 verify(listingMapper).toDetailResponseWithMediaAttributesAndAmenities(
                                 any(Listing.class), anyList(), anyList(), anyList());
@@ -364,7 +366,7 @@ class ListingApplicationServiceUnitTest {
                 when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
                 when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
                                 .thenReturn(List.of(testMedia));
-                when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
                 when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(new ArrayList<>());
@@ -397,7 +399,7 @@ class ListingApplicationServiceUnitTest {
                 when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
                 when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
                                 .thenReturn(List.of(testMedia));
-                when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
                 when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(mockAmenities);
@@ -430,7 +432,7 @@ class ListingApplicationServiceUnitTest {
                 when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
                 when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
                                 .thenReturn(List.of(testMedia));
-                when(propertyAttributeValueJpaRepository.findByPropertyIdWithAttribute(propertyId))
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
                                 .thenReturn(new ArrayList<>());
                 when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(new ArrayList<>());
@@ -605,7 +607,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 5)).thenReturn(mockSimilarListings);
-                when(propertyAttributeValueJpaRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
                                 .thenReturn(mockAttributes);
 
                 // Act
@@ -633,7 +635,7 @@ class ListingApplicationServiceUnitTest {
 
                 verify(listingRepository).existsById(listingId);
                 verify(listingRepository).findSimilarListings(listingId, 5);
-                verify(propertyAttributeValueJpaRepository).findRequiredAttributesByPropertyIds(any());
+                verify(propertyAttributeValueRepository).findRequiredAttributesByPropertyIds(any());
         }
 
         @Test
@@ -656,7 +658,7 @@ class ListingApplicationServiceUnitTest {
                 verify(listingRepository).findSimilarListings(listingId, 5);
                 // JPA repository not called when similar listings is empty (early return in
                 // fetchRequiredAttributes)
-                verify(propertyAttributeValueJpaRepository, never()).findRequiredAttributesByPropertyIds(any());
+                verify(propertyAttributeValueRepository, never()).findRequiredAttributesByPropertyIds(any());
         }
 
         @Test
@@ -681,7 +683,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 1)).thenReturn(mockSimilarListings.subList(0, 1));
-                when(propertyAttributeValueJpaRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
                                 .thenReturn(new ArrayList<>());
 
                 // Act
@@ -701,7 +703,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 10)).thenReturn(mockSimilarListings);
-                when(propertyAttributeValueJpaRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
                                 .thenReturn(mockAttributes);
 
                 // Act
@@ -721,7 +723,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 5)).thenReturn(mockSimilarListings);
-                when(propertyAttributeValueJpaRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
                                 .thenReturn(mockAttributes);
 
                 // Act
@@ -738,7 +740,7 @@ class ListingApplicationServiceUnitTest {
                 assertThat(firstAttribute.getUnit()).isEqualTo("room");
                 assertThat(firstAttribute.getValueNumber()).isIn(new BigDecimal("3.0"), new BigDecimal("2.0"));
 
-                verify(propertyAttributeValueJpaRepository).findRequiredAttributesByPropertyIds(any());
+                verify(propertyAttributeValueRepository).findRequiredAttributesByPropertyIds(any());
         }
 
         @Test
@@ -747,7 +749,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 5)).thenReturn(mockSimilarListings);
-                when(propertyAttributeValueJpaRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
                                 .thenReturn(new ArrayList<>());
 
                 // Act
@@ -758,7 +760,7 @@ class ListingApplicationServiceUnitTest {
                 SimilarListingDTO firstListing = response.getListings().get(0);
                 assertThat(firstListing.getAttributes()).isNotNull().isEmpty();
 
-                verify(propertyAttributeValueJpaRepository).findRequiredAttributesByPropertyIds(any());
+                verify(propertyAttributeValueRepository).findRequiredAttributesByPropertyIds(any());
         }
 
         @Test
@@ -785,7 +787,7 @@ class ListingApplicationServiceUnitTest {
 
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 5)).thenReturn(List.of(listingWithScore));
-                when(propertyAttributeValueJpaRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
                                 .thenReturn(new ArrayList<>());
 
                 // Act

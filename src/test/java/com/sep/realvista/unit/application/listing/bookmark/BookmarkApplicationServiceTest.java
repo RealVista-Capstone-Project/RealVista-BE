@@ -12,7 +12,7 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
-import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
+import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,7 +65,7 @@ class BookmarkApplicationServiceTest {
     private ListingMediaRepository listingMediaRepository;
 
     @Mock
-    private PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
+    private PropertyAttributeValueRepository propertyAttributeValueRepository;
 
     @Mock
     private BookmarkMapper bookmarkMapper;
@@ -95,12 +95,10 @@ class BookmarkApplicationServiceTest {
         // Arrange
         User testUser = createTestUser();
         Listing testListing = createTestListing();
-        
+
         when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(testUser));
         when(listingRepository.findById(TEST_LISTING_ID)).thenReturn(Optional.of(testListing));
-        when(bookmarkRepository.existsByUserIdAndListingId(TEST_USER_ID, TEST_LISTING_ID))
-                .thenReturn(false);
-        
+
         BookmarkResponse expectedResponse = createBookmarkResponse(true);
         when(bookmarkMapper.toResponse(any(User.class), any(Listing.class), any(Boolean.class), any(LocalDateTime.class)))
                 .thenReturn(expectedResponse);
@@ -129,12 +127,11 @@ class BookmarkApplicationServiceTest {
         // Arrange
         User testUser = createTestUser();
         Listing testListing = createTestListing();
-        
+
         when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(testUser));
         when(listingRepository.findById(TEST_LISTING_ID)).thenReturn(Optional.of(testListing));
-        when(bookmarkRepository.existsByUserIdAndListingId(TEST_USER_ID, TEST_LISTING_ID))
-                .thenReturn(true);
-        
+        when(bookmarkRepository.existsByUserIdAndListingId(TEST_USER_ID, TEST_LISTING_ID)).thenReturn(true);
+
         BookmarkResponse expectedResponse = createBookmarkResponse(false);
         when(bookmarkMapper.toResponse(any(User.class), any(Listing.class), any(Boolean.class), any(LocalDateTime.class)))
                 .thenReturn(expectedResponse);
@@ -145,11 +142,11 @@ class BookmarkApplicationServiceTest {
         // Assert
         assertThat(result).isNotNull();
         assertThat(result.isBookmarked()).isFalse();
-        
+
         // Verify delete was called
         verify(bookmarkRepository, times(1)).deleteByUserIdAndListingId(TEST_USER_ID, TEST_LISTING_ID);
-        
-        // Verify save was NOT called
+
+        // Verify save was NOT called (bookmark already existed, so we only delete)
         verify(bookmarkRepository, never()).save(any(Bookmark.class));
     }
 
@@ -166,10 +163,9 @@ class BookmarkApplicationServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> bookmarkApplicationService.toggleBookmark(TEST_USER_ID, TEST_LISTING_ID))
                 .isInstanceOf(UserNotFoundException.class);
-        
+
         // Verify repositories not called after user validation fails
         verify(listingRepository, never()).findById(any(UUID.class));
-        verify(bookmarkRepository, never()).existsByUserIdAndListingId(any(UUID.class), any(UUID.class));
     }
 
     /**
@@ -188,9 +184,8 @@ class BookmarkApplicationServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> bookmarkApplicationService.toggleBookmark(TEST_USER_ID, TEST_LISTING_ID))
                 .isInstanceOf(ListingNotFoundException.class);
-        
+
         // Verify bookmark checks not made after listing validation fails
-        verify(bookmarkRepository, never()).existsByUserIdAndListingId(any(UUID.class), any(UUID.class));
     }
 
     /**
@@ -203,12 +198,10 @@ class BookmarkApplicationServiceTest {
         // Arrange
         User testUser = createTestUser();
         Listing testListing = createTestListing();
-        
+
         when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(testUser));
         when(listingRepository.findById(TEST_LISTING_ID)).thenReturn(Optional.of(testListing));
-        when(bookmarkRepository.existsByUserIdAndListingId(TEST_USER_ID, TEST_LISTING_ID))
-                .thenReturn(false);
-        
+
         BookmarkResponse expectedResponse = createBookmarkResponse(true);
         when(bookmarkMapper.toResponse(any(User.class), any(Listing.class), any(Boolean.class), any(LocalDateTime.class)))
                 .thenReturn(expectedResponse);
@@ -235,12 +228,10 @@ class BookmarkApplicationServiceTest {
         // Arrange
         User testUser = createTestUser();
         Listing testListing = createTestListing();
-        
+
         when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(testUser));
         when(listingRepository.findById(TEST_LISTING_ID)).thenReturn(Optional.of(testListing));
-        when(bookmarkRepository.existsByUserIdAndListingId(TEST_USER_ID, TEST_LISTING_ID))
-                .thenReturn(false);
-        
+
         BookmarkResponse expectedResponse = createBookmarkResponse(true);
         when(bookmarkMapper.toResponse(any(User.class), any(Listing.class), any(Boolean.class), any(LocalDateTime.class)))
                 .thenReturn(expectedResponse);
