@@ -29,6 +29,11 @@ public class PropertyMapMarker {
     private UUID listingId;
 
     /**
+     * SEO-friendly slug for URL routing.
+     */
+    private String slug;
+
+    /**
      * Property coordinates for map marker placement.
      */
     private CoordinatesDTO coordinates;

@@ -273,6 +273,7 @@ public class MapSearchApplicationService {
 
         return PropertyMapMarker.builder()
                 .listingId(listing.getListingId())
+                .slug(listing.getSlug())
                 .coordinates(PropertyMapMarker.CoordinatesDTO.builder()
                         .latitude(property.getLatitude())
                         .longitude(property.getLongitude())
