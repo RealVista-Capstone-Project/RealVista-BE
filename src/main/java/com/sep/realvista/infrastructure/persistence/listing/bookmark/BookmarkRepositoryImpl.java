@@ -31,6 +31,11 @@ public class BookmarkRepositoryImpl implements BookmarkRepository {
     }
 
     @Override
+    public void flush() {
+        jpaRepository.flush();
+    }
+
+    @Override
     public Optional<Bookmark> findByUserIdAndListingId(UUID userId, UUID listingId) {
         return jpaRepository.findByUserIdAndListingId(userId, listingId);
     }
@@ -62,26 +67,11 @@ public class BookmarkRepositoryImpl implements BookmarkRepository {
                 ? propertyTypes
                 : null;
 
-        // Determine sort direction from pageable
-        boolean isAscending = pageable.getSort().stream()
-                .anyMatch(order -> "createdAt".equals(order.getProperty())
-                        && order.isAscending());
-
-        if (isAscending) {
-            return jpaRepository.findByUserIdWithFiltersOrderByCreatedAtAsc(
-                    userId,
-                    effectivePropertyTypes,
-                    listingType,
-                    pageable
-            );
-        } else {
-            // Default to newest first (descending)
-            return jpaRepository.findByUserIdWithFiltersOrderByCreatedAtDesc(
-                    userId,
-                    effectivePropertyTypes,
-                    listingType,
-                    pageable
-            );
-        }
+        return jpaRepository.findBookmarksByUserWithFilters(
+                userId,
+                effectivePropertyTypes,
+                listingType,
+                pageable
+        );
     }
 }

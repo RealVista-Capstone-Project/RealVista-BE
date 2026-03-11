@@ -5,6 +5,7 @@ import com.sep.realvista.application.listing.bookmark.dto.BookmarkListingCardDTO
 import com.sep.realvista.application.listing.bookmark.dto.BookmarkResponse;
 import com.sep.realvista.application.listing.bookmark.dto.GetBookmarksRequest;
 import com.sep.realvista.application.listing.bookmark.mapper.BookmarkMapper;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.bookmark.Bookmark;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
@@ -14,7 +15,7 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
-import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
+import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -25,7 +26,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -48,7 +48,7 @@ public class BookmarkApplicationService {
     private final UserRepository userRepository;
     private final ListingRepository listingRepository;
     private final ListingMediaRepository listingMediaRepository;
-    private final PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
+    private final PropertyAttributeValueRepository propertyAttributeValueRepository;
     private final BookmarkMapper bookmarkMapper;
 
     /**
@@ -56,6 +56,7 @@ public class BookmarkApplicationService {
      *
      * If user has already bookmarked the listing, removes the bookmark.
      * If user hasn't bookmarked the listing, creates a new bookmark.
+     * Evicts the listing cache since is_favorite status changed.
      *
      * @param userId the user ID
      * @param listingId the listing ID
@@ -63,7 +64,7 @@ public class BookmarkApplicationService {
      * @throws UserNotFoundException if user doesn't exist
      * @throws ListingNotFoundException if listing doesn't exist
      */
-    @CacheEvict(value = "listings", key = "#listingId + '_' + #userId.toString()")
+    @CacheEvict(value = "listings", key = "#listingId")
     public BookmarkResponse toggleBookmark(UUID userId, UUID listingId) {
         log.info("Toggling bookmark - userId: {}, listingId: {}", userId, listingId);
 
@@ -75,17 +76,17 @@ public class BookmarkApplicationService {
         var listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ListingNotFoundException(listingId));
 
-        // Check if bookmark already exists and toggle
-        boolean bookmarkExists = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
+        // Check if bookmark already exists (considering only non-deleted bookmarks)
+        boolean exists = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
         boolean isBookmarked;
 
-        if (bookmarkExists) {
-            // Remove existing bookmark
+        if (exists) {
+            // Bookmark exists → remove it
             bookmarkRepository.deleteByUserIdAndListingId(userId, listingId);
             isBookmarked = false;
             log.info("Removed bookmark - userId: {}, listingId: {}", userId, listingId);
         } else {
-            // Create new bookmark
+            // Bookmark doesn't exist → create new one
             var bookmark = Bookmark.builder()
                     .userId(userId)
                     .listingId(listingId)
@@ -138,20 +139,16 @@ public class BookmarkApplicationService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // Batch fetch primary media for all listings
-        Map<UUID, ListingMedia> primaryMediaMap = new HashMap<>();
-        for (UUID listingId : listingIds) {
-            listingMediaRepository.findPrimaryByListingId(listingId)
-                    .ifPresent(media -> primaryMediaMap.put(listingId, media));
-        }
+        // Batch fetch primary media for all listings in a single query
+        List<ListingMedia> allPrimaryMedia = listingMediaRepository.findPrimaryByListingIds(listingIds);
+        Map<UUID, ListingMedia> primaryMediaMap = allPrimaryMedia.stream()
+                .collect(Collectors.toMap(ListingMedia::getListingId, media -> media));
 
-        // Batch fetch attributes for all properties
-        Map<UUID, List<PropertyAttributeValue>> attributesMap = new HashMap<>();
-        for (UUID propertyId : propertyIds) {
-            List<PropertyAttributeValue> attributes = propertyAttributeValueRepository
-                    .findByPropertyIdWithAttribute(propertyId);
-            attributesMap.put(propertyId, attributes);
-        }
+        // Batch fetch attributes for all properties in a single query
+        List<PropertyAttributeValue> allAttributes = propertyAttributeValueRepository
+                .findAllAttributesByPropertyIds(propertyIds);
+        Map<UUID, List<PropertyAttributeValue>> attributesMap = allAttributes.stream()
+                .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId));
 
         // Map bookmarks to DTOs
         List<BookmarkListingCardDTO> content = bookmarksPage.getContent().stream()
@@ -161,7 +158,17 @@ public class BookmarkApplicationService {
                     ListingMedia primaryMedia = primaryMediaMap.get(listingId);
                     List<PropertyAttributeValue> attributes = attributesMap.getOrDefault(propertyId, List.of());
 
-                    return bookmarkMapper.toListingCard(bookmark, primaryMedia, attributes);
+                    BookmarkListingCardDTO dto = bookmarkMapper.toListingCard(bookmark, primaryMedia, attributes);
+
+                    // Apply display priority numbers after mapping (business rule, not mapping concern)
+                    if (dto != null && dto.getAttributes() != null) {
+                        List<PropertyAttributeDTO> attrs = dto.getAttributes();
+                        for (int i = 0; i < attrs.size(); i++) {
+                            attrs.get(i).setPriority(i + 1);
+                        }
+                    }
+
+                    return dto;
                 })
                 .collect(Collectors.toList());
 

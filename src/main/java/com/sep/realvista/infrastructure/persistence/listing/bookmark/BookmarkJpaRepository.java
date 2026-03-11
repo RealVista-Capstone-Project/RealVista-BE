@@ -40,18 +40,26 @@ public interface BookmarkJpaRepository extends JpaRepository<Bookmark, BookmarkI
      * @param userId the user ID
      * @param listingId the listing ID
      */
-    @Modifying
-    @Query("DELETE FROM Bookmark b WHERE b.userId = :userId AND b.listingId = :listingId")
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM Bookmark b WHERE b.userId = :userId AND b.listingId = :listingId AND b.deleted = false")
     void deleteByUserIdAndListingId(@Param("userId") UUID userId, @Param("listingId") UUID listingId);
 
     /**
      * Checks if bookmark exists by user and listing IDs.
+     * Only returns true if bookmark exists and is not deleted.
      *
      * @param userId the user ID
      * @param listingId the listing ID
-     * @return true if exists
+     * @return true if exists and not deleted
      */
-    boolean existsByUserIdAndListingId(UUID userId, UUID listingId);
+    @Query("""
+            SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END
+            FROM Bookmark b
+            WHERE b.userId = :userId
+            AND b.listingId = :listingId
+            AND b.deleted = false
+            """)
+    boolean existsByUserIdAndListingId(@Param("userId") UUID userId, @Param("listingId") UUID listingId);
 
     /**
      * Returns the subset of listingIds that the user has bookmarked.
@@ -63,58 +71,45 @@ public interface BookmarkJpaRepository extends JpaRepository<Bookmark, BookmarkI
 
     /**
      * Finds bookmarks for a user with optional filters.
-     * Eagerly fetches listing, property, property type, and location data for efficient querying.
+     * Eagerly fetches listing, property, property type, and location data.
+     * Sort direction is driven by the Pageable parameter.
+     *
+     * countQuery is required because Hibernate cannot derive a COUNT from a
+     * query that contains JOIN FETCH — without it Hibernate falls back to
+     * in-memory pagination which loads the entire result set before paging.
      *
      * @param userId the user ID
      * @param propertyTypes optional property type codes filter (e.g. APARTMENT, VILLA)
      * @param listingType optional listing type filter
-     * @param pageable pagination and sorting
+     * @param pageable pagination and sort
      * @return page of bookmarks
      */
-    @Query("""
-            SELECT DISTINCT b FROM Bookmark b
-            LEFT JOIN FETCH b.listing l
-            LEFT JOIN FETCH l.property p
-            LEFT JOIN FETCH p.propertyType pt
-            LEFT JOIN FETCH p.location loc
-            WHERE b.userId = :userId
-            AND b.deleted = false
-            AND l.deleted = false
-            AND (:listingType IS NULL OR l.listingType = :listingType)
-            AND (:propertyTypes IS NULL OR pt.code IN :propertyTypes)
-            ORDER BY b.createdAt DESC
-            """)
-    Page<Bookmark> findByUserIdWithFiltersOrderByCreatedAtDesc(
-            @Param("userId") UUID userId,
-            @Param("propertyTypes") List<String> propertyTypes,
-            @Param("listingType") ListingType listingType,
-            Pageable pageable
-    );
-
-    /**
-     * Finds bookmarks for a user with optional filters, ordered by oldest first.
-     * Eagerly fetches listing, property, property type, and location data for efficient querying.
-     *
-     * @param userId the user ID
-     * @param propertyTypes optional property type codes filter (e.g. APARTMENT, VILLA)
-     * @param listingType optional listing type filter
-     * @param pageable pagination
-     * @return page of bookmarks
-     */
-    @Query("""
-            SELECT DISTINCT b FROM Bookmark b
-            LEFT JOIN FETCH b.listing l
-            LEFT JOIN FETCH l.property p
-            LEFT JOIN FETCH p.propertyType pt
-            LEFT JOIN FETCH p.location loc
-            WHERE b.userId = :userId
-            AND b.deleted = false
-            AND l.deleted = false
-            AND (:listingType IS NULL OR l.listingType = :listingType)
-            AND (:propertyTypes IS NULL OR pt.code IN :propertyTypes)
-            ORDER BY b.createdAt ASC
-            """)
-    Page<Bookmark> findByUserIdWithFiltersOrderByCreatedAtAsc(
+    @Query(
+        value = """
+                SELECT DISTINCT b FROM Bookmark b
+                LEFT JOIN FETCH b.listing l
+                LEFT JOIN FETCH l.property p
+                LEFT JOIN FETCH p.propertyType pt
+                LEFT JOIN FETCH p.location loc
+                WHERE b.userId = :userId
+                AND b.deleted = false
+                AND l.deleted = false
+                AND (:listingType IS NULL OR l.listingType = :listingType)
+                AND (:propertyTypes IS NULL OR pt.code IN :propertyTypes)
+                """,
+        countQuery = """
+                SELECT COUNT(DISTINCT b) FROM Bookmark b
+                LEFT JOIN b.listing l
+                LEFT JOIN l.property p
+                LEFT JOIN p.propertyType pt
+                WHERE b.userId = :userId
+                AND b.deleted = false
+                AND l.deleted = false
+                AND (:listingType IS NULL OR l.listingType = :listingType)
+                AND (:propertyTypes IS NULL OR pt.code IN :propertyTypes)
+                """
+    )
+    Page<Bookmark> findBookmarksByUserWithFilters(
             @Param("userId") UUID userId,
             @Param("propertyTypes") List<String> propertyTypes,
             @Param("listingType") ListingType listingType,

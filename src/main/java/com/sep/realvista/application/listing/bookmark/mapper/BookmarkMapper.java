@@ -100,13 +100,12 @@ public interface BookmarkMapper {
         }
 
         // Map attributes: data arrives pre-ordered by property_type_attributes.priority.
-        // Re-number from 1.
+        // Priority renumbering is handled by the service layer, not here.
         if (attributes != null && !attributes.isEmpty()) {
             List<PropertyAttributeDTO> attributeDTOs = new ArrayList<>();
-            for (int i = 0; i < attributes.size(); i++) {
-                PropertyAttributeDTO dto = toAttributeDTO(attributes.get(i));
+            for (PropertyAttributeValue attr : attributes) {
+                PropertyAttributeDTO dto = toAttributeDTO(attr);
                 if (dto != null) {
-                    dto.setPriority(i + 1);
                     attributeDTOs.add(dto);
                 }
             }

@@ -27,6 +27,12 @@ public interface BookmarkRepository {
     Bookmark save(Bookmark bookmark);
 
     /**
+     * Flushes pending changes to the database immediately.
+     * Used to trigger constraint validation within a transaction.
+     */
+    void flush();
+
+    /**
      * Finds a bookmark by user and listing IDs.
      *
      * @param userId the user ID
