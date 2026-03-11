@@ -20,12 +20,14 @@ import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
-import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,24 +55,55 @@ public class ListingApplicationService {
         private final ListingMediaRepository listingMediaRepository;
         private final ListingPriceHistoryRepository listingPriceHistoryRepository;
         private final PropertyRepository propertyRepository;
-        private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
+        private final PropertyAttributeValueRepository propertyAttributeValueRepository;
         private final PropertyAmenityRepository propertyAmenityRepository;
         private final ListingMapper listingMapper;
         private final CostBreakdownService costBreakdownService;
         private final BookmarkRepository bookmarkRepository;
 
+        // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
+        // ensuring @Cacheable on getCachedListingDetail is actually triggered.
+        @Lazy
+        @Autowired
+        private ListingApplicationService self;
+
         /**
          * Get listing detail by ID.
          * Returns complete listing information including media, property, location,
          * type, category, agent/owner, and attributes.
+         * Caches the core listing data (without is_favorite), then adds user-specific bookmark status.
          *
          * @param listingId the listing ID
+         * @param userId optional user ID for bookmark status
          * @return complete listing detail response
          * @throws ResourceNotFoundException if listing not found
          */
-        @Cacheable(value = "listings", key = "#listingId + '_' + (#userId != null ? #userId.toString() : 'anon')")
         @Transactional(readOnly = true)
         public ListingDetailResponse getListingDetail(UUID listingId, UUID userId) {
+                // Route through self (proxy) so @Cacheable on getCachedListingDetail fires correctly
+                ListingDetailResponse response = self.getCachedListingDetail(listingId);
+
+                // Set is_favorite based on current user (not cached)
+                if (userId != null) {
+                        boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
+                        response.setIsFavorite(isFavorite);
+                } else {
+                        response.setIsFavorite(false);
+                }
+
+                return response;
+        }
+
+        /**
+         * Internal method to get cached listing detail without user-specific data.
+         * This method is cached by listingId only (not per-user).
+         *
+         * @param listingId the listing ID
+         * @return listing detail response (is_favorite will be null)
+         * @throws ResourceNotFoundException if listing not found
+         */
+        @Cacheable(value = "listings", key = "#listingId")
+        public ListingDetailResponse getCachedListingDetail(UUID listingId) {
                 log.info("Fetching listing detail for ID: {}", listingId);
 
                 // Fetch listing with all associations
@@ -92,7 +125,7 @@ public class ListingApplicationService {
                 var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
 
                 // Fetch property attribute values (bedrooms, bathrooms, etc.)
-                List<PropertyAttributeValue> attributeValues = propertyAttributeValueJpaRepository
+                List<PropertyAttributeValue> attributeValues = propertyAttributeValueRepository
                                 .findByPropertyIdWithAttribute(property.getPropertyId());
 
                 // Fetch property amenities (gym, pool, security, etc.)
@@ -112,39 +145,32 @@ public class ListingApplicationService {
                 CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
                 response.setCostBreakdown(costBreakdown);
 
-                // Populate isFavorite for authenticated users
-                if (userId != null) {
-                        boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
-                        response.setIsFavorite(isFavorite);
-                } else {
-                        response.setIsFavorite(false);
-                }
-
+                // Note: is_favorite is NOT set here - it will be set by the public method
                 return response;
         }
 
         /**
          * Get listing detail by slug.
          * Returns complete listing information using SEO-friendly slug.
+         * Caches the core listing data (without is_favorite), then adds user-specific bookmark status.
          *
          * @param slug the listing slug (format: {name}-{short-uuid})
          * @param userId optional user ID for bookmark status
          * @return complete listing detail response
          * @throws ResourceNotFoundException if listing not found
          */
-        @Cacheable(value = "listings", key = "'slug_' + #slug + '_' + (#userId != null ? #userId.toString() : 'anon')")
         @Transactional(readOnly = true)
         public ListingDetailResponse getListingBySlug(String slug, UUID userId) {
                 log.info("Fetching listing detail for slug: {}", slug);
 
-                // Find listing by slug
+                // Find listing by slug (not cached, lightweight operation)
                 Listing listing = listingRepository.findBySlug(slug)
                                 .orElseThrow(() -> {
                                         log.error("Listing not found with slug: {}", slug);
                                         return new ResourceNotFoundException("Listing with slug: " + slug);
                                 });
 
-                // Delegate to getListingDetail for the rest
+                // Delegate to getListingDetail which handles caching by listingId
                 return getListingDetail(listing.getListingId(), userId);
         }
 
@@ -211,7 +237,7 @@ public class ListingApplicationService {
                                 .map(SimilarListing::getPropertyId)
                                 .collect(Collectors.toList());
 
-                List<PropertyAttributeValue> allAttributes = propertyAttributeValueJpaRepository
+                List<PropertyAttributeValue> allAttributes = propertyAttributeValueRepository
                                 .findRequiredAttributesByPropertyIds(propertyIds);
 
                 // Group by propertyId, limit to 3 per property
