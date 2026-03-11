@@ -2,6 +2,7 @@ package com.sep.realvista.application.listing.dto;
 
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.shared.util.AddressFormatter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,29 +41,7 @@ public class ListingSearchResponse {
 
     @JsonProperty("full_address")
     public String getFullAddress() {
-        StringBuilder address = new StringBuilder();
-        if (streetAddress != null && !streetAddress.isBlank()) {
-            address.append(streetAddress);
-        }
-        if (wardName != null && !wardName.isBlank()) {
-            if (address.length() > 0) {
-                address.append(", ");
-            }
-            address.append(wardName);
-        }
-        if (districtName != null && !districtName.isBlank()) {
-            if (address.length() > 0) {
-                address.append(", ");
-            }
-            address.append(districtName);
-        }
-        if (cityName != null && !cityName.isBlank()) {
-            if (address.length() > 0) {
-                address.append(", ");
-            }
-            address.append(cityName);
-        }
-        return address.toString();
+        return AddressFormatter.formatFullAddress(streetAddress, wardName, districtName, cityName);
     }
 
     // NOTE: These attributes will be dynamic, not only bedrooms and bathrooms

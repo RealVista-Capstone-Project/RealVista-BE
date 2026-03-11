@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.shared.util.AddressFormatter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -56,29 +57,7 @@ public class BookmarkListingCardDTO {
 
     @JsonProperty("full_address")
     public String getFullAddress() {
-        StringBuilder address = new StringBuilder();
-        if (streetAddress != null && !streetAddress.isBlank()) {
-            address.append(streetAddress);
-        }
-        if (wardName != null && !wardName.isBlank()) {
-            if (address.length() > 0) {
-                address.append(", ");
-            }
-            address.append(wardName);
-        }
-        if (districtName != null && !districtName.isBlank()) {
-            if (address.length() > 0) {
-                address.append(", ");
-            }
-            address.append(districtName);
-        }
-        if (cityName != null && !cityName.isBlank()) {
-            if (address.length() > 0) {
-                address.append(", ");
-            }
-            address.append(cityName);
-        }
-        return address.toString();
+        return AddressFormatter.formatFullAddress(streetAddress, wardName, districtName, cityName);
     }
 
     @JsonProperty("property_type_name")
