@@ -1,4 +1,4 @@
--- V40__Add_priority_to_property_attribute_values.sql
+-- V41__Add_priority_to_property_attribute_values.sql
 -- Adds a priority column to property_type_attributes.
 -- For each property type, required attributes are numbered first (1, 2, 3, ...),
 -- then non-required attributes continue after (both groups ordered by attribute code).
