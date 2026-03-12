@@ -65,7 +65,7 @@ public class SettingPreference extends BaseEntity {
 
     @Column(name = "contact_via_phone")
     @Builder.Default
-    private Boolean contactViaPhone = false;
+    private Boolean contactViaPhone = true;
 
     @Column(name = "hide_phone_number")
     @Builder.Default
@@ -97,5 +97,31 @@ public class SettingPreference extends BaseEntity {
 
     public void disablePush() {
         this.pushEnabled = false;
+    }
+
+    public void updateNotificationSettings(Boolean inAppEnabled, Boolean emailEnabled, Boolean pushEnabled,
+                                           Boolean contactViaEmail, Boolean contactViaPhone,
+                                           Boolean hidePhoneNumber, Boolean hideEmail) {
+        if (inAppEnabled != null) {
+            this.inAppEnabled = inAppEnabled;
+        }
+        if (emailEnabled != null) {
+            this.emailEnabled = emailEnabled;
+        }
+        if (pushEnabled != null) {
+            this.pushEnabled = pushEnabled;
+        }
+        if (contactViaEmail != null) {
+            this.contactViaEmail = contactViaEmail;
+        }
+        if (contactViaPhone != null) {
+            this.contactViaPhone = contactViaPhone;
+        }
+        if (hidePhoneNumber != null) {
+            this.hidePhoneNumber = hidePhoneNumber;
+        }
+        if (hideEmail != null) {
+            this.hideEmail = hideEmail;
+        }
     }
 }
