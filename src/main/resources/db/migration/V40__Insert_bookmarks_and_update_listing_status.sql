@@ -1,4 +1,4 @@
--- V39__Insert_bookmarks_and_update_listing_status.sql
+-- V40__Insert_bookmarks_and_update_listing_status.sql
 -- Add bookmarks for user 550e8400-e29b-41d4-a716-446655440301
 -- Update two listing statuses based on listing_type
 
