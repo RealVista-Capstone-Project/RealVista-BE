@@ -19,6 +19,10 @@ public interface ListingRepository {
 
     Optional<Listing> findById(UUID id);
 
+    Optional<Listing> findBySlug(String slug);
+
+    List<Listing> findAll();
+
     Page<Listing> findAll(Specification<Listing> spec, Pageable pageable);
 
     Optional<String> findThumbnailByListingId(UUID listingId);
