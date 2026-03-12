@@ -2,15 +2,20 @@ package com.sep.realvista.application.user.service;
 
 import com.sep.realvista.application.user.dto.ChangePasswordRequest;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
+import com.sep.realvista.application.user.dto.UpdateMeRequest;
 import com.sep.realvista.application.user.dto.UpdateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.mapper.UserMapper;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.value.Email;
+import com.sep.realvista.domain.profile.CustomerProfile;
+import com.sep.realvista.domain.profile.CustomerProfileRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserStatus;
+import com.sep.realvista.domain.user.preference.SettingPreference;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.infrastructure.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +40,8 @@ public class UserApplicationService {
     private final UserDomainService userDomainService;
     private final UserMapper userMapper;
     private final PasswordService passwordService;
+    private final SettingPreferenceRepository settingPreferenceRepository;
+    private final CustomerProfileRepository customerProfileRepository;
 
     /**
      * Create a new user.
@@ -58,6 +65,26 @@ public class UserApplicationService {
         // Save user
         User savedUser = userRepository.save(user);
         log.info("User created successfully with ID: {}", savedUser.getUserId());
+
+        // Create default SettingPreference
+        SettingPreference defaultSetting = SettingPreference.builder()
+                .userId(savedUser.getUserId())
+                .build();
+        settingPreferenceRepository.save(defaultSetting);
+
+        // Create default CustomerProfile
+        String firstName = request.getFirstName() != null ? request.getFirstName() : "";
+        String lastName = request.getLastName() != null ? request.getLastName() : "";
+        String defaultProfileName = (firstName + " " + lastName).trim();
+        if (defaultProfileName.isEmpty()) {
+            defaultProfileName = savedUser.getBusinessName();
+        }
+        CustomerProfile defaultProfile = CustomerProfile.builder()
+                .userId(savedUser.getUserId())
+                .profileName(defaultProfileName.trim())
+                .isActive(true)
+                .build();
+        customerProfileRepository.save(defaultProfile);
 
         return userMapper.toResponse(savedUser);
     }
@@ -85,6 +112,25 @@ public class UserApplicationService {
 
         User updatedUser = userRepository.save(user);
         log.info("User profile updated successfully for ID: {}", userId);
+
+        return userMapper.toResponse(updatedUser);
+    }
+
+    /**
+     * Update current user (me) profile including phone.
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public UserResponse updateMe(UUID userId, UpdateMeRequest request) {
+        log.info("Updating me profile for ID: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+        user.updateProfile(request.getFirstName(), request.getLastName(), request.getAvatarUrl());
+        if (request.getPhone() != null) {
+            user.updatePhone(request.getPhone());
+        }
+
+        User updatedUser = userRepository.save(user);
+        log.info("Me profile updated successfully for ID: {}", userId);
 
         return userMapper.toResponse(updatedUser);
     }

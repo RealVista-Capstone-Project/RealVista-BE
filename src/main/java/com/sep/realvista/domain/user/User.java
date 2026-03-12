@@ -113,6 +113,10 @@ public class User extends BaseEntity {
         }
     }
 
+    public void updatePhone(String phone) {
+        this.phone = phone;
+    }
+
     public void updatePassword(String newPasswordHash) {
         if (newPasswordHash == null || newPasswordHash.isBlank()) {
             throw new IllegalArgumentException("Password hash cannot be null or empty");

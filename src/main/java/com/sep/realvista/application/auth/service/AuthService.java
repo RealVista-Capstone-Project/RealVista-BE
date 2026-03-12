@@ -10,10 +10,14 @@ import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.value.Email;
+import com.sep.realvista.domain.profile.CustomerProfile;
+import com.sep.realvista.domain.profile.CustomerProfileRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
+import com.sep.realvista.domain.user.preference.SettingPreference;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.infrastructure.security.oauth2.GoogleTokenVerifier;
 import com.sep.realvista.infrastructure.security.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +47,8 @@ public class AuthService {
     private final AuthenticationMapper authenticationMapper;
     private final GoogleTokenVerifier googleTokenVerifier;
     private final PasswordUtil passwordUtil;
+    private final SettingPreferenceRepository settingPreferenceRepository;
+    private final CustomerProfileRepository customerProfileRepository;
 
     @Transactional
     public UserResponse register(CreateUserRequest request) {
@@ -183,6 +189,20 @@ public class AuthService {
 
         User savedUser = userRepository.save(newUser);
         log.info("New Google user created with ID: {}", savedUser.getUserId());
+
+        // Create default SettingPreference
+        SettingPreference defaultSetting = SettingPreference.builder()
+                .userId(savedUser.getUserId())
+                .build();
+        settingPreferenceRepository.save(defaultSetting);
+
+        // Create default CustomerProfile
+        CustomerProfile defaultProfile = CustomerProfile.builder()
+                .userId(savedUser.getUserId())
+                .profileName(businessName)
+                .isActive(true)
+                .build();
+        customerProfileRepository.save(defaultProfile);
 
         return savedUser;
     }
