@@ -83,7 +83,7 @@ public class AppointmentService {
     }
 
     @Transactional
-    public void bookTour(UUID listingId, UUID senderId, List<LocalDateTime> selectedSlots, String notes) {
+    public BookTourResult bookTour(UUID listingId, UUID senderId, List<LocalDateTime> selectedSlots, String notes) {
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
 
@@ -99,6 +99,8 @@ public class AppointmentService {
 
         LocalTime workStart = owner.getWorkingStartTime() != null ? owner.getWorkingStartTime() : LocalTime.of(8, 0);
         LocalTime workEnd = owner.getWorkingEndTime() != null ? owner.getWorkingEndTime() : LocalTime.of(17, 0);
+
+        List<Appointment> createdAppointments = new ArrayList<>();
 
         for (LocalDateTime slot : selectedSlots) {
             if (slot.isBefore(LocalDateTime.now())) {
@@ -141,7 +143,9 @@ public class AppointmentService {
                     .appointmentType(AppointmentType.TOUR)
                     .senderNotes(notes)
                     .build();
-            appointmentRepository.save(appointment);
+            createdAppointments.add(appointmentRepository.save(appointment));
         }
+
+        return new BookTourResult(createdAppointments, listing, sender, owner);
     }
 }

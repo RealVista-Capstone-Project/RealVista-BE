@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(title, content)">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <title th:text="${title}">RealVista</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f7; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+
+<!-- Wrapper Table -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color: #f4f4f7; padding: 24px 0;">
+    <tr>
+        <td align="center">
+
+            <!-- Email Container -->
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+                   style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+
+                <!-- Header -->
+                <tr>
+                    <td style="background: linear-gradient(135deg, #4f46e5, #6366f1); padding: 28px 40px; text-align: center;">
+                        <!-- Fallback for email clients that don't support gradients -->
+                        <!--[if mso]>
+                        <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:80px;">
+                            <v:fill type="gradient" color="#6366f1" color2="#4f46e5" angle="135"/>
+                            <v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true">
+                        <![endif]-->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td align="center" style="padding: 0;">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="vertical-align: middle; padding-right: 10px;">
+                                                <!-- Logo icon placeholder - house icon -->
+                                                <div style="width: 36px; height: 36px; background-color: rgba(255,255,255,0.2); border-radius: 8px; display: inline-block; text-align: center; line-height: 36px; font-size: 20px; color: #ffffff;">
+                                                    &#8962;
+                                                </div>
+                                            </td>
+                                            <td style="vertical-align: middle;">
+                                                <span style="font-size: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">RealVista</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                        <!--[if mso]>
+                            </v:textbox>
+                        </v:rect>
+                        <![endif]-->
+                    </td>
+                </tr>
+
+                <!-- Content Area -->
+                <tr>
+                    <td style="padding: 40px 40px 32px 40px;">
+                        <div th:replace="${content}">
+                            <!-- Child template content goes here -->
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td style="padding: 0 40px;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="border-top: 1px solid #e5e7eb; padding-top: 24px; padding-bottom: 8px;">
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 0 40px 32px 40px; text-align: center;">
+                        <!-- Social Links -->
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"
+                               style="margin-bottom: 16px;">
+                            <tr>
+                                <td style="padding: 0 8px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 13px;">Facebook</a>
+                                </td>
+                                <td style="color: #d1d5db;">|</td>
+                                <td style="padding: 0 8px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 13px;">Instagram</a>
+                                </td>
+                                <td style="color: #d1d5db;">|</td>
+                                <td style="padding: 0 8px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 13px;">LinkedIn</a>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="margin: 0 0 6px 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
+                            &copy; 2024 RealVista. All rights reserved.
+                        </p>
+                        <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
+                            You received this email because you have an account on
+                            <a href="https://real-vista.cookie-candy.id.vn" style="color: #6366f1; text-decoration: none;">RealVista</a>.
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+            <!-- /Email Container -->
+
+        </td>
+    </tr>
+</table>
+<!-- /Wrapper Table -->
+
+</body>
+</html>
