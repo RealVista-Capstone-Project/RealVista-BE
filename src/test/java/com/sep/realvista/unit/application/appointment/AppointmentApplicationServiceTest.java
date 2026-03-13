@@ -136,7 +136,7 @@ class AppointmentApplicationServiceTest {
         // Verify confirmation email sent to sender
         verify(emailService).sendTemplateMessageAsync(
                 eq("sender@test.com"),
-                eq("Tour Booked: Test Listing"),
+                eq("Đặt lịch tham quan: Test Listing"),
                 eq("tour-booking-confirmation"),
                 anyMap()
         );
@@ -144,7 +144,7 @@ class AppointmentApplicationServiceTest {
         // Verify notification email sent to owner
         verify(emailService).sendTemplateMessageAsync(
                 eq("owner@test.com"),
-                eq("New Tour Request: Test Listing"),
+                eq("Yêu cầu tham quan mới: Test Listing"),
                 eq("tour-booking-notification"),
                 anyMap()
         );

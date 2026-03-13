@@ -35,9 +35,9 @@ public class AppointmentApplicationService {
     private String frontendUrl;
 
     private static final DateTimeFormatter DATE_FORMATTER =
-            DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy", Locale.ENGLISH);
+            DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy", Locale.forLanguageTag("vi"));
     private static final DateTimeFormatter TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
+            DateTimeFormatter.ofPattern("HH:mm");
 
     @Transactional(readOnly = true)
     public List<LocalTime> getAvailableSlots(UUID listingId, LocalDate date) {
@@ -70,7 +70,7 @@ public class AppointmentApplicationService {
             String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
             String tourTime = appointment.getStartTime().format(TIME_FORMATTER)
                     + " - " + appointment.getEndTime().format(TIME_FORMATTER);
-            String status = "Pending Confirmation";
+            String status = "Chờ xác nhận";
 
             // Confirmation email to the booker
             try {
@@ -86,7 +86,7 @@ public class AppointmentApplicationService {
 
                 emailService.sendTemplateMessageAsync(
                         sender.getEmail().getValue(),
-                        "Tour Booked: " + listingName,
+                        "Đặt lịch tham quan: " + listingName,
                         "tour-booking-confirmation",
                         confirmationVars
                 );
@@ -113,7 +113,7 @@ public class AppointmentApplicationService {
 
                 emailService.sendTemplateMessageAsync(
                         owner.getEmail().getValue(),
-                        "New Tour Request: " + listingName,
+                        "Yêu cầu tham quan mới: " + listingName,
                         "tour-booking-notification",
                         notificationVars
                 );

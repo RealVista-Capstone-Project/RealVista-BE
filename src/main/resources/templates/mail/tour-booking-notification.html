@@ -4,7 +4,7 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-    <title>New Tour Request - RealVista</title>
+    <title>Yêu cầu tham quan mới - RealVista</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f4f4f7; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
 
@@ -53,7 +53,7 @@
                                     </div>
                                 </td>
                                 <td style="vertical-align: middle;">
-                                    <span style="font-size: 16px; font-weight: 600; color: #1e40af;">New Tour Request</span>
+                                    <span style="font-size: 16px; font-weight: 600; color: #1e40af;">Yêu cầu tham quan mới</span>
                                 </td>
                             </tr>
                         </table>
@@ -65,10 +65,10 @@
                     <td style="padding: 32px 40px 16px 40px;">
                         <!-- Greeting -->
                         <p style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1f2937;">
-                            Hi <span th:text="${ownerName}">Owner</span>,
+                            Xin chào <span th:text="${ownerName}">Chủ nhà</span>,
                         </p>
                         <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
-                            You have received a new tour request for your property. Please review the details below and respond to the request.
+                            Bạn vừa nhận được một yêu cầu tham quan mới cho bất động sản của bạn. Vui lòng xem chi tiết bên dưới và phản hồi yêu cầu này.
                         </p>
 
                         <!-- Requester Info Card -->
@@ -77,7 +77,7 @@
                             <tr>
                                 <td style="padding: 20px;">
                                     <p style="margin: 0 0 12px 0; font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">
-                                        Tour Requested By
+                                        Người yêu cầu tham quan
                                     </p>
                                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                         <tr>
@@ -88,7 +88,7 @@
                                             </td>
                                             <td style="vertical-align: top; padding-bottom: 10px; padding-left: 8px;">
                                                 <p style="margin: 0; font-size: 16px; font-weight: 600; color: #1f2937;" th:text="${senderName}">
-                                                    John Doe
+                                                    Nguyễn Văn A
                                                 </p>
                                             </td>
                                         </tr>
@@ -101,7 +101,7 @@
                                             <td style="vertical-align: middle; padding-bottom: 8px; padding-left: 8px;">
                                                 <a th:href="'mailto:' + ${senderEmail}" th:text="${senderEmail}"
                                                    style="font-size: 14px; color: #6366f1; text-decoration: none;">
-                                                    john@example.com
+                                                    nguyen@example.com
                                                 </a>
                                             </td>
                                         </tr>
@@ -127,7 +127,7 @@
                             <tr th:if="${propertyImageUrl != null}">
                                 <td style="padding: 0;">
                                     <img th:src="${propertyImageUrl}"
-                                         alt="Property"
+                                         alt="Bất động sản"
                                          style="width: 100%; max-height: 200px; object-fit: cover; display: block;"
                                          width="520"/>
                                 </td>
@@ -135,13 +135,13 @@
                             <tr>
                                 <td style="padding: 20px;">
                                     <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">
-                                        Property
+                                        Bất động sản
                                     </p>
                                     <p style="margin: 0 0 8px 0; font-size: 17px; font-weight: 700; color: #1f2937;" th:text="${listingName}">
-                                        Beautiful Apartment in District 1
+                                        Căn hộ đẹp tại Quận 1
                                     </p>
                                     <p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.5;" th:text="${propertyAddress}">
-                                        123 Street, District 1, Ho Chi Minh City
+                                        123 Đường Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh
                                     </p>
                                 </td>
                             </tr>
@@ -153,7 +153,7 @@
                             <tr>
                                 <td style="padding: 20px;">
                                     <p style="margin: 0 0 16px 0; font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">
-                                        Tour Details
+                                        Chi tiết lịch tham quan
                                     </p>
 
                                     <!-- Date & Time rows -->
@@ -165,9 +165,9 @@
                                                 </div>
                                             </td>
                                             <td style="vertical-align: top; padding-bottom: 14px; padding-left: 8px;">
-                                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Date</p>
+                                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Ngày</p>
                                                 <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #1f2937;" th:text="${tourDate}">
-                                                    Monday, Jan 15, 2026
+                                                    Thứ Hai, 15/01/2026
                                                 </p>
                                             </td>
                                         </tr>
@@ -178,9 +178,9 @@
                                                 </div>
                                             </td>
                                             <td style="vertical-align: top; padding-bottom: 14px; padding-left: 8px;">
-                                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Time</p>
+                                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Thời gian</p>
                                                 <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #1f2937;" th:text="${tourTime}">
-                                                    10:00 AM - 10:30 AM
+                                                    10:00 SA - 10:30 SA
                                                 </p>
                                             </td>
                                         </tr>
@@ -191,9 +191,9 @@
                                                 </div>
                                             </td>
                                             <td style="vertical-align: top; padding-left: 8px;">
-                                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Status</p>
+                                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Trạng thái</p>
                                                 <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #d97706;" th:text="${status}">
-                                                    Pending Confirmation
+                                                    Chờ xác nhận
                                                 </p>
                                             </td>
                                         </tr>
@@ -207,9 +207,9 @@
                                style="margin-bottom: 24px;">
                             <tr>
                                 <td style="padding: 16px 20px; background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0;">
-                                    <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 600; color: #92400e;">Notes from Requester</p>
+                                    <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 600; color: #92400e;">Ghi chú từ người yêu cầu</p>
                                     <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;" th:text="${notes}">
-                                        I'm interested in this property for long-term rent.
+                                        Tôi quan tâm đến bất động sản này để thuê dài hạn.
                                     </p>
                                 </td>
                             </tr>
@@ -222,7 +222,7 @@
                                 <td align="center">
                                     <a th:href="${viewAppointmentUrl}"
                                        style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 32px; border-radius: 8px; letter-spacing: 0.3px;">
-                                        View Tour Request
+                                        Xem yêu cầu tham quan
                                     </a>
                                 </td>
                             </tr>
@@ -230,8 +230,8 @@
 
                         <!-- Help text -->
                         <p style="margin: 0 0 8px 0; font-size: 13px; color: #9ca3af; line-height: 1.6; text-align: center;">
-                            You can accept or decline this tour request from your
-                            <a href="https://real-vista.cookie-candy.id.vn" style="color: #6366f1; text-decoration: none;">RealVista dashboard</a>.
+                            Bạn có thể chấp nhận hoặc từ chối yêu cầu tham quan này từ
+                            <a href="https://real-vista.cookie-candy.id.vn" style="color: #6366f1; text-decoration: none;">trang quản lý RealVista</a>.
                         </p>
                     </td>
                 </tr>
@@ -265,10 +265,10 @@
                             </tr>
                         </table>
                         <p style="margin: 0 0 6px 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
-                            &copy; 2024 RealVista. All rights reserved.
+                            &copy; 2026 RealVista. Tất cả quyền được bảo lưu.
                         </p>
                         <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
-                            You received this email because someone requested a tour on your listing at
+                            Bạn nhận được email này vì có người yêu cầu tham quan bất động sản của bạn trên
                             <a href="https://real-vista.cookie-candy.id.vn" style="color: #6366f1; text-decoration: none;">RealVista</a>.
                         </p>
                     </td>
