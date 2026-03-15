@@ -39,7 +39,9 @@ public class MediaUploadController {
 
     @Operation(
             summary = "Upload a single media file",
-            description = "Upload a single image or video file to DigitalOcean Spaces. Supports JPEG, PNG, GIF, WebP, HEIC/HEIF for images and MP4, MPEG, QuickTime, AVI, WebM for videos."
+            description = "Upload a single image or video file to DigitalOcean Spaces. "
+                    + "Supports JPEG, PNG, GIF, WebP, HEIC/HEIF for images and MP4, MPEG, "
+                    + "QuickTime, AVI, WebM for videos."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -61,11 +63,13 @@ public class MediaUploadController {
             )
     })
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<MediaUploadResponse>> uploadMedia(
             @Parameter(description = "Media file to upload (image or video)", required = true)
             @RequestParam("file") MultipartFile file,
 
-            @Parameter(description = "Folder path in storage (e.g., 'prod/properties', 'non-prod/test')", example = "non-prod/test")
+            @Parameter(description = "Folder path in storage (e.g., 'prod/properties', "
+                    + "'non-prod/test')", example = "non-prod/test")
             @RequestParam(value = "folder", required = false, defaultValue = "media") String folder
     ) {
         // Debug logging
@@ -86,13 +90,16 @@ public class MediaUploadController {
 
     @Operation(
             summary = "Upload multiple media files",
-            description = "Upload multiple image or video files to DigitalOcean Spaces in a single request. Returns success and failure details for each file."
+            description = "Upload multiple image or video files to DigitalOcean Spaces in a "
+                    + "single request. Returns success and failure details for each file."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "201",
                     description = "Files uploaded (may include partial failures)",
-                    content = @Content(schema = @Schema(implementation = com.sep.realvista.application.media.dto.BulkMediaUploadResponse.class))
+                    content = @Content(schema = @Schema(
+                            implementation = com.sep.realvista.application.media.dto
+                                    .BulkMediaUploadResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -105,14 +112,16 @@ public class MediaUploadController {
     })
     @PostMapping(value = "/upload/bulk", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.media.dto.BulkMediaUploadResponse>> uploadMultipleMedia(
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.media.dto
+            .BulkMediaUploadResponse>> uploadMultipleMedia(
             @Parameter(description = "Multiple media files to upload", required = true)
             @RequestParam("files") List<MultipartFile> files,
 
             @Parameter(description = "Folder path in storage", example = "listings")
             @RequestParam(value = "folder", required = false, defaultValue = "media") String folder
     ) {
-        log.info("Received bulk upload request for {} files to folder: {}", files.size(), folder);
+        log.info("Received bulk upload request for {} files to folder: {}",
+                files.size(), folder);
 
         if (files.isEmpty()) {
             return ResponseEntity
@@ -120,7 +129,8 @@ public class MediaUploadController {
                     .body(ApiResponse.error("No files provided for upload"));
         }
 
-        com.sep.realvista.application.media.dto.BulkMediaUploadResponse response = mediaUploadService.uploadMultipleMedia(files, folder);
+        com.sep.realvista.application.media.dto.BulkMediaUploadResponse response =
+                mediaUploadService.uploadMultipleMedia(files, folder);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

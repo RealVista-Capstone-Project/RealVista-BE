@@ -25,8 +25,10 @@ public class MediaUploadApplicationService {
     @Transactional
     public MediaUploadResponse uploadMedia(MultipartFile file, String folder) {
         try {
-            log.info("Starting upload for file: {} to folder: {}", file.getOriginalFilename(), folder);
-            log.info("File details - Name: {}, Size: {} bytes, Type: {}", file.getOriginalFilename(), file.getSize(), file.getContentType());
+            log.info("Starting upload for file: {} to folder: {}",
+                    file.getOriginalFilename(), folder);
+            log.info("File details - Name: {}, Size: {} bytes, Type: {}",
+                    file.getOriginalFilename(), file.getSize(), file.getContentType());
 
             String mediaUrl = spacesStorageService.uploadFile(file, folder);
 

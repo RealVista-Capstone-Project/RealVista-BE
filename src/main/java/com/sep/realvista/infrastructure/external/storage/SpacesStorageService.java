@@ -122,7 +122,8 @@ public class SpacesStorageService {
         }
 
         if (!isImage && !isVideo) {
-            throw new IOException("Invalid file type. Allowed types: images (JPEG, PNG, GIF, WebP, HEIC/HEIF) and videos (MP4, MPEG, QuickTime, AVI, WebM)");
+            throw new IOException("Invalid file type. Allowed types: images (JPEG, PNG, GIF, WebP, "
+                    + "HEIC/HEIF) and videos (MP4, MPEG, QuickTime, AVI, WebM)");
         }
 
         long fileSize = file.getSize();
