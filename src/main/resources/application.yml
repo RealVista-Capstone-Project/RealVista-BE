@@ -68,17 +68,20 @@ spring:
       - listings
       - similarListings
 
+  # Multipart File Upload Configuration
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MAX_FILE_SIZE:100MB}
+      max-request-size: ${MAX_REQUEST_SIZE:110MB}
+      file-size-threshold: ${FILE_SIZE_THRESHOLD:2MB}
+
   # Server Configuration
   server:
     port: ${SERVER_PORT:8080}
     error:
       include-message: always
       include-binding-errors: always
-    multipart:
-      enabled: true
-      max-file-size: ${MAX_FILE_SIZE:100MB}
-      max-request-size: ${MAX_REQUEST_SIZE:110MB}
-      file-size-threshold: ${FILE_SIZE_THRESHOLD:5MB}
 
   # Security Configuration
   security:
