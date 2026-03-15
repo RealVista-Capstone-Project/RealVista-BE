@@ -3,6 +3,7 @@ package com.sep.realvista.presentation.rest.listing;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
+import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
 import com.sep.realvista.application.listing.dto.ListingSearchResponse;
@@ -12,6 +13,7 @@ import com.sep.realvista.application.listing.service.ListingSearchService;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -19,13 +21,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -181,5 +189,177 @@ public class ListingController {
             // Not a UUID, extract from slug
             return com.sep.realvista.shared.util.ShortIdUtils.extractUuidFromSlug(idOrSlug);
         }
+    }
+
+    // ==================== CRUD Operations ====================
+
+    @PostMapping
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Create a new listing",
+            description = "Creates a new listing in DRAFT status. "
+                    + "The listing will be associated with the authenticated user.")
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> createListing(
+            @org.springframework.web.bind.annotation.RequestBody @jakarta.validation.Valid
+            com.sep.realvista.application.listing.dto.CreateListingRequest request,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Creating listing for user: {}", userDetails.getUserId());
+
+        com.sep.realvista.application.listing.dto.ListingResponse response = 
+                listingApplicationService.createListing(request, userDetails.getUserId());
+
+        return ResponseEntity
+                .status(org.springframework.http.HttpStatus.CREATED)
+                .body(ApiResponse.success("Listing created successfully", response));
+    }
+
+    @PutMapping("/{listingId}")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Update a listing",
+            description = "Updates an existing listing. Only the listing owner can update it.")
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> updateListing(
+            @PathVariable UUID listingId,
+            @org.springframework.web.bind.annotation.RequestBody @jakarta.validation.Valid
+            com.sep.realvista.application.listing.dto.UpdateListingRequest request,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Updating listing ID: {} by user: {}", listingId, userDetails.getUserId());
+
+        com.sep.realvista.application.listing.dto.ListingResponse response = 
+                listingApplicationService.updateListing(listingId, request, userDetails.getUserId());
+
+        return ResponseEntity.ok(ApiResponse.success("Listing updated successfully", response));
+    }
+
+    @DeleteMapping("/{listingId}")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Delete a listing",
+            description = "Soft deletes a listing. Only the listing owner can delete it.")
+    public ResponseEntity<ApiResponse<Void>> deleteListing(
+            @PathVariable UUID listingId,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Deleting listing ID: {} by user: {}", listingId, userDetails.getUserId());
+
+        listingApplicationService.deleteListing(listingId, userDetails.getUserId());
+
+        return ResponseEntity.ok(ApiResponse.success("Listing deleted successfully", null));
+    }
+
+    @GetMapping("/my-listings")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get my listings",
+            description = "Retrieves all listings created by the authenticated user.")
+    public ResponseEntity<ApiResponse<List<ListingResponse>>>
+            getMyListings(@AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Fetching listings for user: {}", userDetails.getUserId());
+
+        List<com.sep.realvista.application.listing.dto.ListingResponse> listings = 
+                listingApplicationService.getMyListings(userDetails.getUserId());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Listings retrieved successfully", listings));
+    }
+
+    // ==================== Status Management Operations ====================
+
+    @PatchMapping("/{listingId}/submit-for-review")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Submit listing for review",
+            description = "Changes listing status from DRAFT to PENDING. "
+                    + "Only the listing owner can submit for review.")
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
+            submitForReview(
+                    @PathVariable UUID listingId,
+                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Submitting listing ID: {} for review by user: {}", listingId, userDetails.getUserId());
+
+        com.sep.realvista.application.listing.dto.ListingResponse response = 
+                listingApplicationService.submitForReview(listingId, userDetails.getUserId());
+
+        return ResponseEntity.ok(ApiResponse.success("Listing submitted for review", response));
+    }
+
+    @PatchMapping("/{listingId}/publish")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Publish a listing",
+            description = "Changes listing status from DRAFT/PENDING to PUBLISHED. "
+                    + "Only the listing owner can publish.")
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
+            publishListing(
+                    @PathVariable UUID listingId,
+                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Publishing listing ID: {} by user: {}", listingId, userDetails.getUserId());
+
+        com.sep.realvista.application.listing.dto.ListingResponse response = 
+                listingApplicationService.publishListing(listingId, userDetails.getUserId());
+
+        return ResponseEntity.ok(ApiResponse.success("Listing published successfully", response));
+    }
+
+    @PatchMapping("/{listingId}/unpublish")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Unpublish a listing",
+            description = "Changes listing status from PUBLISHED to DRAFT. "
+                    + "Only the listing owner can unpublish.")
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
+            unpublishListing(
+                    @PathVariable UUID listingId,
+                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Unpublishing listing ID: {} by user: {}", listingId, userDetails.getUserId());
+
+        com.sep.realvista.application.listing.dto.ListingResponse response = 
+                listingApplicationService.unpublishListing(listingId, userDetails.getUserId());
+
+        return ResponseEntity.ok(ApiResponse.success("Listing unpublished successfully", response));
+    }
+
+    @PatchMapping("/{listingId}/mark-as-sold")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Mark listing as sold",
+            description = "Changes SALE listing status to SOLD. "
+                    + "Only applicable for SALE listings. Only the owner can mark as sold.")
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
+            markAsSold(
+                    @PathVariable UUID listingId,
+                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Marking listing ID: {} as sold by user: {}", listingId, userDetails.getUserId());
+
+        com.sep.realvista.application.listing.dto.ListingResponse response = 
+                listingApplicationService.markAsSold(listingId, userDetails.getUserId());
+
+        return ResponseEntity.ok(ApiResponse.success("Listing marked as sold", response));
+    }
+
+    @PatchMapping("/{listingId}/mark-as-rented")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Mark listing as rented",
+            description = "Changes RENT listing status to RENTED. "
+                    + "Only applicable for RENT listings. Only the owner can mark as rented.")
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
+            markAsRented(
+                    @PathVariable UUID listingId,
+                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Marking listing ID: {} as rented by user: {}", listingId, userDetails.getUserId());
+
+        com.sep.realvista.application.listing.dto.ListingResponse response = 
+                listingApplicationService.markAsRented(listingId, userDetails.getUserId());
+
+        return ResponseEntity.ok(ApiResponse.success("Listing marked as rented", response));
     }
 }

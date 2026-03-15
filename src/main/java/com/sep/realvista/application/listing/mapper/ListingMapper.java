@@ -386,4 +386,31 @@ public interface ListingMapper {
 
         return response.build();
     }
+
+    /**
+     * Map Listing to ListingResponse for CRUD operations
+     */
+    default com.sep.realvista.application.listing.dto.ListingResponse toListingResponse(Listing listing) {
+        if (listing == null) {
+            return null;
+        }
+
+        return com.sep.realvista.application.listing.dto.ListingResponse.builder()
+                .listingId(listing.getListingId())
+                .propertyId(listing.getPropertyId())
+                .userId(listing.getUserId())
+                .listingType(listing.getListingType())
+                .status(listing.getStatus())
+                .name(listing.getName())
+                .slug(listing.getSlug())
+                .price(listing.getPrice())
+                .minPrice(listing.getMinPrice())
+                .maxPrice(listing.getMaxPrice())
+                .isNegotiable(listing.getIsNegotiable())
+                .availableFrom(listing.getAvailableFrom())
+                .publishedAt(listing.getPublishedAt())
+                .createdAt(listing.getCreatedAt())
+                .updatedAt(listing.getUpdatedAt())
+                .build();
+    }
 }
