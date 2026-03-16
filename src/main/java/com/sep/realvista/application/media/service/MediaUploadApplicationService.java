@@ -38,6 +38,7 @@ public class MediaUploadApplicationService {
                     .fileSize(file.getSize())
                     .fileName(file.getOriginalFilename())
                     .uploadedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
+                    .folder(folder)
                     .build();
 
             log.info("Upload successful for file: {} - URL: {}", file.getOriginalFilename(), mediaUrl);
@@ -66,6 +67,7 @@ public class MediaUploadApplicationService {
                         .fileSize(file.getSize())
                         .fileName(file.getOriginalFilename())
                         .uploadedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
+                        .folder(folder)
                         .build();
 
                 uploadedFiles.add(response);

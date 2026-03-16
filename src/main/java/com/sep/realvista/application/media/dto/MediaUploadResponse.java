@@ -26,4 +26,7 @@ public class MediaUploadResponse {
 
     @JsonProperty("uploaded_at")
     private String uploadedAt;
+
+    @JsonProperty("folder")
+    private String folder;
 }
