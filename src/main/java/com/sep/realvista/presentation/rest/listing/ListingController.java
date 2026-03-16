@@ -4,9 +4,9 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.ListingResponse;
-import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
 import com.sep.realvista.application.listing.dto.ListingSearchResponse;
+import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
 import com.sep.realvista.application.listing.service.ListingSearchService;
@@ -52,17 +52,17 @@ public class ListingController {
     @Operation(summary = "Search Listings",
             description = "Search for published listings using various filter criteria.",
             responses = {
-                @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                        responseCode = "200",
-                        description = "Successfully retrieved matching listings",
-                        content = @io.swagger.v3.oas.annotations.media.Content(
-                                mediaType = "application/json",
-                                schema = @io.swagger.v3.oas.annotations.media.Schema(
-                                        implementation = PageResponse.class))),
-                @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                        responseCode = "400",
-                        description = "Invalid search criteria provided",
-                        content = @io.swagger.v3.oas.annotations.media.Content)
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully retrieved matching listings",
+                            content = @io.swagger.v3.oas.annotations.media.Content(
+                                    mediaType = "application/json",
+                                    schema = @io.swagger.v3.oas.annotations.media.Schema(
+                                            implementation = PageResponse.class))),
+                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid search criteria provided",
+                            content = @io.swagger.v3.oas.annotations.media.Content)
             })
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<PageResponse<ListingSearchResponse>>> search(
@@ -206,7 +206,7 @@ public class ListingController {
 
         log.info("Creating listing for user: {}", userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response = 
+        com.sep.realvista.application.listing.dto.ListingResponse response =
                 listingApplicationService.createListing(request, userDetails.getUserId());
 
         return ResponseEntity
@@ -227,7 +227,7 @@ public class ListingController {
 
         log.info("Updating listing ID: {} by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response = 
+        com.sep.realvista.application.listing.dto.ListingResponse response =
                 listingApplicationService.updateListing(listingId, request, userDetails.getUserId());
 
         return ResponseEntity.ok(ApiResponse.success("Listing updated successfully", response));
@@ -249,17 +249,17 @@ public class ListingController {
         return ResponseEntity.ok(ApiResponse.success("Listing deleted successfully", null));
     }
 
-    @GetMapping("/my-listings")
+    @GetMapping("/managed-listings")
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Get my listings",
+    @Operation(summary = "Get managed listings",
             description = "Retrieves all listings created by the authenticated user.")
     public ResponseEntity<ApiResponse<List<ListingResponse>>>
-            getMyListings(@AuthenticationPrincipal SecurityUserDetails userDetails) {
+    getManagedListings(@AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Fetching listings for user: {}", userDetails.getUserId());
 
-        List<com.sep.realvista.application.listing.dto.ListingResponse> listings = 
+        List<com.sep.realvista.application.listing.dto.ListingResponse> listings =
                 listingApplicationService.getMyListings(userDetails.getUserId());
 
         return ResponseEntity.ok(
@@ -274,14 +274,14 @@ public class ListingController {
     @Operation(summary = "Submit listing for review",
             description = "Changes listing status from DRAFT to PENDING. "
                     + "Only the listing owner can submit for review.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
-            submitForReview(
-                    @PathVariable UUID listingId,
-                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
+    submitForReview(
+            @PathVariable UUID listingId,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Submitting listing ID: {} for review by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response = 
+        com.sep.realvista.application.listing.dto.ListingResponse response =
                 listingApplicationService.submitForReview(listingId, userDetails.getUserId());
 
         return ResponseEntity.ok(ApiResponse.success("Listing submitted for review", response));
@@ -293,14 +293,14 @@ public class ListingController {
     @Operation(summary = "Publish a listing",
             description = "Changes listing status from DRAFT/PENDING to PUBLISHED. "
                     + "Only the listing owner can publish.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
-            publishListing(
-                    @PathVariable UUID listingId,
-                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
+    publishListing(
+            @PathVariable UUID listingId,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Publishing listing ID: {} by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response = 
+        com.sep.realvista.application.listing.dto.ListingResponse response =
                 listingApplicationService.publishListing(listingId, userDetails.getUserId());
 
         return ResponseEntity.ok(ApiResponse.success("Listing published successfully", response));
@@ -312,14 +312,14 @@ public class ListingController {
     @Operation(summary = "Unpublish a listing",
             description = "Changes listing status from PUBLISHED to DRAFT. "
                     + "Only the listing owner can unpublish.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
-            unpublishListing(
-                    @PathVariable UUID listingId,
-                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
+    unpublishListing(
+            @PathVariable UUID listingId,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Unpublishing listing ID: {} by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response = 
+        com.sep.realvista.application.listing.dto.ListingResponse response =
                 listingApplicationService.unpublishListing(listingId, userDetails.getUserId());
 
         return ResponseEntity.ok(ApiResponse.success("Listing unpublished successfully", response));
@@ -331,14 +331,14 @@ public class ListingController {
     @Operation(summary = "Mark listing as sold",
             description = "Changes SALE listing status to SOLD. "
                     + "Only applicable for SALE listings. Only the owner can mark as sold.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
-            markAsSold(
-                    @PathVariable UUID listingId,
-                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
+    markAsSold(
+            @PathVariable UUID listingId,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Marking listing ID: {} as sold by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response = 
+        com.sep.realvista.application.listing.dto.ListingResponse response =
                 listingApplicationService.markAsSold(listingId, userDetails.getUserId());
 
         return ResponseEntity.ok(ApiResponse.success("Listing marked as sold", response));
@@ -350,14 +350,14 @@ public class ListingController {
     @Operation(summary = "Mark listing as rented",
             description = "Changes RENT listing status to RENTED. "
                     + "Only applicable for RENT listings. Only the owner can mark as rented.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> 
-            markAsRented(
-                    @PathVariable UUID listingId,
-                    @AuthenticationPrincipal SecurityUserDetails userDetails) {
+    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
+    markAsRented(
+            @PathVariable UUID listingId,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Marking listing ID: {} as rented by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response = 
+        com.sep.realvista.application.listing.dto.ListingResponse response =
                 listingApplicationService.markAsRented(listingId, userDetails.getUserId());
 
         return ResponseEntity.ok(ApiResponse.success("Listing marked as rented", response));
