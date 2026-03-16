@@ -395,7 +395,7 @@ public interface ListingMapper {
             return null;
         }
 
-        return com.sep.realvista.application.listing.dto.ListingResponse.builder()
+        var builder = com.sep.realvista.application.listing.dto.ListingResponse.builder()
                 .listingId(listing.getListingId())
                 .propertyId(listing.getPropertyId())
                 .userId(listing.getUserId())
@@ -410,7 +410,29 @@ public interface ListingMapper {
                 .availableFrom(listing.getAvailableFrom())
                 .publishedAt(listing.getPublishedAt())
                 .createdAt(listing.getCreatedAt())
-                .updatedAt(listing.getUpdatedAt())
-                .build();
+                .updatedAt(listing.getUpdatedAt());
+
+        // Add address fields from property and location
+        if (listing.getProperty() != null) {
+            builder.streetAddress(listing.getProperty().getStreetAddress());
+            
+            if (listing.getProperty().getLocation() != null) {
+                Location location = listing.getProperty().getLocation();
+                
+                // Traverse up the location hierarchy to collect names
+                java.util.Map<LocationType, String> locationNames = new java.util.HashMap<>();
+                Location current = location;
+                while (current != null) {
+                    locationNames.put(current.getType(), current.getName());
+                    current = current.getParent();
+                }
+                
+                builder.wardName(locationNames.get(LocationType.WARD))
+                        .districtName(locationNames.get(LocationType.DISTRICT))
+                        .cityName(locationNames.get(LocationType.CITY));
+            }
+        }
+
+        return builder.build();
     }
 }

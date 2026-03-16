@@ -3,6 +3,7 @@ package com.sep.realvista.application.listing.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.shared.util.AddressFormatter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -43,6 +44,9 @@ public class ListingResponse {
     @JsonProperty("slug")
     private String slug;
 
+    @JsonProperty("thumbnail")
+    private String thumbnail;
+
     @JsonProperty("price")
     private BigDecimal price;
 
@@ -66,4 +70,21 @@ public class ListingResponse {
 
     @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
+
+    @JsonProperty("street_address")
+    private String streetAddress;
+
+    @JsonProperty("ward_name")
+    private String wardName;
+
+    @JsonProperty("district_name")
+    private String districtName;
+
+    @JsonProperty("city_name")
+    private String cityName;
+
+    @JsonProperty("full_address")
+    public String getFullAddress() {
+        return AddressFormatter.formatFullAddress(streetAddress, wardName, districtName, cityName);
+    }
 }

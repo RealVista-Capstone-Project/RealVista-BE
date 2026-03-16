@@ -572,7 +572,18 @@ public class ListingApplicationService {
         log.info("Found {} listings for user ID: {}", listings.size(), userId);
 
         return listings.stream()
-                .map(listingMapper::toListingResponse)
+                .map(listing -> {
+                    com.sep.realvista.application.listing.dto.ListingResponse response = 
+                            listingMapper.toListingResponse(listing);
+                    
+                    // If thumbnail is null, fetch it from repository
+                    if (response.getThumbnail() == null) {
+                        listingRepository.findThumbnailByListingId(listing.getListingId())
+                                .ifPresent(response::setThumbnail);
+                    }
+                    
+                    return response;
+                })
                 .collect(java.util.stream.Collectors.toList());
     }
 
