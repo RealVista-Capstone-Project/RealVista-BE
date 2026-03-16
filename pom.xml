@@ -205,6 +205,13 @@
 			<artifactId>firebase-admin</artifactId>
 			<version>9.2.0</version>
 		</dependency>
+
+		<!-- AWS S3 SDK for DigitalOcean Spaces -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+			<version>2.25.11</version>
+		</dependency>
 	</dependencies>
 
 	<build>
