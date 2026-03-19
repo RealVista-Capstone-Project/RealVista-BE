@@ -2,6 +2,7 @@ package com.sep.realvista.presentation.rest.listing;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
+import com.sep.realvista.application.listing.dto.CreateListingRequest;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -199,14 +202,14 @@ public class ListingController {
     @Operation(summary = "Create a new listing",
             description = "Creates a new listing in DRAFT status. "
                     + "The listing will be associated with the authenticated user.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> createListing(
-            @org.springframework.web.bind.annotation.RequestBody @jakarta.validation.Valid
-            com.sep.realvista.application.listing.dto.CreateListingRequest request,
+    public ResponseEntity<ApiResponse<ListingResponse>> createListing(
+            @RequestBody @Valid
+            CreateListingRequest request,
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Creating listing for user: {}", userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response =
+        ListingResponse response =
                 listingApplicationService.createListing(request, userDetails.getUserId());
 
         return ResponseEntity
