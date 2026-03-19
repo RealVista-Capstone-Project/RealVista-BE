@@ -86,7 +86,7 @@ class MapControllerComponentTest {
                                 .bathrooms(1)
                                 .sizeM2(new BigDecimal("80.00"))
                                 .propertyType("Apartment")
-                                .locationName("Ben Nghe Ward")
+                                .wardName("Ben Nghe Ward")
                                 .isFavorite(false)
                                 .build();
 
@@ -105,7 +105,7 @@ class MapControllerComponentTest {
                                 .bathrooms(1)
                                 .sizeM2(new BigDecimal("35.00"))
                                 .propertyType("Studio")
-                                .locationName("Ben Nghe Ward")
+                                .wardName("Ben Nghe Ward")
                                 .isFavorite(true)
                                 .build();
 
@@ -181,7 +181,7 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should return 200 OK when searching with valid map bounds")
                 void searchWithMapBounds_shouldReturnOk() throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(singleResultResponse);
 
                         String requestBody = """
@@ -204,7 +204,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.data.total_elements").value(1));
 
                         verify(mapSearchService).searchPropertiesOnMap(
-                                        any(MapSearchRequest.class));
+                                        any(MapSearchRequest.class), any());
                 }
 
                 @Test
@@ -228,7 +228,7 @@ class MapControllerComponentTest {
                                                         .build())
                                         .build();
 
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(textResponse);
 
                         String requestBody = """
@@ -279,7 +279,7 @@ class MapControllerComponentTest {
                                                         .build())
                                         .build();
 
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(filteredResponse);
 
                         String requestBody = """
@@ -317,7 +317,7 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should return 200 OK when filtering by RENT listing type")
                 void searchWithRentType_shouldReturnOk() throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(singleResultResponse);
 
                         String requestBody = """
@@ -340,7 +340,7 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should return 200 OK when filtering by SALE listing type")
                 void searchWithSaleType_shouldReturnOk() throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(singleResultResponse);
 
                         String requestBody = """
@@ -363,7 +363,7 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should return 200 OK when filtering by price range")
                 void searchWithPriceRange_shouldReturnOk() throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(singleResultResponse);
 
                         String requestBody = """
@@ -405,7 +405,7 @@ class MapControllerComponentTest {
                                                         .build())
                                         .build();
 
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(page2Response);
 
                         String requestBody = """
@@ -435,7 +435,7 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should return 200 OK with empty content when no results")
                 void searchWithNoResults_shouldReturnEmptyContent() throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(emptyResponse);
 
                         String requestBody = """
@@ -462,7 +462,7 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should return 200 OK with defaults when request body is empty")
                 void searchWithEmptyBody_shouldReturnOk() throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(emptyResponse);
 
                         mockMvc.perform(post(MAP_SEARCH_URL)
@@ -477,7 +477,7 @@ class MapControllerComponentTest {
                 @DisplayName("Should return 200 OK with multiple markers in content")
                 void searchWithMultipleResults_shouldReturnAllMarkers()
                                 throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(multiResultResponse);
 
                         String requestBody = """
@@ -527,7 +527,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.errors[0].field").value("northLat"));
 
                         verify(mapSearchService, never())
-                                        .searchPropertiesOnMap(any());
+                                        .searchPropertiesOnMap(any(), any());
                 }
 
                 @Test
@@ -551,7 +551,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.errors[0].field").value("southLat"));
 
                         verify(mapSearchService, never())
-                                        .searchPropertiesOnMap(any());
+                                        .searchPropertiesOnMap(any(), any());
                 }
 
                 @Test
@@ -575,7 +575,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.errors[0].field").value("eastLng"));
 
                         verify(mapSearchService, never())
-                                        .searchPropertiesOnMap(any());
+                                        .searchPropertiesOnMap(any(), any());
                 }
 
                 @Test
@@ -599,7 +599,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.errors[0].field").value("westLng"));
 
                         verify(mapSearchService, never())
-                                        .searchPropertiesOnMap(any());
+                                        .searchPropertiesOnMap(any(), any());
                 }
 
                 @Test
@@ -622,7 +622,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.error_code").value("VALIDATION_ERROR"));
 
                         verify(mapSearchService, never())
-                                        .searchPropertiesOnMap(any());
+                                        .searchPropertiesOnMap(any(), any());
                 }
 
                 @Test
@@ -645,7 +645,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.error_code").value("VALIDATION_ERROR"));
 
                         verify(mapSearchService, never())
-                                        .searchPropertiesOnMap(any());
+                                        .searchPropertiesOnMap(any(), any());
                 }
 
                 @Test
@@ -668,7 +668,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.error_code").value("VALIDATION_ERROR"));
 
                         verify(mapSearchService, never())
-                                        .searchPropertiesOnMap(any());
+                                        .searchPropertiesOnMap(any(), any());
                 }
 
                 @Test
@@ -690,14 +690,14 @@ class MapControllerComponentTest {
                                         .andExpect(status().isBadRequest());
 
                         verify(mapSearchService, never())
-                                        .searchPropertiesOnMap(any());
+                                        .searchPropertiesOnMap(any(), any());
                 }
 
                 @Test
                 @DisplayName("Should return 400 when service throws IllegalArgumentException")
                 void searchWhenServiceThrowsIllegalArg_shouldReturn400()
                                 throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenThrow(new IllegalArgumentException(
                                                         "Invalid search parameters"));
 
@@ -723,7 +723,7 @@ class MapControllerComponentTest {
                 @DisplayName("Should return 500 when service throws RuntimeException")
                 void searchWhenServiceThrowsRuntime_shouldReturn500()
                                 throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenThrow(new RuntimeException("Database connection failed"));
 
                         String requestBody = """
@@ -756,7 +756,7 @@ class MapControllerComponentTest {
                 @DisplayName("Should return complete response structure with all fields")
                 void responseStructure_shouldContainAllRequiredFields()
                                 throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(singleResultResponse);
 
                         mockMvc.perform(post(MAP_SEARCH_URL)
@@ -788,7 +788,7 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should return correct marker structure with all fields")
                 void markerStructure_shouldContainAllFields() throws Exception {
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(singleResultResponse);
 
                         mockMvc.perform(post(MAP_SEARCH_URL)
@@ -819,7 +819,7 @@ class MapControllerComponentTest {
                                                         .value(80.00))
                                         .andExpect(jsonPath("$.data.content[0].property_type")
                                                         .value("Apartment"))
-                                        .andExpect(jsonPath("$.data.content[0].location_name")
+                                        .andExpect(jsonPath("$.data.content[0].ward_name")
                                                         .value("Ben Nghe Ward"))
                                         .andExpect(jsonPath("$.data.content[0].is_favorite")
                                                         .value(false));
@@ -857,7 +857,7 @@ class MapControllerComponentTest {
                                                         .build())
                                         .build();
 
-                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class)))
+                        when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(responseWithFilters);
 
                         String requestBody = """

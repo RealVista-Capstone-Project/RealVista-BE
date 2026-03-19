@@ -17,6 +17,8 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -245,5 +247,60 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
-}
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex,
+            HttpServletRequest request
+    ) {
+        log.error("Type mismatch: {}", ex.getMessage());
+
+        String message = String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
+
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message(message)
+                .errorCode("TYPE_MISMATCH")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex,
+            HttpServletRequest request
+    ) {
+        log.error("File upload size exceeded: {}", ex.getMessage());
+
+        long maxSize = ex.getMaxUploadSize();
+        String maxSizeStr = maxSize > 0 ? formatFileSize(maxSize) : "configured limit";
+
+        String message = String.format(
+                "File size exceeds the maximum allowed size of %s. Please reduce the file size and try again.",
+                maxSizeStr
+        );
+
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.PAYLOAD_TOO_LARGE.value())
+                .message(message)
+                .errorCode("FILE_SIZE_EXCEEDED")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
+    }
+
+    private String formatFileSize(long bytes) {
+        if (bytes < 1024) {
+            return bytes + " bytes";
+        } else if (bytes < 1024 * 1024) {
+            return String.format("%.2f KB", bytes / 1024.0);
+        } else {
+            return String.format("%.2f MB", bytes / (1024.0 * 1024.0));
+        }
+    }
+}

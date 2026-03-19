@@ -65,6 +65,7 @@ public final class SecurityConstants {
         public static final String PARAM_ACCESS_TOKEN = "access_token";
         public static final String PARAM_USER_ID = "user_id";
         public static final String PARAM_EMAIL = "email";
+        public static final String PARAM_ROLES = "roles";
         public static final String PARAM_ERROR = "error";
 
         // Error types

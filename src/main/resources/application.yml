@@ -54,6 +54,7 @@ spring:
 
   # Jackson Configuration
   jackson:
+    property-naming-strategy: SNAKE_CASE
     serialization:
       write-dates-as-timestamps: false
     time-zone: UTC
@@ -68,6 +69,21 @@ spring:
       - similarListings
       - recommendations
 
+  # Multipart File Upload Configuration
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MAX_FILE_SIZE:100MB}
+      max-request-size: ${MAX_REQUEST_SIZE:110MB}
+      file-size-threshold: ${FILE_SIZE_THRESHOLD:2MB}
+
+  # Server Configuration
+  server:
+    port: ${SERVER_PORT:8080}
+    error:
+      include-message: always
+      include-binding-errors: always
+
   # Security Configuration
   security:
     jwt:
@@ -79,7 +95,7 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID:your_google_client_id}
             client-secret: ${GOOGLE_CLIENT_SECRET:your_google_client_secret}
-            redirect-uri: "{baseUrl}/login/oauth2/code/google"
+            redirect-uri: '{baseUrl}/login/oauth2/code/google'
             scope: profile,email
         provider:
           google:
@@ -91,12 +107,6 @@ spring:
           ios:
             client-id: ${GOOGLE_IOS_CLIENT_ID:your_google_ios_client_id}
 
-# ── Server Configuration ──
-server:
-  port: ${SERVER_PORT:8080}
-  error:
-    include-message: always
-    include-binding-errors: always
 
 # ── AI Microservice Configuration ──
 realvista:
@@ -135,8 +145,8 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n"
+    console: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
+    file: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
   file:
     name: logs/application.log
   logback:
@@ -152,3 +162,13 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
+
+# DigitalOcean Spaces Configuration
+digitalocean:
+  spaces:
+    access-key: ${DIGITALOCEAN_SPACES_ACCESS_KEY:your_access_key}
+    secret-key: ${DIGITALOCEAN_SPACES_SECRET_KEY:your_secret_key}
+    region: ${DIGITALOCEAN_SPACES_REGION:sgp1}
+    endpoint: ${DIGITALOCEAN_SPACES_ENDPOINT:https://sgp1.digitaloceanspaces.com}
+    bucket-name: ${DIGITALOCEAN_SPACES_BUCKET_NAME:realvista}
+    cdn-endpoint: ${DIGITALOCEAN_SPACES_CDN_ENDPOINT:}

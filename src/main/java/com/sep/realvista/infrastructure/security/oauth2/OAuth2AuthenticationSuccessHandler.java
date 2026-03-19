@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -75,16 +76,24 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             // Find or create user
             User user = findOrCreateUser(email, firstName, lastName, avatarUrl);
 
-            // Generate JWT token
-            String jwtToken = tokenService.generateToken(
+            // Extract roles from user
+            List<String> roles = user.getUserRoles().stream()
+                    .filter(ur -> ur.getRole() != null)
+                    .map(ur -> ur.getRole().getRoleCode().name())
+                    .toList();
+
+            // Generate JWT token with roles in claims
+            java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+            extraClaims.put("roles", roles);
+            org.springframework.security.core.userdetails.UserDetails userDetails =
                     new org.springframework.security.core.userdetails.User(
                             user.getEmail().getValue(),
                             user.getPasswordHash(),
                             java.util.Collections.emptyList()
-                    )
-            );
+                    );
+            String jwtToken = tokenService.generateToken(extraClaims, userDetails);
 
-            // Redirect to frontend with token
+            // Redirect to frontend with token (roles are already in the JWT — decode from token)
             String redirectUrl = buildSuccessRedirectUrl(jwtToken, user.getUserId(), email);
 
             log.info("Redirecting to: {}", redirectUrl);

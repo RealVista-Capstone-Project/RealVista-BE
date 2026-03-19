@@ -77,6 +77,15 @@ public class User extends BaseEntity {
     @Builder.Default
     private Set<UserRole> userRoles = new HashSet<>();
 
+    @Column(name = "working_start_time", nullable = false)
+    @Builder.Default
+    private java.time.LocalTime workingStartTime = java.time.LocalTime.of(8, 0);
+
+    @Column(name = "working_end_time", nullable = false)
+    @Builder.Default
+    private java.time.LocalTime workingEndTime = java.time.LocalTime.of(17, 0);
+
+
     public void activate() {
         if (this.status == UserStatus.ACTIVE) {
             throw new IllegalStateException("User is already active");
@@ -154,4 +163,3 @@ public class User extends BaseEntity {
                 .anyMatch(ur -> ur.getRole().getRoleCode().name().equals(roleCode));
     }
 }
-

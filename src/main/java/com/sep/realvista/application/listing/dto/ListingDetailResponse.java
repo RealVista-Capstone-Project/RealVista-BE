@@ -83,4 +83,8 @@ public class ListingDetailResponse {
 
     // Cost Breakdown (for RENT listings)
     private CostBreakdownDTO costBreakdown;
+
+    // Bookmark status for the requesting user (null for anonymous)
+    @JsonProperty("is_favorite")
+    private Boolean isFavorite;
 }

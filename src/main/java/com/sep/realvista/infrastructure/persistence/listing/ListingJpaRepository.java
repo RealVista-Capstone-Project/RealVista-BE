@@ -42,6 +42,12 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     @Query("SELECT l FROM Listing l WHERE l.listingId = :id AND l.deleted = false")
     Optional<Listing> findActiveById(@Param("id") UUID id);
 
+    @Query("SELECT l FROM Listing l WHERE l.slug = :slug AND l.deleted = false")
+    Optional<Listing> findBySlugAndDeletedFalse(@Param("slug") String slug);
+
+    @Query("SELECT l FROM Listing l WHERE l.deleted = false")
+    List<Listing> findByDeletedFalse();
+
     /**
      * Find published listings within geographical bounds with all filters.
      * Supports filtering by property attributes (bedrooms, bathrooms),
