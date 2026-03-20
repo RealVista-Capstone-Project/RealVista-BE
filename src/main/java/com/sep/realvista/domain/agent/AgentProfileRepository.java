@@ -27,4 +27,12 @@ public interface AgentProfileRepository {
      * @return list of agent profiles
      */
     List<AgentProfile> findByUserIds(List<UUID> userIds);
+
+    /**
+     * Saves an agent profile.
+     *
+     * @param agentProfile the agent profile to save
+     * @return the saved agent profile
+     */
+    AgentProfile save(AgentProfile agentProfile);
 }

@@ -31,13 +31,24 @@ public interface EngagementRepository {
     Optional<Engagement> findById(UUID id);
 
     /**
-     * Finds all accepted engagements where the given owner is involved
-     * (as receiver for AGENT_PROPOSAL or as initiator for OWNER_INVITATION).
-     * Eagerly fetches initiator, receiver, and property data.
+     * Finds hired agent engagements filtered by a specific status.
      *
      * @param ownerId the owner's user ID
+     * @param status the engagement status to filter by
+     * @param search optional search query for agent name
      * @param pageable pagination parameters
-     * @return page of accepted engagements for the owner
+     * @return page of engagements matching the criteria
      */
-    Page<Engagement> findHiredAgentEngagements(UUID ownerId, Pageable pageable);
+    Page<Engagement> findHiredAgentEngagements(UUID ownerId, EngagementStatus status, String search, Pageable pageable);
+
+    /**
+     * Finds all hired agent engagements (ACCEPTED, FINISHED, CANCELLED).
+     * Used when no status filter is specified.
+     *
+     * @param ownerId the owner's user ID
+     * @param search optional search query for agent name
+     * @param pageable pagination parameters
+     * @return page of engagements
+     */
+    Page<Engagement> findAllHiredAgentEngagements(UUID ownerId, String search, Pageable pageable);
 }

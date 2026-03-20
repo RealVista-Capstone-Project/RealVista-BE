@@ -45,4 +45,6 @@ public class HiredAgentResponse {
     private String engagementType;
     private String status;
     private LocalDateTime hiredAt;
+    private boolean hasReview;
+    private String cancellationReason;
 }

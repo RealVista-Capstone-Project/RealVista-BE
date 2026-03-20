@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,6 +20,12 @@ import java.util.UUID;
 @Repository
 @RequiredArgsConstructor
 public class EngagementRepositoryImpl implements EngagementRepository {
+
+    private static final List<EngagementStatus> HIRED_STATUSES = List.of(
+            EngagementStatus.ACCEPTED,
+            EngagementStatus.FINISHED,
+            EngagementStatus.CANCELLED
+    );
 
     private final EngagementJpaRepository jpaRepository;
 
@@ -33,7 +40,13 @@ public class EngagementRepositoryImpl implements EngagementRepository {
     }
 
     @Override
-    public Page<Engagement> findHiredAgentEngagements(UUID ownerId, Pageable pageable) {
-        return jpaRepository.findHiredAgentEngagements(ownerId, EngagementStatus.ACCEPTED, pageable);
+    public Page<Engagement> findHiredAgentEngagements(
+            UUID ownerId, EngagementStatus status, String search, Pageable pageable) {
+        return jpaRepository.findHiredAgentEngagements(ownerId, status, search, pageable);
+    }
+
+    @Override
+    public Page<Engagement> findAllHiredAgentEngagements(UUID ownerId, String search, Pageable pageable) {
+        return jpaRepository.findAllHiredAgentEngagements(ownerId, HIRED_STATUSES, search, pageable);
     }
 }

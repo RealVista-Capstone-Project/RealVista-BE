@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -18,22 +19,14 @@ import java.util.UUID;
 public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID> {
 
     /**
-     * Finds all accepted engagements where the given owner is involved.
-     * For AGENT_PROPOSAL: owner is the receiver (agent initiated).
-     * For OWNER_INVITATION: owner is the initiator (owner invited agent).
-     *
-     * Eagerly fetches initiator, receiver, and property to avoid N+1.
-     *
-     * @param ownerId the owner's user ID
-     * @param status  the engagement status to filter by
-     * @param pageable pagination and sort
-     * @return page of engagements
+     * Finds hired agent engagements filtered by a specific status,
+     * with optional search on agent name.
      */
     @Query(
         value = """
                 SELECT e FROM Engagement e
-                LEFT JOIN FETCH e.initiator
-                LEFT JOIN FETCH e.receiver
+                LEFT JOIN FETCH e.initiator i
+                LEFT JOIN FETCH e.receiver r
                 LEFT JOIN FETCH e.property p
                 LEFT JOIN FETCH p.location
                 LEFT JOIN FETCH p.propertyType
@@ -46,10 +39,70 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
                     (e.engagementType = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
                      AND e.initiatorId = :ownerId)
                 )
+                AND (:search IS NULL OR :search = '' OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
+                     AND LOWER(CONCAT(COALESCE(i.firstName, ''), ' ',
+                         COALESCE(i.lastName, '')))
+                         LIKE LOWER(CONCAT('%', :search, '%')))
+                    OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+                     AND LOWER(CONCAT(COALESCE(r.firstName, ''), ' ',
+                         COALESCE(r.lastName, '')))
+                         LIKE LOWER(CONCAT('%', :search, '%')))
+                )
                 """,
         countQuery = """
                 SELECT COUNT(e) FROM Engagement e
+                LEFT JOIN e.initiator i
+                LEFT JOIN e.receiver r
                 WHERE e.status = :status
+                AND e.deleted = false
+                AND (
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
+                     AND e.receiverId = :ownerId)
+                    OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+                     AND e.initiatorId = :ownerId)
+                )
+                AND (:search IS NULL OR :search = '' OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
+                     AND LOWER(CONCAT(COALESCE(i.firstName, ''), ' ',
+                         COALESCE(i.lastName, '')))
+                         LIKE LOWER(CONCAT('%', :search, '%')))
+                    OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+                     AND LOWER(CONCAT(COALESCE(r.firstName, ''), ' ',
+                         COALESCE(r.lastName, '')))
+                         LIKE LOWER(CONCAT('%', :search, '%')))
+                )
+                """
+    )
+    Page<Engagement> findHiredAgentEngagements(
+            @Param("ownerId") UUID ownerId,
+            @Param("status") EngagementStatus status,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    /**
+     * Finds all hired agent engagements with statuses indicating active/completed relationships
+     * (ACCEPTED, FINISHED, CANCELLED), with optional search on agent name.
+     */
+    @Query(
+        value = """
+                SELECT e FROM Engagement e
+                LEFT JOIN FETCH e.initiator i
+                LEFT JOIN FETCH e.receiver r
+                LEFT JOIN FETCH e.property p
+                LEFT JOIN FETCH p.location
+                LEFT JOIN FETCH p.propertyType
+                WHERE e.status IN :statuses
                 AND e.deleted = false
                 AND (
                     (e.engagementType = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
@@ -58,11 +111,54 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
                     (e.engagementType = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
                      AND e.initiatorId = :ownerId)
                 )
+                AND (:search IS NULL OR :search = '' OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
+                     AND LOWER(CONCAT(COALESCE(i.firstName, ''), ' ',
+                         COALESCE(i.lastName, '')))
+                         LIKE LOWER(CONCAT('%', :search, '%')))
+                    OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+                     AND LOWER(CONCAT(COALESCE(r.firstName, ''), ' ',
+                         COALESCE(r.lastName, '')))
+                         LIKE LOWER(CONCAT('%', :search, '%')))
+                )
+                """,
+        countQuery = """
+                SELECT COUNT(e) FROM Engagement e
+                LEFT JOIN e.initiator i
+                LEFT JOIN e.receiver r
+                WHERE e.status IN :statuses
+                AND e.deleted = false
+                AND (
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
+                     AND e.receiverId = :ownerId)
+                    OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+                     AND e.initiatorId = :ownerId)
+                )
+                AND (:search IS NULL OR :search = '' OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
+                     AND LOWER(CONCAT(COALESCE(i.firstName, ''), ' ',
+                         COALESCE(i.lastName, '')))
+                         LIKE LOWER(CONCAT('%', :search, '%')))
+                    OR
+                    (e.engagementType
+                     = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+                     AND LOWER(CONCAT(COALESCE(r.firstName, ''), ' ',
+                         COALESCE(r.lastName, '')))
+                         LIKE LOWER(CONCAT('%', :search, '%')))
+                )
                 """
     )
-    Page<Engagement> findHiredAgentEngagements(
+    Page<Engagement> findAllHiredAgentEngagements(
             @Param("ownerId") UUID ownerId,
-            @Param("status") EngagementStatus status,
+            @Param("statuses") List<EngagementStatus> statuses,
+            @Param("search") String search,
             Pageable pageable
     );
 }

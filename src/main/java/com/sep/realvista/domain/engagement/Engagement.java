@@ -1,6 +1,7 @@
 package com.sep.realvista.domain.engagement;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.user.User;
 import jakarta.persistence.Column;
@@ -84,6 +85,9 @@ public class Engagement extends BaseEntity {
     @Builder.Default
     private EngagementStatus status = EngagementStatus.SUBMITTED;
 
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    private String cancellationReason;
+
     public void accept() {
         this.status = EngagementStatus.ACCEPTED;
     }
@@ -92,7 +96,27 @@ public class Engagement extends BaseEntity {
         this.status = EngagementStatus.REJECTED;
     }
 
-    public void cancel() {
+    public void cancel(String reason) {
+        if (this.status != EngagementStatus.ACCEPTED && this.status != EngagementStatus.SUBMITTED) {
+            throw new BusinessConflictException(
+                    "Only ACCEPTED or SUBMITTED engagements can be cancelled",
+                    "INVALID_ENGAGEMENT_STATUS");
+        }
+        if (this.status == EngagementStatus.ACCEPTED && (reason == null || reason.isBlank())) {
+            throw new BusinessConflictException(
+                    "Cancellation reason is required for accepted engagements",
+                    "CANCELLATION_REASON_REQUIRED");
+        }
+        this.cancellationReason = reason;
         this.status = EngagementStatus.CANCELLED;
+    }
+
+    public void finish() {
+        if (this.status != EngagementStatus.ACCEPTED) {
+            throw new BusinessConflictException(
+                    "Only ACCEPTED engagements can be finished",
+                    "INVALID_ENGAGEMENT_STATUS");
+        }
+        this.status = EngagementStatus.FINISHED;
     }
 }

@@ -23,10 +23,21 @@ public interface EngagementMapper {
      * @param agentProfile the agent's profile (may be null)
      * @return the hired agent response DTO
      */
+    /**
+     * Maps an Engagement with its associated agent User, AgentProfile,
+     * and review status to a HiredAgentResponse DTO.
+     *
+     * @param engagement the engagement entity
+     * @param agentUser the agent's User entity
+     * @param agentProfile the agent's profile (may be null)
+     * @param hasReview whether this engagement has been reviewed
+     * @return the hired agent response DTO
+     */
     default HiredAgentResponse toHiredAgentResponse(
             Engagement engagement,
             User agentUser,
-            AgentProfile agentProfile) {
+            AgentProfile agentProfile,
+            boolean hasReview) {
 
         if (engagement == null || agentUser == null) {
             return null;
@@ -41,7 +52,9 @@ public interface EngagementMapper {
                 .engagementId(engagement.getEngagementId())
                 .engagementType(engagement.getEngagementType().name())
                 .status(engagement.getStatus().name())
-                .hiredAt(engagement.getUpdatedAt());
+                .hiredAt(engagement.getUpdatedAt())
+                .hasReview(hasReview)
+                .cancellationReason(engagement.getCancellationReason());
 
         // Agent profile info (may be null if profile not yet created)
         if (agentProfile != null) {

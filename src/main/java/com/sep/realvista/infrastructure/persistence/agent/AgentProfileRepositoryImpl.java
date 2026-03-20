@@ -32,4 +32,9 @@ public class AgentProfileRepositoryImpl implements AgentProfileRepository {
         }
         return jpaRepository.findByUserIdIn(userIds);
     }
+
+    @Override
+    public AgentProfile save(AgentProfile agentProfile) {
+        return jpaRepository.save(agentProfile);
+    }
 }
