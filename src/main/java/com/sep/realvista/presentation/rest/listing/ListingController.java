@@ -343,7 +343,7 @@ public class ListingController {
 
         log.info("Marking listing ID: {} as sold by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response =
+        ListingResponse response =
                 listingApplicationService.markAsSold(listingId, userDetails.getUserId());
 
         return ResponseEntity.ok(ApiResponse.success("Listing marked as sold", response));
