@@ -1,5 +1,6 @@
 package com.sep.realvista.component.presentation.rest.listing;
 
+import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.listing.dto.ListingAnalyticsDTO;
 import com.sep.realvista.application.listing.service.ListingAnalyticsService;
 import com.sep.realvista.domain.listing.Listing;
@@ -14,7 +15,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -32,12 +35,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Component tests for {@link ListingAnalyticsController}
  */
-@WebMvcTest(ListingAnalyticsController.class)
+@SpringBootTest
+@AutoConfigureMockMvc
 @DisplayName("ListingAnalyticsController Component Tests")
 class ListingAnalyticsControllerComponentTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private TokenService tokenService;
+
+    @MockitoBean
+    private UserDetailsService userDetailsService;
 
     @MockitoBean
     private ListingAnalyticsService listingAnalyticsService;
@@ -189,10 +199,10 @@ class ListingAnalyticsControllerComponentTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/listings/{id}/analytics should return 401 for unauthenticated user")
-    void getListingAnalytics_Unauthenticated_ReturnsUnauthorized() throws Exception {
+    @DisplayName("GET /api/v1/listings/{id}/analytics should return 403 for unauthenticated user")
+    void getListingAnalytics_Unauthenticated_ReturnsForbidden() throws Exception {
         // When & Then
         mockMvc.perform(get("/api/v1/listings/{listingId}/analytics", listingId))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 }

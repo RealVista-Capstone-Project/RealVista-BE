@@ -614,7 +614,7 @@ class ConversationControllerComponentTest {
     }
 
     @Nested
-    @DisplayName("POST /api/v1/conversations")
+    @DisplayName("POST /api/v1/conversations/users/{targetUserId}")
     class CreateOrGetConversation {
 
         @Test
@@ -637,10 +637,9 @@ class ConversationControllerComponentTest {
                     eq(currentUserId), eq(otherUserId)
             )).thenReturn(mockResponse);
 
-            mockMvc.perform(post("/api/v1/conversations")
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", otherUserId)
                             .with(user(mockSecurityUser))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.message").value("Conversation created successfully"))
@@ -670,24 +669,20 @@ class ConversationControllerComponentTest {
                     eq(currentUserId), eq(otherUserId)
             )).thenReturn(mockResponse);
 
-            mockMvc.perform(post("/api/v1/conversations")
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", otherUserId)
                             .with(user(mockSecurityUser))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.conversation_created").value(false))
                     .andExpect(jsonPath("$.data.conversation_id").value(conversationId.toString()));
         }
 
         @Test
-        @DisplayName("Should return 400 when targetUserId is missing")
-        void shouldReturn400WhenTargetUserIdMissing() throws Exception {
-            String requestBody = "{}";
-
-            mockMvc.perform(post("/api/v1/conversations")
+        @DisplayName("Should return 400 when targetUserId is not a valid UUID")
+        void shouldReturn400WhenTargetUserIdInvalidFormat() throws Exception {
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", "invalid-uuid-format")
                             .with(user(mockSecurityUser))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(requestBody))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isBadRequest());
         }
 
@@ -705,10 +700,9 @@ class ConversationControllerComponentTest {
                     "SELF_CONVERSATION_NOT_ALLOWED"
             ));
 
-            mockMvc.perform(post("/api/v1/conversations")
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", currentUserId)
                             .with(user(mockSecurityUser))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isConflict());
         }
 
@@ -726,10 +720,9 @@ class ConversationControllerComponentTest {
                     "User not found: " + otherUserId
             ));
 
-            mockMvc.perform(post("/api/v1/conversations")
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", otherUserId)
                             .with(user(mockSecurityUser))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
         }
 
@@ -740,9 +733,8 @@ class ConversationControllerComponentTest {
                     .targetUserId(otherUserId)
                     .build();
 
-            mockMvc.perform(post("/api/v1/conversations")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", otherUserId)
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isUnauthorized());
         }
     }
