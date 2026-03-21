@@ -565,6 +565,7 @@ public class ListingApplicationService {
 
     /**
      * Get all listings for a user.
+     * Returns listings where the user is either the listing creator OR the property owner.
      *
      * @param userId the user ID
      * @return list of user's listings
@@ -573,7 +574,7 @@ public class ListingApplicationService {
     public List<com.sep.realvista.application.listing.dto.ListingResponse> getMyListings(UUID userId) {
         log.info("Fetching all listings for user ID: {}", userId);
 
-        List<Listing> listings = listingRepository.findByUserId(userId);
+        List<Listing> listings = listingRepository.findByUserIdOrPropertyOwnerId(userId);
 
         log.info("Found {} listings for user ID: {}", listings.size(), userId);
 

@@ -257,7 +257,7 @@ public class ListingController {
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get managed listings",
-            description = "Retrieves all listings created by the authenticated user.")
+            description = "Retrieves all listings created by the authenticated user or where the user owns the property.")
     public ResponseEntity<ApiResponse<List<ListingResponse>>>
     getManagedListings(@AuthenticationPrincipal SecurityUserDetails userDetails) {
 
