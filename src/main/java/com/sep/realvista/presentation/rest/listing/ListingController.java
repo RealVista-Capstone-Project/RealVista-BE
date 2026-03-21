@@ -222,7 +222,7 @@ public class ListingController {
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Update a listing",
-            description = "Updates an existing listing. Only the listing owner can update it.")
+            description = "Updates an existing listing. The listing creator or property owner can update it.")
     public ResponseEntity<ApiResponse<ListingResponse>> updateListing(
             @PathVariable UUID listingId,
             @RequestBody @Valid
@@ -241,7 +241,7 @@ public class ListingController {
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Delete a listing",
-            description = "Soft deletes a listing. Only the listing owner can delete it.")
+            description = "Soft deletes a listing. The listing creator or property owner can delete it.")
     public ResponseEntity<ApiResponse<Void>> deleteListing(
             @PathVariable UUID listingId,
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
@@ -278,7 +278,7 @@ public class ListingController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Submit listing for review",
             description = "Changes listing status from DRAFT to PENDING. "
-                    + "Only the listing owner can submit for review.")
+                    + "The listing creator or property owner can submit for review.")
     public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
     submitForReview(
             @PathVariable UUID listingId,
@@ -297,15 +297,15 @@ public class ListingController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Publish a listing",
             description = "Changes listing status from DRAFT/PENDING to PUBLISHED. "
-                    + "Only the listing owner can publish.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
+                    + "The listing creator or property owner can publish.")
+    public ResponseEntity<ApiResponse<ListingResponse>>
     publishListing(
             @PathVariable UUID listingId,
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Publishing listing ID: {} by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response =
+        ListingResponse response =
                 listingApplicationService.publishListing(listingId, userDetails.getUserId());
 
         return ResponseEntity.ok(ApiResponse.success("Listing published successfully", response));
@@ -316,7 +316,7 @@ public class ListingController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Unpublish a listing",
             description = "Changes listing status from PUBLISHED to DRAFT. "
-                    + "Only the listing owner can unpublish.")
+                    + "The listing creator or property owner can unpublish.")
     public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
     unpublishListing(
             @PathVariable UUID listingId,
@@ -335,7 +335,7 @@ public class ListingController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Mark listing as sold",
             description = "Changes SALE listing status to SOLD. "
-                    + "Only applicable for SALE listings. Only the owner can mark as sold.")
+                    + "Only applicable for SALE listings. The listing creator or property owner can mark as sold.")
     public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
     markAsSold(
             @PathVariable UUID listingId,
@@ -354,7 +354,7 @@ public class ListingController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Mark listing as rented",
             description = "Changes RENT listing status to RENTED. "
-                    + "Only applicable for RENT listings. Only the owner can mark as rented.")
+                    + "Only applicable for RENT listings. The listing creator or property owner can mark as rented.")
     public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
     markAsRented(
             @PathVariable UUID listingId,

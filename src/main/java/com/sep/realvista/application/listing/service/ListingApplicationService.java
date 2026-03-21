@@ -73,6 +73,50 @@ public class ListingApplicationService {
     private ListingApplicationService self;
 
     /**
+     * Verifies if a user can modify a listing.
+     * A user can modify a listing if they are either:
+     * 1. The listing creator (userId matches listing.userId), OR
+     * 2. The property owner (userId matches listing.property.ownerId)
+     *
+     * @param listing the listing to check
+     * @param userId the user ID attempting to modify
+     * @return true if user is authorized, false otherwise
+     */
+    private boolean canModifyListing(Listing listing, UUID userId) {
+        // Check if user is the listing creator
+        if (listing.getUserId().equals(userId)) {
+            return true;
+        }
+
+        // Check if user is the property owner
+        // Need to fetch the property to check ownerId
+        Property property = propertyRepository.findById(listing.getPropertyId())
+                .orElse(null);
+
+        if (property != null && property.getOwnerId().equals(userId)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Verifies authorization and throws exception if user cannot modify the listing.
+     *
+     * @param listing the listing to check
+     * @param userId the user ID attempting to modify
+     * @param operation the operation being performed (for error message)
+     * @throws IllegalStateException if user is not authorized
+     */
+    private void verifyListingModificationAuthorization(Listing listing, UUID userId, String operation) {
+        if (!canModifyListing(listing, userId)) {
+            log.error("User {} is not authorized to {} listing {} (not creator or property owner)",
+                    userId, operation, listing.getListingId());
+            throw new IllegalStateException("You are not authorized to modify this listing");
+        }
+    }
+
+    /**
      * Get listing detail by ID.
      * Returns complete listing information including media, property, location,
      * type, category, agent/owner, and attributes.
@@ -463,7 +507,7 @@ public class ListingApplicationService {
      * @param userId    the user ID performing the update
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the owner
+     * @throws IllegalStateException     if user is not the listing creator or property owner
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse updateListing(
@@ -479,11 +523,8 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing", listingId);
                 });
 
-        // Verify ownership
-        if (!listing.getUserId().equals(userId)) {
-            log.error("User {} is not the owner of listing {} in updateListing", userId, listingId);
-            throw new IllegalStateException("You are not authorized to update this listing");
-        }
+        // Verify ownership (listing creator OR property owner)
+        verifyListingModificationAuthorization(listing, userId, "update");
 
         // Track if price changed for price history
         boolean priceChanged = false;
@@ -539,7 +580,7 @@ public class ListingApplicationService {
      * @param listingId the listing ID
      * @param userId    the user ID performing the deletion
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the owner
+     * @throws IllegalStateException     if user is not the listing creator or property owner
      */
     public void deleteListing(UUID listingId, UUID userId) {
         log.info("Deleting listing ID: {} by user ID: {}", listingId, userId);
@@ -551,11 +592,8 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing", listingId);
                 });
 
-        // Verify ownership
-        if (!listing.getUserId().equals(userId)) {
-            log.error("User {} is not the owner of listing {} in deleteListing", userId, listingId);
-            throw new IllegalStateException("You are not authorized to delete this listing");
-        }
+        // Verify ownership (listing creator OR property owner)
+        verifyListingModificationAuthorization(listing, userId, "delete");
 
         // Soft delete
         listingRepository.deleteById(listingId);
@@ -601,7 +639,7 @@ public class ListingApplicationService {
      * @param userId    the user ID performing the action
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the owner or listing is not in DRAFT status
+     * @throws IllegalStateException     if user is not the listing creator or property owner, or listing is not in DRAFT status
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse submitForReview(
@@ -614,10 +652,8 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing", listingId);
                 });
 
-        if (!listing.getUserId().equals(userId)) {
-            log.error("User {} is not the owner of listing {} in submitForReview", userId, listingId);
-            throw new IllegalStateException("You are not authorized to modify this listing");
-        }
+        // Verify ownership (listing creator OR property owner)
+        verifyListingModificationAuthorization(listing, userId, "submit for review");
 
         listing.submitForReview();
         Listing updatedListing = listingRepository.save(listing);
@@ -634,7 +670,7 @@ public class ListingApplicationService {
      * @param userId    the user ID performing the action
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the owner or listing cannot be published
+     * @throws IllegalStateException     if user is not the listing creator or property owner, or listing cannot be published
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse publishListing(
@@ -647,10 +683,8 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing", listingId);
                 });
 
-        if (!listing.getUserId().equals(userId)) {
-            log.error("User {} is not the owner of listing {} in publishListing", userId, listingId);
-            throw new IllegalStateException("You are not authorized to modify this listing");
-        }
+        // Verify ownership (listing creator OR property owner)
+        verifyListingModificationAuthorization(listing, userId, "publish");
 
         listing.publish();
         Listing updatedListing = listingRepository.save(listing);
@@ -667,7 +701,7 @@ public class ListingApplicationService {
      * @param userId    the user ID performing the action
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the owner or listing is not published
+     * @throws IllegalStateException     if user is not the listing creator or property owner, or listing is not published
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public com.sep.realvista.application.listing.dto.ListingResponse unpublishListing(
@@ -680,10 +714,8 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing", listingId);
                 });
 
-        if (!listing.getUserId().equals(userId)) {
-            log.error("User {} is not the owner of listing {}", userId, listingId);
-            throw new IllegalStateException("You are not authorized to modify this listing");
-        }
+        // Verify ownership (listing creator OR property owner)
+        verifyListingModificationAuthorization(listing, userId, "unpublish");
 
         listing.unpublish();
         Listing updatedListing = listingRepository.save(listing);
@@ -700,7 +732,7 @@ public class ListingApplicationService {
      * @param userId    the user ID performing the action
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the owner, listing is not SALE type,
+     * @throws IllegalStateException     if user is not the listing creator or property owner, listing is not SALE type,
      *                                   or not published
      */
     @CacheEvict(value = "listings", key = "#listingId")
@@ -714,10 +746,8 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing", listingId);
                 });
 
-        if (!listing.getUserId().equals(userId)) {
-            log.error("User {} is not the owner of listing {} in markAsSold", userId, listingId);
-            throw new IllegalStateException("You are not authorized to modify this listing");
-        }
+        // Verify ownership (listing creator OR property owner)
+        verifyListingModificationAuthorization(listing, userId, "mark as sold");
 
         listing.markAsSold();
         Listing updatedListing = listingRepository.save(listing);
@@ -734,7 +764,7 @@ public class ListingApplicationService {
      * @param userId    the user ID performing the action
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the owner, listing is not RENT type,
+     * @throws IllegalStateException     if user is not the listing creator or property owner, listing is not RENT type,
      *                                   or not published
      */
     @CacheEvict(value = "listings", key = "#listingId")
@@ -748,10 +778,8 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing", listingId);
                 });
 
-        if (!listing.getUserId().equals(userId)) {
-            log.error("User {} is not the owner of listing {} in markAsRented", userId, listingId);
-            throw new IllegalStateException("You are not authorized to modify this listing");
-        }
+        // Verify ownership (listing creator OR property owner)
+        verifyListingModificationAuthorization(listing, userId, "mark as rented");
 
         listing.markAsRented();
         Listing updatedListing = listingRepository.save(listing);
