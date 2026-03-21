@@ -68,6 +68,7 @@ spring:
       - listings
       - similarListings
       - hiredAgents
+      - engagement
 
   # Multipart File Upload Configuration
   servlet:

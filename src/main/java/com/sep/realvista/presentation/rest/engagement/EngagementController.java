@@ -50,6 +50,41 @@ public class EngagementController {
     private final AgentReviewApplicationService agentReviewApplicationService;
 
     /**
+     * Get a single engagement by ID, scoped to the authenticated owner.
+     *
+     * Returns full agent and property details for the engagement.
+     * The caller must be the owner of the engagement (403 otherwise).
+     *
+     * @param userDetails the authenticated user
+     * @param id          the engagement ID
+     * @return full engagement detail
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('OWNER')")
+    @Operation(
+            summary = "Get engagement by ID",
+            description = "Retrieves full detail for a single engagement by ID, including agent profile, "
+                    + "property information, engagement metadata, and review status. "
+                    + "Only the owner of the engagement can access this endpoint."
+    )
+    public ResponseEntity<ApiResponse<HiredAgentResponse>> getEngagementById(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @PathVariable UUID id
+    ) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        UUID ownerId = userDetails.getUserId();
+
+        log.info("Get engagement detail request - traceId: {}, engagementId: {}, ownerId: {}",
+                traceId, id, ownerId);
+
+        HiredAgentResponse response = engagementApplicationService.getEngagementById(id, ownerId);
+
+        return ResponseEntity.ok(ApiResponse.success("Success", response));
+    }
+
+    /**
      * Get all hired agents for the authenticated property owner.
      *
      * Returns a paginated list of agents that have been hired through

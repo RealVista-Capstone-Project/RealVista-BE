@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -130,13 +131,48 @@ public class EngagementApplicationService {
     }
 
     /**
+     * Gets a single engagement by ID, scoped to the authenticated owner.
+     *
+     * <p>Uses a single optimized JPQL query with JOIN FETCH to load all associated
+     * entities (initiator, receiver, property, property type, location) in one round-trip,
+     * avoiding the N+1 lazy-loading pattern. Only two additional queries are needed:
+     * one for the agent profile and one to check if a review already exists.
+     *
+     * @param engagementId the engagement ID
+     * @param ownerId      the authenticated owner's user ID
+     * @return the full engagement detail response
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(value = "engagement", key = "#engagementId + '_' + #ownerId")
+    public HiredAgentResponse getEngagementById(UUID engagementId, UUID ownerId) {
+        log.info("Getting engagement detail: {} for owner: {}", engagementId, ownerId);
+
+        Engagement engagement = engagementRepository.findByIdWithFetches(engagementId)
+                .orElseThrow(() -> new ResourceNotFoundException("Engagement", engagementId));
+
+        validateOwnership(engagement, ownerId);
+
+        User agentUser = resolveAgentUser(engagement);
+        UUID agentUserId = resolveAgentUserId(engagement);
+        AgentProfile agentProfile = agentProfileRepository.findByUserId(agentUserId).orElse(null);
+        boolean hasReview = agentReviewRepository.existsByEngagementId(engagementId);
+
+        log.info("Retrieved engagement detail: {} for owner: {}", engagementId, ownerId);
+
+        return engagementMapper.toHiredAgentResponse(engagement, agentUser, agentProfile, hasReview);
+    }
+
+    /**
      * Finishes an engagement (marks contract as completed).
      * Only ACCEPTED engagements can be finished.
      *
      * @param engagementId the engagement ID
      * @param ownerId the authenticated owner's user ID
      */
-    @CacheEvict(value = "hiredAgents", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "hiredAgents", allEntries = true),
+            @CacheEvict(value = "engagement", allEntries = true)
+    })
     public void finishEngagement(UUID engagementId, UUID ownerId) {
         log.info("Finishing engagement: {} by owner: {}", engagementId, ownerId);
 
@@ -158,7 +194,10 @@ public class EngagementApplicationService {
      * @param ownerId the authenticated owner's user ID
      * @param request the cancellation request containing the reason
      */
-    @CacheEvict(value = "hiredAgents", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "hiredAgents", allEntries = true),
+            @CacheEvict(value = "engagement", allEntries = true)
+    })
     public void cancelEngagement(UUID engagementId, UUID ownerId, CancelEngagementRequest request) {
         log.info("Cancelling engagement: {} by owner: {}", engagementId, ownerId);
 

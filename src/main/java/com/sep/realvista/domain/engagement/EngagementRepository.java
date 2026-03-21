@@ -31,6 +31,18 @@ public interface EngagementRepository {
     Optional<Engagement> findById(UUID id);
 
     /**
+     * Finds an engagement by ID with all associated entities eagerly fetched
+     * (initiator, receiver, property, property type, location).
+     *
+     * <p>Prefer this over {@link #findById} when the caller needs to access
+     * agent user details or property information, to avoid N+1 queries.
+     *
+     * @param id the engagement ID
+     * @return optional engagement with all associations loaded
+     */
+    Optional<Engagement> findByIdWithFetches(UUID id);
+
+    /**
      * Finds hired agent engagements filtered by a specific status.
      *
      * @param ownerId the owner's user ID

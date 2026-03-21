@@ -2,6 +2,7 @@ package com.sep.realvista.application.engagement.mapper;
 
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
 import com.sep.realvista.domain.agent.AgentProfile;
+import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.engagement.Engagement;
 import com.sep.realvista.domain.engagement.EngagementType;
 import com.sep.realvista.domain.user.User;
@@ -39,8 +40,11 @@ public interface EngagementMapper {
             AgentProfile agentProfile,
             boolean hasReview) {
 
-        if (engagement == null || agentUser == null) {
+        if (engagement == null) {
             return null;
+        }
+        if (agentUser == null) {
+            throw new ResourceNotFoundException("User", resolveAgentUserId(engagement));
         }
 
         HiredAgentResponse.HiredAgentResponseBuilder builder = HiredAgentResponse.builder()
@@ -54,7 +58,8 @@ public interface EngagementMapper {
                 .status(engagement.getStatus().name())
                 .hiredAt(engagement.getUpdatedAt())
                 .hasReview(hasReview)
-                .cancellationReason(engagement.getCancellationReason());
+                .cancellationReason(engagement.getCancellationReason())
+                .content(engagement.getContent());
 
         // Agent profile info (may be null if profile not yet created)
         if (agentProfile != null) {

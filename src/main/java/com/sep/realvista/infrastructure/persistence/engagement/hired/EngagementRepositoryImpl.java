@@ -40,6 +40,11 @@ public class EngagementRepositoryImpl implements EngagementRepository {
     }
 
     @Override
+    public Optional<Engagement> findByIdWithFetches(UUID id) {
+        return jpaRepository.findByIdWithFetches(id);
+    }
+
+    @Override
     public Page<Engagement> findHiredAgentEngagements(
             UUID ownerId, EngagementStatus status, String search, Pageable pageable) {
         return jpaRepository.findHiredAgentEngagements(ownerId, status, search, pageable);

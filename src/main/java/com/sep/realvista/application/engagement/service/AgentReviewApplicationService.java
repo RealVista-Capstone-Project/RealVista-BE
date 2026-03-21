@@ -15,6 +15,7 @@ import com.sep.realvista.domain.engagement.EngagementType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,7 +56,10 @@ public class AgentReviewApplicationService {
      * @param request the review details (rating, optional comment)
      * @return the created review response
      */
-    @CacheEvict(value = "hiredAgents", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "hiredAgents", allEntries = true),
+            @CacheEvict(value = "engagement", allEntries = true)
+    })
     public ReviewResponse submitReview(UUID engagementId, UUID reviewerId, CreateReviewRequest request) {
         log.info("Submitting review for engagement: {} by reviewer: {}", engagementId, reviewerId);
 

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -161,4 +162,22 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
             @Param("search") String search,
             Pageable pageable
     );
+
+    /**
+     * Finds a single engagement by ID, eagerly fetching all associations needed
+     * to build the detail response in a single query.
+     *
+     * <p>Fetches: initiator, receiver, property, property.location, property.propertyType.
+     */
+    @Query("""
+            SELECT e FROM Engagement e
+            LEFT JOIN FETCH e.initiator
+            LEFT JOIN FETCH e.receiver
+            LEFT JOIN FETCH e.property p
+            LEFT JOIN FETCH p.location
+            LEFT JOIN FETCH p.propertyType
+            WHERE e.engagementId = :id
+            AND e.deleted = false
+            """)
+    Optional<Engagement> findByIdWithFetches(@Param("id") UUID id);
 }
