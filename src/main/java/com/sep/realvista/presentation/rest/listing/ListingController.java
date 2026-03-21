@@ -9,6 +9,7 @@ import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
 import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
+import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
 import com.sep.realvista.application.listing.service.ListingSearchService;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
@@ -222,10 +223,10 @@ public class ListingController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Update a listing",
             description = "Updates an existing listing. Only the listing owner can update it.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> updateListing(
+    public ResponseEntity<ApiResponse<ListingResponse>> updateListing(
             @PathVariable UUID listingId,
-            @org.springframework.web.bind.annotation.RequestBody @jakarta.validation.Valid
-            com.sep.realvista.application.listing.dto.UpdateListingRequest request,
+            @RequestBody @Valid
+            UpdateListingRequest request,
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         log.info("Updating listing ID: {} by user: {}", listingId, userDetails.getUserId());

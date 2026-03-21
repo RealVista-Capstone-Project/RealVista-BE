@@ -29,6 +29,7 @@ import com.sep.realvista.domain.property.repository.PropertyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -464,6 +465,7 @@ public class ListingApplicationService {
      * @throws ResourceNotFoundException if listing not found
      * @throws IllegalStateException     if user is not the owner
      */
+    @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse updateListing(
             UUID listingId,
             UpdateListingRequest request,
@@ -577,15 +579,15 @@ public class ListingApplicationService {
 
         return listings.stream()
                 .map(listing -> {
-                    com.sep.realvista.application.listing.dto.ListingResponse response = 
+                    ListingResponse response =
                             listingMapper.toListingResponse(listing);
-                    
+
                     // If thumbnail is null, fetch it from repository
                     if (response.getThumbnail() == null) {
                         listingRepository.findThumbnailByListingId(listing.getListingId())
                                 .ifPresent(response::setThumbnail);
                     }
-                    
+
                     return response;
                 })
                 .collect(java.util.stream.Collectors.toList());
@@ -600,6 +602,7 @@ public class ListingApplicationService {
      * @throws ResourceNotFoundException if listing not found
      * @throws IllegalStateException     if user is not the owner or listing is not in DRAFT status
      */
+    @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse submitForReview(
             UUID listingId, UUID userId) {
         log.info("Submitting listing ID: {} for review by user ID: {}", listingId, userId);
@@ -632,6 +635,7 @@ public class ListingApplicationService {
      * @throws ResourceNotFoundException if listing not found
      * @throws IllegalStateException     if user is not the owner or listing cannot be published
      */
+    @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse publishListing(
             UUID listingId, UUID userId) {
         log.info("Publishing listing ID: {} by user ID: {}", listingId, userId);
@@ -664,6 +668,7 @@ public class ListingApplicationService {
      * @throws ResourceNotFoundException if listing not found
      * @throws IllegalStateException     if user is not the owner or listing is not published
      */
+    @CacheEvict(value = "listings", key = "#listingId")
     public com.sep.realvista.application.listing.dto.ListingResponse unpublishListing(
             UUID listingId, UUID userId) {
         log.info("Unpublishing listing ID: {} by user ID: {}", listingId, userId);
@@ -697,6 +702,7 @@ public class ListingApplicationService {
      * @throws IllegalStateException     if user is not the owner, listing is not SALE type,
      *                                   or not published
      */
+    @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse markAsSold(
             UUID listingId, UUID userId) {
         log.info("Marking listing ID: {} as sold by user ID: {}", listingId, userId);
@@ -730,6 +736,7 @@ public class ListingApplicationService {
      * @throws IllegalStateException     if user is not the owner, listing is not RENT type,
      *                                   or not published
      */
+    @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse markAsRented(
             UUID listingId, UUID userId) {
         log.info("Marking listing ID: {} as rented by user ID: {}", listingId, userId);
