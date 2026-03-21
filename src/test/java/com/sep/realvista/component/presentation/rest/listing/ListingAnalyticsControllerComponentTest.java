@@ -6,6 +6,8 @@ import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import com.sep.realvista.presentation.rest.listing.ListingAnalyticsController;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +45,9 @@ class ListingAnalyticsControllerComponentTest {
     @MockitoBean
     private ListingRepository listingRepository;
 
+    @MockitoBean
+    private PropertyRepository propertyRepository;
+
     private UUID listingId;
     private UUID ownerId;
     private UUID otherUserId;
@@ -72,9 +77,9 @@ class ListingAnalyticsControllerComponentTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/listings/{id}/analytics should return analytics for owner")
+    @DisplayName("GET /api/v1/listings/{id}/analytics should return analytics for listing creator")
     @WithMockUser
-    void getListingAnalytics_Owner_ReturnsAnalytics() throws Exception {
+    void getListingAnalytics_ListingCreator_ReturnsAnalytics() throws Exception {
         // Given
         ListingAnalyticsDTO analytics = ListingAnalyticsDTO.builder()
                 .totalViews(150)
@@ -98,9 +103,52 @@ class ListingAnalyticsControllerComponentTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/listings/{id}/analytics should return 403 for non-owner")
+    @DisplayName("GET /api/v1/listings/{id}/analytics should return analytics for property owner when not listing creator")
     @WithMockUser
-    void getListingAnalytics_NonOwner_ReturnsForbidden() throws Exception {
+    void getListingAnalytics_PropertyOwnerNotCreator_ReturnsAnalytics() throws Exception {
+        UUID propertyId = UUID.randomUUID();
+        UUID agentId = UUID.randomUUID();
+        Listing agentListing = Listing.builder()
+                .listingId(listingId)
+                .userId(agentId)
+                .propertyId(propertyId)
+                .listingType(ListingType.RENT)
+                .status(ListingStatus.PUBLISHED)
+                .name("Agent Listing")
+                .price(BigDecimal.valueOf(1000))
+                .build();
+        Property property = Property.builder()
+                .propertyId(propertyId)
+                .ownerId(ownerId)
+                .locationId(UUID.randomUUID())
+                .propertyTypeId(UUID.randomUUID())
+                .streetAddress("1 Test St")
+                .latitude(BigDecimal.ONE)
+                .longitude(BigDecimal.ONE)
+                .build();
+
+        ListingAnalyticsDTO analytics = ListingAnalyticsDTO.builder()
+                .totalViews(10)
+                .uniqueViewers(4)
+                .tourBookings(1)
+                .conversionRate(new BigDecimal("10.00"))
+                .build();
+
+        when(listingRepository.findById(listingId)).thenReturn(Optional.of(agentListing));
+        when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
+        when(listingAnalyticsService.getListingAnalytics(listingId)).thenReturn(analytics);
+
+        mockMvc.perform(get("/api/v1/listings/{listingId}/analytics", listingId)
+                        .with(user(ownerDetails)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.total_views").value(10));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/listings/{id}/analytics should return 403 for unrelated user")
+    @WithMockUser
+    void getListingAnalytics_UnrelatedUser_ReturnsForbidden() throws Exception {
         // Given
         SecurityUserDetails otherUserDetails = SecurityUserDetails.builder()
                 .userId(otherUserId)
@@ -108,6 +156,16 @@ class ListingAnalyticsControllerComponentTest {
                 .build();
 
         when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(propertyRepository.findById(listing.getPropertyId())).thenReturn(Optional.of(
+                Property.builder()
+                        .propertyId(listing.getPropertyId())
+                        .ownerId(ownerId)
+                        .locationId(UUID.randomUUID())
+                        .propertyTypeId(UUID.randomUUID())
+                        .streetAddress("1 Test St")
+                        .latitude(BigDecimal.ONE)
+                        .longitude(BigDecimal.ONE)
+                        .build()));
 
         // When & Then
         mockMvc.perform(get("/api/v1/listings/{listingId}/analytics", listingId)

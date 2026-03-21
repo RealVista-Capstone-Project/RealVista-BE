@@ -6,6 +6,8 @@ import com.sep.realvista.application.listing.service.ListingAnalyticsService;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -35,13 +37,14 @@ public class ListingAnalyticsController {
 
     private final ListingAnalyticsService listingAnalyticsService;
     private final ListingRepository listingRepository;
+    private final PropertyRepository propertyRepository;
 
     @GetMapping("/{listingId}/analytics")
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get listing analytics",
             description = "Retrieves aggregated analytics metrics for a listing including views, unique viewers, "
-                    + "tour bookings, and conversion rate. Only the listing owner can access these metrics.")
+                    + "tour bookings, and conversion rate. The listing creator or the property owner may access.")
     public ResponseEntity<ApiResponse<ListingAnalyticsDTO>> getListingAnalytics(
             @PathVariable UUID listingId,
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
@@ -59,8 +62,7 @@ public class ListingAnalyticsController {
                         return new ResourceNotFoundException("Listing", listingId);
                     });
 
-            // Verify ownership: only listing owner can view analytics
-            if (!listing.getUserId().equals(userDetails.getUserId())) {
+            if (!canViewListingAnalytics(listing, userDetails.getUserId())) {
                 log.warn("Unauthorized access attempt to analytics for listing ID: {} by user: {} - traceId: {}",
                         listingId, userDetails.getUserId(), traceId);
                 return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
@@ -76,5 +78,18 @@ public class ListingAnalyticsController {
         } finally {
             MDC.remove("traceId");
         }
+    }
+
+    /**
+     * Listing creator or property owner may view analytics (same rule as listing modification elsewhere).
+     */
+    private boolean canViewListingAnalytics(Listing listing, UUID userId) {
+        if (listing.getUserId().equals(userId)) {
+            return true;
+        }
+        return propertyRepository.findById(listing.getPropertyId())
+                .map(Property::getOwnerId)
+                .filter(ownerId -> ownerId.equals(userId))
+                .isPresent();
     }
 }

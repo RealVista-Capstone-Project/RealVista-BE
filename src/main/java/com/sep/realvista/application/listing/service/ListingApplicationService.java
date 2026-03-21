@@ -193,6 +193,10 @@ public class ListingApplicationService {
         ListingDetailResponse response = listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
                 listing, listingMedias, attributeValues, propertyAmenities);
 
+        // Set isCreatedByOwner flag
+        boolean isCreatedByOwner = listing.getUserId().equals(property.getOwnerId());
+        response.setIsCreatedByOwner(isCreatedByOwner);
+
         // Calculate and add cost breakdown (only for RENT listings)
         CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
         response.setCostBreakdown(costBreakdown);
