@@ -643,7 +643,8 @@ public class ListingApplicationService {
      * @param userId    the user ID performing the action
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the listing creator or property owner, or listing is not in DRAFT status
+     * @throws IllegalStateException     if user is not the listing creator or property owner
+     *                                    , or listing is not in DRAFT status
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse submitForReview(
@@ -674,7 +675,8 @@ public class ListingApplicationService {
      * @param userId    the user ID performing the action
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the listing creator or property owner, or listing cannot be published
+     * @throws IllegalStateException     if user is not the listing creator or property owner,
+     *                                      or listing cannot be published
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse publishListing(
@@ -705,7 +707,8 @@ public class ListingApplicationService {
      * @param userId    the user ID performing the action
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the listing creator or property owner, or listing is not published
+     * @throws IllegalStateException     if user is not the listing creator or property owner,
+     *                                      or listing is not published
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public com.sep.realvista.application.listing.dto.ListingResponse unpublishListing(
