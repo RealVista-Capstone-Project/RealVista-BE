@@ -22,8 +22,8 @@ public interface ListingViewJpaRepository extends JpaRepository<ListingView, Lis
      * @param listingId the listing ID
      * @return the count of unique viewers
      */
-    @Query("SELECT COUNT(DISTINCT lv.userId) FROM ListingView lv " +
-            "WHERE lv.listingId = :listingId AND lv.deleted = false")
+    @Query("SELECT COUNT(DISTINCT lv.userId) FROM ListingView lv "
+            + "WHERE lv.listingId = :listingId AND lv.deleted = false")
     Integer countDistinctUsersByListingId(@Param("listingId") UUID listingId);
 
     /**
@@ -34,7 +34,7 @@ public interface ListingViewJpaRepository extends JpaRepository<ListingView, Lis
      * @param listingId the listing ID
      * @return the total view count
      */
-    @Query("SELECT COALESCE(SUM(lv.viewCount), 0) FROM ListingView lv " +
-            "WHERE lv.listingId = :listingId AND lv.deleted = false")
+    @Query("SELECT COALESCE(SUM(lv.viewCount), 0) FROM ListingView lv "
+            + "WHERE lv.listingId = :listingId AND lv.deleted = false")
     Integer getTotalViewCountByListingId(@Param("listingId") UUID listingId);
 }
