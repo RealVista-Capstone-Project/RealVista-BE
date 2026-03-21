@@ -63,6 +63,7 @@ public class ListingApplicationService {
     private final ListingMapper listingMapper;
     private final CostBreakdownService costBreakdownService;
     private final BookmarkRepository bookmarkRepository;
+    private final ListingAnalyticsService listingAnalyticsService;
 
     // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
     // ensuring @Cacheable on getCachedListingDetail is actually triggered.
@@ -90,6 +91,9 @@ public class ListingApplicationService {
         if (userId != null) {
             boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
             response.setIsFavorite(isFavorite);
+
+            // Record view for analytics (async - does not slow down response)
+            listingAnalyticsService.recordView(listingId, userId);
         } else {
             response.setIsFavorite(false);
         }
