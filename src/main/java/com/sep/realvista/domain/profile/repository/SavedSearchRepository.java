@@ -13,13 +13,13 @@ import java.util.UUID;
 public interface SavedSearchRepository extends JpaRepository<SavedSearch, UUID> {
     List<SavedSearch> findByProfileIdAndDeletedFalse(UUID profileId);
     Optional<SavedSearch> findBySavedSearchIdAndProfileIdAndDeletedFalse(UUID savedSearchId, UUID profileId);
-    
-    @Query(value = "SELECT * FROM saved_searches WHERE profile_id = :profileId " +
-                   "AND search_type = :#{#searchType?.name()} " +
-                   "AND criteria::jsonb = CAST(:criteria AS jsonb) " +
-                   "AND deleted = false LIMIT 1", nativeQuery = true)
+
+    @Query(value = "SELECT * FROM saved_searches WHERE profile_id = :profileId "
+                   + "AND search_type = :#{#searchType?.name()} "
+                   + "AND criteria::jsonb = CAST(:criteria AS jsonb) "
+                   + "AND deleted = false LIMIT 1", nativeQuery = true)
     Optional<SavedSearch> findByProfileIdAndSearchTypeAndCriteriaAndDeletedFalse(
-            @Param("profileId") UUID profileId, 
-            @Param("searchType") com.sep.realvista.domain.profile.SearchType searchType, 
+            @Param("profileId") UUID profileId,
+            @Param("searchType") com.sep.realvista.domain.profile.SearchType searchType,
             @Param("criteria") String criteria);
 }

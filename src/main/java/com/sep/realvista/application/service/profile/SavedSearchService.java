@@ -47,8 +47,9 @@ public class SavedSearchService {
         }
 
         // Check for existing saved search with the same criteria
-        Optional<SavedSearch> existingOpt = savedSearchRepository.findByProfileIdAndSearchTypeAndCriteriaAndDeletedFalse(
-                profile.getCustomerProfileId(), request.getSearchType(), criteriaJson);
+        Optional<SavedSearch> existingOpt = savedSearchRepository
+                .findByProfileIdAndSearchTypeAndCriteriaAndDeletedFalse(
+                        profile.getCustomerProfileId(), request.getSearchType(), criteriaJson);
 
         if (existingOpt.isPresent()) {
             throw new BusinessConflictException(
@@ -69,7 +70,8 @@ public class SavedSearchService {
 
     @Transactional(readOnly = true)
     public List<SavedSearchDto> getMySavedSearches(UUID userId) {
-        Optional<CustomerProfile> profileOpt = customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(userId);
+        Optional<CustomerProfile> profileOpt = customerProfileRepository
+                .findByUserIdAndIsActiveTrueAndDeletedFalse(userId);
         if (profileOpt.isEmpty()) {
             return List.of();
         }
@@ -83,7 +85,8 @@ public class SavedSearchService {
 
     @Transactional
     public void deleteSavedSearch(UUID savedSearchId, UUID userId) {
-        Optional<CustomerProfile> profileOpt = customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(userId);
+        Optional<CustomerProfile> profileOpt = customerProfileRepository
+                .findByUserIdAndIsActiveTrueAndDeletedFalse(userId);
         if (profileOpt.isEmpty()) {
             return;
         }
