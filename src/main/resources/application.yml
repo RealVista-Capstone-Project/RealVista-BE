@@ -68,6 +68,14 @@ spring:
       - listings
       - similarListings
 
+  # Multipart File Upload Configuration
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MAX_FILE_SIZE:100MB}
+      max-request-size: ${MAX_REQUEST_SIZE:110MB}
+      file-size-threshold: ${FILE_SIZE_THRESHOLD:2MB}
+
   # Server Configuration
   server:
     port: ${SERVER_PORT:8080}
@@ -143,3 +151,13 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
+
+# DigitalOcean Spaces Configuration
+digitalocean:
+  spaces:
+    access-key: ${DIGITALOCEAN_SPACES_ACCESS_KEY:your_access_key}
+    secret-key: ${DIGITALOCEAN_SPACES_SECRET_KEY:your_secret_key}
+    region: ${DIGITALOCEAN_SPACES_REGION:sgp1}
+    endpoint: ${DIGITALOCEAN_SPACES_ENDPOINT:https://sgp1.digitaloceanspaces.com}
+    bucket-name: ${DIGITALOCEAN_SPACES_BUCKET_NAME:realvista}
+    cdn-endpoint: ${DIGITALOCEAN_SPACES_CDN_ENDPOINT:}
