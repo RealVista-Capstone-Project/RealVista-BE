@@ -7,6 +7,8 @@ import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
 import com.sep.realvista.application.listing.dto.ListingSearchResponse;
+import com.sep.realvista.application.listing.dto.ManagedListingSearchCriteria;
+import com.sep.realvista.application.listing.dto.ManagedListingSummaryDTO;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.dto.UpdateListingRequest;
@@ -257,18 +259,49 @@ public class ListingController {
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get managed listings",
-            description = "Retrieves all listings created by the "
-                    + "authenticated user or where the user owns the property.")
-    public ResponseEntity<ApiResponse<List<ListingResponse>>>
-    getManagedListings(@AuthenticationPrincipal SecurityUserDetails userDetails) {
+            description = "Retrieves listings created by the authenticated user or where the user owns the property. "
+                    + "Supports pagination, search, and sorting.")
+    public ResponseEntity<ApiResponse<PageResponse<ListingResponse>>>
+    getManagedListings(
+            @org.springdoc.core.annotations.ParameterObject ManagedListingSearchCriteria criteria,
+            @org.springframework.data.web.PageableDefault(size = 10)
+            org.springframework.data.domain.Pageable pageable,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Fetching listings for user: {}", userDetails.getUserId());
+        log.info("Fetching managed listings for user: {} with criteria: {}", userDetails.getUserId(), criteria);
 
-        List<com.sep.realvista.application.listing.dto.ListingResponse> listings =
-                listingApplicationService.getMyListings(userDetails.getUserId());
+        org.springframework.data.domain.Page<ListingResponse> results =
+                listingApplicationService.getManagedListings(userDetails.getUserId(), criteria, pageable);
+
+        PageResponse<ListingResponse> pageResponse = PageResponse.<ListingResponse>builder()
+                .content(results.getContent())
+                .page(results.getNumber())
+                .size(results.getSize())
+                .totalElements(results.getTotalElements())
+                .totalPages(results.getTotalPages())
+                .first(results.isFirst())
+                .last(results.isLast())
+                .build();
 
         return ResponseEntity.ok(
-                ApiResponse.success("Listings retrieved successfully", listings));
+                ApiResponse.success("Listings retrieved successfully", pageResponse));
+    }
+
+    @GetMapping("/managed-listings/summary")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get managed listings summary",
+            description = "Retrieves counts of ALL, RENT, and SALE listings for the authenticated user.")
+    public ResponseEntity<ApiResponse<ManagedListingSummaryDTO>>
+    getManagedListingSummary(@AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        log.info("Fetching listing summary for user: {}", userDetails.getUserId());
+
+        ManagedListingSummaryDTO summary =
+                listingApplicationService.getManagedListingSummary(userDetails.getUserId());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Summary retrieved successfully", summary));
     }
 
     // ==================== Status Management Operations ====================

@@ -4,6 +4,8 @@ import com.sep.realvista.application.listing.dto.CostBreakdownDTO;
 import com.sep.realvista.application.listing.dto.CreateListingRequest;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.ListingResponse;
+import com.sep.realvista.application.listing.dto.ManagedListingSearchCriteria;
+import com.sep.realvista.application.listing.dto.ManagedListingSummaryDTO;
 import com.sep.realvista.application.listing.dto.PriceChangeType;
 import com.sep.realvista.application.listing.dto.PriceHistoryDTO;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
@@ -14,6 +16,8 @@ import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.ListingStatus;
+import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.analytics.ListingPriceHistory;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
@@ -26,12 +30,19 @@ import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,7 +90,7 @@ public class ListingApplicationService {
      * 2. The property owner (userId matches listing.property.ownerId)
      *
      * @param listing the listing to check
-     * @param userId the user ID attempting to modify
+     * @param userId  the user ID attempting to modify
      * @return true if user is authorized, false otherwise
      */
     private boolean canModifyListing(Listing listing, UUID userId) {
@@ -103,8 +114,8 @@ public class ListingApplicationService {
     /**
      * Verifies authorization and throws exception if user cannot modify the listing.
      *
-     * @param listing the listing to check
-     * @param userId the user ID attempting to modify
+     * @param listing   the listing to check
+     * @param userId    the user ID attempting to modify
      * @param operation the operation being performed (for error message)
      * @throws IllegalStateException if user is not authorized
      */
@@ -606,34 +617,128 @@ public class ListingApplicationService {
     }
 
     /**
-     * Get all listings for a user.
+     * Get managed listings with pagination, search, and sort.
      * Returns listings where the user is either the listing creator OR the property owner.
      *
-     * @param userId the user ID
-     * @return list of user's listings
+     * @param userId   the user ID
+     * @param criteria search criteria
+     * @param pageable pagination info
+     * @return page of user's listings
      */
     @Transactional(readOnly = true)
-    public List<com.sep.realvista.application.listing.dto.ListingResponse> getMyListings(UUID userId) {
-        log.info("Fetching all listings for user ID: {}", userId);
+    public Page<com.sep.realvista.application.listing.dto.ListingResponse> getManagedListings(
+            UUID userId, ManagedListingSearchCriteria criteria, Pageable pageable) {
+        log.info("Fetching managed listings for user ID: {}", userId);
 
-        List<Listing> listings = listingRepository.findByUserIdOrPropertyOwnerId(userId);
+        Specification<Listing> spec = buildManagedListingSpec(userId, criteria);
 
-        log.info("Found {} listings for user ID: {}", listings.size(), userId);
+        // Handle sorting if specified
+        Pageable effectivePageable = pageable;
+        if (criteria.getSortBy() != null && !criteria.getSortBy().isBlank()) {
+            Sort sort = Sort.unsorted();
+            switch (criteria.getSortBy()) {
+                case "oldest":
+                    sort = Sort.by(Sort.Direction.ASC, "createdAt");
+                    break;
+                case "priceAsc":
+                    sort = Sort.by(Sort.Direction.ASC, "price");
+                    break;
+                case "priceDesc":
+                    sort = Sort.by(Sort.Direction.DESC, "price");
+                    break;
+                case "newest":
+                default:
+                    sort = Sort.by(Sort.Direction.DESC, "createdAt");
+                    break;
+            }
+            effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+        } else if (pageable.getSort().isUnsorted()) {
+            effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+        }
 
-        return listings.stream()
-                .map(listing -> {
-                    ListingResponse response =
-                            listingMapper.toListingResponse(listing);
+        Page<Listing> listings = listingRepository.findAll(spec, effectivePageable);
 
-                    // If thumbnail is null, fetch it from repository
-                    if (response.getThumbnail() == null) {
-                        listingRepository.findThumbnailByListingId(listing.getListingId())
-                                .ifPresent(response::setThumbnail);
+        return listings.map(listing -> {
+            ListingResponse response = listingMapper.toListingResponse(listing);
+            // If thumbnail is null, fetch it from repository
+            if (response.getThumbnail() == null) {
+                listingRepository.findThumbnailByListingId(listing.getListingId())
+                        .ifPresent(response::setThumbnail);
+            }
+            return response;
+        });
+    }
+
+    /**
+     * Get summary counts for managed listings.
+     *
+     * @param userId the user ID
+     * @return counts of ALL, RENT, and SALE listings
+     */
+    @Transactional(readOnly = true)
+    public ManagedListingSummaryDTO getManagedListingSummary(UUID userId) {
+        log.info("Fetching managed listings summary for user ID: {}", userId);
+
+        List<Listing> allListings = listingRepository.findByUserIdOrPropertyOwnerId(userId);
+
+        long total = allListings.size();
+        long rent = allListings.stream().filter(l -> ListingType.RENT.equals(l.getListingType())).count();
+        long sale = allListings.stream().filter(l -> ListingType.SALE.equals(l.getListingType())).count();
+
+        return ManagedListingSummaryDTO.builder()
+                .all(total)
+                .rent(rent)
+                .sale(sale)
+                .build();
+    }
+
+    private Specification<Listing> buildManagedListingSpec(UUID userId, ManagedListingSearchCriteria criteria) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+            List<Predicate> predicates = new ArrayList<>();
+
+            // User is either creator or property owner
+            var propertyJoin = root.join("property", JoinType.LEFT);
+            Predicate isCreator = cb.equal(root.get("userId"), userId);
+            Predicate isOwner = cb.equal(propertyJoin.get("ownerId"), userId);
+            predicates.add(cb.or(isCreator, isOwner));
+
+            if (criteria != null) {
+                // Listing Type
+                if (criteria.getListingType() != null && !criteria.getListingType().isBlank() && !criteria.getListingType().equalsIgnoreCase("ALL")) {
+                    try {
+                        ListingType type = ListingType.valueOf(criteria.getListingType().toUpperCase());
+                        predicates.add(cb.equal(root.get("listingType"), type));
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Invalid listing type in search: {}", criteria.getListingType());
                     }
+                }
 
-                    return response;
-                })
-                .collect(java.util.stream.Collectors.toList());
+                // Status
+                if (criteria.getStatus() != null && !criteria.getStatus().isBlank() && !criteria.getStatus().equalsIgnoreCase("ALL")) {
+                    try {
+                        ListingStatus status = ListingStatus.valueOf(criteria.getStatus().toUpperCase());
+                        predicates.add(cb.equal(root.get("status"), status));
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Invalid listing status in search: {}", criteria.getStatus());
+                    }
+                }
+
+                // Search query (name or address)
+                if (criteria.getSearch() != null && !criteria.getSearch().isBlank()) {
+                    String searchStr = "%" + criteria.getSearch().toLowerCase() + "%";
+                    Predicate nameMatch = cb.like(cb.lower(root.get("name")), searchStr);
+
+                    var locationJoin = propertyJoin.join("location", JoinType.LEFT);
+                    Predicate addressMatch = cb.like(cb.lower(propertyJoin.get("streetAddress")), searchStr);
+                    Predicate locMatch = cb.like(cb.lower(locationJoin.get("name")), searchStr);
+
+                    predicates.add(cb.or(nameMatch, addressMatch, locMatch));
+                }
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     /**
@@ -644,7 +749,7 @@ public class ListingApplicationService {
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
      * @throws IllegalStateException     if user is not the listing creator or property owner
-     *                                    , or listing is not in DRAFT status
+     *                                   , or listing is not in DRAFT status
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse submitForReview(
@@ -676,7 +781,7 @@ public class ListingApplicationService {
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
      * @throws IllegalStateException     if user is not the listing creator or property owner,
-     *                                      or listing cannot be published
+     *                                   or listing cannot be published
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse publishListing(
@@ -708,7 +813,7 @@ public class ListingApplicationService {
      * @return updated listing response
      * @throws ResourceNotFoundException if listing not found
      * @throws IllegalStateException     if user is not the listing creator or property owner,
-     *                                      or listing is not published
+     *                                   or listing is not published
      */
     @CacheEvict(value = "listings", key = "#listingId")
     public com.sep.realvista.application.listing.dto.ListingResponse unpublishListing(
