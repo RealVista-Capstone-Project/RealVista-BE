@@ -25,5 +25,19 @@ public interface AuthenticationMapper {
     @Mapping(target = "type", constant = "Bearer")
     @Mapping(target = "userId", source = "user.userId")
     @Mapping(target = "email", source = "user.email.value")
+    @Mapping(target = "roles", expression = "java(mapRoles(user))")
     AuthenticationResponse toAuthenticationResponse(User user, String token);
+
+    /**
+     * Maps User roles to a list of role codes.
+     *
+     * @param user the user entity
+     * @return list of role codes
+     */
+    default java.util.List<String> mapRoles(User user) {
+        return user.getUserRoles().stream()
+                .filter(ur -> ur.getRole() != null)
+                .map(ur -> ur.getRole().getRoleCode().name())
+                .toList();
+    }
 }

@@ -1,0 +1,3 @@
+ALTER TABLE users
+ADD COLUMN working_start_time TIME DEFAULT '08:00:00' NOT NULL,
+ADD COLUMN working_end_time TIME DEFAULT '17:00:00' NOT NULL;

@@ -25,6 +25,7 @@ import org.mapstruct.Mapping;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,6 +102,8 @@ public interface ListingMapper {
             if (response.getProperty() != null) {
                 Map<String, Object> attributeMap = attributeValues.stream()
                         .filter(pav -> pav.getPropertyAttribute() != null)
+                        .filter(pav -> pav.getPropertyAttribute().getCode() != null)
+                        .filter(pav -> getAttributeValue(pav) != null)
                         .collect(Collectors.toMap(
                                 pav -> pav.getPropertyAttribute().getCode(),
                                 pav -> (Object) getAttributeValue(pav),
@@ -291,9 +294,18 @@ public interface ListingMapper {
         if (attributeValues == null) {
             return List.of();
         }
-        return attributeValues.stream()
-                .map(this::toAttributeDTO)
-                .collect(Collectors.toList());
+        // Data arrives pre-ordered by property_type_attributes.priority from the DB query.
+        // Re-number from 1 so the returned list is always 1, 2, 3, ...
+        // regardless of how many attributes were filtered out upstream.
+        List<PropertyAttributeDTO> result = new ArrayList<>();
+        for (int i = 0; i < attributeValues.size(); i++) {
+            PropertyAttributeDTO dto = toAttributeDTO(attributeValues.get(i));
+            if (dto != null) {
+                dto.setPriority(i + 1);
+                result.add(dto);
+            }
+        }
+        return result;
     }
 
     default PropertyAttributeDTO toAttributeDTO(PropertyAttributeValue attributeValue) {
@@ -361,10 +373,9 @@ public interface ListingMapper {
             if (listing.getProperty().getUsableSizeM2() != null) {
                 response.area(listing.getProperty().getUsableSizeM2().doubleValue());
             }
-            // Add location
-            if (listing.getProperty().getLocation() != null) {
-                response.location(listing.getProperty().getLocation().getName());
-            }
+            // Address fields (streetAddress, wardName, districtName, cityName) are populated
+            // by the service layer after this mapper call to ensure lazy-loading works correctly
+            // within the @Transactional boundary.
         }
 
         // Thumbnail will be populated by the service layer

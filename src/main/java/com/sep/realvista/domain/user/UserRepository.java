@@ -1,6 +1,7 @@
 package com.sep.realvista.domain.user;
 
 import com.sep.realvista.domain.common.value.Email;
+import com.sep.realvista.domain.user.role.RoleCode;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -18,5 +19,7 @@ public interface UserRepository {
     void deleteById(UUID id);
 
     Optional<User> findByEmailValue(String email);
+
+    boolean hasRole(UUID userId, RoleCode roleCode);
 }
 

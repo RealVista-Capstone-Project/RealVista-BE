@@ -25,4 +25,12 @@ public interface ListingMediaJpaRepository extends JpaRepository<ListingMedia, U
         @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId = :listingId "
                         + "AND lm.isPrimary = true AND lm.deleted = false")
         Optional<ListingMedia> findPrimaryByListingId(@Param("listingId") UUID listingId);
+
+        /**
+         * Batch fetch primary media for multiple listings.
+         * Returns only primary (isPrimary = true) media for each listing.
+         */
+        @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId IN :listingIds "
+                        + "AND lm.isPrimary = true AND lm.deleted = false")
+        List<ListingMedia> findPrimaryByListingIds(@Param("listingIds") List<UUID> listingIds);
 }
