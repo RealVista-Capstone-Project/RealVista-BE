@@ -653,7 +653,9 @@ public class ListingApplicationService {
             }
             effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
         } else if (pageable.getSort().isUnsorted()) {
-            effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+            effectivePageable = PageRequest.of(pageable.getPageNumber(),
+                    pageable.getPageSize(),
+                    Sort.by(Sort.Direction.DESC, "createdAt"));
         }
 
         Page<Listing> listings = listingRepository.findAll(spec, effectivePageable);
@@ -705,7 +707,9 @@ public class ListingApplicationService {
 
             if (criteria != null) {
                 // Listing Type
-                if (criteria.getListingType() != null && !criteria.getListingType().isBlank() && !criteria.getListingType().equalsIgnoreCase("ALL")) {
+                if (criteria.getListingType() != null
+                        && !criteria.getListingType().isBlank()
+                        && !criteria.getListingType().equalsIgnoreCase("ALL")) {
                     try {
                         ListingType type = ListingType.valueOf(criteria.getListingType().toUpperCase());
                         predicates.add(cb.equal(root.get("listingType"), type));
@@ -715,7 +719,9 @@ public class ListingApplicationService {
                 }
 
                 // Status
-                if (criteria.getStatus() != null && !criteria.getStatus().isBlank() && !criteria.getStatus().equalsIgnoreCase("ALL")) {
+                if (criteria.getStatus() != null
+                        && !criteria.getStatus().isBlank()
+                        && !criteria.getStatus().equalsIgnoreCase("ALL")) {
                     try {
                         ListingStatus status = ListingStatus.valueOf(criteria.getStatus().toUpperCase());
                         predicates.add(cb.equal(root.get("status"), status));
