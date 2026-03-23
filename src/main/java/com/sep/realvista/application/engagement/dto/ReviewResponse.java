@@ -21,6 +21,7 @@ public class ReviewResponse {
     private UUID reviewId;
     private UUID engagementId;
     private UUID agentUserId;
+    private UUID reviewerId;
     private BigDecimal rating;
     private String comment;
     private LocalDateTime createdAt;

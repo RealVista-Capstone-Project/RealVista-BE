@@ -125,6 +125,7 @@ public class AgentReviewApplicationService {
                 .reviewId(savedReview.getAgentReviewId())
                 .engagementId(engagementId)
                 .agentUserId(agentUserId)
+                .reviewerId(savedReview.getReviewerId())
                 .rating(savedReview.getRating())
                 .comment(savedReview.getReview())
                 .createdAt(savedReview.getCreatedAt())
