@@ -167,7 +167,8 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
      * Finds a single engagement by ID, eagerly fetching all associations needed
      * to build the detail response in a single query.
      *
-     * <p>Fetches: initiator, receiver, property, property.location, property.propertyType.
+     * <p>Fetches: initiator, receiver, property, property.location, property.propertyType,
+     * and listing (LEFT JOIN because listingId may be null).
      */
     @Query("""
             SELECT e FROM Engagement e
@@ -176,6 +177,7 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
             LEFT JOIN FETCH e.property p
             LEFT JOIN FETCH p.location
             LEFT JOIN FETCH p.propertyType
+            LEFT JOIN FETCH e.listing
             WHERE e.engagementId = :id
             AND e.deleted = false
             """)

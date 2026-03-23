@@ -1,13 +1,21 @@
 package com.sep.realvista.application.engagement.mapper;
 
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
+import com.sep.realvista.application.engagement.dto.SoldListingInfo;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.domain.agent.AgentProfile;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.engagement.Engagement;
 import com.sep.realvista.domain.engagement.EngagementType;
+import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.property.attribute.PropertyAttribute;
+import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.user.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Named;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * MapStruct mapper for Engagement-related DTOs.
@@ -16,29 +24,25 @@ import org.mapstruct.Named;
 public interface EngagementMapper {
 
     /**
-     * Maps an Engagement with its associated agent User and AgentProfile
+     * Maps an Engagement with its associated agent User, AgentProfile,
+     * review status, listing thumbnail, and property attributes
      * to a HiredAgentResponse DTO.
      *
-     * @param engagement the engagement entity
-     * @param agentUser the agent's User entity
-     * @param agentProfile the agent's profile (may be null)
-     * @return the hired agent response DTO
-     */
-    /**
-     * Maps an Engagement with its associated agent User, AgentProfile,
-     * and review status to a HiredAgentResponse DTO.
-     *
-     * @param engagement the engagement entity
-     * @param agentUser the agent's User entity
-     * @param agentProfile the agent's profile (may be null)
-     * @param hasReview whether this engagement has been reviewed
+     * @param engagement           the engagement entity
+     * @param agentUser            the agent's User entity
+     * @param agentProfile         the agent's profile (may be null)
+     * @param hasReview            whether this engagement has been reviewed
+     * @param listingThumbnailUrl  thumbnail URL for the linked listing (may be null)
+     * @param attributeValues      property attribute values (may be empty)
      * @return the hired agent response DTO
      */
     default HiredAgentResponse toHiredAgentResponse(
             Engagement engagement,
             User agentUser,
             AgentProfile agentProfile,
-            boolean hasReview) {
+            boolean hasReview,
+            String listingThumbnailUrl,
+            List<PropertyAttributeValue> attributeValues) {
 
         if (engagement == null) {
             return null;
@@ -85,7 +89,53 @@ public interface EngagementMapper {
             }
         }
 
+        // Listing info — build nested SoldListingInfo (nullable when no listing linked)
+        Listing listing = engagement.getListing();
+        if (listing != null) {
+            String address = engagement.getProperty() != null
+                    ? engagement.getProperty().getStreetAddress()
+                    : null;
+
+            List<PropertyAttributeDTO> attributes = attributeValues != null
+                    ? attributeValues.stream()
+                            .map(this::toAttributeDTO)
+                            .collect(Collectors.toList())
+                    : List.of();
+
+            SoldListingInfo soldListing = SoldListingInfo.builder()
+                    .listingId(listing.getListingId())
+                    .title(listing.getName())
+                    .price(listing.getPrice())
+                    .imageUrl(listingThumbnailUrl)
+                    .status(listing.getStatus() != null ? listing.getStatus().name() : null)
+                    .listingType(listing.getListingType() != null ? listing.getListingType().name() : null)
+                    .address(address)
+                    .attributes(attributes)
+                    .build();
+
+            builder.soldListing(soldListing);
+        }
+
         return builder.build();
+    }
+
+    /**
+     * Maps a single PropertyAttributeValue to a PropertyAttributeDTO.
+     * Reuses the same structure as GET /listings/:id attributes.
+     */
+    default PropertyAttributeDTO toAttributeDTO(PropertyAttributeValue attributeValue) {
+        PropertyAttribute attribute = attributeValue.getPropertyAttribute();
+        return PropertyAttributeDTO.builder()
+                .attributeId(attribute.getPropertyAttributeId())
+                .attributeCode(attribute.getCode())
+                .attributeName(attribute.getName())
+                .dataType(attribute.getDataType() != null ? attribute.getDataType().name() : null)
+                .icon(attribute.getIcon())
+                .unit(attribute.getUnit())
+                .valueNumber(attributeValue.getValueNumber())
+                .valueText(attributeValue.getValueText())
+                .valueBoolean(attributeValue.getValueBoolean())
+                .build();
     }
 
     /**

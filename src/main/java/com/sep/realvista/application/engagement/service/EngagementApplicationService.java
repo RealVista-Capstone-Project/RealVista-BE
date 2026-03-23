@@ -13,6 +13,9 @@ import com.sep.realvista.domain.engagement.Engagement;
 import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.EngagementStatus;
 import com.sep.realvista.domain.engagement.EngagementType;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.user.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +51,8 @@ public class EngagementApplicationService {
     private final AgentProfileRepository agentProfileRepository;
     private final AgentReviewRepository agentReviewRepository;
     private final EngagementMapper engagementMapper;
+    private final ListingRepository listingRepository;
+    private final PropertyAttributeValueRepository propertyAttributeValueRepository;
 
     /**
      * Gets hired agents for a property owner with pagination, optional status filter, and search.
@@ -113,7 +118,8 @@ public class EngagementApplicationService {
                     AgentProfile agentProfile = agentProfileMap.get(agentUserId);
                     boolean hasReview = reviewedEngagementIds.contains(engagement.getEngagementId());
                     return engagementMapper.toHiredAgentResponse(
-                            engagement, agentUser, agentProfile, hasReview);
+                            engagement, agentUser, agentProfile, hasReview,
+                            null, List.of());
                 })
                 .collect(Collectors.toList());
 
@@ -157,9 +163,23 @@ public class EngagementApplicationService {
         AgentProfile agentProfile = agentProfileRepository.findByUserId(agentUserId).orElse(null);
         boolean hasReview = agentReviewRepository.existsByEngagementId(engagementId);
 
+        String listingThumbnailUrl = null;
+        List<PropertyAttributeValue> attributeValues = List.of();
+        if (engagement.getListingId() != null) {
+            listingThumbnailUrl = listingRepository
+                    .findThumbnailByListingId(engagement.getListingId())
+                    .orElse(null);
+            if (engagement.getPropertyId() != null) {
+                attributeValues = propertyAttributeValueRepository
+                        .findByPropertyIdWithAttribute(engagement.getPropertyId());
+            }
+        }
+
         log.info("Retrieved engagement detail: {} for owner: {}", engagementId, ownerId);
 
-        return engagementMapper.toHiredAgentResponse(engagement, agentUser, agentProfile, hasReview);
+        return engagementMapper.toHiredAgentResponse(
+                engagement, agentUser, agentProfile, hasReview,
+                listingThumbnailUrl, attributeValues);
     }
 
     /**

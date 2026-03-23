@@ -40,6 +40,9 @@ public class HiredAgentResponse {
     private String propertyTypeName;
     private String propertyLocationName;
 
+    // --- Listing info (nullable — not all engagements are linked to a listing) ---
+    private SoldListingInfo soldListing;
+
     // --- Engagement info ---
     private UUID engagementId;
     private String engagementType;

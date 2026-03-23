@@ -2,6 +2,7 @@ package com.sep.realvista.domain.engagement;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.user.User;
 import jakarta.persistence.Column;
@@ -40,7 +41,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-@ToString(exclude = {"initiator", "receiver", "property"})
+@ToString(exclude = {"initiator", "receiver", "property", "listing"})
 public class Engagement extends BaseEntity {
 
     @Id
@@ -72,6 +73,10 @@ public class Engagement extends BaseEntity {
 
     @Column(name = "listing_id")
     private UUID listingId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "listing_id", insertable = false, updatable = false)
+    private Listing listing;
 
     @Column(name = "property_id")
     private UUID propertyId;
