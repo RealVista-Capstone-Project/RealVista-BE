@@ -6,8 +6,11 @@ import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.location.Location;
+import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,9 +27,13 @@ import jakarta.persistence.criteria.Subquery;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -35,6 +42,8 @@ public class ListingSearchService {
 
     private final ListingRepository listingRepository;
     private final ListingMapper listingMapper;
+    private final BookmarkRepository bookmarkRepository;
+    private final PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
 
     private static final class ListingFields {
         static final String STATUS = "status";
@@ -77,7 +86,7 @@ public class ListingSearchService {
     private static final Set<String> NUMERIC_MIN_ATTRIBUTE_CODES = Set.of("BEDROOMS", "BATHROOMS");
 
     @Transactional(readOnly = true)
-    public Page<ListingSearchResponse> search(ListingSearchCriteria criteria, Pageable pageable) {
+    public Page<ListingSearchResponse> search(ListingSearchCriteria criteria, Pageable pageable, UUID userId) {
 
         log.debug("Searching with criteria: {}", criteria);
 
@@ -91,15 +100,68 @@ public class ListingSearchService {
 
         Page<Listing> listings = listingRepository.findAll(spec, effectivePageable);
 
-        // Map to response and populate thumbnails
+        // Bulk fetch bookmarked listing IDs for this page (single query, avoids N+1)
+        Set<UUID> bookmarkedIds = Collections.emptySet();
+        if (userId != null && !listings.isEmpty()) {
+            List<UUID> pageListingIds = listings.stream()
+                    .map(Listing::getListingId)
+                    .collect(Collectors.toList());
+            bookmarkedIds = bookmarkRepository.findBookmarkedListingIds(userId, pageListingIds);
+        }
+
+        // Bulk fetch all attributes for all properties on this page (avoids N+1)
+        List<UUID> propertyIds = listings.stream()
+                .map(l -> l.getProperty() != null ? l.getProperty().getPropertyId() : null)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        final Map<UUID, List<PropertyAttributeValue>> attributesByPropertyId;
+        if (!propertyIds.isEmpty()) {
+            attributesByPropertyId = propertyAttributeValueRepository
+                    .findAllAttributesByPropertyIds(propertyIds)
+                    .stream()
+                    .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId));
+        } else {
+            attributesByPropertyId = Collections.emptyMap();
+        }
+
+        // Final reference for use inside lambda
+        final Set<UUID> finalBookmarkedIds = bookmarkedIds;
+
+        // Map to response and populate thumbnails + isFavorite + attributes
         return listings.map(listing -> {
             ListingSearchResponse response = listingMapper.toSearchResponse(listing);
+
+            // Populate address fields explicitly here (within @Transactional) to ensure
+            // lazy-loaded property.location chain is resolved within the open session.
+            if (listing.getProperty() != null) {
+                response.setStreetAddress(listing.getProperty().getStreetAddress());
+                Location loc = listing.getProperty().getLocation();
+                while (loc != null) {
+                    switch (loc.getType()) {
+                        case CITY -> response.setCityName(loc.getName());
+                        case DISTRICT -> response.setDistrictName(loc.getName());
+                        case WARD -> response.setWardName(loc.getName());
+                        default -> { }
+                    }
+                    loc = loc.getParent();
+                }
+            }
 
             // Fetch thumbnail from listing_medias if not already populated
             if (response.getThumbnail() == null || response.getThumbnail().isBlank()) {
                 String thumbnail = fetchThumbnailForListing(listing.getListingId());
                 response.setThumbnail(thumbnail);
             }
+
+            response.setIsFavorite(finalBookmarkedIds.contains(listing.getListingId()));
+
+            UUID propertyId = listing.getProperty() != null ? listing.getProperty().getPropertyId() : null;
+            List<PropertyAttributeValue> attrs = propertyId != null
+                    ? attributesByPropertyId.getOrDefault(propertyId, List.of())
+                    : List.of();
+            response.setAttributes(listingMapper.toAttributeList(attrs));
 
             return response;
         });

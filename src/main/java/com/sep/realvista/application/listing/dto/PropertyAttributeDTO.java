@@ -30,6 +30,8 @@ public class PropertyAttributeDTO {
     private String icon;
     private String unit;
 
+    private Integer priority;
+
     // Value fields (only one will be populated based on data_type)
     @JsonProperty("value_number")
     private BigDecimal valueNumber;

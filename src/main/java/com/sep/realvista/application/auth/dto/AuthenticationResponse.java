@@ -37,6 +37,14 @@ public class AuthenticationResponse {
     @Schema(description = "User email", example = "user@example.com")
     private String email;
 
+    @JsonProperty("roles")
+    @Schema(
+            description = "User roles",
+            example = "[\"BUYER\", \"TENANT\"]",
+            implementation = java.util.List.class
+    )
+    private java.util.List<String> roles;
+
     /**
      * Create response with default type.
      */

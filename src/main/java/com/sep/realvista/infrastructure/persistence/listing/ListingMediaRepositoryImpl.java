@@ -41,6 +41,11 @@ public class ListingMediaRepositoryImpl implements ListingMediaRepository {
     }
 
     @Override
+    public List<ListingMedia> findPrimaryByListingIds(List<UUID> listingIds) {
+        return jpaRepository.findPrimaryByListingIds(listingIds);
+    }
+
+    @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }

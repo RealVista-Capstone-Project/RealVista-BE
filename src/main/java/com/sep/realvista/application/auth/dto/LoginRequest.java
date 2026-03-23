@@ -20,7 +20,7 @@ public class LoginRequest {
 
     @Schema(
             description = "User email address",
-            example = "user@realvista.com",
+            example = "buyertenantuser001@realvista.com",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     @NotBlank(message = "Email is required")

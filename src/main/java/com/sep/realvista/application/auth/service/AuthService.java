@@ -68,13 +68,22 @@ public class AuthService {
         // Step 1: Authenticate user credentials
         Authentication authentication = authenticateUser(request);
 
-        // Step 2: Generate JWT token
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = tokenService.generateToken(userDetails);
-
-        // Step 3: Retrieve user details
+        // Step 2: Retrieve user details for role mapping
         User user = userRepository.findByEmailValue(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException(request.getEmail()));
+
+        // Step 3: Generate JWT token with roles in claims
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+        
+        // Add roles to JWT claims
+        java.util.List<String> roles = user.getUserRoles().stream()
+                .filter(ur -> ur.getRole() != null)
+                .map(ur -> ur.getRole().getRoleCode().name())
+                .toList();
+        extraClaims.put("roles", roles);
+        
+        String token = tokenService.generateToken(extraClaims, userDetails);
 
         // Step 4: Build authentication response
         AuthenticationResponse response = authenticationMapper.toAuthenticationResponse(user, token);
@@ -127,14 +136,20 @@ public class AuthService {
             // Step 3: Find or create user
             User user = findOrCreateGoogleUser(email, firstName, lastName, avatarUrl);
 
-            // Step 4: Generate JWT token
+            // Step 4: Generate JWT token with roles in claims
+            java.util.List<String> roles = user.getUserRoles().stream()
+                    .filter(ur -> ur.getRole() != null)
+                    .map(ur -> ur.getRole().getRoleCode().name())
+                    .toList();
+            java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+            extraClaims.put("roles", roles);
             UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                     .username(user.getEmail().getValue())
                     .password(user.getPasswordHash())
                     .authorities(java.util.Collections.emptyList())
                     .build();
 
-            String token = tokenService.generateToken(userDetails);
+            String token = tokenService.generateToken(extraClaims, userDetails);
 
             // Step 5: Build authentication response
             AuthenticationResponse response = authenticationMapper.toAuthenticationResponse(user, token);
