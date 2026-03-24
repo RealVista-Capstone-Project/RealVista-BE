@@ -2,6 +2,8 @@ package com.sep.realvista.unit.application.appointment;
 
 import com.sep.realvista.application.appointment.dto.BookTourRequest;
 import com.sep.realvista.application.appointment.service.AppointmentApplicationService;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.EmailService;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.listing.Listing;
@@ -43,6 +45,9 @@ class AppointmentApplicationServiceTest {
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private NotificationApplicationService notificationApplicationService;
 
     @InjectMocks
     private AppointmentApplicationService applicationService;
@@ -107,6 +112,7 @@ class AppointmentApplicationServiceTest {
                 .build();
 
         Appointment appointment = Appointment.builder()
+                .appointmentId(UUID.randomUUID())
                 .listingId(listingId)
                 .listing(listing)
                 .senderId(userId)
@@ -148,5 +154,9 @@ class AppointmentApplicationServiceTest {
                 eq("tour-booking-notification"),
                 anyMap()
         );
+
+        // Verify in-app/push notifications sent to both owner and sender
+        verify(notificationApplicationService, org.mockito.Mockito.times(2))
+                .sendNotification(any(SendNotificationRequest.class));
     }
 }

@@ -1,12 +1,16 @@
 package com.sep.realvista.application.appointment.service;
 
 import com.sep.realvista.application.appointment.dto.BookTourRequest;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.EmailService;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.appointment.Appointment;
 import com.sep.realvista.domain.listing.appointment.AppointmentService;
 import com.sep.realvista.domain.listing.appointment.BookTourResult;
 import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.notification.EntityType;
+import com.sep.realvista.domain.user.notification.EventType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +34,7 @@ public class AppointmentApplicationService {
 
     private final AppointmentService appointmentService;
     private final EmailService emailService;
+    private final NotificationApplicationService notificationApplicationService;
 
     @Value("${spring.application.frontend.url}")
     private String frontendUrl;
@@ -55,6 +60,7 @@ public class AppointmentApplicationService {
         );
 
         sendTourBookingEmails(result);
+        sendTourBookingNotifications(result);
     }
 
     private void sendTourBookingEmails(BookTourResult result) {
@@ -121,6 +127,74 @@ public class AppointmentApplicationService {
             } catch (Exception e) {
                 log.error("Failed to send tour notification email to owner {}: {}",
                         owner.getEmail().getValue(), e.getMessage(), e);
+            }
+        }
+    }
+
+    private void sendTourBookingNotifications(BookTourResult result) {
+        Listing listing = result.listing();
+        User sender = result.sender();
+        User owner = result.owner();
+
+        String listingName = listing.getName();
+
+        for (Appointment appointment : result.appointments()) {
+            String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
+            String tourTime = appointment.getStartTime().format(TIME_FORMATTER)
+                    + " - " + appointment.getEndTime().format(TIME_FORMATTER);
+
+            // Build metadata for deep linking on frontend/mobile
+            Map<String, String> metadata = new HashMap<>();
+            metadata.put("listingId", listing.getListingId().toString());
+            metadata.put("appointmentId", appointment.getAppointmentId().toString());
+            metadata.put("tourDate", tourDate);
+            metadata.put("tourTime", tourTime);
+
+            // In-app + push notification to the OWNER (most important - they need to respond)
+            try {
+                String ownerTitle = "Yêu cầu tham quan mới";
+                String ownerMessage = sender.getFullName() + " muốn tham quan \""
+                        + listingName + "\" vào " + tourDate + " lúc " + tourTime;
+
+                notificationApplicationService.sendNotification(
+                        SendNotificationRequest.builder()
+                                .userId(owner.getUserId())
+                                .userEmail(owner.getEmail().getValue())
+                                .title(ownerTitle)
+                                .message(ownerMessage)
+                                .eventType(EventType.NEW_TOUR_REQUEST)
+                                .entityType(EntityType.APPOINTMENT)
+                                .entityId(appointment.getAppointmentId())
+                                .metadata(metadata)
+                                .build()
+                );
+            } catch (Exception e) {
+                log.error("Failed to send in-app/push notification to owner {}: {}",
+                        owner.getUserId(), e.getMessage(), e);
+            }
+
+            // In-app + push notification to the SENDER (confirmation)
+            try {
+                String senderTitle = "Đặt lịch tham quan thành công";
+                String senderMessage = "Bạn đã đặt lịch tham quan \""
+                        + listingName + "\" vào " + tourDate + " lúc " + tourTime
+                        + ". Đang chờ xác nhận.";
+
+                notificationApplicationService.sendNotification(
+                        SendNotificationRequest.builder()
+                                .userId(sender.getUserId())
+                                .userEmail(sender.getEmail().getValue())
+                                .title(senderTitle)
+                                .message(senderMessage)
+                                .eventType(EventType.NEW_TOUR_REQUEST)
+                                .entityType(EntityType.APPOINTMENT)
+                                .entityId(appointment.getAppointmentId())
+                                .metadata(metadata)
+                                .build()
+                );
+            } catch (Exception e) {
+                log.error("Failed to send in-app/push notification to sender {}: {}",
+                        sender.getUserId(), e.getMessage(), e);
             }
         }
     }
