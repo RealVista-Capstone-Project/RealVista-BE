@@ -232,10 +232,14 @@ public class Property extends BaseEntity {
                     .findFirst()
                     .ifPresentOrElse(
                         existing -> {
-                            // Update values in-place
-                            existing.updateNumberValue(newAttr.getValueNumber());
-                            existing.updateTextValue(newAttr.getValueText());
-                            existing.updateBooleanValue(newAttr.getValueBoolean());
+                            // Update only provided values to prevent clearing others
+                            if (newAttr.getValueNumber() != null) {
+                                existing.updateNumberValue(newAttr.getValueNumber());
+                            } else if (newAttr.getValueText() != null) {
+                                existing.updateTextValue(newAttr.getValueText());
+                            } else if (newAttr.getValueBoolean() != null) {
+                                existing.updateBooleanValue(newAttr.getValueBoolean());
+                            }
                         },
                         () -> {
                             this.attributeValues.add(newAttr);
