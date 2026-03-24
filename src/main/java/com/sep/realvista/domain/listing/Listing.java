@@ -122,6 +122,9 @@ public class Listing extends BaseEntity {
     @Column(nullable = false, length = 500)
     private String name;
 
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
     public void submitForReview() {
         if (this.status != ListingStatus.DRAFT) {
             throw new IllegalStateException("Only draft listings can be submitted for review");
