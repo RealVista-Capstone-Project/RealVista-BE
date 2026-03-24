@@ -34,6 +34,11 @@ import java.util.stream.Collectors;
  * 4. When threshold is NOT met → return cached recommendations
  * 5. Enrich AI listing IDs with full listing data from PostgreSQL
  */
+import com.sep.realvista.application.listing.mapper.ListingMapper;
+import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
+import com.sep.realvista.domain.property.location.Location;
+import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -42,6 +47,8 @@ public class RecommendationApplicationService {
 
     private final AiServiceClient aiServiceClient;
     private final ListingRepository listingRepository;
+    private final ListingMapper listingMapper;
+    private final PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
 
     /**
      * In-memory event counters per user since last recommendation refresh.
@@ -207,24 +214,52 @@ public class RecommendationApplicationService {
                             }
 
                             Listing listing = listingMap.get(lid);
-                            RecommendationResponse.RecommendedListingDTO.RecommendedListingDTOBuilder builder =
+                            if (listing == null) return null;
+
+                            // Start with base search response mapping
+                            com.sep.realvista.application.listing.dto.ListingSearchResponse searchRes = 
+                                listingMapper.toSearchResponse(listing);
+
+                            // Build the final recommended DTO
+                            RecommendationResponse.RecommendedListingDTO.RecommendedListingDTOBuilder<?, ?> builder =
                                     RecommendationResponse.RecommendedListingDTO.builder()
-                                            .listingId(aiRec.getListingId())
+                                            .listingId(searchRes.getListingId())
+                                            .name(searchRes.getName())
+                                            .slug(searchRes.getSlug())
+                                            .listingType(searchRes.getListingType())
+                                            .status(searchRes.getStatus())
+                                            .price(searchRes.getPrice())
+                                            .area(searchRes.getArea())
+                                            .publishedAt(searchRes.getPublishedAt())
+                                            .userType(searchRes.getUserType())
                                             .reason(aiRec.getReason())
                                             .score(aiRec.getScore());
 
-                            if (listing != null) {
-                                builder.name(listing.getName())
-                                        .slug(listing.getSlug())
-                                        .listingType(listing.getListingType() != null
-                                                ? listing.getListingType().name() : null)
-                                        .price(listing.getPrice() != null
-                                                ? listing.getPrice().longValue() : null);
-                                // Thumbnail and location require joins — skipping for PoC
-                                // In production, use the ListingMapper or a projection query
+                            // Populate address fields
+                            if (listing.getProperty() != null) {
+                                builder.streetAddress(listing.getProperty().getStreetAddress());
+                                Location loc = listing.getProperty().getLocation();
+                                while (loc != null) {
+                                    switch (loc.getType()) {
+                                        case CITY -> builder.cityName(loc.getName());
+                                        case DISTRICT -> builder.districtName(loc.getName());
+                                        case WARD -> builder.wardName(loc.getName());
+                                        default -> { }
+                                    }
+                                    loc = loc.getParent();
+                                }
                             }
 
-                            return builder.build();
+                            // Populate thumbnail
+                            var thumbnail = listingRepository.findThumbnailByListingId(lid);
+                            builder.thumbnail(thumbnail.orElse(null));
+
+                            // Populate attributes
+                            List<PropertyAttributeValue> attrs = propertyAttributeValueRepository
+                                    .findByPropertyIdWithAttribute(listing.getPropertyId());
+                            builder.attributes(listingMapper.toAttributeList(attrs));
+
+                            return (RecommendationResponse.RecommendedListingDTO) builder.build();
                         })
                         .filter(Objects::nonNull)
                         .collect(Collectors.toList());

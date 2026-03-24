@@ -1,10 +1,13 @@
 package com.sep.realvista.application.recommendation.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
@@ -33,37 +36,15 @@ public class RecommendationResponse {
     private boolean fromCache;
 
     @Data
-    @Builder
+    @SuperBuilder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class RecommendedListingDTO {
-
-        @JsonProperty("listing_id")
-        private String listingId;
-
+    @EqualsAndHashCode(callSuper = true)
+    public static class RecommendedListingDTO extends ListingSearchResponse {
         /** AI-generated reason for this recommendation */
         private String reason;
 
         /** Relevance score 0.0 - 1.0 */
-        private double score;
-
-        /** Listing name from PostgreSQL */
-        private String name;
-
-        /** Listing slug from PostgreSQL */
-        private String slug;
-
-        /** Listing type (SALE / RENT) */
-        @JsonProperty("listing_type")
-        private String listingType;
-
-        /** Listing price from PostgreSQL */
-        private Long price;
-
-        /** Thumbnail URL */
-        private String thumbnail;
-
-        /** Location name */
-        private String location;
+        private Double score;
     }
 }
