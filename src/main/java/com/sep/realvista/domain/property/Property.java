@@ -136,6 +136,15 @@ public class Property extends BaseEntity {
         return this.status == PropertyStatus.AVAILABLE;
     }
 
+    public void updateLocationAndType(UUID locationId, UUID propertyTypeId) {
+        if (locationId != null) {
+            this.locationId = locationId;
+        }
+        if (propertyTypeId != null) {
+            this.propertyTypeId = propertyTypeId;
+        }
+    }
+
     public void updateDetails(String streetAddress, String descriptions, String slug) {
         if (streetAddress != null && !streetAddress.isBlank()) {
             this.streetAddress = streetAddress;
@@ -156,11 +165,94 @@ public class Property extends BaseEntity {
         this.lengthM = lengthM;
     }
 
-    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY)
-    private List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> attributeValues;
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
+               cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> attributeValues = 
+            new java.util.ArrayList<>();
+
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
+               cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<PropertyMedia> mediaList = new java.util.ArrayList<>();
+
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
+               cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<com.sep.realvista.domain.property.amenity.PropertyAmenity> amenities = 
+            new java.util.ArrayList<>();
+
+    public void updateMedia(List<PropertyMedia> newMedia) {
+        // Remove those not in new list (by URL)
+        this.mediaList.removeIf(existing -> 
+            newMedia.stream().noneMatch(n -> n.getMediaUrl().equals(existing.getMediaUrl())));
+        
+        // Add new ones or update existing ones
+        if (newMedia != null) {
+            for (var m : newMedia) {
+                this.mediaList.stream()
+                    .filter(existing -> existing.getMediaUrl().equals(m.getMediaUrl()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                        existing -> {
+                            existing.updateMetadata(m.getMediaType(), m.getThumbnailUrl(), m.getIsPrimary());
+                        },
+                        () -> this.mediaList.add(m)
+                    );
+            }
+        }
+    }
+
+    public void updateAmenities(List<com.sep.realvista.domain.property.amenity.PropertyAmenity> newAmenities) {
+        // Remove those not in new list
+        this.amenities.removeIf(existing -> 
+            newAmenities.stream().noneMatch(n -> n.getAmenityId().equals(existing.getAmenityId())));
+        
+        // Add those not in existing list
+        if (newAmenities != null) {
+            for (var newAmenity : newAmenities) {
+                if (this.amenities.stream().noneMatch(existing -> existing.getAmenityId().equals(newAmenity.getAmenityId()))) {
+                    this.amenities.add(newAmenity);
+                }
+            }
+        }
+    }
+
+    public void updateAttributes(
+            List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> newAttributes) {
+        // Remove those not in new list
+        this.attributeValues.removeIf(existing -> 
+            newAttributes.stream().noneMatch(n -> n.getPropertyAttributeId().equals(existing.getPropertyAttributeId())));
+        
+        // Add or Update
+        if (newAttributes != null) {
+            for (var newAttr : newAttributes) {
+                this.attributeValues.stream()
+                    .filter(existing -> existing.getPropertyAttributeId().equals(newAttr.getPropertyAttributeId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                        existing -> {
+                            // Update values in-place
+                            existing.updateNumberValue(newAttr.getValueNumber());
+                            existing.updateTextValue(newAttr.getValueText());
+                            existing.updateBooleanValue(newAttr.getValueBoolean());
+                        },
+                        () -> {
+                            this.attributeValues.add(newAttr);
+                        }
+                    );
+            }
+        }
+    }
 
     public void updateCoordinates(BigDecimal latitude, BigDecimal longitude) {
         this.latitude = latitude;
         this.longitude = longitude;
+    }
+
+    public void updateExtraAttributes(Map<String, Object> extraAttributes) {
+        if (extraAttributes != null) {
+            this.extraAttributes = extraAttributes;
+        }
     }
 }
