@@ -5,6 +5,7 @@ import com.sep.realvista.domain.property.repository.PropertyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +23,11 @@ public class PropertyRepositoryImpl implements PropertyRepository {
     @Override
     public Optional<Property> findById(UUID id) {
         return jpaRepository.findActiveById(id);
+    }
+
+    @Override
+    public List<Property> findByOwnerId(UUID ownerId) {
+        return jpaRepository.findByOwnerId(ownerId);
     }
 
     @Override
