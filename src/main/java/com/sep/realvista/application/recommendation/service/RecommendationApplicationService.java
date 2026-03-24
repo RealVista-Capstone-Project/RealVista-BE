@@ -1,11 +1,15 @@
 package com.sep.realvista.application.recommendation.service;
 
+import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.application.recommendation.dto.AiRecommendationResult;
 import com.sep.realvista.application.recommendation.dto.RecommendationResponse;
 import com.sep.realvista.application.recommendation.dto.UserBehaviorRequest;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.infrastructure.external.ai.AiServiceClient;
+import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,21 +27,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-/**
- * Orchestrates the recommendation flow between the frontend, backend, and AI service.
- * <p>
- * Key responsibilities:
- * 1. Receive user behavior events from the FE and forward to AI service
- * 2. Track metrics accumulation per user (threshold gating)
- * 3. When threshold is met → call AI service for fresh recommendations
- * 4. When threshold is NOT met → return cached recommendations
- * 5. Enrich AI listing IDs with full listing data from PostgreSQL
- */
-import com.sep.realvista.application.listing.mapper.ListingMapper;
-import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
-import com.sep.realvista.domain.property.location.Location;
-import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 
 @Slf4j
 @Service
@@ -214,11 +203,13 @@ public class RecommendationApplicationService {
                             }
 
                             Listing listing = listingMap.get(lid);
-                            if (listing == null) return null;
+                            if (listing == null) {
+                                return null;
+                            }
 
                             // Start with base search response mapping
-                            com.sep.realvista.application.listing.dto.ListingSearchResponse searchRes = 
-                                listingMapper.toSearchResponse(listing);
+                            com.sep.realvista.application.listing.dto.ListingSearchResponse searchRes =
+                                    listingMapper.toSearchResponse(listing);
 
                             // Build the final recommended DTO
                             RecommendationResponse.RecommendedListingDTO.RecommendedListingDTOBuilder<?, ?> builder =
@@ -244,7 +235,8 @@ public class RecommendationApplicationService {
                                         case CITY -> builder.cityName(loc.getName());
                                         case DISTRICT -> builder.districtName(loc.getName());
                                         case WARD -> builder.wardName(loc.getName());
-                                        default -> { }
+                                        default -> {
+                                        }
                                     }
                                     loc = loc.getParent();
                                 }

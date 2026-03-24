@@ -1,18 +1,14 @@
 package com.sep.realvista.application.listing.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.shared.util.AddressFormatter;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
 import lombok.experimental.SuperBuilder;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,26 +38,22 @@ public class ListingSearchResponse {
 
     @JsonProperty("city_name")
     private String cityName;
+    // NOTE: These attributes will be dynamic, not only bedrooms and bathrooms
+    private List<PropertyAttributeDTO> attributes;
+    private String thumbnail; // Main image
+    private LocalDateTime publishedAt;
+    // Boost info
+    @JsonProperty("is_boosted")
+    private Boolean isBoosted;
+    private String boostPackage; // e.g., "FEATURED", "HOT_BADGE"
+    // User info (for display/sorting context)
+    private String userType; // AGENT or USER
+    // Bookmark status for the requesting user (false for anonymous)
+    @JsonProperty("is_favorite")
+    private Boolean isFavorite;
 
     @JsonProperty("full_address")
     public String getFullAddress() {
         return AddressFormatter.formatFullAddress(streetAddress, wardName, districtName, cityName);
     }
-
-    // NOTE: These attributes will be dynamic, not only bedrooms and bathrooms
-    private List<PropertyAttributeDTO> attributes;
-    private String thumbnail; // Main image
-    private LocalDateTime publishedAt;
-    
-    // Boost info
-    @JsonProperty("is_boosted")
-    private Boolean isBoosted;
-    private String boostPackage; // e.g., "FEATURED", "HOT_BADGE"
-
-    // User info (for display/sorting context)
-    private String userType; // AGENT or USER
-
-    // Bookmark status for the requesting user (false for anonymous)
-    @JsonProperty("is_favorite")
-    private Boolean isFavorite;
 }
