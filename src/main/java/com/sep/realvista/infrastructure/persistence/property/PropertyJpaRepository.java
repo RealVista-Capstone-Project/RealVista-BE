@@ -19,11 +19,18 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
 
     List<Property> findByOwnerId(UUID ownerId);
 
-    @Query("SELECT p FROM Property p WHERE p.ownerId = :ownerId AND p.deleted = false AND "
+    @Query(value = "SELECT DISTINCT p FROM Property p "
+           + "LEFT JOIN FETCH p.propertyType pt "
+           + "LEFT JOIN FETCH pt.propertyCategory "
+           + "WHERE p.ownerId = :ownerId AND p.deleted = false AND "
+           + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
+           + "LOWER(p.descriptions) LIKE :keyword)",
+           countQuery = "SELECT COUNT(p) FROM Property p "
+           + "WHERE p.ownerId = :ownerId AND p.deleted = false AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)")
     org.springframework.data.domain.Page<Property> findByOwnerIdAndKeyword(
-            @Param("ownerId") UUID ownerId, 
-            @Param("keyword") String keyword, 
+            @Param("ownerId") UUID ownerId,
+            @Param("keyword") String keyword,
             org.springframework.data.domain.Pageable pageable);
 }

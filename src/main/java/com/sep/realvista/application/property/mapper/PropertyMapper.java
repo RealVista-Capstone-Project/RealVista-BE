@@ -4,6 +4,7 @@ import java.util.UUID;
 import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.domain.property.Property;
@@ -73,6 +74,21 @@ public class PropertyMapper {
                 .thumbnailUrl(thumbnailUrl)
                 .attributes(attributes != null ? attributes.stream()
                         .map(this::mapAttribute).collect(Collectors.toList()) : null)
+                .propertyTypeInfo(mapPropertyType(property))
+                .build();
+    }
+
+    private PropertyTypeInfoDTO mapPropertyType(Property property) {
+        var pt = property.getPropertyType();
+        if (pt == null) return null;
+        var cat = pt.getPropertyCategory();
+        return PropertyTypeInfoDTO.builder()
+                .propertyTypeId(pt.getPropertyTypeId())
+                .propertyTypeName(pt.getName())
+                .propertyTypeCode(pt.getCode())
+                .propertyCategoryId(cat != null ? cat.getPropertyCategoryId() : null)
+                .propertyCategoryName(cat != null ? cat.getName() : null)
+                .propertyCategoryCode(cat != null ? cat.getCode() : null)
                 .build();
     }
 
