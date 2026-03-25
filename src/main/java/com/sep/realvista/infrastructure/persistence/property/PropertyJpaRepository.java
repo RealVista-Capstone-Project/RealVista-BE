@@ -22,6 +22,9 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
     @Query(value = "SELECT DISTINCT p FROM Property p "
            + "LEFT JOIN FETCH p.propertyType pt "
            + "LEFT JOIN FETCH pt.propertyCategory "
+           + "LEFT JOIN FETCH p.location loc "
+           + "LEFT JOIN FETCH loc.parent dist "
+           + "LEFT JOIN FETCH dist.parent city "
            + "WHERE p.ownerId = :ownerId AND p.deleted = false AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)",

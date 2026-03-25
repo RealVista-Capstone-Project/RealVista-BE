@@ -1,6 +1,7 @@
 package com.sep.realvista.application.property.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
 import com.sep.realvista.domain.property.PropertyStatus;
@@ -39,4 +40,7 @@ public class PropertySummaryResponse {
 
     @JsonProperty("property_type_info")
     private PropertyTypeInfoDTO propertyTypeInfo;
+
+    @JsonProperty("location_info")
+    private LocationInfoDTO locationInfo;
 }

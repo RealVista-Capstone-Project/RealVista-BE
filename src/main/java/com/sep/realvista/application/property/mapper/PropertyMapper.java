@@ -2,6 +2,7 @@ package com.sep.realvista.application.property.mapper;
 
 import java.util.UUID;
 import com.sep.realvista.application.listing.dto.AmenityDTO;
+import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
@@ -75,6 +76,7 @@ public class PropertyMapper {
                 .attributes(attributes != null ? attributes.stream()
                         .map(this::mapAttribute).collect(Collectors.toList()) : null)
                 .propertyTypeInfo(mapPropertyType(property))
+                .locationInfo(mapLocation(property))
                 .build();
     }
 
@@ -89,6 +91,41 @@ public class PropertyMapper {
                 .propertyCategoryId(cat != null ? cat.getPropertyCategoryId() : null)
                 .propertyCategoryName(cat != null ? cat.getName() : null)
                 .propertyCategoryCode(cat != null ? cat.getCode() : null)
+                .build();
+    }
+
+    private LocationInfoDTO mapLocation(Property property) {
+        var loc = property.getLocation();
+        if (loc == null) return null;
+
+        String wardName = null;
+        String districtName = null;
+        String cityName = null;
+
+        if (loc.isWard()) {
+            wardName = loc.getName();
+            if (loc.getParent() != null) {
+                districtName = loc.getParent().getName();
+                if (loc.getParent().getParent() != null) {
+                    cityName = loc.getParent().getParent().getName();
+                }
+            }
+        } else if (loc.isDistrict()) {
+            districtName = loc.getName();
+            if (loc.getParent() != null) {
+                cityName = loc.getParent().getName();
+            }
+        } else if (loc.isCity()) {
+            cityName = loc.getName();
+        }
+
+        return LocationInfoDTO.builder()
+                .locationId(loc.getLocationId())
+                .wardName(wardName)
+                .districtName(districtName)
+                .cityName(cityName)
+                .latitude(property.getLatitude())
+                .longitude(property.getLongitude())
                 .build();
     }
 
