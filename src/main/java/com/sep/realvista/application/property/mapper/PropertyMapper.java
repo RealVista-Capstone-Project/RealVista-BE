@@ -67,12 +67,23 @@ public class PropertyMapper {
     public PropertySummaryResponse toSummaryResponse(Property property, List<PropertyMedia> media,
                                                      List<PropertyAttributeValue> attributes,
                                                      List<PropertyAmenity> amenities) {
+        java.math.BigDecimal areaSqft = null;
+        if (property.getUsableSizeM2() != null) {
+            areaSqft = property.getUsableSizeM2().multiply(new java.math.BigDecimal("10.764"))
+                    .setScale(2, java.math.RoundingMode.HALF_UP);
+        }
+
         return PropertySummaryResponse.builder()
                 .propertyId(property.getPropertyId())
                 .propertyTypeId(property.getPropertyTypeId())
                 .streetAddress(property.getStreetAddress())
                 .status(property.getStatus())
                 .landSizeM2(property.getLandSizeM2())
+                .usableSizeM2(property.getUsableSizeM2())
+                .widthM(property.getWidthM())
+                .lengthM(property.getLengthM())
+                .areaSqft(areaSqft)
+                .description(property.getDescriptions())
                 .media(media != null ? media.stream()
                         .map(this::mapMedia).collect(Collectors.toList()) : null)
                 .attributes(attributes != null ? attributes.stream()

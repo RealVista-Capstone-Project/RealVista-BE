@@ -33,6 +33,20 @@ public class PropertySummaryResponse {
     @JsonProperty("land_size_m2")
     private BigDecimal landSizeM2;
 
+    @JsonProperty("usable_size_m2")
+    private BigDecimal usableSizeM2;
+
+    @JsonProperty("width_m")
+    private BigDecimal widthM;
+
+    @JsonProperty("length_m")
+    private BigDecimal lengthM;
+
+    @JsonProperty("area_sqft")
+    private BigDecimal areaSqft;
+
+    private String description;
+
     private PropertyStatus status;
 
     private List<PropertyAttributeDTO> attributes;
