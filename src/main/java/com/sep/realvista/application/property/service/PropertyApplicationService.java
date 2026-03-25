@@ -187,18 +187,15 @@ public class PropertyApplicationService {
         List<PropertySummaryResponse> content = propertiesPage.getContent().stream().map(property -> {
             UUID propId = property.getPropertyId();
 
-            // Find thumbnail media (is_primary = true) if any exists to pass to mapper
-            String thumbnailUrl = propertyMediaRepository.findByPropertyId(propId)
-                    .stream()
-                    .filter(pm -> Boolean.TRUE.equals(pm.getIsPrimary()))
-                    .findFirst()
-                    .map(PropertyMedia::getThumbnailUrl)
-                    .orElse(null);
+            List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propId);
 
             List<PropertyAttributeValue> attributes =
                     propertyAttributeValueRepository.findByPropertyIdWithAttribute(propId);
 
-            return propertyMapper.toSummaryResponse(property, thumbnailUrl, attributes);
+            List<PropertyAmenity> amenities = 
+                    propertyAmenityRepository.findByPropertyIdWithAmenity(propId);
+
+            return propertyMapper.toSummaryResponse(property, media, attributes, amenities);
         }).collect(Collectors.toList());
 
         return PageResponse.<PropertySummaryResponse>builder()
