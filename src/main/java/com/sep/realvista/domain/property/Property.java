@@ -211,7 +211,8 @@ public class Property extends BaseEntity {
         // Add those not in existing list
         if (newAmenities != null) {
             for (var newAmenity : newAmenities) {
-                if (this.amenities.stream().noneMatch(existing -> existing.getAmenityId().equals(newAmenity.getAmenityId()))) {
+                if (this.amenities.stream().noneMatch(
+                        existing -> existing.getAmenityId().equals(newAmenity.getAmenityId()))) {
                     this.amenities.add(newAmenity);
                 }
             }
@@ -222,7 +223,8 @@ public class Property extends BaseEntity {
             List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> newAttributes) {
         // Remove those not in new list
         this.attributeValues.removeIf(existing -> 
-            newAttributes.stream().noneMatch(n -> n.getPropertyAttributeId().equals(existing.getPropertyAttributeId())));
+            newAttributes.stream().noneMatch(
+                n -> n.getPropertyAttributeId().equals(existing.getPropertyAttributeId())));
         
         // Add or Update
         if (newAttributes != null) {

@@ -1,5 +1,7 @@
 package com.sep.realvista.application.property.service;
 
+import com.sep.realvista.application.common.dto.PageResponse;
+import com.sep.realvista.application.property.dto.PropertySearchCriteria;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyAttributeRequest;
@@ -22,6 +24,8 @@ import com.sep.realvista.infrastructure.persistence.property.amenity.AmenityJpaR
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -170,13 +174,17 @@ public class PropertyApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PropertySummaryResponse> getMyProperties() {
+    public PageResponse<PropertySummaryResponse> getMyProperties(
+            PropertySearchCriteria criteria,
+            Pageable pageable) {
         UUID ownerId = getCurrentUserId();
-        log.info("Getting properties for owner: {}", ownerId);
+        log.info("Getting properties for owner: {} with criteria: {}", ownerId, criteria);
         
-        List<Property> properties = propertyRepository.findByOwnerId(ownerId);
+        String keyword = criteria != null ? criteria.getKeyword() : null;
+        Page<Property> propertiesPage =
+                propertyRepository.findByOwnerIdAndCriteria(ownerId, keyword, pageable);
         
-        return properties.stream().map(property -> {
+        List<PropertySummaryResponse> content = propertiesPage.getContent().stream().map(property -> {
             // Find thumbnail media (is_primary = true) if any exists to pass to mapper
             String thumbnailUrl = propertyMediaRepository.findByPropertyId(property.getPropertyId())
                     .stream()
@@ -187,6 +195,16 @@ public class PropertyApplicationService {
                     
             return propertyMapper.toSummaryResponse(property, thumbnailUrl);
         }).collect(Collectors.toList());
+
+        return PageResponse.<PropertySummaryResponse>builder()
+                .content(content)
+                .page(propertiesPage.getNumber())
+                .size(propertiesPage.getSize())
+                .totalElements(propertiesPage.getTotalElements())
+                .totalPages(propertiesPage.getTotalPages())
+                .first(propertiesPage.isFirst())
+                .last(propertiesPage.isLast())
+                .build();
     }
 
     @Transactional(readOnly = true)

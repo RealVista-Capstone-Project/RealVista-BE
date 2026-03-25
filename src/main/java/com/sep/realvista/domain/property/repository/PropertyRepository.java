@@ -13,6 +13,11 @@ public interface PropertyRepository {
 
     List<Property> findByOwnerId(UUID ownerId);
 
+    org.springframework.data.domain.Page<Property> findByOwnerIdAndCriteria(
+            UUID ownerId, 
+            String keyword, 
+            org.springframework.data.domain.Pageable pageable);
+
     boolean existsById(UUID id);
 
     void deleteById(UUID id);
