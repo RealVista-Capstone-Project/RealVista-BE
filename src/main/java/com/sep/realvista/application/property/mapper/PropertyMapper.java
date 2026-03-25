@@ -62,7 +62,8 @@ public class PropertyMapper {
                 .build();
     }
 
-    public PropertySummaryResponse toSummaryResponse(Property property, String thumbnailUrl) {
+    public PropertySummaryResponse toSummaryResponse(Property property, String thumbnailUrl,
+                                                     List<PropertyAttributeValue> attributes) {
         return PropertySummaryResponse.builder()
                 .propertyId(property.getPropertyId())
                 .propertyTypeId(property.getPropertyTypeId())
@@ -70,6 +71,8 @@ public class PropertyMapper {
                 .status(property.getStatus())
                 .landSizeM2(property.getLandSizeM2())
                 .thumbnailUrl(thumbnailUrl)
+                .attributes(attributes != null ? attributes.stream()
+                        .map(this::mapAttribute).collect(Collectors.toList()) : null)
                 .build();
     }
 
