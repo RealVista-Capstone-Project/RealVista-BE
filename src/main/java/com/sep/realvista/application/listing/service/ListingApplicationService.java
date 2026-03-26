@@ -16,6 +16,7 @@ import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.analytics.ListingPriceHistory;
@@ -515,6 +516,21 @@ public class ListingApplicationService {
                 .changedBy(savedListing.getUserId())
                 .build();
         listingPriceHistoryRepository.save(priceHistory);
+
+        // Persist selected media as ListingMedia records
+        List<UUID> mediaIds = request.getMediaIds();
+        if (mediaIds != null && !mediaIds.isEmpty()) {
+            for (int i = 0; i < mediaIds.size(); i++) {
+                UUID mediaId = mediaIds.get(i);
+                boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
+                // Primary media always gets display_order 0; others follow list index
+                int displayOrder = isPrimary ? 0 : i;
+                ListingMedia listingMedia = ListingMedia.create(
+                        savedListing.getListingId(), mediaId, displayOrder, isPrimary);
+                listingMediaRepository.save(listingMedia);
+            }
+            log.info("Saved {} media records for listing ID: {}", mediaIds.size(), savedListing.getListingId());
+        }
 
         log.info("Successfully created listing with ID: {}", savedListing.getListingId());
 
