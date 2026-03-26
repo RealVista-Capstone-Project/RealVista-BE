@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * DTO for updating an existing listing.
@@ -44,4 +46,16 @@ public class UpdateListingRequest {
      * Future date = Available from that specific date.
      */
     private LocalDate availableFrom;
+
+    /**
+     * Ordered list of property media IDs selected for this listing.
+     * The order determines display_order (0-indexed).
+     */
+    private List<UUID> mediaIds;
+
+    /**
+     * The property media ID that should be marked as primary (is_primary = true).
+     * Must be one of the items in mediaIds.
+     */
+    private UUID primaryMediaId;
 }

@@ -53,6 +53,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -613,6 +614,49 @@ public class ListingApplicationService {
 
         // Save listing again if content changed (or just once at the end)
         updatedListing = listingRepository.save(listing);
+
+        // Update Listing Media if provided
+        List<UUID> mediaIds = request.getMediaIds();
+        if (mediaIds != null) {
+            List<ListingMedia> existingMediaList = listingMediaRepository.findByListingId(updatedListing.getListingId());
+
+            // Remove media no longer selected
+            for (ListingMedia existingMedia : existingMediaList) {
+                if (!mediaIds.contains(existingMedia.getPropertyMediaId())) {
+                    listingMediaRepository.deleteById(existingMedia.getListingMediaId());
+                }
+            }
+
+            // Update remaining or add new
+            for (int i = 0; i < mediaIds.size(); i++) {
+                UUID mediaId = mediaIds.get(i);
+                boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
+                // Primary media always gets display_order 0; others follow list index
+                int displayOrder = isPrimary ? 0 : i;
+
+                Listing finalUpdatedListing = updatedListing;
+                existingMediaList.stream()
+                        .filter(m -> m.getPropertyMediaId().equals(mediaId))
+                        .findFirst()
+                        .ifPresentOrElse(
+                                existing -> {
+                                    existing.updateDisplayOrder(displayOrder);
+                                    if (isPrimary) {
+                                        existing.markAsPrimary();
+                                    } else {
+                                        existing.removePrimary();
+                                    }
+                                    listingMediaRepository.save(existing);
+                                },
+                                () -> {
+                                    ListingMedia newMedia = ListingMedia.create(
+                                            finalUpdatedListing.getListingId(), mediaId, displayOrder, isPrimary);
+                                    listingMediaRepository.save(newMedia);
+                                }
+                        );
+            }
+            log.info("Updated media for listing ID: {} ({} items)", listingId, mediaIds.size());
+        }
 
         log.info("Successfully updated listing ID: {}", listingId);
 
