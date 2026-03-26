@@ -494,6 +494,7 @@ public class ListingApplicationService {
                 .maxPrice(request.getMaxPrice())
                 .isNegotiable(request.getIsNegotiable() != null ? request.getIsNegotiable() : false)
                 .availableFrom(request.getAvailableFrom())
+                .content(request.getContent())
                 .status(com.sep.realvista.domain.listing.ListingStatus.DRAFT)
                 .build();
 
@@ -583,6 +584,13 @@ public class ListingApplicationService {
             log.info("Created price history entry for listing ID: {} (old: {}, new: {})",
                     listingId, oldPrice, updatedListing.getPrice());
         }
+
+        if (request.getContent() != null) {
+            listing.setContent(request.getContent());
+        }
+
+        // Save listing again if content changed (or just once at the end)
+        updatedListing = listingRepository.save(listing);
 
         log.info("Successfully updated listing ID: {}", listingId);
 

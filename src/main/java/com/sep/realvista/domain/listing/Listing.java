@@ -231,4 +231,8 @@ public class Listing extends BaseEntity {
         this.slug = slug;
     }
 
+    public void setContent(String content) {
+        this.content = content;
+    }
+
 }

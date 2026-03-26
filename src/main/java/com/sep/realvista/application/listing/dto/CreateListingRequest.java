@@ -54,4 +54,6 @@ public class CreateListingRequest {
      * Future date = Available from that specific date.
      */
     private LocalDate availableFrom;
+    
+    private String content;
 }

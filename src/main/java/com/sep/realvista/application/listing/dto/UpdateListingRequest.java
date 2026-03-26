@@ -36,6 +36,8 @@ public class UpdateListingRequest {
 
     private Boolean isNegotiable;
 
+    private String content;
+
     /**
      * Available from date - only for RENT listings.
      * NULL or past/today date = Available immediately.

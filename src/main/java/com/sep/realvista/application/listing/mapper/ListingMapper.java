@@ -408,6 +408,7 @@ public interface ListingMapper {
                 .maxPrice(listing.getMaxPrice())
                 .isNegotiable(listing.getIsNegotiable())
                 .availableFrom(listing.getAvailableFrom())
+                .content(listing.getContent())
                 .publishedAt(listing.getPublishedAt())
                 .createdAt(listing.getCreatedAt())
                 .updatedAt(listing.getUpdatedAt());
