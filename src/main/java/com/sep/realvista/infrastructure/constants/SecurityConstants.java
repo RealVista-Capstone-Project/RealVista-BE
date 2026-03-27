@@ -54,6 +54,21 @@ public final class SecurityConstants {
     }
 
     /**
+     * Internal service-to-service endpoints protected by API key.
+     */
+    public static final class InternalEndpoints {
+        public static final String[] INTERNAL_PATHS = {
+                "/internal/**"
+        };
+
+        public static final String API_KEY_HEADER = "x-service-api-key";
+
+        private InternalEndpoints() {
+            throw new AssertionError("Cannot instantiate constants class");
+        }
+    }
+
+    /**
      * OAuth2 constants.
      */
     public static final class OAuth2 {
