@@ -1,5 +1,4 @@
 package com.sep.realvista.application.listing.service;
-
 import com.sep.realvista.application.listing.dto.CostBreakdownDTO;
 import com.sep.realvista.application.listing.dto.CreateListingRequest;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
@@ -46,45 +45,35 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-/**
- * Application Service for Listing operations.
- * Orchestrates business logic and coordinates between domain and infrastructure
- * layers.
- */
 @Service
 @RequiredArgsConstructor
 @Transactional
 @Slf4j
 public class ListingApplicationService {
-
     private final ListingRepository listingRepository;
     private final ListingMediaRepository listingMediaRepository;
     private final ListingPriceHistoryRepository listingPriceHistoryRepository;
     private final PropertyRepository propertyRepository;
+    private final com.sep.realvista.domain.property.repository.PropertyMediaRepository propertyMediaRepository;
     private final PropertyAttributeValueRepository propertyAttributeValueRepository;
     private final PropertyAmenityRepository propertyAmenityRepository;
     private final ListingMapper listingMapper;
     private final CostBreakdownService costBreakdownService;
     private final BookmarkRepository bookmarkRepository;
     private final ListingAnalyticsService listingAnalyticsService;
-
     // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
     // ensuring @Cacheable on getCachedListingDetail is actually triggered.
     @Lazy
     @Autowired
     private ListingApplicationService self;
-
     /**
      * Verifies if a user can modify a listing.
      * A user can modify a listing if they are either:
@@ -100,19 +89,15 @@ public class ListingApplicationService {
         if (listing.getUserId().equals(userId)) {
             return true;
         }
-
         // Check if user is the property owner
         // Need to fetch the property to check ownerId
         Property property = propertyRepository.findById(listing.getPropertyId())
                 .orElse(null);
-
         if (property != null && property.getOwnerId().equals(userId)) {
             return true;
         }
-
         return false;
     }
-
     /**
      * Verifies authorization and throws exception if user cannot modify the listing.
      *
@@ -128,7 +113,6 @@ public class ListingApplicationService {
             throw new IllegalStateException("You are not authorized to modify this listing");
         }
     }
-
     /**
      * Get listing detail by ID.
      * Returns complete listing information including media, property, location,
@@ -144,21 +128,17 @@ public class ListingApplicationService {
     public ListingDetailResponse getListingDetail(UUID listingId, UUID userId) {
         // Route through self (proxy) so @Cacheable on getCachedListingDetail fires correctly
         ListingDetailResponse response = self.getCachedListingDetail(listingId);
-
         // Set is_favorite based on current user (not cached)
         if (userId != null) {
             boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
             response.setIsFavorite(isFavorite);
-
             // Record view for analytics (async - does not slow down response)
             listingAnalyticsService.recordView(listingId, userId);
         } else {
             response.setIsFavorite(false);
         }
-
         return response;
     }
-
     /**
      * Internal method to get cached listing detail without user-specific data.
      * This method is cached by listingId only (not per-user).
@@ -170,14 +150,12 @@ public class ListingApplicationService {
     @Cacheable(value = "listings", key = "#listingId")
     public ListingDetailResponse getCachedListingDetail(UUID listingId) {
         log.info("Fetching listing detail for ID: {}", listingId);
-
         // Fetch listing with all associations
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> {
                     log.error("Listing not found in getCachedListingDetail with ID: {}", listingId);
                     return new ResourceNotFoundException("Listing", listingId);
                 });
-
         // Verify property exists and is accessible
         Property property = propertyRepository.findById(listing.getPropertyId())
                 .orElseThrow(() -> {
@@ -185,39 +163,29 @@ public class ListingApplicationService {
                             listingId, listing.getPropertyId());
                     return new ResourceNotFoundException("Property", listing.getPropertyId());
                 });
-
         // Fetch listing media
         var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
-
         // Fetch property attribute values (bedrooms, bathrooms, etc.)
         List<PropertyAttributeValue> attributeValues = propertyAttributeValueRepository
                 .findByPropertyIdWithAttribute(property.getPropertyId());
-
         // Fetch property amenities (gym, pool, security, etc.)
         List<PropertyAmenity> propertyAmenities = propertyAmenityRepository
                 .findByPropertyIdWithAmenity(property.getPropertyId());
-
         // Attach property and user for DTO mapping (read-only, not persisted)
         listing.attachProperty(property);
-
         log.info("Successfully fetched listing detail for ID: {} with {} attributes and {} amenities",
                 listingId, attributeValues.size(), propertyAmenities.size());
-
         ListingDetailResponse response = listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
                 listing, listingMedias, attributeValues, propertyAmenities);
-
         // Set isCreatedByOwner flag
         boolean isCreatedByOwner = listing.getUserId().equals(property.getOwnerId());
         response.setIsCreatedByOwner(isCreatedByOwner);
-
         // Calculate and add cost breakdown (only for RENT listings)
         CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
         response.setCostBreakdown(costBreakdown);
-
         // Note: is_favorite is NOT set here - it will be set by the public method
         return response;
     }
-
     /**
      * Get listing detail by slug.
      * Returns complete listing information using SEO-friendly slug.
@@ -231,18 +199,15 @@ public class ListingApplicationService {
     @Transactional(readOnly = true)
     public ListingDetailResponse getListingBySlug(String slug, UUID userId) {
         log.info("Fetching listing detail for slug: {}", slug);
-
         // Find listing by slug (not cached, lightweight operation)
         Listing listing = listingRepository.findBySlug(slug)
                 .orElseThrow(() -> {
                     log.error("Listing not found with slug: {}", slug);
                     return new ResourceNotFoundException("Listing with slug: " + slug);
                 });
-
         // Delegate to getListingDetail which handles caching by listingId
         return getListingDetail(listing.getListingId(), userId);
     }
-
     /**
      * Get similar listings based on property type, price, area, and common
      * attributes.
@@ -260,39 +225,31 @@ public class ListingApplicationService {
     @Transactional(readOnly = true)
     public SimilarListingsResponse getSimilarListings(UUID listingId, int limit) {
         log.info("Fetching similar listings for listingId: {}, limit: {}", listingId, limit);
-
         // Validate limit (clamped to [1, 10])
         int validatedLimit = Math.min(Math.max(1, limit), 10);
         if (validatedLimit != limit) {
             log.warn("Requested limit {} adjusted to {}", limit, validatedLimit);
         }
-
         // Verify listing exists
         if (!listingRepository.existsById(listingId)) {
             log.error("Listing not found in getSimilarListings with ID: {}", listingId);
             throw new ResourceNotFoundException("Listing", listingId);
         }
-
         // Fetch similar listings from repository
         List<SimilarListing> similarListings = listingRepository.findSimilarListings(listingId, validatedLimit);
-
         log.info("Found {} similar listings for listingId: {}", similarListings.size(), listingId);
-
         // Batch-fetch required attributes for all similar listings' properties
         Map<UUID, List<PropertyAttributeDTO>> attributesByPropertyId = fetchRequiredAttributes(similarListings);
-
         // Map to DTOs
         List<SimilarListingDTO> dtoList = similarListings.stream()
                 .map(sl -> mapToSimilarListingDTO(sl, attributesByPropertyId))
                 .collect(Collectors.toList());
-
         return SimilarListingsResponse.builder()
                 .listings(dtoList)
                 .total(dtoList.size())
                 .limit(validatedLimit)
                 .build();
     }
-
     /**
      * Batch-fetch required attributes for all similar listings' properties.
      * Returns up to 3 required attributes per property, grouped by property ID.
@@ -301,14 +258,11 @@ public class ListingApplicationService {
         if (similarListings.isEmpty()) {
             return Collections.emptyMap();
         }
-
         List<UUID> propertyIds = similarListings.stream()
                 .map(SimilarListing::getPropertyId)
                 .collect(Collectors.toList());
-
         List<PropertyAttributeValue> allAttributes = propertyAttributeValueRepository
                 .findRequiredAttributesByPropertyIds(propertyIds);
-
         // Group by propertyId, limit to 3 per property
         return allAttributes.stream()
                 .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId))
@@ -320,7 +274,6 @@ public class ListingApplicationService {
                                 .map(this::mapToPropertyAttributeDTO)
                                 .collect(Collectors.toList())));
     }
-
     /**
      * Map PropertyAttributeValue to a lightweight PropertyAttributeDTO.
      */
@@ -338,7 +291,6 @@ public class ListingApplicationService {
                 .valueBoolean(pav.getValueBoolean())
                 .build();
     }
-
     /**
      * Map SimilarListing domain object to DTO with attributes.
      */
@@ -360,7 +312,6 @@ public class ListingApplicationService {
                         similarListing.getPropertyId(), Collections.emptyList()))
                 .build();
     }
-
     /**
      * Get price history for a listing.
      * Returns all price changes with calculated differences and percentages.
@@ -518,14 +469,42 @@ public class ListingApplicationService {
                 .build();
         listingPriceHistoryRepository.save(priceHistory);
 
-        // Persist selected media as ListingMedia records
         List<UUID> mediaIds = request.getMediaIds();
-        if (mediaIds != null && !mediaIds.isEmpty()) {
+        List<CreateListingRequest.MediaRequest> newMedias = request.getNewMedias();
+
+        if (mediaIds != null || newMedias != null) {
+            if (mediaIds == null) {
+                mediaIds = new ArrayList<>();
+            } else {
+                mediaIds = new ArrayList<>(mediaIds); // Make mutable
+            }
+
+            // 1. Process new medias if any
+            if (newMedias != null && !newMedias.isEmpty()) {
+                for (CreateListingRequest.MediaRequest nm : newMedias) {
+                    var pm = com.sep.realvista.domain.property.PropertyMedia.builder()
+                            .propertyId(savedListing.getPropertyId())
+                            .uploadBy(userId)
+                            .mediaType(nm.getType())
+                            .mediaUrl(nm.getUrl())
+                            .thumbnailUrl(nm.getThumbnailUrl())
+                            .isPropertyStandard(false)
+                            .isPrimary(Boolean.TRUE.equals(nm.getIsPrimary()))
+                            .build();
+                    pm = propertyMediaRepository.save(pm);
+                    mediaIds.add(pm.getPropertyMediaId());
+
+                    if (Boolean.TRUE.equals(nm.getIsPrimary())) {
+                        request.setPrimaryMediaId(pm.getPropertyMediaId());
+                    }
+                }
+            }
+
+            // 2. Persist selected media as ListingMedia records
             for (int i = 0; i < mediaIds.size(); i++) {
                 UUID mediaId = mediaIds.get(i);
                 boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
-                // Primary media always gets display_order 0; others follow list index
-                int displayOrder = isPrimary ? 0 : i;
+                int displayOrder = i;
                 ListingMedia listingMedia = ListingMedia.create(
                         savedListing.getListingId(), mediaId, displayOrder, isPrimary);
                 listingMediaRepository.save(listingMedia);
@@ -617,8 +596,38 @@ public class ListingApplicationService {
 
         // Update Listing Media if provided
         List<UUID> mediaIds = request.getMediaIds();
-        if (mediaIds != null) {
-            List<ListingMedia> existingMediaList = listingMediaRepository.findByListingId(updatedListing.getListingId());
+        List<UpdateListingRequest.MediaRequest> newMedias = request.getNewMedias();
+
+        if (mediaIds != null || newMedias != null) {
+            if (mediaIds == null) {
+                mediaIds = new ArrayList<>();
+            } else {
+                mediaIds = new ArrayList<>(mediaIds);
+            }
+
+            // 1. Process new medias if any
+            if (newMedias != null && !newMedias.isEmpty()) {
+                for (UpdateListingRequest.MediaRequest nm : newMedias) {
+                    var pm = com.sep.realvista.domain.property.PropertyMedia.builder()
+                            .propertyId(updatedListing.getPropertyId())
+                            .uploadBy(userId)
+                            .mediaType(nm.getType())
+                            .mediaUrl(nm.getUrl())
+                            .thumbnailUrl(nm.getThumbnailUrl())
+                            .isPropertyStandard(false) // This is the key isolation
+                            .isPrimary(Boolean.TRUE.equals(nm.getIsPrimary()))
+                            .build();
+                    pm = propertyMediaRepository.save(pm);
+                    mediaIds.add(pm.getPropertyMediaId());
+                    
+                    // If this new media is primary, update the request's primaryMediaId to this new ID
+                    if (Boolean.TRUE.equals(nm.getIsPrimary())) {
+                        request.setPrimaryMediaId(pm.getPropertyMediaId());
+                    }
+                }
+            }
+
+            var existingMediaList = listingMediaRepository.findByListingId(updatedListing.getListingId());
 
             // Remove media no longer selected
             for (ListingMedia existingMedia : existingMediaList) {
@@ -655,7 +664,7 @@ public class ListingApplicationService {
                                 }
                         );
             }
-            log.info("Updated media for listing ID: {} ({} items)", listingId, mediaIds.size());
+            log.info("Updated media for listing ID: {} ({} total items)", listingId, mediaIds.size());
         }
 
         log.info("Successfully updated listing ID: {}", listingId);

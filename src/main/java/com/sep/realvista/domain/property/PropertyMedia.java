@@ -67,6 +67,10 @@ public class PropertyMedia extends BaseEntity {
     @Builder.Default
     private Boolean isPrimary = false;
 
+    @Column(name = "is_property_standard")
+    @Builder.Default
+    private Boolean isPropertyStandard = true;
+
     public void markAsPrimary() {
         this.isPrimary = true;
     }

@@ -173,6 +173,7 @@ public class Property extends BaseEntity {
 
     @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
                cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @org.hibernate.annotations.Where(clause = "is_property_standard = true")
     @Builder.Default
     private List<PropertyMedia> mediaList = new java.util.ArrayList<>();
 
