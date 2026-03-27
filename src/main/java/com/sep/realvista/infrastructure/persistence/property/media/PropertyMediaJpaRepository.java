@@ -14,7 +14,7 @@ import java.util.UUID;
 public interface PropertyMediaJpaRepository extends JpaRepository<PropertyMedia, UUID>, PropertyMediaRepository {
 
     @Query("SELECT pm FROM PropertyMedia pm WHERE pm.propertyId = :propertyId "
-           + "AND pm.deleted = false ORDER BY pm.isPrimary DESC")
+           + "AND pm.isPropertyStandard = true AND pm.deleted = false ORDER BY pm.isPrimary DESC")
     List<PropertyMedia> findByPropertyId(@Param("propertyId") UUID propertyId);
 
     void deleteByPropertyId(UUID propertyId);

@@ -178,6 +178,7 @@ public class PropertyMapper {
                 .thumbnailUrl(pm.getThumbnailUrl())
                 .mediaType(pm.getMediaType())
                 .isPrimary(pm.getIsPrimary())
+                .isPropertyStandard(pm.getIsPropertyStandard())
                 .displayOrder(0)
                 .build();
     }
