@@ -5,27 +5,71 @@ import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.shared.util.AddressFormatter;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
+/**
+ * DTO for listing response (summary view).
+ */
 @Data
-@SuperBuilder
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ListingSearchResponse {
+public class ListingResponse {
+
+    @JsonProperty("listing_id")
     private UUID listingId;
-    private String name;
-    private String slug;
+
+    @JsonProperty("property_id")
+    private UUID propertyId;
+
+    @JsonProperty("user_id")
+    private UUID userId;
+
+    @JsonProperty("listing_type")
     private ListingType listingType;
+
+    @JsonProperty("status")
     private ListingStatus status;
+
+    @JsonProperty("name")
+    private String name;
+
+    @JsonProperty("slug")
+    private String slug;
+
+    @JsonProperty("thumbnail")
+    private String thumbnail;
+
+    @JsonProperty("price")
     private BigDecimal price;
-    private Double area; // Usable size
+
+    @JsonProperty("min_price")
+    private BigDecimal minPrice;
+
+    @JsonProperty("max_price")
+    private BigDecimal maxPrice;
+
+    @JsonProperty("is_negotiable")
+    private Boolean isNegotiable;
+
+    @JsonProperty("available_from")
+    private LocalDate availableFrom;
+
+    @JsonProperty("published_at")
+    private LocalDateTime publishedAt;
+
+    @JsonProperty("created_at")
+    private LocalDateTime createdAt;
+
+    @JsonProperty("updated_at")
+    private LocalDateTime updatedAt;
 
     @JsonProperty("street_address")
     private String streetAddress;
@@ -38,19 +82,6 @@ public class ListingSearchResponse {
 
     @JsonProperty("city_name")
     private String cityName;
-    // NOTE: These attributes will be dynamic, not only bedrooms and bathrooms
-    private List<PropertyAttributeDTO> attributes;
-    private String thumbnail; // Main image
-    private LocalDateTime publishedAt;
-    // Boost info
-    @JsonProperty("is_boosted")
-    private Boolean isBoosted;
-    private String boostPackage; // e.g., "FEATURED", "HOT_BADGE"
-    // User info (for display/sorting context)
-    private String userType; // AGENT or USER
-    // Bookmark status for the requesting user (false for anonymous)
-    @JsonProperty("is_favorite")
-    private Boolean isFavorite;
 
     @JsonProperty("full_address")
     public String getFullAddress() {
