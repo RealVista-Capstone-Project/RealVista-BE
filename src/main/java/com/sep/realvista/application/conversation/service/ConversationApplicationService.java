@@ -375,6 +375,49 @@ public class ConversationApplicationService {
                 .conversationCreated(conversationCreated)
                 .build();
     }
+    /**
+     * Creates a conversation between two users, or returns the existing one if it already exists.
+     * This is an idempotent "find or create" operation.
+     *
+     * @param requesterId  the authenticated user's ID
+     * @param targetUserId the target user's ID
+     * @return the conversation response with a flag indicating whether it was newly created
+     * @throws BusinessConflictException if both IDs refer to the same user
+     * @throws com.sep.realvista.domain.common.exception.ResourceNotFoundException
+     *     if either user does not exist
+     */
+    @Transactional
+    public ConversationResponse createOrGetConversation(UUID requesterId, UUID targetUserId) {
+        log.info("Create-or-get conversation - requesterId: {}, targetUserId: {}",
+                requesterId, targetUserId);
+
+        // Validate both users exist
+        userDomainService.getUserOrThrow(requesterId);
+        User targetUser = userDomainService.getUserOrThrow(targetUserId);
+
+        // Prevent self-conversation
+        if (requesterId.equals(targetUserId)) {
+            throw new BusinessConflictException(
+                    "Cannot create a conversation with yourself",
+                    "SELF_CONVERSATION_NOT_ALLOWED"
+            );
+        }
+
+        // Find or create the conversation
+        ConversationDomainService.ConversationResult result =
+                conversationDomainService.findOrCreateConversation(requesterId, targetUserId);
+
+        Conversation conversation = result.conversation();
+        boolean conversationCreated = result.created();
+
+        log.info("Conversation {} - id: {}, created: {}",
+                conversationCreated ? "created" : "retrieved",
+                conversation.getConversationId(), conversationCreated);
+
+        ConversationResponse response = conversationMapper.toResponse(conversation, targetUser);
+        response.setConversationCreated(conversationCreated);
+        return response;
+    }
 
 
 }
