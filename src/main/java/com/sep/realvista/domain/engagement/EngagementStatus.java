@@ -4,5 +4,6 @@ public enum EngagementStatus {
     SUBMITTED,
     ACCEPTED,
     REJECTED,
-    CANCELLED
+    CANCELLED,
+    FINISHED
 }

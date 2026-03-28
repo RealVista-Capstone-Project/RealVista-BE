@@ -31,6 +31,8 @@ public interface ListingRepository {
 
     List<Listing> findByUserId(UUID userId);
 
+    List<Listing> findByUserIdOrPropertyOwnerId(UUID userId);
+
     List<Listing> findByStatus(ListingStatus status);
 
     List<Listing> findByListingTypeAndStatus(ListingType listingType, ListingStatus status);

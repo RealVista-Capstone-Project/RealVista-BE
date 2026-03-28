@@ -25,4 +25,7 @@ public class ConversationResponse {
     private String otherUserName;
     private String otherUserAvatarUrl;
     private LocalDateTime createdAt;
+
+    /** True when this conversation was just created; false if it already existed. */
+    private boolean conversationCreated;
 }

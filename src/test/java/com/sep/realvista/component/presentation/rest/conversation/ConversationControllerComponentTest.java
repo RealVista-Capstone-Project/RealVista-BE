@@ -1,6 +1,7 @@
 package com.sep.realvista.component.presentation.rest.conversation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sep.realvista.application.conversation.dto.request.CreateConversationRequest;
 import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
 import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
 import com.sep.realvista.application.conversation.dto.response.MessagePaginationResponse;
@@ -608,6 +609,132 @@ class ConversationControllerComponentTest {
             mockMvc.perform(post("/api/v1/conversations/messages")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/conversations/users/{targetUserId}")
+    class CreateOrGetConversation {
+
+        @Test
+        @DisplayName("Should return 201 and conversationCreated=true when new conversation created")
+        void shouldReturn201AndConversationCreatedTrueWhenNewConversationCreated() throws Exception {
+            CreateConversationRequest request = CreateConversationRequest.builder()
+                    .targetUserId(otherUserId)
+                    .build();
+
+            ConversationResponse mockResponse = ConversationResponse.builder()
+                    .conversationId(conversationId)
+                    .otherUserId(otherUserId)
+                    .otherUserName("Other User")
+                    .otherUserAvatarUrl("https://example.com/avatar.jpg")
+                    .createdAt(LocalDateTime.now())
+                    .conversationCreated(true)
+                    .build();
+
+            when(conversationApplicationService.createOrGetConversation(
+                    eq(currentUserId), eq(otherUserId)
+            )).thenReturn(mockResponse);
+
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", otherUserId)
+                            .with(user(mockSecurityUser))
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.message").value("Conversation created successfully"))
+                    .andExpect(jsonPath("$.data.conversation_id").value(conversationId.toString()))
+                    .andExpect(jsonPath("$.data.other_user_id").value(otherUserId.toString()))
+                    .andExpect(jsonPath("$.data.conversation_created").value(true));
+
+            verify(conversationApplicationService).createOrGetConversation(currentUserId, otherUserId);
+        }
+
+        @Test
+        @DisplayName("Should return 201 and conversationCreated=false when conversation already exists")
+        void shouldReturn201AndConversationCreatedFalseWhenConversationAlreadyExists() throws Exception {
+            CreateConversationRequest request = CreateConversationRequest.builder()
+                    .targetUserId(otherUserId)
+                    .build();
+
+            ConversationResponse mockResponse = ConversationResponse.builder()
+                    .conversationId(conversationId)
+                    .otherUserId(otherUserId)
+                    .otherUserName("Other User")
+                    .createdAt(LocalDateTime.now())
+                    .conversationCreated(false)
+                    .build();
+
+            when(conversationApplicationService.createOrGetConversation(
+                    eq(currentUserId), eq(otherUserId)
+            )).thenReturn(mockResponse);
+
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", otherUserId)
+                            .with(user(mockSecurityUser))
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.conversation_created").value(false))
+                    .andExpect(jsonPath("$.data.conversation_id").value(conversationId.toString()));
+        }
+
+        @Test
+        @DisplayName("Should return 400 when targetUserId is not a valid UUID")
+        void shouldReturn400WhenTargetUserIdInvalidFormat() throws Exception {
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", "invalid-uuid-format")
+                            .with(user(mockSecurityUser))
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Should return 409 when trying to create conversation with self")
+        void shouldReturn409WhenCreatingConversationWithSelf() throws Exception {
+            CreateConversationRequest request = CreateConversationRequest.builder()
+                    .targetUserId(currentUserId)
+                    .build();
+
+            when(conversationApplicationService.createOrGetConversation(
+                    eq(currentUserId), eq(currentUserId)
+            )).thenThrow(new BusinessConflictException(
+                    "Cannot create a conversation with yourself",
+                    "SELF_CONVERSATION_NOT_ALLOWED"
+            ));
+
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", currentUserId)
+                            .with(user(mockSecurityUser))
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("Should return 404 when target user does not exist")
+        void shouldReturn404WhenTargetUserDoesNotExist() throws Exception {
+            CreateConversationRequest request = CreateConversationRequest.builder()
+                    .targetUserId(otherUserId)
+                    .build();
+
+            when(conversationApplicationService.createOrGetConversation(
+                    eq(currentUserId), eq(otherUserId)
+            )).thenThrow(new ResourceNotFoundException(
+                    "User",
+                    "User not found: " + otherUserId
+            ));
+
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", otherUserId)
+                            .with(user(mockSecurityUser))
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Should return 401 when not authenticated")
+        void shouldReturn401WhenNotAuthenticated() throws Exception {
+            CreateConversationRequest request = CreateConversationRequest.builder()
+                    .targetUserId(otherUserId)
+                    .build();
+
+            mockMvc.perform(post("/api/v1/conversations/users/{targetUserId}", otherUserId)
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isUnauthorized());
         }
     }

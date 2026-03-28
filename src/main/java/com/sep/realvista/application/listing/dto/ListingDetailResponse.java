@@ -87,4 +87,8 @@ public class ListingDetailResponse {
     // Bookmark status for the requesting user (null for anonymous)
     @JsonProperty("is_favorite")
     private Boolean isFavorite;
+
+    // Indicates if the listing creator is the property owner
+    @JsonProperty("is_created_by_owner")
+    private Boolean isCreatedByOwner;
 }

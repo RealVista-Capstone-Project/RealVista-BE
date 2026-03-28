@@ -83,6 +83,7 @@ public final class SecurityConstants {
     public static final class Cache {
         public static final String USERS = "users";
         public static final String USER_DETAILS = "userDetails";
+        public static final String RECOMMENDATIONS = "recommendations";
         public static final int DEFAULT_TTL_MINUTES = 60;
 
         private Cache() {
