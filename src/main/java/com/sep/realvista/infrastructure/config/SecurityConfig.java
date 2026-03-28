@@ -22,6 +22,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
+import jakarta.servlet.DispatcherType;
+
 /**
  * Security configuration with JWT authentication.
  */
@@ -69,6 +71,7 @@ public class SecurityConfig {
                     return config;
                 }))
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers(SecurityConstants.InternalEndpoints.INTERNAL_PATHS).permitAll()
                         .requestMatchers(SecurityConstants.PublicEndpoints.PUBLIC_PATHS).permitAll()
                         .anyRequest().authenticated()
