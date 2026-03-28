@@ -13,9 +13,16 @@ public interface PropertyRepository {
 
     List<Property> findByOwnerId(UUID ownerId);
 
+    List<Property> findByOwnerIdOrAgentId(UUID userId);
+
     boolean existsById(UUID id);
 
     void deleteById(UUID id);
 
     void deleteAll();
+
+    List<Property> findInLocationRange(java.math.BigDecimal northLat, java.math.BigDecimal southLat, 
+                                        java.math.BigDecimal eastLng, java.math.BigDecimal westLng);
+
+    List<Property> searchByAddress(String address);
 }

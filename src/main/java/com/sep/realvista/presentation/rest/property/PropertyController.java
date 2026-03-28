@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -84,5 +86,42 @@ public class PropertyController {
         log.info("REST request to get amenities");
         List<AmenityDTO> response = propertyApplicationService.getAmenities();
         return ResponseEntity.ok(ApiResponse.success("Amenities retrieved successfully", response));
+    }
+
+    @PostMapping("/{propertyId}/verify-agent")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Verify property by agent", 
+               description = "Allows an agent to verify a property they created for an owner via OTP success")
+    public ResponseEntity<ApiResponse<PropertyDetailResponse>> verifyPropertyByAgent(
+            @PathVariable UUID propertyId) {
+        log.info("REST request to verify Property: {}", propertyId);
+        PropertyDetailResponse response = propertyApplicationService.verifyPropertyByAgent(propertyId);
+        return ResponseEntity.ok(ApiResponse.success("Property verified successfully", response));
+    }
+
+    @PostMapping("/{propertyId}/assign-agent")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Assign current user as agent to an existing property", 
+               description = "Creates a link in property_agent table for the authenticated user")
+    public ResponseEntity<ApiResponse<PropertyDetailResponse>> assignAgentToProperty(
+            @PathVariable UUID propertyId) {
+        log.info("REST request to assign Agent to Property: {}", propertyId);
+        PropertyDetailResponse response = propertyApplicationService.assignAgentToProperty(propertyId);
+        return ResponseEntity.ok(ApiResponse.success("Agent assigned successfully", response));
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search for properties", 
+               description = "Search for properties by address text or geographical bounding box")
+    public ResponseEntity<ApiResponse<List<PropertySummaryResponse>>> searchProperties(
+            @RequestParam(required = false) String address,
+            @RequestParam(name = "north_lat", required = false) BigDecimal northLat,
+            @RequestParam(name = "south_lat", required = false) BigDecimal southLat,
+            @RequestParam(name = "east_lng", required = false) BigDecimal eastLng,
+            @RequestParam(name = "west_lng", required = false) BigDecimal westLng) {
+        log.info("REST request to search properties by address or bbox");
+        List<PropertySummaryResponse> response = propertyApplicationService.searchProperties(
+                address, northLat, southLat, eastLng, westLng);
+        return ResponseEntity.ok(ApiResponse.success("Properties found successfully", response));
     }
 }

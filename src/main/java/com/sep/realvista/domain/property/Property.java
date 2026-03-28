@@ -105,10 +105,17 @@ public class Property extends BaseEntity {
     private Map<String, Object> extraAttributes;
 
     public void publish() {
-        if (this.status != PropertyStatus.DRAFT) {
-            throw new IllegalStateException("Only draft properties can be published");
+        if (this.status != PropertyStatus.DRAFT && this.status != PropertyStatus.VERIFIED) {
+            throw new IllegalStateException("Only draft or verified properties can be published");
         }
         this.status = PropertyStatus.AVAILABLE;
+    }
+
+    public void verifyByAgent() {
+        if (this.status != PropertyStatus.PENDING) {
+            throw new IllegalStateException("Only pending properties can be verified by agent");
+        }
+        this.status = PropertyStatus.VERIFIED;
     }
 
     public void reserve() {
@@ -211,7 +218,8 @@ public class Property extends BaseEntity {
         // Add those not in existing list
         if (newAmenities != null) {
             for (var newAmenity : newAmenities) {
-                if (this.amenities.stream().noneMatch(existing -> existing.getAmenityId().equals(newAmenity.getAmenityId()))) {
+                if (this.amenities.stream().noneMatch(existing -> 
+                        existing.getAmenityId().equals(newAmenity.getAmenityId()))) {
                     this.amenities.add(newAmenity);
                 }
             }
@@ -222,7 +230,8 @@ public class Property extends BaseEntity {
             List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> newAttributes) {
         // Remove those not in new list
         this.attributeValues.removeIf(existing -> 
-            newAttributes.stream().noneMatch(n -> n.getPropertyAttributeId().equals(existing.getPropertyAttributeId())));
+            newAttributes.stream().noneMatch(n -> 
+                n.getPropertyAttributeId().equals(existing.getPropertyAttributeId())));
         
         // Add or Update
         if (newAttributes != null) {

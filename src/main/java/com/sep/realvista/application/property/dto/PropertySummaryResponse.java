@@ -31,4 +31,10 @@ public class PropertySummaryResponse {
     
     @JsonProperty("thumbnail_url")
     private String thumbnailUrl;
+
+    @JsonProperty("owner_name")
+    private String ownerName;
+
+    @JsonProperty("owner_phone")
+    private String ownerPhone;
 }
