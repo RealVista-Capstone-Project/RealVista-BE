@@ -1,12 +1,13 @@
 package com.sep.realvista.presentation.rest.ai;
 
 import com.sep.realvista.application.ai.dto.AiChatRequest;
+import com.sep.realvista.application.ai.dto.AiConversationMessagesResponse;
 import com.sep.realvista.application.ai.service.AiChatApplicationService;
+import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,6 +17,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,46 +28,63 @@ import reactor.core.publisher.Flux;
 import java.util.stream.Collectors;
 
 /**
- * SSE proxy endpoint for AI chat conversations.
- * JWT-protected — the authenticated user's identity is forwarded
- * to the NestJS AI microservice via internal headers.
+ * AI chat endpoints with conversation persistence.
+ *
+ * <ul>
+ *   <li>{@code POST /chat} — stream AI response (auto-creates
+ *       conversation on first call)</li>
+ *   <li>{@code GET /conversations/messages} — fetch message
+ *       history</li>
+ *   <li>{@code DELETE /conversations} — reset conversation</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/v1/ai")
 @RequiredArgsConstructor
-@Tag(name = "AI Chat", description = "AI-powered chat with streaming responses")
+@Tag(name = "AI Chat",
+        description = "AI-powered chat with streaming responses "
+                + "and conversation persistence")
 @Slf4j
 public class AiChatController {
 
     private final AiChatApplicationService aiChatService;
 
-    @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    // ── POST /api/v1/ai/chat ─────────────────────────────────
+
+    @PostMapping(value = "/chat",
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(
             summary = "Stream AI chat response",
-            description = "Sends a message to the AI service and streams "
-                    + "the response as Server-Sent Events. "
+            description = "Sends a message to the AI service and "
+                    + "streams the response as Server-Sent Events. "
+                    + "Auto-creates a conversation on first call. "
                     + "Requires a valid JWT token."
     )
     @ApiResponses(value = {
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "SSE stream of AI chat tokens",
                     content = @Content(
-                            mediaType = MediaType.TEXT_EVENT_STREAM_VALUE,
+                            mediaType = MediaType
+                                    .TEXT_EVENT_STREAM_VALUE,
                             schema = @Schema(
                                     type = "string",
-                                    description = "Server-Sent Events stream"
+                                    description = "SSE stream"
                             )
                     )
             ),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "400", description = "Invalid request")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request")
     })
     public ResponseEntity<Flux<String>> chat(
             @Valid @RequestBody AiChatRequest request,
             @AuthenticationPrincipal SecurityUserDetails principal
     ) {
-        log.info("AI chat request from user={}", principal.getUserId());
+        log.info("AI chat from user={}", principal.getUserId());
 
         String roles = principal.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -72,8 +92,7 @@ public class AiChatController {
 
         Flux<String> stream = aiChatService.streamChat(
                 request.getMessage(),
-                request.getThreadId(),
-                principal.getUserId().toString(),
+                principal.getUserId(),
                 principal.getUsername(),
                 roles
         );
@@ -81,5 +100,56 @@ public class AiChatController {
         return ResponseEntity.ok()
                 .contentType(MediaType.TEXT_EVENT_STREAM)
                 .body(stream);
+    }
+
+    // ── GET /api/v1/ai/conversations/messages ────────────────
+
+    @GetMapping("/conversations/messages")
+    @Operation(
+            summary = "Get AI conversation messages",
+            description = "Returns the full message history for "
+                    + "the authenticated user's AI conversation."
+    )
+    public ResponseEntity<ApiResponse<AiConversationMessagesResponse>>
+            getMessages(
+            @AuthenticationPrincipal SecurityUserDetails principal
+    ) {
+        log.info("Get AI messages for user={}",
+                principal.getUserId());
+
+        AiConversationMessagesResponse response =
+                aiChatService.getMessages(principal.getUserId());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Messages retrieved", response));
+    }
+
+    // ── DELETE /api/v1/ai/conversations ──────────────────────
+
+    @DeleteMapping("/conversations")
+    @Operation(
+            summary = "Delete AI conversation",
+            description = "Deletes the user's AI conversation "
+                    + "and all messages. The AI service thread is "
+                    + "also cleaned up."
+    )
+    public ResponseEntity<ApiResponse<Void>> deleteConversation(
+            @AuthenticationPrincipal SecurityUserDetails principal
+    ) {
+        log.info("Delete AI conversation for user={}",
+                principal.getUserId());
+
+        String roles = principal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.joining(","));
+
+        aiChatService.deleteConversation(
+                principal.getUserId(),
+                principal.getUsername(),
+                roles
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Conversation deleted", null));
     }
 }

@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * Request DTO for AI chat conversations.
+ * The backend manages threadId internally — callers only send a message.
  * Fields use camelCase; Jackson global SNAKE_CASE handles JSON conversion.
  */
 @Data
@@ -27,10 +28,4 @@ public class AiChatRequest {
     @NotBlank(message = "Message is required")
     @Size(max = 2000, message = "Message must not exceed 2000 characters")
     private String message;
-
-    @Schema(
-            description = "Thread ID for continuing a conversation",
-            example = "abc-123-def-456"
-    )
-    private String threadId;
 }
