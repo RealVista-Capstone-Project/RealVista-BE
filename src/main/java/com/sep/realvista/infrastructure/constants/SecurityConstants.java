@@ -97,7 +97,11 @@ public final class SecurityConstants {
      * (comma-separated list, e.g. "http://localhost:3000,http://152.42.235.208:8080").
      */
     public static final class Cors {
-        public static final List<String> DEFAULT_ORIGINS = List.of("http://localhost:3000");
+        public static final List<String> DEFAULT_ORIGINS = List.of(
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1"
+        );
         public static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
         public static final List<String> ALLOWED_HEADERS = List.of("Authorization", "Content-Type", "Accept", "Origin");
         public static final List<String> EXPOSED_HEADERS = List.of("Authorization", "Content-Disposition");
