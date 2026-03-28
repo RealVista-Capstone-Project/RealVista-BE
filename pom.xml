@@ -212,6 +212,14 @@
 			<artifactId>s3</artifactId>
 			<version>2.25.11</version>
 		</dependency>
+
+		<!-- Bucket4j — In-memory rate limiting -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j-core</artifactId>
+			<version>8.10.1</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>

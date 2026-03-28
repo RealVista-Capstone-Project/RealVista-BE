@@ -13,6 +13,17 @@ import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.domain.user.role.RoleCode;
+import com.sep.realvista.domain.user.role.RoleRepository;
+import com.sep.realvista.domain.user.role.UserRoleRepository;
+import com.sep.realvista.domain.user.role.Role;
+import com.sep.realvista.domain.user.role.UserRole;
+import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
+import com.sep.realvista.domain.user.preference.SettingPreference;
+import com.sep.realvista.domain.agent.repository.AgentProfileRepository;
+import com.sep.realvista.domain.agent.AgentProfile;
+import com.sep.realvista.domain.profile.repository.CustomerProfileRepository;
+import com.sep.realvista.domain.profile.CustomerProfile;
+
 import com.sep.realvista.infrastructure.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +48,11 @@ public class UserApplicationService {
     private final UserDomainService userDomainService;
     private final UserMapper userMapper;
     private final PasswordService passwordService;
+    private final RoleRepository roleRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final SettingPreferenceRepository settingPreferenceRepository;
+    private final AgentProfileRepository agentProfileRepository;
+    private final CustomerProfileRepository customerProfileRepository;
 
     /**
      * Create a new user.
@@ -53,6 +69,7 @@ public class UserApplicationService {
                 .passwordHash(passwordService.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
+                .phone(request.getPhoneNumber())
                 .businessName(request.getFirstName() + " " + request.getLastName())
                 .status(UserStatus.ACTIVE)
                 .build();
@@ -60,6 +77,44 @@ public class UserApplicationService {
         // Save user
         User savedUser = userRepository.save(user);
         log.info("User created successfully with ID: {}", savedUser.getUserId());
+
+        // 1. Assign Role
+        RoleCode targetRoleCode = "AGENT".equalsIgnoreCase(request.getRole()) ? RoleCode.AGENT : RoleCode.BUYER;
+        Role role = roleRepository.findByRoleCode(targetRoleCode)
+                .orElseThrow(() -> new BusinessConflictException("Role not found", "ROLE_NOT_FOUND"));
+        
+        UserRole userRole = UserRole.create(savedUser, role);
+        userRoleRepository.save(userRole);
+
+        // 2. Create full true preferences
+        SettingPreference preference = SettingPreference.builder()
+                .userId(savedUser.getUserId())
+                .inAppEnabled(true)
+                .emailEnabled(true)
+                .pushEnabled(true)
+                .contactViaEmail(true)
+                .contactViaPhone(true)
+                .hidePhoneNumber(false)
+                .hideEmail(false)
+                .build();
+        settingPreferenceRepository.save(preference);
+
+        // 3. Create default profile
+        if (targetRoleCode == RoleCode.AGENT) {
+            AgentProfile profile = AgentProfile.builder()
+                    .userId(savedUser.getUserId())
+                    .rating(java.math.BigDecimal.ZERO)
+                    .propertiesSold(0)
+                    .build();
+            agentProfileRepository.save(profile);
+        } else {
+            CustomerProfile profile = CustomerProfile.builder()
+                    .userId(savedUser.getUserId())
+                    .profileName(savedUser.getFullName())
+                    .isActive(true)
+                    .build();
+            customerProfileRepository.save(profile);
+        }
 
         return userMapper.toResponse(savedUser);
     }
