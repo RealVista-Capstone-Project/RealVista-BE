@@ -67,6 +67,11 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
+    public List<Listing> findByUserIdOrPropertyOwnerId(UUID userId) {
+        return jpaRepository.findByUserIdOrPropertyOwnerId(userId);
+    }
+
+    @Override
     public List<Listing> findByStatus(ListingStatus status) {
         return jpaRepository.findByStatus(status);
     }
