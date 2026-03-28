@@ -67,6 +67,8 @@ spring:
       - users
       - listings
       - similarListings
+      - hiredAgents
+      - engagement
       - recommendations
 
   # Multipart File Upload Configuration
