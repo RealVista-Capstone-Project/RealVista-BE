@@ -2,7 +2,7 @@ spring:
   application:
     name: realvista
     frontend:
-      url: http://localhost:3000
+      url: ${FRONTEND_URL:http://localhost:3000}
 
   # Mail Configuration
   mail:
@@ -67,6 +67,8 @@ spring:
       - users
       - listings
       - similarListings
+      - hiredAgents
+      - engagement
       - recommendations
 
   # Multipart File Upload Configuration

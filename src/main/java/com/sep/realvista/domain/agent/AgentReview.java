@@ -25,7 +25,8 @@ import java.util.UUID;
 @Table(name = "agent_reviews", indexes = {
         @Index(name = "idx_agent_review_profile", columnList = "agent_profile_id"),
         @Index(name = "idx_agent_review_reviewer", columnList = "reviewer_id"),
-        @Index(name = "idx_agent_review_listing", columnList = "listing_id")
+        @Index(name = "idx_agent_review_listing", columnList = "listing_id"),
+        @Index(name = "idx_agent_review_engagement", columnList = "engagement_id")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -54,6 +55,9 @@ public class AgentReview extends BaseEntity {
 
     @Column(name = "listing_id", nullable = false)
     private UUID listingId;
+
+    @Column(name = "engagement_id")
+    private UUID engagementId;
 
     @Column(columnDefinition = "TEXT")
     private String review;
