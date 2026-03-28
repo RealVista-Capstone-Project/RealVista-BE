@@ -1,4 +1,4 @@
--- ============================================================
+-- ===========================================================
 -- AI CHAT CONVERSATION TABLES
 -- Separate from the existing human-to-human conversations.
 -- One AI conversation per user (UNIQUE on user_id).
