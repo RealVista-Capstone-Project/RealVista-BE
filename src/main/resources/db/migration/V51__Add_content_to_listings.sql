@@ -1,4 +1,4 @@
--- V44__Add_content_to_listings.sql
+-- V51__Add_content_to_listings.sql
 -- Add content column to listings table
 -- Compatible with both PostgreSQL and H2 databases
 
