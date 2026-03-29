@@ -10,6 +10,8 @@ import com.sep.realvista.application.listing.dto.PriceHistoryDTO;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
+import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.analytics.ListingPriceHistory;
 import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
@@ -60,6 +62,7 @@ public class ListingApplicationService {
         private final ListingMapper listingMapper;
         private final CostBreakdownService costBreakdownService;
         private final BookmarkRepository bookmarkRepository;
+        private final SettingPreferenceRepository settingPreferenceRepository;
 
         // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
         // ensuring @Cacheable on getCachedListingDetail is actually triggered.
@@ -135,11 +138,15 @@ public class ListingApplicationService {
                 // Attach property and user for DTO mapping (read-only, not persisted)
                 listing.attachProperty(property);
 
+                // Fetch agent's privacy preferences
+                SettingPreference preference = settingPreferenceRepository.findByUserId(listing.getUserId())
+                                .orElse(null);
+
                 log.info("Successfully fetched listing detail for ID: {} with {} attributes and {} amenities",
                                 listingId, attributeValues.size(), propertyAmenities.size());
 
                 ListingDetailResponse response = listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
-                                listing, listingMedias, attributeValues, propertyAmenities);
+                                listing, listingMedias, attributeValues, propertyAmenities, preference);
 
                 // Calculate and add cost breakdown (only for RENT listings)
                 CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
