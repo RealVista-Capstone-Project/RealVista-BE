@@ -3,7 +3,6 @@ package com.sep.realvista.application.listing.service;
 import com.sep.realvista.application.listing.dto.CostBreakdownDTO;
 import com.sep.realvista.application.listing.dto.CreateListingRequest;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
-import com.sep.realvista.application.listing.dto.ListingMediaRequest;
 import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ManagedListingSearchCriteria;
 import com.sep.realvista.application.listing.dto.ManagedListingSummaryDTO;
@@ -27,12 +26,10 @@ import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
-import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
-import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -57,7 +54,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -74,7 +70,6 @@ public class ListingApplicationService {
     private final ListingMediaRepository listingMediaRepository;
     private final ListingPriceHistoryRepository listingPriceHistoryRepository;
     private final PropertyRepository propertyRepository;
-    private final PropertyMediaRepository propertyMediaRepository;
     private final PropertyAttributeValueRepository propertyAttributeValueRepository;
     private final PropertyAmenityRepository propertyAmenityRepository;
     private final ListingMapper listingMapper;
@@ -488,25 +483,9 @@ public class ListingApplicationService {
                 .build();
         listingPriceHistoryRepository.save(priceHistory);
 
+        // 3. Persist media relationships if provided
         List<UUID> mediaIds = request.getMediaIds();
-        List<ListingMediaRequest> newMedias = request.getNewMedias();
-
-        if (mediaIds != null || newMedias != null) {
-            if (mediaIds == null) {
-                mediaIds = new ArrayList<>();
-            } else {
-                mediaIds = new ArrayList<>(mediaIds); // Make mutable
-            }
-
-            // 1. Process new medias if any
-            processNewMediaRequests(
-                    savedListing.getPropertyId(),
-                    userId,
-                    newMedias,
-                    mediaIds,
-                    request::setPrimaryMediaId);
-
-            // 2. Persist selected media as ListingMedia records
+        if (mediaIds != null && !mediaIds.isEmpty()) {
             for (int displayOrder = 0; displayOrder < mediaIds.size(); displayOrder++) {
                 UUID mediaId = mediaIds.get(displayOrder);
                 boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
@@ -601,23 +580,8 @@ public class ListingApplicationService {
 
         // Update Listing Media if provided
         List<UUID> mediaIds = request.getMediaIds();
-        List<ListingMediaRequest> newMedias = request.getNewMedias();
 
-        if (mediaIds != null || newMedias != null) {
-            if (mediaIds == null) {
-                mediaIds = new ArrayList<>();
-            } else {
-                mediaIds = new ArrayList<>(mediaIds);
-            }
-
-            // 1. Process new medias if any
-            processNewMediaRequests(
-                    updatedListing.getPropertyId(),
-                    userId,
-                    newMedias,
-                    mediaIds,
-                    request::setPrimaryMediaId);
-
+        if (mediaIds != null) {
             var existingMediaList = listingMediaRepository.findByListingId(updatedListing.getListingId());
 
             // Remove media no longer selected
@@ -756,40 +720,6 @@ public class ListingApplicationService {
                 .rent(rent)
                 .sale(sale)
                 .build();
-    }
-
-    /**
-     * Common logic to process new media requests, persisting them as PropertyMedia
-     * and updating the list of media IDs.
-     */
-    private void processNewMediaRequests(
-            UUID propertyId,
-            UUID userId,
-            List<ListingMediaRequest> newMedias,
-            List<UUID> mediaIds,
-            Consumer<UUID> primaryMediaIdSetter) {
-        if (newMedias == null || newMedias.isEmpty()) {
-            return;
-        }
-
-        for (var nm : newMedias) {
-            var pm = PropertyMedia.builder()
-                    .propertyId(propertyId)
-                    .uploadBy(userId)
-                    .mediaType(nm.getType())
-                    .mediaUrl(nm.getUrl())
-                    .thumbnailUrl(nm.getThumbnailUrl())
-                    .isPropertyStandard(false)
-                    .isPrimary(Boolean.TRUE.equals(nm.getIsPrimary()))
-                    .build();
-
-            pm = propertyMediaRepository.save(pm);
-            mediaIds.add(pm.getPropertyMediaId());
-
-            if (Boolean.TRUE.equals(nm.getIsPrimary())) {
-                primaryMediaIdSetter.accept(pm.getPropertyMediaId());
-            }
-        }
     }
 
     private Specification<Listing> buildManagedListingSpec(UUID userId, ManagedListingSearchCriteria criteria) {

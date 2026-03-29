@@ -17,11 +17,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -61,14 +59,9 @@ class MediaUploadControllerComponentTest {
     @MockitoBean
     private TokenService tokenService;
 
-    @MockitoBean
-    private UserDetailsService userDetailsService;
-
     private MockMultipartFile validImageFile;
     private MockMultipartFile validVideoFile;
     private MockMultipartFile validHeicFile;
-    private MockMultipartFile invalidFile;
-    private MockMultipartFile largeFile;
     private MediaUploadResponse mockImageResponse;
     private MediaUploadResponse mockVideoResponse;
 
@@ -93,21 +86,6 @@ class MediaUploadControllerComponentTest {
                 "test-photo.heic",
                 "image/heic",
                 "test heic content".getBytes()
-        );
-
-        invalidFile = new MockMultipartFile(
-                "file",
-                "test-doc.pdf",
-                "application/pdf",
-                "test pdf content".getBytes()
-        );
-
-        byte[] largeContent = new byte[105 * 1024 * 1024];
-        largeFile = new MockMultipartFile(
-                "file",
-                "large-file.jpg",
-                "image/jpeg",
-                largeContent
         );
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
@@ -139,7 +117,7 @@ class MediaUploadControllerComponentTest {
         @WithMockUser(roles = "BUYER")
         @DisplayName("Should return 201 Created when uploading valid image with authenticated user")
         void uploadMedia_withValidImageAndAuth_shouldReturn201() throws Exception {
-            when(mediaUploadService.uploadMedia(any(), eq("properties")))
+            when(mediaUploadService.uploadMedia(any(), eq("properties"), any(), any()))
                     .thenReturn(mockImageResponse);
 
             mockMvc.perform(multipart("/api/v1/media/upload")
@@ -157,14 +135,14 @@ class MediaUploadControllerComponentTest {
                     .andExpect(jsonPath("$.data.file_name").value("test-image.jpg"))
                     .andExpect(jsonPath("$.data.uploaded_at").exists());
 
-            verify(mediaUploadService, times(1)).uploadMedia(any(), eq("properties"));
+            verify(mediaUploadService, times(1)).uploadMedia(any(), eq("properties"), any(), any());
         }
 
         @Test
         @WithMockUser(roles = "AGENT")
         @DisplayName("Should return 201 Created when uploading valid video")
         void uploadMedia_withValidVideo_shouldReturn201() throws Exception {
-            when(mediaUploadService.uploadMedia(any(), eq("videos")))
+            when(mediaUploadService.uploadMedia(any(), eq("videos"), any(), any()))
                     .thenReturn(mockVideoResponse);
 
             mockMvc.perform(multipart("/api/v1/media/upload")
@@ -177,7 +155,7 @@ class MediaUploadControllerComponentTest {
                     .andExpect(jsonPath("$.data.media_type").value("video/mp4"))
                     .andExpect(jsonPath("$.data.file_size").value(52428800));
 
-            verify(mediaUploadService, times(1)).uploadMedia(any(), eq("videos"));
+            verify(mediaUploadService, times(1)).uploadMedia(any(), eq("videos"), any(), any());
         }
 
         @Test
@@ -192,7 +170,7 @@ class MediaUploadControllerComponentTest {
                     .uploadedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
                     .build();
 
-            when(mediaUploadService.uploadMedia(any(), eq("properties")))
+            when(mediaUploadService.uploadMedia(any(), eq("properties"), any(), any()))
                     .thenReturn(heicResponse);
 
             mockMvc.perform(multipart("/api/v1/media/upload")
@@ -208,7 +186,7 @@ class MediaUploadControllerComponentTest {
         @WithMockUser(roles = "BUYER")
         @DisplayName("Should use default folder 'media' when no folder specified")
         void uploadMedia_withNoFolder_shouldUseDefaultFolder() throws Exception {
-            when(mediaUploadService.uploadMedia(any(), eq("media")))
+            when(mediaUploadService.uploadMedia(any(), eq("media"), any(), any()))
                     .thenReturn(mockImageResponse);
 
             mockMvc.perform(multipart("/api/v1/media/upload")
@@ -217,14 +195,14 @@ class MediaUploadControllerComponentTest {
                     .andDo(print())
                     .andExpect(status().isCreated());
 
-            verify(mediaUploadService, times(1)).uploadMedia(any(), eq("media"));
+            verify(mediaUploadService, times(1)).uploadMedia(any(), eq("media"), any(), any());
         }
 
         @Test
         @WithMockUser(roles = "BUYER")
         @DisplayName("Should return 500 when service throws IOException")
         void uploadMedia_whenServiceThrowsIOException_shouldReturn500() throws Exception {
-            when(mediaUploadService.uploadMedia(any(), anyString()))
+            when(mediaUploadService.uploadMedia(any(), anyString(), any(), any()))
                     .thenThrow(new RuntimeException("Failed to upload media: Connection timeout"));
 
             mockMvc.perform(multipart("/api/v1/media/upload")
@@ -255,7 +233,7 @@ class MediaUploadControllerComponentTest {
                     .failedFiles(new ArrayList<>())
                     .build();
 
-            when(mediaUploadService.uploadMultipleMedia(anyList(), eq("properties")))
+            when(mediaUploadService.uploadMultipleMedia(anyList(), eq("properties"), any(), any()))
                     .thenReturn(bulkResponse);
 
             mockMvc.perform(multipart("/api/v1/media/upload/bulk")
@@ -275,7 +253,7 @@ class MediaUploadControllerComponentTest {
                     .andExpect(jsonPath("$.data.uploaded_files", hasSize(2)))
                     .andExpect(jsonPath("$.data.failed_files", hasSize(0)));
 
-            verify(mediaUploadService, times(1)).uploadMultipleMedia(anyList(), eq("properties"));
+            verify(mediaUploadService, times(1)).uploadMultipleMedia(anyList(), eq("properties"), any(), any());
         }
 
         @Test
@@ -298,7 +276,7 @@ class MediaUploadControllerComponentTest {
                     .failedFiles(failedFiles)
                     .build();
 
-            when(mediaUploadService.uploadMultipleMedia(anyList(), anyString()))
+            when(mediaUploadService.uploadMultipleMedia(anyList(), anyString(), any(), any()))
                     .thenReturn(bulkResponse);
 
             mockMvc.perform(multipart("/api/v1/media/upload/bulk")

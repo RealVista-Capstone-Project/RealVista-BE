@@ -58,10 +58,4 @@ public class UpdateListingRequest {
      * Must be one of the items in mediaIds.
      */
     private UUID primaryMediaId;
-
-    /**
-     * List of new media to be added specifically for this listing.
-     * These will be created as listing-only property media.
-     */
-    private List<ListingMediaRequest> newMedias;
 }

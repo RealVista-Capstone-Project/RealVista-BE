@@ -2,6 +2,9 @@ package com.sep.realvista.application.media.service;
 
 import com.sep.realvista.application.media.dto.BulkMediaUploadResponse;
 import com.sep.realvista.application.media.dto.MediaUploadResponse;
+import com.sep.realvista.domain.property.MediaType;
+import com.sep.realvista.domain.property.PropertyMedia;
+import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.infrastructure.external.storage.SpacesStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,16 +17,17 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class MediaUploadApplicationService {
-
     private final SpacesStorageService spacesStorageService;
+    private final PropertyMediaRepository propertyMediaRepository;
 
     @Transactional
-    public MediaUploadResponse uploadMedia(MultipartFile file, String folder) {
+    public MediaUploadResponse uploadMedia(MultipartFile file, String folder, UUID propertyId, UUID userId) {
         try {
             log.info("Starting upload for file: {} to folder: {}",
                     file.getOriginalFilename(), folder);
@@ -32,7 +36,22 @@ public class MediaUploadApplicationService {
 
             String mediaUrl = spacesStorageService.uploadFile(file, folder);
 
+            UUID mediaId = null;
+            if (propertyId != null && userId != null) {
+                PropertyMedia pm = PropertyMedia.builder()
+                        .propertyId(propertyId)
+                        .uploadBy(userId)
+                        .mediaType(determineMediaType(file.getContentType()))
+                        .mediaUrl(mediaUrl)
+                        .isPropertyStandard(false)
+                        .isPrimary(false)
+                        .build();
+                pm = propertyMediaRepository.save(pm);
+                mediaId = pm.getPropertyMediaId();
+            }
+
             MediaUploadResponse response = MediaUploadResponse.builder()
+                    .mediaId(mediaId)
                     .mediaUrl(mediaUrl)
                     .mediaType(file.getContentType())
                     .fileSize(file.getSize())
@@ -51,7 +70,7 @@ public class MediaUploadApplicationService {
     }
 
     @Transactional
-    public BulkMediaUploadResponse uploadMultipleMedia(List<MultipartFile> files, String folder) {
+    public BulkMediaUploadResponse uploadMultipleMedia(List<MultipartFile> files, String folder, UUID propertyId, UUID userId) {
         log.info("Starting bulk upload for {} files to folder: {}", files.size(), folder);
 
         List<MediaUploadResponse> uploadedFiles = new ArrayList<>();
@@ -61,7 +80,22 @@ public class MediaUploadApplicationService {
             try {
                 String mediaUrl = spacesStorageService.uploadFile(file, folder);
 
+                UUID mediaId = null;
+                if (propertyId != null && userId != null) {
+                    PropertyMedia pm = PropertyMedia.builder()
+                            .propertyId(propertyId)
+                            .uploadBy(userId)
+                            .mediaType(determineMediaType(file.getContentType()))
+                            .mediaUrl(mediaUrl)
+                            .isPropertyStandard(false)
+                            .isPrimary(false)
+                            .build();
+                    pm = propertyMediaRepository.save(pm);
+                    mediaId = pm.getPropertyMediaId();
+                }
+
                 MediaUploadResponse response = MediaUploadResponse.builder()
+                        .mediaId(mediaId)
                         .mediaUrl(mediaUrl)
                         .mediaType(file.getContentType())
                         .fileSize(file.getSize())
@@ -106,5 +140,11 @@ public class MediaUploadApplicationService {
             log.error("Failed to delete media: {}", mediaUrl, e);
             throw new RuntimeException("Failed to delete media: " + e.getMessage(), e);
         }
+    }
+
+    private MediaType determineMediaType(String contentType) {
+        if (contentType == null) return MediaType.IMAGE;
+        if (contentType.startsWith("video/")) return MediaType.VIDEO;
+        return MediaType.IMAGE;
     }
 }
