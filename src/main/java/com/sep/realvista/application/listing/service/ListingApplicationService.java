@@ -3,6 +3,7 @@ package com.sep.realvista.application.listing.service;
 import com.sep.realvista.application.listing.dto.CostBreakdownDTO;
 import com.sep.realvista.application.listing.dto.CreateListingRequest;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
+import com.sep.realvista.application.listing.dto.ListingMediaRequest;
 import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ManagedListingSearchCriteria;
 import com.sep.realvista.application.listing.dto.ManagedListingSummaryDTO;
@@ -26,6 +27,7 @@ import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
@@ -55,6 +57,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -103,10 +106,7 @@ public class ListingApplicationService {
         // Need to fetch the property to check ownerId
         Property property = propertyRepository.findById(listing.getPropertyId())
                 .orElse(null);
-        if (property != null && property.getOwnerId().equals(userId)) {
-            return true;
-        }
-        return false;
+        return property != null && property.getOwnerId().equals(userId);
     }
 
     /**
@@ -489,7 +489,7 @@ public class ListingApplicationService {
         listingPriceHistoryRepository.save(priceHistory);
 
         List<UUID> mediaIds = request.getMediaIds();
-        List<CreateListingRequest.MediaRequest> newMedias = request.getNewMedias();
+        List<ListingMediaRequest> newMedias = request.getNewMedias();
 
         if (mediaIds != null || newMedias != null) {
             if (mediaIds == null) {
@@ -499,31 +499,17 @@ public class ListingApplicationService {
             }
 
             // 1. Process new medias if any
-            if (newMedias != null && !newMedias.isEmpty()) {
-                for (CreateListingRequest.MediaRequest nm : newMedias) {
-                    var pm = com.sep.realvista.domain.property.PropertyMedia.builder()
-                            .propertyId(savedListing.getPropertyId())
-                            .uploadBy(userId)
-                            .mediaType(nm.getType())
-                            .mediaUrl(nm.getUrl())
-                            .thumbnailUrl(nm.getThumbnailUrl())
-                            .isPropertyStandard(false)
-                            .isPrimary(Boolean.TRUE.equals(nm.getIsPrimary()))
-                            .build();
-                    pm = propertyMediaRepository.save(pm);
-                    mediaIds.add(pm.getPropertyMediaId());
-
-                    if (Boolean.TRUE.equals(nm.getIsPrimary())) {
-                        request.setPrimaryMediaId(pm.getPropertyMediaId());
-                    }
-                }
-            }
+            processNewMediaRequests(
+                    savedListing.getPropertyId(),
+                    userId,
+                    newMedias,
+                    mediaIds,
+                    request::setPrimaryMediaId);
 
             // 2. Persist selected media as ListingMedia records
-            for (int i = 0; i < mediaIds.size(); i++) {
-                UUID mediaId = mediaIds.get(i);
+            for (int displayOrder = 0; displayOrder < mediaIds.size(); displayOrder++) {
+                UUID mediaId = mediaIds.get(displayOrder);
                 boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
-                int displayOrder = i;
                 ListingMedia listingMedia = ListingMedia.create(
                         savedListing.getListingId(), mediaId, displayOrder, isPrimary);
                 listingMediaRepository.save(listingMedia);
@@ -615,7 +601,7 @@ public class ListingApplicationService {
 
         // Update Listing Media if provided
         List<UUID> mediaIds = request.getMediaIds();
-        List<UpdateListingRequest.MediaRequest> newMedias = request.getNewMedias();
+        List<ListingMediaRequest> newMedias = request.getNewMedias();
 
         if (mediaIds != null || newMedias != null) {
             if (mediaIds == null) {
@@ -625,26 +611,12 @@ public class ListingApplicationService {
             }
 
             // 1. Process new medias if any
-            if (newMedias != null && !newMedias.isEmpty()) {
-                for (UpdateListingRequest.MediaRequest nm : newMedias) {
-                    var pm = com.sep.realvista.domain.property.PropertyMedia.builder()
-                            .propertyId(updatedListing.getPropertyId())
-                            .uploadBy(userId)
-                            .mediaType(nm.getType())
-                            .mediaUrl(nm.getUrl())
-                            .thumbnailUrl(nm.getThumbnailUrl())
-                            .isPropertyStandard(false) // This is the key isolation
-                            .isPrimary(Boolean.TRUE.equals(nm.getIsPrimary()))
-                            .build();
-                    pm = propertyMediaRepository.save(pm);
-                    mediaIds.add(pm.getPropertyMediaId());
-
-                    // If this new media is primary, update the request's primaryMediaId to this new ID
-                    if (Boolean.TRUE.equals(nm.getIsPrimary())) {
-                        request.setPrimaryMediaId(pm.getPropertyMediaId());
-                    }
-                }
-            }
+            processNewMediaRequests(
+                    updatedListing.getPropertyId(),
+                    userId,
+                    newMedias,
+                    mediaIds,
+                    request::setPrimaryMediaId);
 
             var existingMediaList = listingMediaRepository.findByListingId(updatedListing.getListingId());
 
@@ -737,22 +709,12 @@ public class ListingApplicationService {
         // Handle sorting if specified
         Pageable effectivePageable = pageable;
         if (criteria.getSortBy() != null && !criteria.getSortBy().isBlank()) {
-            Sort sort = Sort.unsorted();
-            switch (criteria.getSortBy()) {
-                case "oldest":
-                    sort = Sort.by(Sort.Direction.ASC, "createdAt");
-                    break;
-                case "priceAsc":
-                    sort = Sort.by(Sort.Direction.ASC, "price");
-                    break;
-                case "priceDesc":
-                    sort = Sort.by(Sort.Direction.DESC, "price");
-                    break;
-                case "newest":
-                default:
-                    sort = Sort.by(Sort.Direction.DESC, "createdAt");
-                    break;
-            }
+            Sort sort = switch (criteria.getSortBy()) {
+                case "oldest" -> Sort.by(Sort.Direction.ASC, "createdAt");
+                case "priceAsc" -> Sort.by(Sort.Direction.ASC, "price");
+                case "priceDesc" -> Sort.by(Sort.Direction.DESC, "price");
+                default -> Sort.by(Sort.Direction.DESC, "createdAt");
+            };
             effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
         } else if (pageable.getSort().isUnsorted()) {
             effectivePageable = PageRequest.of(pageable.getPageNumber(),
@@ -796,8 +758,43 @@ public class ListingApplicationService {
                 .build();
     }
 
+    /**
+     * Common logic to process new media requests, persisting them as PropertyMedia
+     * and updating the list of media IDs.
+     */
+    private void processNewMediaRequests(
+            UUID propertyId,
+            UUID userId,
+            List<ListingMediaRequest> newMedias,
+            List<UUID> mediaIds,
+            Consumer<UUID> primaryMediaIdSetter) {
+        if (newMedias == null || newMedias.isEmpty()) {
+            return;
+        }
+
+        for (var nm : newMedias) {
+            var pm = PropertyMedia.builder()
+                    .propertyId(propertyId)
+                    .uploadBy(userId)
+                    .mediaType(nm.getType())
+                    .mediaUrl(nm.getUrl())
+                    .thumbnailUrl(nm.getThumbnailUrl())
+                    .isPropertyStandard(false)
+                    .isPrimary(Boolean.TRUE.equals(nm.getIsPrimary()))
+                    .build();
+
+            pm = propertyMediaRepository.save(pm);
+            mediaIds.add(pm.getPropertyMediaId());
+
+            if (Boolean.TRUE.equals(nm.getIsPrimary())) {
+                primaryMediaIdSetter.accept(pm.getPropertyMediaId());
+            }
+        }
+    }
+
     private Specification<Listing> buildManagedListingSpec(UUID userId, ManagedListingSearchCriteria criteria) {
         return (root, query, cb) -> {
+            assert query != null;
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
 

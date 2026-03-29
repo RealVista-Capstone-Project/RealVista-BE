@@ -63,16 +63,5 @@ public class UpdateListingRequest {
      * List of new media to be added specifically for this listing.
      * These will be created as listing-only property media.
      */
-    private List<MediaRequest> newMedias;
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MediaRequest {
-        private String url;
-        private com.sep.realvista.domain.property.MediaType type;
-        private String thumbnailUrl;
-        private Boolean isPrimary;
-    }
+    private List<ListingMediaRequest> newMedias;
 }
