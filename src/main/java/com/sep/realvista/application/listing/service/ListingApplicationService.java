@@ -1,4 +1,5 @@
 package com.sep.realvista.application.listing.service;
+
 import com.sep.realvista.application.listing.dto.CostBreakdownDTO;
 import com.sep.realvista.application.listing.dto.CreateListingRequest;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
@@ -29,6 +30,7 @@ import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
+import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -45,6 +47,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -53,6 +56,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+/**
+ * Application Service for Listing operations.
+ * Orchestrates business logic and coordinates between domain and infrastructure
+ * layers.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -62,7 +71,7 @@ public class ListingApplicationService {
     private final ListingMediaRepository listingMediaRepository;
     private final ListingPriceHistoryRepository listingPriceHistoryRepository;
     private final PropertyRepository propertyRepository;
-    private final com.sep.realvista.domain.property.repository.PropertyMediaRepository propertyMediaRepository;
+    private final PropertyMediaRepository propertyMediaRepository;
     private final PropertyAttributeValueRepository propertyAttributeValueRepository;
     private final PropertyAmenityRepository propertyAmenityRepository;
     private final ListingMapper listingMapper;
@@ -74,6 +83,7 @@ public class ListingApplicationService {
     @Lazy
     @Autowired
     private ListingApplicationService self;
+
     /**
      * Verifies if a user can modify a listing.
      * A user can modify a listing if they are either:
@@ -98,6 +108,7 @@ public class ListingApplicationService {
         }
         return false;
     }
+
     /**
      * Verifies authorization and throws exception if user cannot modify the listing.
      *
@@ -113,6 +124,7 @@ public class ListingApplicationService {
             throw new IllegalStateException("You are not authorized to modify this listing");
         }
     }
+
     /**
      * Get listing detail by ID.
      * Returns complete listing information including media, property, location,
@@ -139,6 +151,7 @@ public class ListingApplicationService {
         }
         return response;
     }
+
     /**
      * Internal method to get cached listing detail without user-specific data.
      * This method is cached by listingId only (not per-user).
@@ -186,6 +199,7 @@ public class ListingApplicationService {
         // Note: is_favorite is NOT set here - it will be set by the public method
         return response;
     }
+
     /**
      * Get listing detail by slug.
      * Returns complete listing information using SEO-friendly slug.
@@ -208,6 +222,7 @@ public class ListingApplicationService {
         // Delegate to getListingDetail which handles caching by listingId
         return getListingDetail(listing.getListingId(), userId);
     }
+
     /**
      * Get similar listings based on property type, price, area, and common
      * attributes.
@@ -250,6 +265,7 @@ public class ListingApplicationService {
                 .limit(validatedLimit)
                 .build();
     }
+
     /**
      * Batch-fetch required attributes for all similar listings' properties.
      * Returns up to 3 required attributes per property, grouped by property ID.
@@ -274,6 +290,7 @@ public class ListingApplicationService {
                                 .map(this::mapToPropertyAttributeDTO)
                                 .collect(Collectors.toList())));
     }
+
     /**
      * Map PropertyAttributeValue to a lightweight PropertyAttributeDTO.
      */
@@ -291,6 +308,7 @@ public class ListingApplicationService {
                 .valueBoolean(pav.getValueBoolean())
                 .build();
     }
+
     /**
      * Map SimilarListing domain object to DTO with attributes.
      */
@@ -312,6 +330,7 @@ public class ListingApplicationService {
                         similarListing.getPropertyId(), Collections.emptyList()))
                 .build();
     }
+
     /**
      * Get price history for a listing.
      * Returns all price changes with calculated differences and percentages.
@@ -619,7 +638,7 @@ public class ListingApplicationService {
                             .build();
                     pm = propertyMediaRepository.save(pm);
                     mediaIds.add(pm.getPropertyMediaId());
-                    
+
                     // If this new media is primary, update the request's primaryMediaId to this new ID
                     if (Boolean.TRUE.equals(nm.getIsPrimary())) {
                         request.setPrimaryMediaId(pm.getPropertyMediaId());
@@ -709,7 +728,7 @@ public class ListingApplicationService {
      * @return page of user's listings
      */
     @Transactional(readOnly = true)
-    public Page<com.sep.realvista.application.listing.dto.ListingResponse> getManagedListings(
+    public Page<ListingResponse> getManagedListings(
             UUID userId, ManagedListingSearchCriteria criteria, Pageable pageable) {
         log.info("Fetching managed listings for user ID: {}", userId);
 
