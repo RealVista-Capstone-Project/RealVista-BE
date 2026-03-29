@@ -1,5 +1,8 @@
 package com.sep.realvista.application.ai.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.ai.dto.AiChatMessageResponse;
 import com.sep.realvista.application.ai.dto.AiConversationMessagesResponse;
 import com.sep.realvista.domain.aichat.AiConversation;
@@ -10,7 +13,9 @@ import com.sep.realvista.domain.aichat.AiMessageRole;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -22,6 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Manages AI chat conversations with persistence.
@@ -40,7 +47,12 @@ import java.util.UUID;
 @Service
 public class AiChatApplicationService {
 
+    private static final ParameterizedTypeReference<
+            ServerSentEvent<String>> SSE_TYPE =
+            new ParameterizedTypeReference<>() { };
+
     private final WebClient aiWebClient;
+    private final ObjectMapper objectMapper;
     private final String serviceApiKey;
     private final AiConversationRepository conversationRepository;
     private final AiMessageRepository messageRepository;
@@ -48,12 +60,14 @@ public class AiChatApplicationService {
 
     public AiChatApplicationService(
             WebClient aiWebClient,
+            ObjectMapper objectMapper,
             @Value("${realvista.ai.api-key:}") String serviceApiKey,
             AiConversationRepository conversationRepository,
             AiMessageRepository messageRepository,
             AiChatPersistenceHelper persistenceHelper
     ) {
         this.aiWebClient = aiWebClient;
+        this.objectMapper = objectMapper;
         this.serviceApiKey = serviceApiKey;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
@@ -103,7 +117,13 @@ public class AiChatApplicationService {
         String startEvent = buildStartEvent(conversation);
         int assistantSeq = nextSeq + 1;
         UUID convId = conversation.getId();
-        StringBuilder fullResponse = new StringBuilder();
+
+        // Accumulate token content as fallback;
+        // prefer fullResponse from the done event.
+        StringBuilder tokenAccumulator = new StringBuilder();
+        AtomicReference<String> doneFullResponse =
+                new AtomicReference<>();
+        AtomicBoolean hasError = new AtomicBoolean(false);
 
         Flux<String> aiStream = aiWebClient.post()
                 .uri("/ai/chat")
@@ -117,16 +137,21 @@ public class AiChatApplicationService {
                         userRoles != null ? userRoles : "USER")
                 .bodyValue(body)
                 .retrieve()
-                .bodyToFlux(String.class)
-                .doOnNext(chunk -> {
-                    if (chunk != null && !chunk.isBlank()) {
-                        fullResponse.append(chunk);
+                .bodyToFlux(SSE_TYPE)
+                .mapNotNull(sse -> processSseEvent(
+                        sse, tokenAccumulator,
+                        doneFullResponse, hasError))
+                .doOnComplete(() -> {
+                    if (hasError.get()) {
+                        return;
                     }
+                    String content = doneFullResponse.get();
+                    if (content == null || content.isBlank()) {
+                        content = tokenAccumulator.toString();
+                    }
+                    persistenceHelper.saveAssistantMessage(
+                            convId, content, assistantSeq);
                 })
-                .doOnComplete(() ->
-                        persistenceHelper.saveAssistantMessage(
-                                convId, fullResponse.toString(),
-                                assistantSeq))
                 .onErrorResume(
                         WebClientResponseException.class, ex -> {
                     log.error("AI service error: status={}, body={}",
@@ -211,6 +236,102 @@ public class AiChatApplicationService {
     }
 
     // ── private helpers ─────────────────────────────────────────
+
+    /**
+     * Processes a single SSE event from the NestJS AI service
+     * and returns a structured JSON string to forward to the
+     * frontend, or {@code null} to skip the event.
+     *
+     * <p>Event types handled:
+     * <ul>
+     *   <li>{@code token} – extract {@code content}, accumulate,
+     *       forward as {@code {"type":"token","content":"..."}}</li>
+     *   <li>{@code done} – extract {@code fullResponse} for
+     *       persistence, forward {@code {"type":"done"}}</li>
+     *   <li>{@code tool_start/tool_end} – forward with
+     *       {@code name} field for loading indicators</li>
+     *   <li>{@code error} – mark error flag, forward with
+     *       {@code message} field</li>
+     *   <li>{@code start} – ignored (we emit our own)</li>
+     * </ul>
+     */
+    @SuppressWarnings("ReturnCount")
+    private String processSseEvent(
+            ServerSentEvent<String> sse,
+            StringBuilder tokenAccumulator,
+            AtomicReference<String> doneFullResponse,
+            AtomicBoolean hasError) {
+        String event = sse.event();
+        String data = sse.data();
+
+        if (event == null || data == null) {
+            return null;
+        }
+
+        try {
+            JsonNode node = objectMapper.readTree(data);
+            return switch (event) {
+                case "token" -> handleTokenEvent(
+                        node, tokenAccumulator);
+                case "done" -> handleDoneEvent(
+                        node, doneFullResponse);
+                case "tool_start", "tool_end" ->
+                        handleToolEvent(event, node);
+                case "error" -> handleErrorEvent(
+                        node, hasError);
+                default -> {
+                    log.debug("Ignoring SSE event: {}", event);
+                    yield null;
+                }
+            };
+        } catch (JsonProcessingException ex) {
+            log.warn("Failed to parse SSE data for event={}: {}",
+                    event, ex.getMessage());
+            return null;
+        }
+    }
+
+    private String handleTokenEvent(JsonNode node,
+                                    StringBuilder accumulator) {
+        String content = node.path("content").asText("");
+        if (!content.isEmpty()) {
+            accumulator.append(content);
+        }
+        return "{\"type\":\"token\",\"content\":"
+                + quoteJson(content) + "}";
+    }
+
+    private String handleDoneEvent(
+            JsonNode node,
+            AtomicReference<String> doneFullResponse) {
+        String full = node.path("fullResponse").asText(null);
+        if (full != null) {
+            doneFullResponse.set(full);
+        }
+        return "{\"type\":\"done\"}";
+    }
+
+    private String handleToolEvent(String event, JsonNode node) {
+        String name = node.path("name").asText("");
+        return "{\"type\":\"" + event + "\",\"name\":"
+                + quoteJson(name) + "}";
+    }
+
+    private String handleErrorEvent(JsonNode node,
+                                    AtomicBoolean hasError) {
+        hasError.set(true);
+        String msg = node.path("message").asText("Unknown error");
+        log.error("AI service returned error event: {}", msg);
+        return buildErrorEvent(msg);
+    }
+
+    private String quoteJson(String value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException ex) {
+            return "\"\"";
+        }
+    }
 
     private String buildStartEvent(AiConversation conversation) {
         return "{\"type\":\"start\","
