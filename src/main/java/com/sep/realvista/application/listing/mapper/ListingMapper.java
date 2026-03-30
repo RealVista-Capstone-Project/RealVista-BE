@@ -365,6 +365,7 @@ public interface ListingMapper {
                 .listingType(listing.getListingType())
                 .status(listing.getStatus())
                 .price(listing.getPrice())
+                .content(listing.getContent())
                 .publishedAt(listing.getPublishedAt())
                 .userType(listing.getUser() != null ? "USER" : null); // Default to USER, can be enhanced later
 

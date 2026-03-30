@@ -41,22 +41,22 @@ import java.util.UUID;
 @SqlResultSetMapping(
         name = "SimilarListingMapping",
         classes = @ConstructorResult(targetClass = SimilarListing.class, columns = {
-        @ColumnResult(name = "listing_id", type = UUID.class),
-        @ColumnResult(name = "property_id", type = UUID.class),
-        @ColumnResult(name = "property_type_id", type = UUID.class),
-        @ColumnResult(name = "location_id", type = UUID.class),
-        @ColumnResult(name = "name", type = String.class),
-        @ColumnResult(name = "slug", type = String.class),
-        @ColumnResult(name = "listing_type", type = String.class),
-        @ColumnResult(name = "status", type = String.class),
-        @ColumnResult(name = "price", type = BigDecimal.class),
-        @ColumnResult(name = "area", type = BigDecimal.class),
-        @ColumnResult(name = "location_name", type = String.class),
-        @ColumnResult(name = "property_type_name", type = String.class),
-        @ColumnResult(name = "thumbnail_url", type = String.class),
-        @ColumnResult(name = "published_at", type = LocalDateTime.class),
-        @ColumnResult(name = "similarity_score", type = Double.class)
-}))
+                @ColumnResult(name = "listing_id", type = UUID.class),
+                @ColumnResult(name = "property_id", type = UUID.class),
+                @ColumnResult(name = "property_type_id", type = UUID.class),
+                @ColumnResult(name = "location_id", type = UUID.class),
+                @ColumnResult(name = "name", type = String.class),
+                @ColumnResult(name = "slug", type = String.class),
+                @ColumnResult(name = "listing_type", type = String.class),
+                @ColumnResult(name = "status", type = String.class),
+                @ColumnResult(name = "price", type = BigDecimal.class),
+                @ColumnResult(name = "area", type = BigDecimal.class),
+                @ColumnResult(name = "location_name", type = String.class),
+                @ColumnResult(name = "property_type_name", type = String.class),
+                @ColumnResult(name = "thumbnail_url", type = String.class),
+                @ColumnResult(name = "published_at", type = LocalDateTime.class),
+                @ColumnResult(name = "similarity_score", type = Double.class)
+        }))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -188,7 +188,7 @@ public class Listing extends BaseEntity {
     }
 
     public void updatePricing(BigDecimal price, BigDecimal minPrice,
-            BigDecimal maxPrice, Boolean isNegotiable) {
+                              BigDecimal maxPrice, Boolean isNegotiable) {
         if (price != null) {
             this.price = price;
         }
@@ -233,6 +233,10 @@ public class Listing extends BaseEntity {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
 }

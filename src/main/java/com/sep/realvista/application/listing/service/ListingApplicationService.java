@@ -533,9 +533,10 @@ public class ListingApplicationService {
         BigDecimal oldPrice = listing.getPrice();
 
         // Update fields
-        if (request.getName() != null) {
+        if (request.getName() != null && !listing.getName().equals(request.getName())) {
             listing.updateSlug(com.sep.realvista.shared.util.ShortIdUtils.generateSlug(
                     request.getName(), listingId));
+            listing.setName(request.getName());
         }
 
         if (request.getPrice() != null || request.getMinPrice() != null
@@ -565,6 +566,7 @@ public class ListingApplicationService {
                     .price(updatedListing.getPrice())
                     .minPrice(updatedListing.getMinPrice())
                     .maxPrice(updatedListing.getMaxPrice())
+                    .changedBy(userId)
                     .build();
             listingPriceHistoryRepository.save(priceHistory);
             log.info("Created price history entry for listing ID: {} (old: {}, new: {})",
