@@ -174,3 +174,14 @@ digitalocean:
     endpoint: ${DIGITALOCEAN_SPACES_ENDPOINT:https://sgp1.digitaloceanspaces.com}
     bucket-name: ${DIGITALOCEAN_SPACES_BUCKET_NAME:realvista}
     cdn-endpoint: ${DIGITALOCEAN_SPACES_CDN_ENDPOINT:}
+
+# ── DocuSign eSignature Configuration ──
+docusign:
+  integration-key: ${DOCUSIGN_INTEGRATION_KEY:}
+  user-id: ${DOCUSIGN_USER_ID:}
+  account-id: ${DOCUSIGN_ACCOUNT_ID:}
+  rsa-private-key: ${DOCUSIGN_RSA_PRIVATE_KEY:}
+  base-url: ${DOCUSIGN_BASE_URL:https://demo.docusign.net/restapi}
+  auth-server: ${DOCUSIGN_AUTH_SERVER:account-d.docusign.com}
+  return-url: ${DOCUSIGN_RETURN_URL:http://localhost:3000/leases/signing-complete}
+  webhook-hmac-key: ${DOCUSIGN_WEBHOOK_HMAC_KEY:}
