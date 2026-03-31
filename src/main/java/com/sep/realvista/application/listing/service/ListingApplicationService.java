@@ -553,8 +553,9 @@ public class ListingApplicationService {
                     request.getIsNegotiable());
         }
 
-        // Note: Update availableFrom is not currently implemented
-        // This would require adding a method to the Listing domain entity
+        if (request.getAvailableFrom() != null) {
+            listing.setAvailableFrom(request.getAvailableFrom());
+        }
 
         // Save listing
         Listing updatedListing = listingRepository.save(listing);

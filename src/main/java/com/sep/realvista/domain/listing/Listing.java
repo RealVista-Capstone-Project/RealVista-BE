@@ -239,4 +239,8 @@ public class Listing extends BaseEntity {
         this.name = name;
     }
 
+    public void setAvailableFrom(LocalDate availableFrom) {
+        this.availableFrom = availableFrom;
+    }
+
 }
