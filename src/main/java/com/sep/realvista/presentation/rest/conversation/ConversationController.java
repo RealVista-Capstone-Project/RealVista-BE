@@ -1,10 +1,10 @@
 package com.sep.realvista.presentation.rest.conversation;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
+import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
 import com.sep.realvista.application.conversation.dto.response.ConversationListItemResponse;
 import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
 import com.sep.realvista.application.conversation.dto.response.MessagePaginationResponse;
-import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
 import com.sep.realvista.application.conversation.dto.response.SendMessageResponse;
 import com.sep.realvista.application.conversation.service.ConversationApplicationService;
 import com.sep.realvista.domain.user.User;
@@ -18,9 +18,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -120,6 +120,34 @@ public class ConversationController {
             MDC.clear();
         }
     }
+
+    @PostMapping("/users/{targetUserId}")
+    @Operation(summary = "Create or get conversation",
+            description = "Creates a new conversation between the authenticated user and a target user. "
+                    + "If a conversation already exists between the two users, the existing conversation "
+                    + "is returned instead (idempotent). "
+                    + "The 'conversation_created' flag in the response indicates whether the conversation "
+                    + "was newly created (true) or already existed (false).")
+    public ResponseEntity<ApiResponse<ConversationResponse>> createOrGetConversation(
+            @PathVariable UUID targetUserId,
+            @AuthenticationPrincipal SecurityUserDetails currentUser
+    ) {
+        String traceId = initializeTraceId();
+        try {
+            log.info("Create-or-get conversation - traceId: {}, requesterId: {}, targetUserId: {}",
+                    traceId, currentUser.getUserId(), targetUserId);
+
+            ConversationResponse response = conversationApplicationService
+                    .createOrGetConversation(currentUser.getUserId(), targetUserId);
+
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Conversation created successfully", response));
+        } finally {
+            MDC.clear();
+        }
+    }
+
 
     @PostMapping("/messages")
     @Operation(summary = "Send a message",

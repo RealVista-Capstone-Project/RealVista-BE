@@ -767,4 +767,112 @@ class ConversationApplicationServiceTest {
             verify(conversationDomainService).validateReplyMessage(replyToMessageId, conversationId);
         }
     }
+
+    @Nested
+    @DisplayName("createOrGetConversation()")
+    class CreateOrGetConversation {
+
+        @Test
+        @DisplayName("Should return new conversation when it does not exist")
+        void shouldReturnNewConversationWhenDoesNotExist() {
+            // Arrange
+            ConversationDomainService.ConversationResult conversationResult =
+                    new ConversationDomainService.ConversationResult(conversation, true);
+
+            ConversationResponse mappedResponse = ConversationResponse.builder()
+                    .conversationId(conversationId)
+                    .otherUserId(userId2)
+                    .build();
+
+            when(userDomainService.getUserOrThrow(userId1)).thenReturn(user1);
+            when(userDomainService.getUserOrThrow(userId2)).thenReturn(user2);
+            when(conversationDomainService.findOrCreateConversation(userId1, userId2))
+                    .thenReturn(conversationResult);
+            when(conversationMapper.toResponse(conversation, user2)).thenReturn(mappedResponse);
+
+            // Act
+            ConversationResponse result = conversationApplicationService.createOrGetConversation(userId1, userId2);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.isConversationCreated()).isTrue();
+            verify(userDomainService).getUserOrThrow(userId1);
+            verify(userDomainService).getUserOrThrow(userId2);
+            verify(conversationDomainService).findOrCreateConversation(userId1, userId2);
+        }
+
+        @Test
+        @DisplayName("Should return existing conversation when it exists")
+        void shouldReturnExistingConversationWhenItExists() {
+            // Arrange
+            ConversationDomainService.ConversationResult conversationResult =
+                    new ConversationDomainService.ConversationResult(conversation, false);
+
+            ConversationResponse mappedResponse = ConversationResponse.builder()
+                    .conversationId(conversationId)
+                    .otherUserId(userId2)
+                    .build();
+
+            when(userDomainService.getUserOrThrow(userId1)).thenReturn(user1);
+            when(userDomainService.getUserOrThrow(userId2)).thenReturn(user2);
+            when(conversationDomainService.findOrCreateConversation(userId1, userId2))
+                    .thenReturn(conversationResult);
+            when(conversationMapper.toResponse(conversation, user2)).thenReturn(mappedResponse);
+
+            // Act
+            ConversationResponse result = conversationApplicationService.createOrGetConversation(userId1, userId2);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result.isConversationCreated()).isFalse();
+            verify(userDomainService).getUserOrThrow(userId1);
+            verify(userDomainService).getUserOrThrow(userId2);
+            verify(conversationDomainService).findOrCreateConversation(userId1, userId2);
+        }
+
+        @Test
+        @DisplayName("Should throw exception when attempting to create conversation with self")
+        void shouldThrowExceptionWhenAttemptingSelfConversation() {
+            // Arrange
+            when(userDomainService.getUserOrThrow(userId1)).thenReturn(user1);
+
+            // Act & Assert
+            assertThatThrownBy(() -> conversationApplicationService.createOrGetConversation(userId1, userId1))
+                    .isInstanceOf(BusinessConflictException.class)
+                    .hasMessageContaining("Cannot create a conversation with yourself");
+
+            verify(conversationDomainService, never()).findOrCreateConversation(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should throw exception when requester user not found")
+        void shouldThrowExceptionWhenRequesterNotFound() {
+            // Arrange
+            when(userDomainService.getUserOrThrow(userId1))
+                    .thenThrow(new ResourceNotFoundException("User", "User not found"));
+
+            // Act & Assert
+            assertThatThrownBy(() -> conversationApplicationService.createOrGetConversation(userId1, userId2))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("User not found");
+
+            verify(conversationDomainService, never()).findOrCreateConversation(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should throw exception when target user not found")
+        void shouldThrowExceptionWhenTargetNotFound() {
+            // Arrange
+            when(userDomainService.getUserOrThrow(userId1)).thenReturn(user1);
+            when(userDomainService.getUserOrThrow(userId2))
+                    .thenThrow(new ResourceNotFoundException("User", "User not found"));
+
+            // Act & Assert
+            assertThatThrownBy(() -> conversationApplicationService.createOrGetConversation(userId1, userId2))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("User not found");
+
+            verify(conversationDomainService, never()).findOrCreateConversation(any(), any());
+        }
+    }
 }

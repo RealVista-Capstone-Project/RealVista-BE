@@ -1,13 +1,17 @@
 package com.sep.realvista.infrastructure.security;
 
+import lombok.Builder;
+import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.UUID;
 
+@Builder
 public class SecurityUserDetails implements UserDetails {
 
+    @Getter
     private final UUID userId;
     private final String username; // Email
     private final String password;
@@ -24,10 +28,6 @@ public class SecurityUserDetails implements UserDetails {
         this.password = password;
         this.authorities = authorities;
         this.active = active;
-    }
-
-    public UUID getUserId() {
-        return userId;
     }
 
     @Override

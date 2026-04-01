@@ -9,6 +9,7 @@ import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.appointment.Appointment;
 import com.sep.realvista.domain.listing.appointment.AppointmentService;
 import com.sep.realvista.domain.listing.appointment.AppointmentStatus;
+import com.sep.realvista.domain.listing.appointment.BookTourResult;
 import com.sep.realvista.domain.listing.repository.AppointmentRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.user.User;
@@ -240,12 +241,17 @@ class AppointmentServiceTest {
             when(appointmentRepository.findByReceiverIdAndStartTimeBetweenAndStatusIn(
                     any(), any(), any(), any()
             )).thenReturn(Collections.emptyList());
+            when(appointmentRepository.save(any(Appointment.class))).thenAnswer(inv -> inv.getArgument(0));
 
             LocalDateTime futureSlot = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0);
 
-            appointmentService.bookTour(listingId, senderId, List.of(futureSlot), "test notes");
+            BookTourResult result = appointmentService.bookTour(listingId, senderId, List.of(futureSlot), "test notes");
 
             verify(appointmentRepository).save(any(Appointment.class));
+            assertThat(result.appointments()).hasSize(1);
+            assertThat(result.listing()).isEqualTo(listing);
+            assertThat(result.sender()).isEqualTo(sender);
+            assertThat(result.owner()).isEqualTo(owner);
         }
 
         @Test
