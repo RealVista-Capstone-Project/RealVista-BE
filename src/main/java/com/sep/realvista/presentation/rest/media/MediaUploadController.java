@@ -75,7 +75,8 @@ public class MediaUploadController {
                     + "'non-prod/test')", example = "non-prod/test")
             @RequestParam(value = "folder", required = false, defaultValue = "media") String folder,
 
-            @Parameter(description = "Optional property ID to associate the media with", example = "123e4567-e89b-12d3-a456-426614174000")
+            @Parameter(description = "Optional property ID to associate the media with",
+                    example = "123e4567-e89b-12d3-a456-426614174000")
             @RequestParam(value = "propertyId", required = false) UUID propertyId,
 
             @AuthenticationPrincipal SecurityUserDetails userDetails
@@ -87,10 +88,11 @@ public class MediaUploadController {
                 auth != null ? auth.getName() : "null",
                 auth != null ? auth.getAuthorities() : "null");
 
-        log.info("Received upload request for file: {} to folder: {}, propertyId: {}", 
+        log.info("Received upload request for file: {} to folder: {}, propertyId: {}",
                 file.getOriginalFilename(), folder, propertyId);
 
-        MediaUploadResponse response = mediaUploadService.uploadMedia(file, folder, propertyId, userDetails.getUserId());
+        MediaUploadResponse response = mediaUploadService
+                .uploadMedia(file, folder, propertyId, userDetails.getUserId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -129,7 +131,8 @@ public class MediaUploadController {
             @Parameter(description = "Folder path in storage", example = "listings")
             @RequestParam(value = "folder", required = false, defaultValue = "media") String folder,
 
-            @Parameter(description = "Optional property ID to associate the media with", example = "123e4567-e89b-12d3-a456-426614174000")
+            @Parameter(description = "Optional property ID to associate the media with",
+                    example = "123e4567-e89b-12d3-a456-426614174000")
             @RequestParam(value = "propertyId", required = false) UUID propertyId,
 
             @AuthenticationPrincipal SecurityUserDetails userDetails

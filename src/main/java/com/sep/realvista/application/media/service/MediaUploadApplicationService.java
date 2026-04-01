@@ -37,7 +37,8 @@ public class MediaUploadApplicationService {
     }
 
     @Transactional
-    public BulkMediaUploadResponse uploadMultipleMedia(List<MultipartFile> files, String folder, UUID propertyId, UUID userId) {
+    public BulkMediaUploadResponse uploadMultipleMedia(List<MultipartFile> files, String folder,
+                                                       UUID propertyId, UUID userId) {
         log.info("Starting bulk upload of {} files to folder: {}", files.size(), folder);
 
         List<MediaUploadResponse> uploadedFiles = new ArrayList<>();
@@ -69,7 +70,8 @@ public class MediaUploadApplicationService {
         return response;
     }
 
-    private MediaUploadResponse processFileUpload(MultipartFile file, String folder, UUID propertyId, UUID userId) throws IOException {
+    private MediaUploadResponse processFileUpload(MultipartFile file, String folder,
+                                                  UUID propertyId, UUID userId) throws IOException {
         String fileName = file.getOriginalFilename();
         log.info("Processing file upload: {} to folder: {} (Size: {} bytes, Type: {})",
                 fileName, folder, file.getSize(), file.getContentType());
@@ -118,8 +120,12 @@ public class MediaUploadApplicationService {
     }
 
     private MediaType determineMediaType(String contentType) {
-        if (contentType == null) return MediaType.IMAGE;
-        if (contentType.startsWith("video/")) return MediaType.VIDEO;
+        if (contentType == null) {
+            return MediaType.IMAGE;
+        }
+        if (contentType.startsWith("video/")) {
+            return MediaType.VIDEO;
+        }
         return MediaType.IMAGE;
     }
 }

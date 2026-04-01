@@ -125,6 +125,13 @@ public class Property extends BaseEntity {
         this.status = PropertyStatus.SOLD;
     }
 
+    public void markAsRented() {
+        if (this.status == PropertyStatus.RENTED) {
+            throw new IllegalStateException("Property is already rented");
+        }
+        this.status = PropertyStatus.RENTED;
+    }
+
     public void cancelReservation() {
         if (this.status != PropertyStatus.RESERVED) {
             throw new IllegalStateException("Only reserved properties can have reservation cancelled");

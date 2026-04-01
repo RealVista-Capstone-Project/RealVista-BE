@@ -878,57 +878,79 @@ public class ListingApplicationService {
      * @throws IllegalStateException     if user is not the listing creator or property owner, listing is not SALE type,
      *                                   or not published
      */
-    @CacheEvict(value = "listings", key = "#listingId")
-    public ListingResponse markAsSold(
-            UUID listingId, UUID userId) {
+    @CacheEvict(value = "listings", allEntries = true)
+    public ListingResponse markAsSold(UUID listingId, UUID userId) {
         log.info("Marking listing ID: {} as sold by user ID: {}", listingId, userId);
 
         Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> {
-                    log.error("Listing not found markAsSold with ID: {}", listingId);
-                    return new ResourceNotFoundException("Listing", listingId);
-                });
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
 
-        // Verify ownership (listing creator OR property owner)
         verifyListingModificationAuthorization(listing, userId, "mark as sold");
 
         listing.markAsSold();
-        Listing updatedListing = listingRepository.save(listing);
+        
+        // Synchronize all other listings and the property
+        closeAllListingsAndProperty(listing.getPropertyId(), PropertyStatus.SOLD);
 
-        log.info("Successfully marked listing ID: {} as sold", listingId);
+        Listing updatedListing = listingRepository.save(listing);
+        log.info("Successfully marked listing ID: {} and all related listings as sold", listingId);
 
         return listingMapper.toListingResponse(updatedListing);
     }
 
-    /**
-     * Mark listing as rented (RENT listings only).
-     *
-     * @param listingId the listing ID
-     * @param userId    the user ID performing the action
-     * @return updated listing response
-     * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the listing creator or property owner, listing is not RENT type,
-     *                                   or not published
-     */
-    @CacheEvict(value = "listings", key = "#listingId")
-    public ListingResponse markAsRented(
-            UUID listingId, UUID userId) {
+    @CacheEvict(value = "listings", allEntries = true)
+    public ListingResponse markAsRented(UUID listingId, UUID userId) {
         log.info("Marking listing ID: {} as rented by user ID: {}", listingId, userId);
 
         Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> {
-                    log.error("Listing not found markAsRented with ID: {}", listingId);
-                    return new ResourceNotFoundException("Listing", listingId);
-                });
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
 
-        // Verify ownership (listing creator OR property owner)
         verifyListingModificationAuthorization(listing, userId, "mark as rented");
 
         listing.markAsRented();
-        Listing updatedListing = listingRepository.save(listing);
 
-        log.info("Successfully marked listing ID: {} as rented", listingId);
+        // Synchronize all other listings and the property
+        closeAllListingsAndProperty(listing.getPropertyId(), PropertyStatus.RENTED);
+
+        Listing updatedListing = listingRepository.save(listing);
+        log.info("Successfully marked listing ID: {} and all related listings as rented", listingId);
 
         return listingMapper.toListingResponse(updatedListing);
+    }
+
+    private void closeAllListingsAndProperty(UUID propertyId, PropertyStatus targetPropertyStatus) {
+        // 1. Update the property status
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+        
+        if (targetPropertyStatus == PropertyStatus.SOLD) {
+            property.markAsSold();
+        } else if (targetPropertyStatus == PropertyStatus.RENTED) {
+            property.markAsRented();
+        }
+        propertyRepository.save(property);
+
+        // 2. Synchronize all associated listings
+        List<Listing> listings = listingRepository.findByPropertyId(propertyId);
+        for (Listing l : listings) {
+            // Skip listings that are already in a terminal state
+            if (l.getStatus() == ListingStatus.SOLD || l.getStatus() == ListingStatus.RENTED) {
+                continue;
+            }
+
+            // Only mark PUBLISHED listings as closed to adhere to domain constraints
+            // (Listing.markAsSold/Rented requires PUBLISHED status)
+            if (l.getStatus() == ListingStatus.PUBLISHED) {
+                if (l.getListingType() == ListingType.SALE) {
+                    l.markAsSold();
+                } else if (l.getListingType() == ListingType.RENT) {
+                    l.markAsRented();
+                }
+            }
+        }
+        // Save all modified listings
+        for (Listing l : listings) {
+            listingRepository.save(l);
+        }
     }
 }
