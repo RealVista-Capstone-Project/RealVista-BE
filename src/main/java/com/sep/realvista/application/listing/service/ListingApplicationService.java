@@ -33,6 +33,12 @@ import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
+import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.notification.EntityType;
+import com.sep.realvista.domain.user.notification.EventType;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -53,8 +59,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -78,6 +86,8 @@ public class ListingApplicationService {
     private final CostBreakdownService costBreakdownService;
     private final BookmarkRepository bookmarkRepository;
     private final ListingAnalyticsService listingAnalyticsService;
+    private final NotificationApplicationService notificationApplicationService;
+    private final UserRepository userRepository;
     // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
     // ensuring @Cacheable on getCachedListingDetail is actually triggered.
     @Lazy
@@ -932,7 +942,12 @@ public class ListingApplicationService {
 
         // 2. Synchronize all associated listings
         List<Listing> listings = listingRepository.findByPropertyId(propertyId);
+        Set<UUID> usersToNotify = new HashSet<>();
+        
         for (Listing l : listings) {
+            // Keep track of which users are associated with this property's listings
+            usersToNotify.add(l.getUserId());
+
             // Skip listings that are already in a terminal state
             if (l.getStatus() == ListingStatus.SOLD || l.getStatus() == ListingStatus.RENTED) {
                 continue;
@@ -948,9 +963,47 @@ public class ListingApplicationService {
                 }
             }
         }
+        // Always notify the property owner
+        usersToNotify.add(property.getOwnerId());
+
         // Save all modified listings
         for (Listing l : listings) {
             listingRepository.save(l);
+        }
+
+        // 3. Dispatch notifications
+        sendClosingNotifications(property, usersToNotify, targetPropertyStatus);
+    }
+
+    private void sendClosingNotifications(Property property, Set<UUID> userIds,
+                                          PropertyStatus status) {
+        String event = status == PropertyStatus.SOLD ? "sold" : "rented";
+        EventType eventType = status == PropertyStatus.SOLD
+                ? EventType.LISTING_SOLD : EventType.LISTING_RENTED;
+
+        String title = String.format("Property at %s has been %s",
+                property.getStreetAddress(), event);
+        String message = String.format("The property at %s has been officially marked as %s. "
+                + "Any related active listings have been closed.",
+                property.getStreetAddress(), event.toUpperCase());
+
+        for (UUID userId : userIds) {
+            try {
+                userRepository.findById(userId).ifPresent(user -> {
+                    notificationApplicationService.sendNotification(SendNotificationRequest.builder()
+                            .userId(user.getUserId())
+                            .userEmail(user.getEmail().getValue())
+                            .title(title)
+                            .message(message)
+                            .eventType(eventType)
+                            .entityType(EntityType.PROPERTY)
+                            .entityId(property.getPropertyId())
+                            .build());
+                });
+            } catch (Exception e) {
+                log.error("Failed to send closing notification to user {}: {}",
+                        userId, e.getMessage());
+            }
         }
     }
 }
