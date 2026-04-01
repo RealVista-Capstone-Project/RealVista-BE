@@ -14,6 +14,7 @@ import com.sep.realvista.application.listing.dto.SimilarListingDTO;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
@@ -26,6 +27,7 @@ import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
@@ -790,38 +792,6 @@ public class ListingApplicationService {
      *                                   , or listing is not in DRAFT status
      */
     @CacheEvict(value = "listings", key = "#listingId")
-    public ListingResponse submitForReview(
-            UUID listingId, UUID userId) {
-        log.info("Submitting listing ID: {} for review by user ID: {}", listingId, userId);
-
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> {
-                    log.error("Listing not found in submitForReview with ID: {}", listingId);
-                    return new ResourceNotFoundException("Listing", listingId);
-                });
-
-        // Verify ownership (listing creator OR property owner)
-        verifyListingModificationAuthorization(listing, userId, "submit for review");
-
-        listing.submitForReview();
-        Listing updatedListing = listingRepository.save(listing);
-
-        log.info("Successfully submitted listing ID: {} for review", listingId);
-
-        return listingMapper.toListingResponse(updatedListing);
-    }
-
-    /**
-     * Publish listing (PENDING/DRAFT -> PUBLISHED).
-     *
-     * @param listingId the listing ID
-     * @param userId    the user ID performing the action
-     * @return updated listing response
-     * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the listing creator or property owner,
-     *                                   or listing cannot be published
-     */
-    @CacheEvict(value = "listings", key = "#listingId")
     public ListingResponse publishListing(
             UUID listingId, UUID userId) {
         log.info("Publishing listing ID: {} by user ID: {}", listingId, userId);
@@ -834,6 +804,29 @@ public class ListingApplicationService {
 
         // Verify ownership (listing creator OR property owner)
         verifyListingModificationAuthorization(listing, userId, "publish");
+
+        // Verify associated property is available (active)
+        Property property = propertyRepository.findById(listing.getPropertyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property", listing.getPropertyId()));
+
+        if (property.getStatus() != PropertyStatus.AVAILABLE) {
+            log.error("Cannot publish listing {}: Associated property {} is in status {}",
+                    listingId, property.getPropertyId(), property.getStatus());
+            throw new BusinessConflictException("Associated property is not in active state (status: " 
+                    + property.getStatus() + ")", "PROPERTY_NOT_AVAILABLE");
+        }
+
+        // Verify no other published listing of the same type exists for the listing creator and property
+        boolean duplicateExists = listingRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
+                listing.getPropertyId(), listing.getListingType(), ListingStatus.PUBLISHED, listing.getUserId());
+
+        if (duplicateExists) {
+            log.error("Listing creator {} already has a published {} listing for property {}",
+                    listing.getUserId(), listing.getListingType(), listing.getPropertyId());
+            throw new BusinessConflictException(String.format(
+                    "A published listing of type %s already exists for this property and user.",
+                    listing.getListingType().name()), "DUPLICATE_LISTING_PUBLISH");
+        }
 
         listing.publish();
         Listing updatedListing = listingRepository.save(listing);
