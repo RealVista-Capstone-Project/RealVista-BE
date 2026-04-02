@@ -1,5 +1,7 @@
 package com.sep.realvista.application.service;
 
+import com.sep.realvista.application.listing.contract.dto.LeaseTemplateData;
+
 /**
  * Application-layer service interface for DocuSign eSignature operations.
  * <p>
@@ -90,4 +92,14 @@ public interface DocuSignService {
      * @return true if signature is valid (or if HMAC key is not configured)
      */
     boolean verifyWebhookSignature(byte[] payload, String hmacHeader);
+
+    /**
+     * Creates a DocuSign envelope from a pre-configured template with dynamic field values.
+     * Both renter and landlord are added as recipients with sequential signing order.
+     *
+     * @param templateId Template ID configured in DocuSign
+     * @param data       Dynamic field values to populate in the template tabs
+     * @return DocuSign envelope ID
+     */
+    String createEnvelopeFromTemplate(String templateId, LeaseTemplateData data);
 }

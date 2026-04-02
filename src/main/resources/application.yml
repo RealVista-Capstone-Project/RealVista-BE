@@ -185,3 +185,4 @@ docusign:
   auth-server: ${DOCUSIGN_AUTH_SERVER:account-d.docusign.com}
   return-url: ${DOCUSIGN_RETURN_URL:http://localhost:3000/leases/signing-complete}
   webhook-hmac-key: ${DOCUSIGN_WEBHOOK_HMAC_KEY:}
+  lease-template-id: ${DOCUSIGN_LEASE_TEMPLATE_ID:}

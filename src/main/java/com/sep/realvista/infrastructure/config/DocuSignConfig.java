@@ -46,6 +46,9 @@ public class DocuSignConfig {
     /** HMAC key for verifying DocuSign Connect webhook payloads. */
     private String webhookHmacKey;
 
+    /** DocuSign template ID for lease agreements with pre-configured fields. */
+    private String leaseTemplateId;
+
     /**
      * Returns true if the minimum required DocuSign credentials are configured.
      * Used for graceful degradation — if false, signing operations are disabled.
@@ -55,6 +58,14 @@ public class DocuSignConfig {
                 && StringUtils.hasText(userId)
                 && StringUtils.hasText(accountId)
                 && StringUtils.hasText(rsaPrivateKey);
+    }
+
+    /**
+     * Returns true if DocuSign is available and a lease template ID is configured.
+     * When true, the template-based signing flow is used instead of PDF upload.
+     */
+    public boolean isTemplateAvailable() {
+        return isAvailable() && StringUtils.hasText(leaseTemplateId);
     }
 
     /**

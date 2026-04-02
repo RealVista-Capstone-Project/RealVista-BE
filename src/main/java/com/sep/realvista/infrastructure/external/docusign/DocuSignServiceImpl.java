@@ -12,7 +12,10 @@ import com.docusign.esign.model.Recipients;
 import com.docusign.esign.model.SignHere;
 import com.docusign.esign.model.Signer;
 import com.docusign.esign.model.Tabs;
+import com.docusign.esign.model.TemplateRole;
+import com.docusign.esign.model.Text;
 import com.docusign.esign.model.ViewUrl;
+import com.sep.realvista.application.listing.contract.dto.LeaseTemplateData;
 import com.sep.realvista.application.service.DocuSignService;
 import com.sep.realvista.infrastructure.config.DocuSignConfig;
 import jakarta.annotation.PostConstruct;
@@ -242,6 +245,77 @@ public class DocuSignServiceImpl implements DocuSignService {
         }
     }
 
+    // ── Template-Based Envelope Creation ──────────────────────────────────────
+
+    @Override
+    public String createEnvelopeFromTemplate(String templateId, LeaseTemplateData data) {
+        if (!isAvailable()) {
+            log.warn("DocuSign not available — skipping template envelope creation");
+            return null;
+        }
+
+        ensureAuthenticated();
+
+        try {
+            // Build tabs with dynamic field values for renter role
+            Tabs renterTabs = new Tabs();
+            renterTabs.setTextTabs(List.of(
+                    buildTextTab("renterName", data.getRenterName()),
+                    buildTextTab("landlordName", data.getLandlordName()),
+                    buildTextTab("leaseStartDate", data.getLeaseStartDate()),
+                    buildTextTab("leaseEndDate", data.getLeaseEndDate()),
+                    buildTextTab("leaseDurationMonths", data.getLeaseDurationMonths()),
+                    buildTextTab("monthlyRent", data.getMonthlyRent()),
+                    buildTextTab("securityDeposit", data.getSecurityDeposit())
+            ));
+
+            // Build tabs with dynamic field values for landlord role
+            Tabs landlordTabs = new Tabs();
+            landlordTabs.setTextTabs(List.of(
+                    buildTextTab("renterName", data.getRenterName()),
+                    buildTextTab("landlordName", data.getLandlordName()),
+                    buildTextTab("leaseStartDate", data.getLeaseStartDate()),
+                    buildTextTab("leaseEndDate", data.getLeaseEndDate()),
+                    buildTextTab("leaseDurationMonths", data.getLeaseDurationMonths()),
+                    buildTextTab("monthlyRent", data.getMonthlyRent()),
+                    buildTextTab("securityDeposit", data.getSecurityDeposit())
+            ));
+
+            // Renter role (routing order 1 — signs first)
+            TemplateRole renterRole = new TemplateRole();
+            renterRole.setEmail(data.getRenterEmail());
+            renterRole.setName(data.getRenterName());
+            renterRole.setRoleName("renter");
+            renterRole.setClientUserId(data.getRenterClientUserId());
+            renterRole.setTabs(renterTabs);
+
+            // Landlord role (routing order 2 — signs after renter)
+            TemplateRole landlordRole = new TemplateRole();
+            landlordRole.setEmail(data.getLandlordEmail());
+            landlordRole.setName(data.getLandlordName());
+            landlordRole.setRoleName("landlord");
+            landlordRole.setClientUserId(data.getLandlordClientUserId());
+            landlordRole.setTabs(landlordTabs);
+
+            // Build envelope from template
+            EnvelopeDefinition envelope = new EnvelopeDefinition();
+            envelope.setTemplateId(templateId);
+            envelope.setTemplateRoles(List.of(renterRole, landlordRole));
+            envelope.setStatus(SIGNING_STATUS);
+
+            EnvelopesApi envelopesApi = new EnvelopesApi(apiClient);
+            EnvelopeSummary summary = envelopesApi.createEnvelope(
+                    docuSignConfig.getAccountId(), envelope
+            );
+
+            log.info("DocuSign template envelope created: {} (template: {})", summary.getEnvelopeId(), templateId);
+            return summary.getEnvelopeId();
+
+        } catch (ApiException e) {
+            throw new DocuSignException("Failed to create envelope from template: " + e.getMessage(), e);
+        }
+    }
+
     // ── Webhook HMAC Verification ─────────────────────────────────────────────
 
     @Override
@@ -335,5 +409,12 @@ public class DocuSignServiceImpl implements DocuSignService {
         signer.setTabs(tabs);
 
         return signer;
+    }
+
+    private Text buildTextTab(String tabLabel, String value) {
+        Text text = new Text();
+        text.setTabLabel(tabLabel);
+        text.setValue(value != null ? value : "");
+        return text;
     }
 }

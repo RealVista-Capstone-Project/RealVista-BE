@@ -3,6 +3,7 @@ package com.sep.realvista.application.listing.contract;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.listing.contract.dto.CreateLeaseRequest;
 import com.sep.realvista.application.listing.contract.dto.LeaseResponse;
+import com.sep.realvista.application.listing.contract.dto.LeaseTemplateData;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
 import com.sep.realvista.application.listing.contract.mapper.LeaseAgreementMapper;
 import com.sep.realvista.application.service.DocuSignService;
@@ -102,7 +103,8 @@ public class LeaseAgreementApplicationService {
 
     /**
      * Sends the lease to the renter for embedded signing via DocuSign.
-     * Downloads the lease PDF from the stored URL and creates a DocuSign envelope.
+     * Uses template-based flow if a lease template is configured, otherwise
+     * downloads the lease PDF from the stored URL and creates a DocuSign envelope.
      *
      * @param leaseId    UUID of the lease agreement
      * @param returnUrl  Frontend URL to redirect to after signing (null = use default from config)
@@ -114,11 +116,6 @@ public class LeaseAgreementApplicationService {
         if (lease.getStatus() != LeaseStatus.DRAFT) {
             throw new BusinessConflictException(
                     "Lease must be in DRAFT status to send for signing. Current status: " + lease.getStatus()
-            );
-        }
-        if (lease.getLeaseDocumentUrl() == null || lease.getLeaseDocumentUrl().isBlank()) {
-            throw new BusinessConflictException(
-                    "Lease document URL is required before sending for signing. Upload the lease PDF first."
             );
         }
 
@@ -136,17 +133,49 @@ public class LeaseAgreementApplicationService {
                     .build();
         }
 
-        // Download lease PDF from storage
-        byte[] documentBytes = downloadDocument(lease.getLeaseDocumentUrl());
+        String envelopeId;
 
-        // Create DocuSign envelope for renter
-        String envelopeId = docuSignService.createEnvelopeForSigning(
-                documentBytes,
-                "Lease Agreement",
-                renter.getEmail().getValue(),
-                renter.getFirstName() + " " + renter.getLastName(),
-                renter.getUserId().toString()
-        );
+        if (docuSignConfig.isTemplateAvailable()) {
+            // Template-based flow: populate dynamic fields from lease + user data
+            User landlord = findUserOrThrow(lease.getLandlordId());
+
+            LeaseTemplateData templateData = LeaseTemplateData.builder()
+                    .renterName(renter.getFirstName() + " " + renter.getLastName())
+                    .renterEmail(renter.getEmail().getValue())
+                    .renterClientUserId(renter.getUserId().toString())
+                    .landlordName(landlord.getFirstName() + " " + landlord.getLastName())
+                    .landlordEmail(landlord.getEmail().getValue())
+                    .landlordClientUserId(landlord.getUserId().toString())
+                    .leaseStartDate(lease.getLeaseStartDate() != null ? lease.getLeaseStartDate().toString() : "")
+                    .leaseEndDate(lease.getLeaseEndDate() != null ? lease.getLeaseEndDate().toString() : "")
+                    .leaseDurationMonths(String.valueOf(lease.getLeaseDurationMonths()))
+                    .monthlyRent(lease.getMonthlyRent() != null ? lease.getMonthlyRent().toPlainString() : "")
+                    .securityDeposit(lease.getSecurityDeposit() != null
+                            ? lease.getSecurityDeposit().toPlainString() : "")
+                    .build();
+
+            envelopeId = docuSignService.createEnvelopeFromTemplate(
+                    docuSignConfig.getLeaseTemplateId(), templateData
+            );
+
+            log.info("Template envelope created for lease {} (envelope {})", leaseId, envelopeId);
+        } else {
+            // PDF-upload flow: download document and create envelope
+            if (lease.getLeaseDocumentUrl() == null || lease.getLeaseDocumentUrl().isBlank()) {
+                throw new BusinessConflictException(
+                        "Lease document URL is required before sending for signing. Upload the lease PDF first."
+                );
+            }
+
+            byte[] documentBytes = downloadDocument(lease.getLeaseDocumentUrl());
+            envelopeId = docuSignService.createEnvelopeForSigning(
+                    documentBytes,
+                    "Lease Agreement",
+                    renter.getEmail().getValue(),
+                    renter.getFirstName() + " " + renter.getLastName(),
+                    renter.getUserId().toString()
+            );
+        }
 
         // Persist envelope ID and update status
         lease.assignDocuSignEnvelope(envelopeId);
@@ -205,6 +234,8 @@ public class LeaseAgreementApplicationService {
 
     /**
      * Sends the lease to the landlord for embedded signing after the renter has signed.
+     * When using template flow, the landlord is already a recipient in the envelope
+     * and only needs an embedded signing URL. In PDF flow, adds the landlord as a new signer.
      */
     public SigningUrlResponse sendToLandlordForSigning(UUID leaseId, String returnUrl) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
@@ -228,23 +259,28 @@ public class LeaseAgreementApplicationService {
                     .build();
         }
 
-        // Download PDF again (needed if new envelope is created)
-        byte[] documentBytes = downloadDocument(lease.getLeaseDocumentUrl());
+        String envelopeId = lease.getDocusignEnvelopeId();
 
-        String envelopeId = docuSignService.addLandlordSigner(
-                lease.getDocusignEnvelopeId(),
-                documentBytes,
-                "Lease Agreement",
-                landlord.getEmail().getValue(),
-                landlord.getFirstName() + " " + landlord.getLastName(),
-                landlord.getUserId().toString()
-        );
+        if (!docuSignConfig.isTemplateAvailable()) {
+            // PDF flow: add landlord as a new recipient to the existing envelope
+            byte[] documentBytes = downloadDocument(lease.getLeaseDocumentUrl());
 
-        // Update envelope ID in case a new one was created
-        if (!envelopeId.equals(lease.getDocusignEnvelopeId())) {
-            lease.assignDocuSignEnvelope(envelopeId);
-            leaseAgreementRepository.save(lease);
+            envelopeId = docuSignService.addLandlordSigner(
+                    lease.getDocusignEnvelopeId(),
+                    documentBytes,
+                    "Lease Agreement",
+                    landlord.getEmail().getValue(),
+                    landlord.getFirstName() + " " + landlord.getLastName(),
+                    landlord.getUserId().toString()
+            );
+
+            // Update envelope ID in case a new one was created
+            if (!envelopeId.equals(lease.getDocusignEnvelopeId())) {
+                lease.assignDocuSignEnvelope(envelopeId);
+                leaseAgreementRepository.save(lease);
+            }
         }
+        // Template flow: landlord is already a recipient (routing order 2), just generate URL
 
         String effectiveReturnUrl = returnUrl != null ? returnUrl : buildDefaultReturnUrl(leaseId, "landlord");
         String signingUrl = docuSignService.getEmbeddedSigningUrl(
