@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface PropertyMediaJpaRepository extends JpaRepository<PropertyMedia, UUID> {
     List<PropertyMedia> findByPropertyIdAndDeletedIsFalse(UUID propertyId);
+    void deleteByPropertyId(UUID propertyId);
 }

@@ -31,7 +31,12 @@ public class PropertyMediaRepositoryImpl implements PropertyMediaRepository {
     }
 
     @Override
-    public void saveAll(List<PropertyMedia> medias) {
-        jpaRepository.saveAll(medias);
+    public void deleteByPropertyId(UUID propertyId) {
+        jpaRepository.deleteByPropertyId(propertyId);
+    }
+
+    @Override
+    public <S extends PropertyMedia> Iterable<S> saveAll(Iterable<S> entities) {
+        return jpaRepository.saveAll(entities);
     }
 }

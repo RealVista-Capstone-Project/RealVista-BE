@@ -202,7 +202,7 @@ public class Property extends BaseEntity {
                     .findFirst()
                     .ifPresentOrElse(
                         existing -> {
-                            existing.updateMetadata(m.getMediaType(), m.getThumbnailUrl(), m.getIsPrimary());
+                            existing.updateMediaInfo(m.getMediaType(), m.getThumbnailUrl(), m.getIsPrimary());
                         },
                         () -> this.mediaList.add(m)
                     );
