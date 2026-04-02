@@ -74,6 +74,7 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
                                         @Param("eastLng") java.math.BigDecimal eastLng,
                                         @Param("westLng") java.math.BigDecimal westLng);
 
-    @Query("SELECT p FROM Property p WHERE LOWER(p.streetAddress) LIKE LOWER(CONCAT('%', :address, '%')) AND p.deleted = false")
+    @Query("SELECT p FROM Property p "
+            + "WHERE LOWER(p.streetAddress) LIKE LOWER(CONCAT('%', :address, '%')) AND p.deleted = false")
     List<Property> searchByAddress(@Param("address") String address);
 }

@@ -27,11 +27,6 @@ public class PropertyRepositoryImpl implements PropertyRepository {
     }
 
     @Override
-    public List<Property> findByOwnerId(UUID ownerId) {
-        return jpaRepository.findByOwnerId(ownerId);
-    }
-
-    @Override
     public org.springframework.data.domain.Page<Property> findByOwnerIdAndCriteria(
             UUID ownerId,
             String keyword,

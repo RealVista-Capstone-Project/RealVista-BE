@@ -13,6 +13,8 @@ public interface PropertyRepository {
 
     List<Property> findByOwnerId(UUID ownerId);
 
+    List<Property> findByOwnerIdOrAgentId(UUID userId);
+
     org.springframework.data.domain.Page<Property> findByOwnerIdAndCriteria(
             UUID ownerId,
             String keyword,
