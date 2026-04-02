@@ -45,7 +45,8 @@ public final class SecurityConstants {
                 "/ws/**",
                 "api/test/**",
                 "/api/v1/test/**",
-                "/api/v1/map/**"
+                "/api/v1/map/**",
+                "/api/v1/locations/**"
         };
 
         private PublicEndpoints() {
