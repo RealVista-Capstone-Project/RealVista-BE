@@ -119,6 +119,10 @@ realvista:
     threshold: ${RECOMMENDATION_THRESHOLD:5}
     default-limit: ${RECOMMENDATION_DEFAULT_LIMIT:10}
 
+  marble:
+    api-url: ${MARBLE_API_URL:https://api.worldlabs.ai/marble/v1}
+    api-key: ${MARBLE_API_KEY}
+
 # Actuator Configuration
 management:
   endpoints:

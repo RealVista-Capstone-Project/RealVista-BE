@@ -97,7 +97,8 @@ public class Property3DGenerationService {
     public void checkAndUpdateStatus(Property3DGeneration generation) {
         JsonNode payload = marbleClient.getOperation(generation.getOperationId());
         if (payload == null) {
-            log.warn("Could not fetch operation {} from Marble", generation.getOperationId());
+            log.warn("Could not fetch operation {} from Marble. Check if MARBLE_API_KEY is configured and valid.", 
+                    generation.getOperationId());
             return;
         }
 

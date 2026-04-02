@@ -27,6 +27,10 @@ public class MarbleClient {
         this.restTemplate = restTemplate;
         this.marbleBaseUrl = marbleBaseUrl;
         this.apiKey = apiKey;
+
+        if (this.apiKey == null || this.apiKey.isBlank()) {
+            log.error("MARBLE_API_KEY is not configured! 3D generation and status polling will fail.");
+        }
     }
 
     public JsonNode getOperation(String operationId) {
