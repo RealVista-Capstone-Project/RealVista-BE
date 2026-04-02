@@ -5,9 +5,13 @@ import com.sep.realvista.application.media.dto.BulkMediaUploadResponse;
 import com.sep.realvista.application.media.dto.MediaUploadResponse;
 import com.sep.realvista.application.media.service.MediaUploadApplicationService;
 import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import com.sep.realvista.presentation.exception.GlobalExceptionHandler;
 import com.sep.realvista.presentation.rest.media.MediaUploadController;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -17,9 +21,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.UUID;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -64,6 +71,9 @@ class MediaUploadControllerComponentTest {
     private MockMultipartFile validHeicFile;
     private MediaUploadResponse mockImageResponse;
     private MediaUploadResponse mockVideoResponse;
+    private SecurityUserDetails mockBuyerDetails;
+    private SecurityUserDetails mockAgentDetails;
+    private SecurityUserDetails mockAdminDetails;
 
     @BeforeEach
     void setUp() {
@@ -107,6 +117,38 @@ class MediaUploadControllerComponentTest {
                 .fileName("test-video.mp4")
                 .uploadedAt(timestamp)
                 .build();
+
+        mockBuyerDetails = SecurityUserDetails.builder()
+                .userId(UUID.randomUUID())
+                .username("buyer@example.com")
+                .authorities(List.of(() -> "ROLE_BUYER"))
+                .active(true)
+                .build();
+
+        mockAgentDetails = SecurityUserDetails.builder()
+                .userId(UUID.randomUUID())
+                .username("agent@example.com")
+                .authorities(List.of(() -> "ROLE_AGENT"))
+                .active(true)
+                .build();
+
+        mockAdminDetails = SecurityUserDetails.builder()
+                .userId(UUID.randomUUID())
+                .username("admin@example.com")
+                .authorities(List.of(() -> "ROLE_ADMIN"))
+                .active(true)
+                .build();
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void setAuthentication(SecurityUserDetails userDetails) {
+        UsernamePasswordAuthenticationToken authentication = 
+            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 
     @Nested
@@ -114,15 +156,16 @@ class MediaUploadControllerComponentTest {
     class SingleFileUploadTests {
 
         @Test
-        @WithMockUser(roles = "BUYER")
         @DisplayName("Should return 201 Created when uploading valid image with authenticated user")
         void uploadMedia_withValidImageAndAuth_shouldReturn201() throws Exception {
+            setAuthentication(mockBuyerDetails);
             when(mediaUploadService.uploadMedia(any(), eq("properties"), any(), any()))
                     .thenReturn(mockImageResponse);
 
             mockMvc.perform(multipart("/api/v1/media/upload")
                             .file(validImageFile)
                             .param("folder", "properties")
+                            .with(user(mockBuyerDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isCreated())
@@ -139,15 +182,16 @@ class MediaUploadControllerComponentTest {
         }
 
         @Test
-        @WithMockUser(roles = "AGENT")
         @DisplayName("Should return 201 Created when uploading valid video")
         void uploadMedia_withValidVideo_shouldReturn201() throws Exception {
+            setAuthentication(mockAgentDetails);
             when(mediaUploadService.uploadMedia(any(), eq("videos"), any(), any()))
                     .thenReturn(mockVideoResponse);
 
             mockMvc.perform(multipart("/api/v1/media/upload")
                             .file(validVideoFile)
                             .param("folder", "videos")
+                            .with(user(mockAgentDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isCreated())
@@ -159,9 +203,9 @@ class MediaUploadControllerComponentTest {
         }
 
         @Test
-        @WithMockUser(roles = "BUYER")
         @DisplayName("Should return 201 Created when uploading HEIC file")
         void uploadMedia_withHeicFile_shouldReturn201() throws Exception {
+            setAuthentication(mockBuyerDetails);
             MediaUploadResponse heicResponse = MediaUploadResponse.builder()
                     .mediaUrl("https://realvista.sgp1.cdn.digitaloceanspaces.com/properties/photo.heic")
                     .mediaType("image/heic")
@@ -176,6 +220,7 @@ class MediaUploadControllerComponentTest {
             mockMvc.perform(multipart("/api/v1/media/upload")
                             .file(validHeicFile)
                             .param("folder", "properties")
+                            .with(user(mockBuyerDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isCreated())
@@ -183,14 +228,15 @@ class MediaUploadControllerComponentTest {
         }
 
         @Test
-        @WithMockUser(roles = "BUYER")
         @DisplayName("Should use default folder 'media' when no folder specified")
         void uploadMedia_withNoFolder_shouldUseDefaultFolder() throws Exception {
+            setAuthentication(mockBuyerDetails);
             when(mediaUploadService.uploadMedia(any(), eq("media"), any(), any()))
                     .thenReturn(mockImageResponse);
 
             mockMvc.perform(multipart("/api/v1/media/upload")
                             .file(validImageFile)
+                            .with(user(mockBuyerDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isCreated());
@@ -199,15 +245,16 @@ class MediaUploadControllerComponentTest {
         }
 
         @Test
-        @WithMockUser(roles = "BUYER")
         @DisplayName("Should return 500 when service throws IOException")
         void uploadMedia_whenServiceThrowsIOException_shouldReturn500() throws Exception {
+            setAuthentication(mockBuyerDetails);
             when(mediaUploadService.uploadMedia(any(), anyString(), any(), any()))
                     .thenThrow(new RuntimeException("Failed to upload media: Connection timeout"));
 
             mockMvc.perform(multipart("/api/v1/media/upload")
                             .file(validImageFile)
                             .param("folder", "test")
+                            .with(user(mockBuyerDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isInternalServerError())
@@ -221,9 +268,9 @@ class MediaUploadControllerComponentTest {
     class BulkFileUploadTests {
 
         @Test
-        @WithMockUser(roles = "AGENT")
         @DisplayName("Should return 201 Created when all files upload successfully")
         void uploadBulk_withAllFilesSuccess_shouldReturn201() throws Exception {
+            setAuthentication(mockAgentDetails);
             List<MediaUploadResponse> uploadedFiles = List.of(mockImageResponse, mockVideoResponse);
             BulkMediaUploadResponse bulkResponse = BulkMediaUploadResponse.builder()
                     .uploadedFiles(uploadedFiles)
@@ -242,6 +289,7 @@ class MediaUploadControllerComponentTest {
                             .file(new MockMultipartFile("files", "video1.mp4", 
                                     "video/mp4", "content2".getBytes()))
                             .param("folder", "properties")
+                            .with(user(mockAgentDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isCreated())
@@ -257,9 +305,9 @@ class MediaUploadControllerComponentTest {
         }
 
         @Test
-        @WithMockUser(roles = "AGENT")
         @DisplayName("Should return 201 with partial success when some files fail")
         void uploadBulk_withPartialSuccess_shouldReturn201WithFailures() throws Exception {
+            setAuthentication(mockAgentDetails);
             List<MediaUploadResponse> uploadedFiles = List.of(mockImageResponse);
             List<BulkMediaUploadResponse.FailedUpload> failedFiles = List.of(
                     BulkMediaUploadResponse.FailedUpload.builder()
@@ -285,6 +333,7 @@ class MediaUploadControllerComponentTest {
                             .file(new MockMultipartFile("files", "invalid.txt", 
                                     "text/plain", "content2".getBytes()))
                             .param("folder", "test")
+                            .with(user(mockAgentDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isCreated())
@@ -301,14 +350,15 @@ class MediaUploadControllerComponentTest {
     class FileDeleteTests {
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("Should return 200 OK when ADMIN deletes file successfully")
         void deleteMedia_withAdminRole_shouldReturn200() throws Exception {
+            setAuthentication(mockAdminDetails);
             String mediaUrl = "https://realvista.sgp1.cdn.digitaloceanspaces.com/test/file.jpg";
             doNothing().when(mediaUploadService).deleteMedia(mediaUrl);
 
             mockMvc.perform(delete("/api/v1/media")
                             .param("mediaUrl", mediaUrl)
+                            .with(user(mockAdminDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isOk())
@@ -319,14 +369,15 @@ class MediaUploadControllerComponentTest {
         }
 
         @Test
-        @WithMockUser(roles = "AGENT")
         @DisplayName("Should return 200 OK when AGENT deletes file successfully")
         void deleteMedia_withAgentRole_shouldReturn200() throws Exception {
+            setAuthentication(mockAgentDetails);
             String mediaUrl = "https://realvista.sgp1.cdn.digitaloceanspaces.com/properties/image.jpg";
             doNothing().when(mediaUploadService).deleteMedia(mediaUrl);
 
             mockMvc.perform(delete("/api/v1/media")
                             .param("mediaUrl", mediaUrl)
+                            .with(user(mockAgentDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isOk())
@@ -336,11 +387,12 @@ class MediaUploadControllerComponentTest {
         }
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("Should return 400 when mediaUrl is empty")
         void deleteMedia_withEmptyUrl_shouldReturn400() throws Exception {
+            setAuthentication(mockAdminDetails);
             mockMvc.perform(delete("/api/v1/media")
                             .param("mediaUrl", "")
+                            .with(user(mockAdminDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isBadRequest())
@@ -351,15 +403,16 @@ class MediaUploadControllerComponentTest {
         }
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("Should return 500 when service throws exception")
         void deleteMedia_whenServiceThrowsException_shouldReturn500() throws Exception {
+            setAuthentication(mockAdminDetails);
             String mediaUrl = "https://realvista.sgp1.cdn.digitaloceanspaces.com/test/file.jpg";
             doThrow(new RuntimeException("Failed to delete media: File not found"))
                     .when(mediaUploadService).deleteMedia(mediaUrl);
 
             mockMvc.perform(delete("/api/v1/media")
                             .param("mediaUrl", mediaUrl)
+                            .with(user(mockAdminDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isInternalServerError())
