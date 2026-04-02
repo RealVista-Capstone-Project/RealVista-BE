@@ -281,21 +281,23 @@ public class DocuSignServiceImpl implements DocuSignService {
                     buildTextTab("securityDeposit", data.getSecurityDeposit())
             ));
 
-            // Renter role (routing order 1 — signs first)
-            TemplateRole renterRole = new TemplateRole();
-            renterRole.setEmail(data.getRenterEmail());
-            renterRole.setName(data.getRenterName());
-            renterRole.setRoleName("renter");
-            renterRole.setClientUserId(data.getRenterClientUserId());
-            renterRole.setTabs(renterTabs);
-
-            // Landlord role (routing order 2 — signs after renter)
+            // Landlord role (routing order 1 — signs first)
             TemplateRole landlordRole = new TemplateRole();
             landlordRole.setEmail(data.getLandlordEmail());
             landlordRole.setName(data.getLandlordName());
             landlordRole.setRoleName("landlord");
             landlordRole.setClientUserId(data.getLandlordClientUserId());
+            landlordRole.setRoutingOrder("1");
             landlordRole.setTabs(landlordTabs);
+
+            // Renter role (routing order 2 — signs after landlord)
+            TemplateRole renterRole = new TemplateRole();
+            renterRole.setEmail(data.getRenterEmail());
+            renterRole.setName(data.getRenterName());
+            renterRole.setRoleName("renter");
+            renterRole.setClientUserId(data.getRenterClientUserId());
+            renterRole.setRoutingOrder("2");
+            renterRole.setTabs(renterTabs);
 
             // Build envelope from template
             EnvelopeDefinition envelope = new EnvelopeDefinition();

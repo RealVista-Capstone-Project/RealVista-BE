@@ -42,9 +42,8 @@ public class ListingAnalyticsController {
     @GetMapping("/{listingId}/analytics")
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Get listing analytics",
-            description = "Retrieves aggregated analytics metrics for a listing including views, unique viewers, "
-                    + "tour bookings, and conversion rate. The listing creator or the property owner may access.")
+    @Operation(summary = "Get listing analytics", description = "Retrieves aggregated analytics metrics for a listing including views, unique viewers, "
+            + "tour bookings, and conversion rate. The listing creator or the property owner may access.")
     public ResponseEntity<ApiResponse<ListingAnalyticsDTO>> getListingAnalytics(
             @PathVariable UUID listingId,
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
@@ -81,7 +80,8 @@ public class ListingAnalyticsController {
     }
 
     /**
-     * Listing creator or property owner may view analytics (same rule as listing modification elsewhere).
+     * Listing creator or property owner may view analytics (same rule as listing
+     * modification elsewhere).
      */
     private boolean canViewListingAnalytics(Listing listing, UUID userId) {
         if (listing.getUserId().equals(userId)) {

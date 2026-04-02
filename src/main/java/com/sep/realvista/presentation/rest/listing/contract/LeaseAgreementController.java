@@ -118,8 +118,9 @@ public class LeaseAgreementController {
     @PostMapping("/{id}/send-renter")
     @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
     @Operation(
-            summary = "Send lease to renter for signing",
-            description = "Creates a DocuSign envelope and returns an embedded signing URL. "
+            summary = "Send lease to renter for signing (second step)",
+            description = "After the landlord has signed, call this to get an embedded signing URL for the renter. "
+                    + "The lease must be in PENDING_LANDLORD status. "
                     + "The frontend should redirect the renter to the returned signingUrl."
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> sendToRenterForSigning(
@@ -147,8 +148,9 @@ public class LeaseAgreementController {
     @PostMapping("/{id}/send-landlord")
     @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
     @Operation(
-            summary = "Send lease to landlord for signing",
-            description = "After renter signs, generates a DocuSign signing URL for the landlord."
+            summary = "Send lease to landlord for signing (first step)",
+            description = "Creates a DocuSign envelope and returns an embedded signing URL for the landlord. "
+                    + "Landlord signs first; after signing, call send-renter to get the renter signing URL."
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> sendToLandlordForSigning(
             @PathVariable UUID id,

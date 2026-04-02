@@ -93,18 +93,22 @@ public final class SecurityConstants {
 
     /**
      * CORS configuration.
-     * Allowed origins can be extended via the CORS_ALLOWED_ORIGINS environment variable
-     * (comma-separated list, e.g. "http://localhost:3000,http://152.42.235.208:8080").
+     * Allowed origins can be extended via the CORS_ALLOWED_ORIGINS environment
+     * variable
+     * (comma-separated list, e.g.
+     * "http://localhost:3000,http://152.42.235.208:8080").
      */
     public static final class Cors {
-        public static final List<String> DEFAULT_ORIGINS = List.of("http://localhost:3000");
+        public static final List<String> DEFAULT_ORIGINS = List.of("http://localhost:3000",
+                "https://0fb4-14-161-6-119.ngrok-free.app");
         public static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
         public static final List<String> ALLOWED_HEADERS = List.of("Authorization", "Content-Type", "Accept", "Origin");
         public static final List<String> EXPOSED_HEADERS = List.of("Authorization", "Content-Disposition");
         public static final long MAX_AGE_SECONDS = 3600L;
 
         /**
-         * Builds the allowed origins list from DEFAULT_ORIGINS + CORS_ALLOWED_ORIGINS env var.
+         * Builds the allowed origins list from DEFAULT_ORIGINS + CORS_ALLOWED_ORIGINS
+         * env var.
          */
         public static List<String> getAllowedOrigins() {
             String extra = System.getenv("CORS_ALLOWED_ORIGINS");

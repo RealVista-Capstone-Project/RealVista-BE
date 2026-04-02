@@ -102,6 +102,10 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "docusign_status", length = 50)
     private String docusignStatus;
 
+    public void submitToLandlord() {
+        this.status = LeaseStatus.PENDING_LANDLORD;
+    }
+
     public void submitToRenter() {
         this.status = LeaseStatus.PENDING_RENTER;
     }
@@ -142,8 +146,8 @@ public class LeaseAgreement extends BaseEntity {
 
     public void renterSignViaDocuSign() {
         this.signedByRenterAt = LocalDateTime.now();
-        this.docusignStatus = "renter_signed";
-        this.status = LeaseStatus.PENDING_LANDLORD;
+        this.docusignStatus = "completed";
+        this.status = LeaseStatus.ACTIVE;
     }
 
     public void landlordSignViaDocuSign() {
