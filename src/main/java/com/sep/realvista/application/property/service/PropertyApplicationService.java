@@ -1,5 +1,8 @@
 package com.sep.realvista.application.property.service;
 
+import com.sep.realvista.application.common.dto.PageResponse;
+import com.sep.realvista.application.property.dto.PropertySearchCriteria;
+import com.sep.realvista.domain.agent.PropertyAgent;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyAttributeRequest;
@@ -26,6 +29,8 @@ import com.sep.realvista.infrastructure.persistence.property.amenity.AmenityJpaR
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -104,7 +109,7 @@ public class PropertyApplicationService {
         savedProperty.updateAmenities(buildAmenities(propertyId, request.getAmenityIds()));
         savedProperty.updateAttributes(buildAttributes(propertyId, request.getAttributes()));
         savedProperty.updateMedia(buildMedia(propertyId, request.getMedia(), ownerId));
-        
+
         propertyRepository.save(savedProperty);
         entityManager.flush();
         entityManager.clear();
@@ -127,22 +132,22 @@ public class PropertyApplicationService {
         // Update basic fields
         if (request.getLocationId() != null || request.getPropertyTypeCode() != null) {
             property.updateLocationAndType(
-                request.getLocationId(),
-                request.getPropertyTypeCode() != null ? resolvePropertyTypeId(request.getPropertyTypeCode()) : null
+                    request.getLocationId(),
+                    request.getPropertyTypeCode() != null ? resolvePropertyTypeId(request.getPropertyTypeCode()) : null
             );
         }
 
         property.updateDetails(
-            request.getStreetAddress(),
-            request.getDescriptions(),
-            null // Slug update logic can be added if needed
+                request.getStreetAddress(),
+                request.getDescriptions(),
+                null // Slug update logic can be added if needed
         );
 
         property.updateDimensions(
-            request.getLandSizeM2(),
-            request.getUsableSizeM2(),
-            request.getWidthM(),
-            request.getLengthM()
+                request.getLandSizeM2(),
+                request.getUsableSizeM2(),
+                request.getWidthM(),
+                request.getLengthM()
         );
 
         if (request.getLatitude() != null && request.getLongitude() != null) {
@@ -189,120 +194,138 @@ public class PropertyApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PropertySummaryResponse> getMyProperties() {
+    public PageResponse<PropertySummaryResponse> getMyProperties(
+            PropertySearchCriteria criteria,
+            Pageable pageable) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UUID userId = getCurrentUserId();
-        log.info("Getting properties for user: {}", userId);
-        
-        List<Property> properties = propertyRepository.findByOwnerIdOrAgentId(userId);
-        
-        return properties.stream().map(property -> {
-            // Find thumbnail media (is_primary = true) if any exists to pass to mapper
-            String thumbnailUrl = propertyMediaRepository.findByPropertyId(property.getPropertyId())
-                    .stream()
-                    .filter(pm -> Boolean.TRUE.equals(pm.getIsPrimary()))
-                    .findFirst()
-                    .map(PropertyMedia::getThumbnailUrl)
-                    .orElse(null);
-            
-            PropertySummaryResponse response = propertyMapper.toSummaryResponse(property, thumbnailUrl);
-            
-            // Enrich with owner info
-            userRepository.findById(property.getOwnerId()).ifPresent(owner -> {
-                response.setOwnerName(owner.getFullName());
-                response.setOwnerPhone(owner.getPhone());
-            });
-            
-            return response;
+
+        boolean isAgent = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_AGENT"));
+
+        String keyword = criteria != null ? criteria.getKeyword() : null;
+        Page<Property> propertiesPage;
+
+        if (isAgent) {
+            log.info("Getting properties for agent: {} with criteria: {}", userId, criteria);
+            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, pageable);
+        } else {
+            log.info("Getting properties for owner: {} with criteria: {}", userId, criteria);
+            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, pageable);
+        }
+
+        List<PropertySummaryResponse> content = propertiesPage.getContent().stream().map(property -> {
+            UUID propId = property.getPropertyId();
+
+            List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propId);
+
+            List<PropertyAttributeValue> attributes =
+                    propertyAttributeValueRepository.findByPropertyIdWithAttribute(propId);
+
+            List<PropertyAmenity> amenities =
+                    propertyAmenityRepository.findByPropertyIdWithAmenity(propId);
+
+            return propertyMapper.toSummaryResponse(property, media, attributes, amenities);
         }).collect(Collectors.toList());
+
+        return PageResponse.<PropertySummaryResponse>builder()
+                .content(content)
+                .page(propertiesPage.getNumber())
+                .size(propertiesPage.getSize())
+                .totalElements(propertiesPage.getTotalElements())
+                .totalPages(propertiesPage.getTotalPages())
+                .first(propertiesPage.isFirst())
+                .last(propertiesPage.isLast())
+                .build();
     }
 
-    @Transactional(readOnly = true)
-    public List<com.sep.realvista.application.listing.dto.AmenityDTO> getAmenities() {
-        log.info("Getting all amenities");
-        return amenityJpaRepository.findAll().stream()
-                .map(amenity -> com.sep.realvista.application.listing.dto.AmenityDTO.builder()
-                        .amenityId(amenity.getAmenityId())
-                        .amenityName(amenity.getAmenityName())
-                        .amenityType(amenity.getAmenityType().name())
-                        .description(amenity.getDescription())
-                        .build())
-                .collect(Collectors.toList());
+@Transactional(readOnly = true)
+public List<com.sep.realvista.application.listing.dto.AmenityDTO> getAmenities() {
+    log.info("Getting all amenities");
+    return amenityJpaRepository.findAll().stream()
+            .map(amenity -> com.sep.realvista.application.listing.dto.AmenityDTO.builder()
+                    .amenityId(amenity.getAmenityId())
+                    .amenityName(amenity.getAmenityName())
+                    .amenityType(amenity.getAmenityType().name())
+                    .description(amenity.getDescription())
+                    .build())
+            .collect(Collectors.toList());
+}
+
+private UUID resolvePropertyTypeId(String propertyTypeCode) {
+    if (propertyTypeCode == null || propertyTypeCode.isBlank()) {
+        throw new IllegalArgumentException("Property type code is required");
     }
 
-    private UUID resolvePropertyTypeId(String propertyTypeCode) {
-        if (propertyTypeCode == null || propertyTypeCode.isBlank()) {
-            throw new IllegalArgumentException("Property type code is required");
-        }
-
-        // Try parsing as UUID first (backward compatibility)
-        try {
-            return UUID.fromString(propertyTypeCode);
-        } catch (IllegalArgumentException ignored) {
-            // Not a UUID, treat as code
-        }
-
-        return propertyTypeRepository.findByCode(propertyTypeCode)
-                .map(com.sep.realvista.domain.property.PropertyType::getPropertyTypeId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("PropertyType not found with code: %s", propertyTypeCode)));
+    // Try parsing as UUID first (backward compatibility)
+    try {
+        return UUID.fromString(propertyTypeCode);
+    } catch (IllegalArgumentException ignored) {
+        // Not a UUID, treat as code
     }
 
-    private List<PropertyAmenity> buildAmenities(UUID propertyId, List<UUID> amenityIds) {
-        if (amenityIds == null || amenityIds.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return amenityIds.stream()
-                .map(id -> PropertyAmenity.builder()
-                        .propertyId(propertyId)
-                        .amenityId(id)
-                        .build())
-                .collect(Collectors.toList());
-    }
+    return propertyTypeRepository.findByCode(propertyTypeCode)
+            .map(com.sep.realvista.domain.property.PropertyType::getPropertyTypeId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    String.format("PropertyType not found with code: %s", propertyTypeCode)));
+}
 
-    private List<PropertyAttributeValue> buildAttributes(
-            UUID propertyId, List<PropertyAttributeRequest> attributeRequests) {
-        if (attributeRequests == null || attributeRequests.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return attributeRequests.stream()
-                .map(req -> {
-                    UUID attributeId = req.getAttributeId();
-                    if (attributeId == null && req.getAttributeCode() != null 
-                            && !req.getAttributeCode().isBlank()) {
-                        attributeId = propertyAttributeRepository.findByCode(req.getAttributeCode())
-                                .map(com.sep.realvista.domain.property.attribute.PropertyAttribute
-                                        ::getPropertyAttributeId)
-                                .orElseThrow(() -> new ResourceNotFoundException(
-                                        String.format("PropertyAttribute not found with code: %s", 
-                                                req.getAttributeCode())));
-                    }
-                    return PropertyAttributeValue.builder()
+private List<PropertyAmenity> buildAmenities(UUID propertyId, List<UUID> amenityIds) {
+    if (amenityIds == null || amenityIds.isEmpty()) {
+        return new ArrayList<>();
+    }
+    return amenityIds.stream()
+            .map(id -> PropertyAmenity.builder()
+                    .propertyId(propertyId)
+                    .amenityId(id)
+                    .build())
+            .collect(Collectors.toList());
+}
+
+private List<PropertyAttributeValue> buildAttributes(
+        UUID propertyId, List<PropertyAttributeRequest> attributeRequests) {
+    if (attributeRequests == null || attributeRequests.isEmpty()) {
+        return new ArrayList<>();
+    }
+    return attributeRequests.stream()
+            .map(req -> {
+                UUID attributeId = req.getAttributeId();
+                if (attributeId == null && req.getAttributeCode() != null
+                        && !req.getAttributeCode().isBlank()) {
+                    attributeId = propertyAttributeRepository.findByCode(req.getAttributeCode())
+                            .map(com.sep.realvista.domain.property.attribute.PropertyAttribute
+                                    ::getPropertyAttributeId)
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    String.format("PropertyAttribute not found with code: %s",
+                                            req.getAttributeCode())));
+                }
+                return PropertyAttributeValue.builder()
                         .propertyId(propertyId)
                         .propertyAttributeId(attributeId)
                         .valueNumber(req.getValueNumber())
                         .valueText(req.getValueText())
                         .valueBoolean(req.getValueBoolean())
                         .build();
-                })
-                .collect(Collectors.toList());
-    }
+            })
+            .collect(Collectors.toList());
+}
 
-    private List<PropertyMedia> buildMedia(
-            UUID propertyId, List<PropertyMediaRequest> mediaRequests, UUID ownerId) {
-        if (mediaRequests == null || mediaRequests.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return mediaRequests.stream()
-                .map(req -> PropertyMedia.builder()
-                        .propertyId(propertyId)
-                        .mediaUrl(req.getUrl())
-                        .thumbnailUrl(req.getThumbnailUrl())
-                        .mediaType(req.getType())
-                        .isPrimary(req.getIsThumbnail() != null && req.getIsThumbnail())
-                        .uploadBy(ownerId)
-                        .build())
-                .collect(Collectors.toList());
+private List<PropertyMedia> buildMedia(
+        UUID propertyId, List<PropertyMediaRequest> mediaRequests, UUID ownerId) {
+    if (mediaRequests == null || mediaRequests.isEmpty()) {
+        return new ArrayList<>();
     }
+    return mediaRequests.stream()
+            .map(req -> PropertyMedia.builder()
+                    .propertyId(propertyId)
+                    .mediaUrl(req.getUrl())
+                    .thumbnailUrl(req.getThumbnailUrl())
+                    .mediaType(req.getType())
+                    .isPrimary(req.getIsThumbnail() != null && req.getIsThumbnail())
+                    .uploadBy(ownerId)
+                    .build())
+            .collect(Collectors.toList());
+}
 
     @Transactional
     public PropertyDetailResponse verifyPropertyByAgent(UUID propertyId) {
@@ -318,7 +341,7 @@ public class PropertyApplicationService {
 
         property.verifyByAgent();
         propertyRepository.save(property);
-        
+
         log.info("Property {} verified by agent {}", propertyId, agentId);
 
         return getPropertyDetails(propertyId);
@@ -348,12 +371,12 @@ public class PropertyApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<PropertySummaryResponse> searchProperties(String address, java.math.BigDecimal nLat, 
-                                                           java.math.BigDecimal sLat, java.math.BigDecimal eLng, 
+    public List<PropertySummaryResponse> searchProperties(String address, java.math.BigDecimal nLat,
+                                                           java.math.BigDecimal sLat, java.math.BigDecimal eLng,
                                                            java.math.BigDecimal wLng) {
-        log.info("Searching properties with address: {}, bbox: [{}, {}, {}, {}]", 
+        log.info("Searching properties with address: {}, bbox: [{}, {}, {}, {}]",
                 address, nLat, sLat, eLng, wLng);
-        
+
         List<Property> properties;
         if (nLat != null && sLat != null && eLng != null && wLng != null) {
             properties = propertyRepository.findInLocationRange(nLat, sLat, eLng, wLng);
@@ -370,14 +393,14 @@ public class PropertyApplicationService {
                     .findFirst()
                     .map(PropertyMedia::getThumbnailUrl)
                     .orElse(null);
-            
+
             PropertySummaryResponse response = propertyMapper.toSummaryResponse(property, thumbnailUrl);
-            
+
             userRepository.findById(property.getOwnerId()).ifPresent(owner -> {
                 response.setOwnerName(owner.getFullName());
                 response.setOwnerPhone(owner.getPhone());
             });
-            
+
             return response;
         }).collect(Collectors.toList());
     }

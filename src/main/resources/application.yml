@@ -2,7 +2,7 @@ spring:
   application:
     name: realvista
     frontend:
-      url: http://localhost:3000
+      url: ${FRONTEND_URL:http://localhost:3000}
 
   # Mail Configuration
   mail:
@@ -38,8 +38,8 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-        use_sql_comments: true
+        format_sql: false
+        use_sql_comments: false
         jdbc:
           batch_size: 20
         order_inserts: true
@@ -67,6 +67,9 @@ spring:
       - users
       - listings
       - similarListings
+      - hiredAgents
+      - engagement
+      - recommendations
 
   # Multipart File Upload Configuration
   servlet:
@@ -106,6 +109,16 @@ spring:
           ios:
             client-id: ${GOOGLE_IOS_CLIENT_ID:your_google_ios_client_id}
 
+
+# ── AI Microservice Configuration ──
+realvista:
+  ai:
+    service-url: ${AI_SERVICE_URL:http://localhost:3001}
+    api-key: ${AI_SERVICE_API_KEY:your-secure-internal-api-key}
+  recommendation:
+    threshold: ${RECOMMENDATION_THRESHOLD:5}
+    default-limit: ${RECOMMENDATION_DEFAULT_LIMIT:10}
+
 # Actuator Configuration
 management:
   endpoints:
@@ -131,8 +144,8 @@ logging:
     root: ${LOG_LEVEL:INFO}
     com.sep.realvista: DEBUG
     org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    # org.hibernate.SQL: DEBUG
+    # org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:
     console: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
     file: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'

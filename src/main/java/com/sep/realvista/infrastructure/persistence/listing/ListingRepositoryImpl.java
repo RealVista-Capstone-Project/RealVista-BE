@@ -67,6 +67,11 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
+    public List<Listing> findByUserIdOrPropertyOwnerId(UUID userId) {
+        return jpaRepository.findByUserIdOrPropertyOwnerId(userId);
+    }
+
+    @Override
     public List<Listing> findByStatus(ListingStatus status) {
         return jpaRepository.findByStatus(status);
     }
@@ -80,6 +85,13 @@ public class ListingRepositoryImpl implements ListingRepository {
     @Override
     public boolean existsById(UUID id) {
         return jpaRepository.existsById(id);
+    }
+
+    @Override
+    public boolean existsByPropertyIdAndListingTypeAndStatusAndUserId(
+            UUID propertyId, ListingType listingType, ListingStatus status, UUID userId) {
+        return jpaRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
+                propertyId, listingType, status, userId);
     }
 
     @Override

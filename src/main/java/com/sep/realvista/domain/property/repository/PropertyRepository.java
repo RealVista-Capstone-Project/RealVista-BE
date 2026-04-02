@@ -13,7 +13,15 @@ public interface PropertyRepository {
 
     List<Property> findByOwnerId(UUID ownerId);
 
-    List<Property> findByOwnerIdOrAgentId(UUID userId);
+    org.springframework.data.domain.Page<Property> findByOwnerIdAndCriteria(
+            UUID ownerId,
+            String keyword,
+            org.springframework.data.domain.Pageable pageable);
+
+    org.springframework.data.domain.Page<Property> findByAgentIdAndCriteria(
+            UUID agentId,
+            String keyword,
+            org.springframework.data.domain.Pageable pageable);
 
     boolean existsById(UUID id);
 
@@ -21,7 +29,7 @@ public interface PropertyRepository {
 
     void deleteAll();
 
-    List<Property> findInLocationRange(java.math.BigDecimal northLat, java.math.BigDecimal southLat, 
+    List<Property> findInLocationRange(java.math.BigDecimal northLat, java.math.BigDecimal southLat,
                                         java.math.BigDecimal eastLng, java.math.BigDecimal westLng);
 
     List<Property> searchByAddress(String address);

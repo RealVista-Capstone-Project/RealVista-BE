@@ -31,6 +31,11 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     @Query("SELECT l FROM Listing l WHERE l.user.userId = :userId AND l.deleted = false")
     List<Listing> findByUserId(@Param("userId") UUID userId);
 
+    @Query("SELECT l FROM Listing l "
+            + "LEFT JOIN l.property p "
+            + "WHERE (l.user.userId = :userId OR p.ownerId = :userId) AND l.deleted = false")
+    List<Listing> findByUserIdOrPropertyOwnerId(@Param("userId") UUID userId);
+
     @Query("SELECT l FROM Listing l WHERE l.status = :status AND l.deleted = false")
     List<Listing> findByStatus(@Param("status") ListingStatus status);
 
@@ -47,6 +52,15 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
 
     @Query("SELECT l FROM Listing l WHERE l.deleted = false")
     List<Listing> findByDeletedFalse();
+
+    @Query("SELECT COUNT(l) > 0 FROM Listing l WHERE l.property.propertyId = :propertyId "
+            + "AND l.listingType = :listingType AND l.status = :status AND l.userId = :userId "
+            + "AND l.deleted = false")
+    boolean existsByPropertyIdAndListingTypeAndStatusAndUserId(
+            @Param("propertyId") UUID propertyId,
+            @Param("listingType") ListingType listingType,
+            @Param("status") ListingStatus status,
+            @Param("userId") UUID userId);
 
     /**
      * Find published listings within geographical bounds with all filters.

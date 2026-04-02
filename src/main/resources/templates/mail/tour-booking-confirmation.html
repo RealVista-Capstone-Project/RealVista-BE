@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <title>Xác nhận đặt lịch tham quan - RealVista</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f7; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+
+<!-- Wrapper Table -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color: #f4f4f7; padding: 24px 0;">
+    <tr>
+        <td align="center">
+
+            <!-- Email Container -->
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+                   style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+
+                <!-- Header with brand gradient -->
+                <tr>
+                    <td style="background-color: #4f46e5; padding: 28px 40px; text-align: center;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td align="center">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="vertical-align: middle; padding-right: 10px;">
+                                                <div style="width: 36px; height: 36px; background-color: rgba(255,255,255,0.2); border-radius: 8px; text-align: center; line-height: 36px; font-size: 20px; color: #ffffff;">
+                                                    &#8962;
+                                                </div>
+                                            </td>
+                                            <td style="vertical-align: middle;">
+                                                <span style="font-size: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">RealVista</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Success Banner -->
+                <tr>
+                    <td style="background-color: #f0fdf4; padding: 20px 40px; text-align: center; border-bottom: 1px solid #bbf7d0;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+                            <tr>
+                                <td style="vertical-align: middle; padding-right: 10px;">
+                                    <div style="width: 32px; height: 32px; background-color: #22c55e; border-radius: 50%; text-align: center; line-height: 32px; font-size: 18px; color: #ffffff;">
+                                        &#10003;
+                                    </div>
+                                </td>
+                                <td style="vertical-align: middle;">
+                                    <span style="font-size: 16px; font-weight: 600; color: #15803d;">Đặt lịch tham quan thành công</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Content Area -->
+                <tr>
+                    <td style="padding: 32px 40px 16px 40px;">
+                        <!-- Greeting -->
+                        <p style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1f2937;">
+                            Xin chào <span th:text="${senderName}">User</span>,
+                        </p>
+                        <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
+                            Yêu cầu tham quan của bạn đã được gửi thành công! Chủ bất động sản sẽ xem xét và xác nhận lịch hẹn của bạn trong thời gian sớm nhất.
+                        </p>
+
+                        <!-- Property Info Card -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin-bottom: 24px;">
+                            <!-- Property Image (optional) -->
+                            <tr th:if="${propertyImageUrl != null}">
+                                <td style="padding: 0;">
+                                    <img th:src="${propertyImageUrl}"
+                                         alt="Bất động sản"
+                                         style="width: 100%; max-height: 200px; object-fit: cover; display: block;"
+                                         width="520"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 20px;">
+                                    <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        Bất động sản
+                                    </p>
+                                    <p style="margin: 0 0 8px 0; font-size: 17px; font-weight: 700; color: #1f2937;" th:text="${listingName}">
+                                        Căn hộ đẹp tại Quận 1
+                                    </p>
+                                    <p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.5;" th:text="${propertyAddress}">
+                                        123 Đường Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Tour Details -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="background-color: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; margin-bottom: 24px;">
+                            <tr>
+                                <td style="padding: 20px;">
+                                    <p style="margin: 0 0 16px 0; font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        Chi tiết lịch tham quan
+                                    </p>
+
+                                    <!-- Date & Time rows -->
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td width="40" style="vertical-align: top; padding-bottom: 14px;">
+                                                <div style="width: 32px; height: 32px; background-color: #ffffff; border-radius: 8px; text-align: center; line-height: 32px; font-size: 16px;">
+                                                    &#128197;
+                                                </div>
+                                            </td>
+                                            <td style="vertical-align: top; padding-bottom: 14px; padding-left: 8px;">
+                                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Ngày</p>
+                                                <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #1f2937;" th:text="${tourDate}">
+                                                    Thứ Hai, 15/01/2026
+                                                </p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="40" style="vertical-align: top; padding-bottom: 14px;">
+                                                <div style="width: 32px; height: 32px; background-color: #ffffff; border-radius: 8px; text-align: center; line-height: 32px; font-size: 16px;">
+                                                    &#128336;
+                                                </div>
+                                            </td>
+                                            <td style="vertical-align: top; padding-bottom: 14px; padding-left: 8px;">
+                                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Thời gian</p>
+                                                <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #1f2937;" th:text="${tourTime}">
+                                                    10:00 SA - 10:30 SA
+                                                </p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width="40" style="vertical-align: top;">
+                                                <div style="width: 32px; height: 32px; background-color: #ffffff; border-radius: 8px; text-align: center; line-height: 32px; font-size: 16px;">
+                                                    &#9881;
+                                                </div>
+                                            </td>
+                                            <td style="vertical-align: top; padding-left: 8px;">
+                                                <p style="margin: 0; font-size: 12px; color: #6b7280;">Trạng thái</p>
+                                                <p style="margin: 2px 0 0 0; font-size: 15px; font-weight: 600; color: #d97706;" th:text="${status}">
+                                                    Chờ xác nhận
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Notes (conditional) -->
+                        <table th:if="${notes != null and !notes.isEmpty()}" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="margin-bottom: 24px;">
+                            <tr>
+                                <td style="padding: 16px 20px; background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0;">
+                                    <p style="margin: 0 0 4px 0; font-size: 12px; font-weight: 600; color: #92400e;">Ghi chú của bạn</p>
+                                    <p style="margin: 0; font-size: 14px; color: #78350f; line-height: 1.5;" th:text="${notes}">
+                                        Tôi quan tâm đến bất động sản này để thuê dài hạn.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- CTA Button -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="margin-bottom: 24px;">
+                            <tr>
+                                <td align="center">
+                                    <a th:href="${viewAppointmentUrl}"
+                                       style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 32px; border-radius: 8px; letter-spacing: 0.3px;">
+                                        Xem lịch hẹn của tôi
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Help text -->
+                        <p style="margin: 0 0 8px 0; font-size: 13px; color: #9ca3af; line-height: 1.6; text-align: center;">
+                            Cần thay đổi? Bạn có thể quản lý lịch hẹn từ
+                            <a href="https://real-vista.cookie-candy.id.vn" style="color: #6366f1; text-decoration: none;">trang quản lý RealVista</a>.
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td style="padding: 0 40px;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td style="border-top: 1px solid #e5e7eb; padding-top: 24px;"></td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 0 40px 32px 40px; text-align: center;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"
+                               style="margin-bottom: 16px;">
+                            <tr>
+                                <td style="padding: 0 8px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 13px;">Facebook</a>
+                                </td>
+                                <td style="color: #d1d5db;">|</td>
+                                <td style="padding: 0 8px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 13px;">Instagram</a>
+                                </td>
+                                <td style="color: #d1d5db;">|</td>
+                                <td style="padding: 0 8px;">
+                                    <a href="#" style="color: #9ca3af; text-decoration: none; font-size: 13px;">LinkedIn</a>
+                                </td>
+                            </tr>
+                        </table>
+                        <p style="margin: 0 0 6px 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
+                            &copy; 2026 RealVista. Tất cả quyền được bảo lưu.
+                        </p>
+                        <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
+                            Bạn nhận được email này vì bạn đã đặt lịch tham quan trên
+                            <a href="https://real-vista.cookie-candy.id.vn" style="color: #6366f1; text-decoration: none;">RealVista</a>.
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>

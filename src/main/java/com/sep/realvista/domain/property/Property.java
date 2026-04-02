@@ -132,6 +132,13 @@ public class Property extends BaseEntity {
         this.status = PropertyStatus.SOLD;
     }
 
+    public void markAsRented() {
+        if (this.status == PropertyStatus.RENTED) {
+            throw new IllegalStateException("Property is already rented");
+        }
+        this.status = PropertyStatus.RENTED;
+    }
+
     public void cancelReservation() {
         if (this.status != PropertyStatus.RESERVED) {
             throw new IllegalStateException("Only reserved properties can have reservation cancelled");
@@ -172,28 +179,29 @@ public class Property extends BaseEntity {
         this.lengthM = lengthM;
     }
 
-    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY,
                cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> attributeValues = 
+    private List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> attributeValues =
             new java.util.ArrayList<>();
 
-    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY,
                cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @org.hibernate.annotations.Where(clause = "is_property_standard = true")
     @Builder.Default
     private List<PropertyMedia> mediaList = new java.util.ArrayList<>();
 
-    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY,
                cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<com.sep.realvista.domain.property.amenity.PropertyAmenity> amenities = 
+    private List<com.sep.realvista.domain.property.amenity.PropertyAmenity> amenities =
             new java.util.ArrayList<>();
 
     public void updateMedia(List<PropertyMedia> newMedia) {
         // Remove those not in new list (by URL)
-        this.mediaList.removeIf(existing -> 
+        this.mediaList.removeIf(existing ->
             newMedia.stream().noneMatch(n -> n.getMediaUrl().equals(existing.getMediaUrl())));
-        
+
         // Add new ones or update existing ones
         if (newMedia != null) {
             for (var m : newMedia) {
@@ -212,13 +220,13 @@ public class Property extends BaseEntity {
 
     public void updateAmenities(List<com.sep.realvista.domain.property.amenity.PropertyAmenity> newAmenities) {
         // Remove those not in new list
-        this.amenities.removeIf(existing -> 
+        this.amenities.removeIf(existing ->
             newAmenities.stream().noneMatch(n -> n.getAmenityId().equals(existing.getAmenityId())));
-        
+
         // Add those not in existing list
         if (newAmenities != null) {
             for (var newAmenity : newAmenities) {
-                if (this.amenities.stream().noneMatch(existing -> 
+                if (this.amenities.stream().noneMatch(existing ->
                         existing.getAmenityId().equals(newAmenity.getAmenityId()))) {
                     this.amenities.add(newAmenity);
                 }
@@ -229,10 +237,10 @@ public class Property extends BaseEntity {
     public void updateAttributes(
             List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> newAttributes) {
         // Remove those not in new list
-        this.attributeValues.removeIf(existing -> 
-            newAttributes.stream().noneMatch(n -> 
+        this.attributeValues.removeIf(existing ->
+            newAttributes.stream().noneMatch(n ->
                 n.getPropertyAttributeId().equals(existing.getPropertyAttributeId())));
-        
+
         // Add or Update
         if (newAttributes != null) {
             for (var newAttr : newAttributes) {

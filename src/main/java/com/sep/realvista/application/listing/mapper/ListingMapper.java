@@ -48,6 +48,8 @@ public interface ListingMapper {
     @Mapping(target = "totalVideos", ignore = true)
     @Mapping(target = "total3DTours", ignore = true)
     @Mapping(target = "costBreakdown", ignore = true)
+    @Mapping(target = "isFavorite", ignore = true)
+    @Mapping(target = "isCreatedByOwner", ignore = true)
     ListingDetailResponse toDetailResponse(Listing listing);
 
     default ListingDetailResponse toDetailResponseWithMedia(
@@ -365,6 +367,7 @@ public interface ListingMapper {
                 .listingType(listing.getListingType())
                 .status(listing.getStatus())
                 .price(listing.getPrice())
+                .content(listing.getContent())
                 .publishedAt(listing.getPublishedAt())
                 .userType(listing.getUser() != null ? "USER" : null); // Default to USER, can be enhanced later
 
@@ -385,5 +388,55 @@ public interface ListingMapper {
         response.isBoosted(false);
 
         return response.build();
+    }
+
+    /**
+     * Map Listing to ListingResponse for CRUD operations
+     */
+    default com.sep.realvista.application.listing.dto.ListingResponse toListingResponse(Listing listing) {
+        if (listing == null) {
+            return null;
+        }
+
+        var builder = com.sep.realvista.application.listing.dto.ListingResponse.builder()
+                .listingId(listing.getListingId())
+                .propertyId(listing.getPropertyId())
+                .userId(listing.getUserId())
+                .listingType(listing.getListingType())
+                .status(listing.getStatus())
+                .name(listing.getName())
+                .slug(listing.getSlug())
+                .price(listing.getPrice())
+                .minPrice(listing.getMinPrice())
+                .maxPrice(listing.getMaxPrice())
+                .isNegotiable(listing.getIsNegotiable())
+                .availableFrom(listing.getAvailableFrom())
+                .content(listing.getContent())
+                .publishedAt(listing.getPublishedAt())
+                .createdAt(listing.getCreatedAt())
+                .updatedAt(listing.getUpdatedAt());
+
+        // Add address fields from property and location
+        if (listing.getProperty() != null) {
+            builder.streetAddress(listing.getProperty().getStreetAddress());
+            
+            if (listing.getProperty().getLocation() != null) {
+                Location location = listing.getProperty().getLocation();
+                
+                // Traverse up the location hierarchy to collect names
+                java.util.Map<LocationType, String> locationNames = new java.util.HashMap<>();
+                Location current = location;
+                while (current != null) {
+                    locationNames.put(current.getType(), current.getName());
+                    current = current.getParent();
+                }
+                
+                builder.wardName(locationNames.get(LocationType.WARD))
+                        .districtName(locationNames.get(LocationType.DISTRICT))
+                        .cityName(locationNames.get(LocationType.CITY));
+            }
+        }
+
+        return builder.build();
     }
 }
