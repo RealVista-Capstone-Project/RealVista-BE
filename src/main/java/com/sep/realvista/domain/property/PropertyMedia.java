@@ -19,7 +19,11 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
 import java.util.UUID;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "property_medias", indexes = {
@@ -63,6 +67,10 @@ public class PropertyMedia extends BaseEntity {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private Map<String, Object> metadata;
+
     @Column(name = "is_primary")
     @Builder.Default
     private Boolean isPrimary = false;
@@ -83,6 +91,10 @@ public class PropertyMedia extends BaseEntity {
 
     public void updateThumbnailUrl(String url) {
         this.thumbnailUrl = url;
+    }
+
+    public void updateMetadata(Map<String, Object> metadata) {
+        this.metadata = metadata;
     }
 
     public boolean isImage() {
