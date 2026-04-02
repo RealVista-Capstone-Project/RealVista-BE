@@ -69,4 +69,12 @@ public class CreateListingRequest {
      * Must be one of the items in mediaIds.
      */
     private UUID primaryMediaId;
+
+    /**
+     * Whether the listing should be published immediately after creation.
+     * If true, basic publication criteria (property status, duplicate listing) will be checked.
+     * If false, the listing will be created in DRAFT status.
+     */
+    @Builder.Default
+    private Boolean shouldPublish = false;
 }
