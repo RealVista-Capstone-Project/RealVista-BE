@@ -6,6 +6,7 @@ import com.sep.realvista.application.listing.contract.dto.LeaseResponse;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
 import com.sep.realvista.application.listing.contract.mapper.LeaseAgreementMapper;
 import com.sep.realvista.application.service.DocuSignService;
+import com.sep.realvista.infrastructure.config.DocuSignConfig;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.contract.LeaseAgreement;
@@ -39,6 +40,7 @@ public class LeaseAgreementApplicationService {
     private final LeaseAgreementRepository leaseAgreementRepository;
     private final UserRepository userRepository;
     private final DocuSignService docuSignService;
+    private final DocuSignConfig docuSignConfig;
     private final LeaseAgreementMapper leaseAgreementMapper;
     private final RestTemplate restTemplate;
 
@@ -372,7 +374,7 @@ public class LeaseAgreementApplicationService {
     }
 
     private String buildDefaultReturnUrl(UUID leaseId, String role) {
-        return "/leases/" + leaseId + "/signing-complete?role=" + role;
+        return docuSignConfig.getReturnUrl() + "?leaseId=" + leaseId + "&role=" + role;
     }
 
     private PageResponse<LeaseResponse> toPageResponse(Page<LeaseAgreement> page) {
