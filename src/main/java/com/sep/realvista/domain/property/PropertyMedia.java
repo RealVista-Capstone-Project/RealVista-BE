@@ -97,6 +97,14 @@ public class PropertyMedia extends BaseEntity {
         this.metadata = metadata;
     }
 
+    public void updateMediaInfo(MediaType type, String thumbnailUrl, Boolean isPrimary) {
+        if (type != null) {
+            this.mediaType = type;
+        }
+        this.thumbnailUrl = thumbnailUrl;
+        this.isPrimary = isPrimary != null ? isPrimary : false;
+    }
+
     public boolean isImage() {
         return mediaType == MediaType.IMAGE;
     }
