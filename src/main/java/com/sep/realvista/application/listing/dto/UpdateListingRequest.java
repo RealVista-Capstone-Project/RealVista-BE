@@ -1,5 +1,6 @@
 package com.sep.realvista.application.listing.dto;
 
+import com.sep.realvista.domain.listing.ListingType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -58,4 +59,10 @@ public class UpdateListingRequest {
      * Must be one of the items in mediaIds.
      */
     private UUID primaryMediaId;
+
+    /**
+     * The listing type (RENT / SALE).
+     * Can only be updated if the listing is not PUBLISHED, SOLD, or RENTED.
+     */
+    private ListingType listingType;
 }

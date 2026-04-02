@@ -243,4 +243,8 @@ public class Listing extends BaseEntity {
         this.availableFrom = availableFrom;
     }
 
+    public void setListingType(ListingType listingType) {
+        this.listingType = listingType;
+    }
+
 }

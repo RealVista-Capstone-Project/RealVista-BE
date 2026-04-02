@@ -589,6 +589,20 @@ public class ListingApplicationService {
             listing.setAvailableFrom(request.getAvailableFrom());
         }
 
+        // Update listing type if requested and allowed
+        if (request.getListingType() != null && !listing.getListingType().equals(request.getListingType())) {
+            if (listing.getStatus() == ListingStatus.PUBLISHED
+                    || listing.getStatus() == ListingStatus.SOLD
+                    || listing.getStatus() == ListingStatus.RENTED) {
+                log.error("Cannot change listing type for listing ID: {} in status: {}",
+                        listingId, listing.getStatus());
+                throw new BusinessConflictException(
+                        "Cannot change listing type for a listing that is Published, Sold, or Rented",
+                        "FORBIDDEN_TYPE_CHANGE");
+            }
+            listing.setListingType(request.getListingType());
+        }
+
         // Save listing
         Listing updatedListing = listingRepository.save(listing);
 
