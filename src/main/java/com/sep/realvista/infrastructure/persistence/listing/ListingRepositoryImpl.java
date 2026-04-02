@@ -88,6 +88,13 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
+    public boolean existsByPropertyIdAndListingTypeAndStatusAndUserId(
+            UUID propertyId, ListingType listingType, ListingStatus status, UUID userId) {
+        return jpaRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
+                propertyId, listingType, status, userId);
+    }
+
+    @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }

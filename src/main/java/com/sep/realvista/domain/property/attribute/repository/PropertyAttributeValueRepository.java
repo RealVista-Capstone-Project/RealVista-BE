@@ -49,4 +49,9 @@ public interface PropertyAttributeValueRepository {
      * @return list of all property attribute values with attribute details
      */
     List<PropertyAttributeValue> findAllAttributesByPropertyIds(List<UUID> propertyIds);
+
+    void deleteByPropertyId(UUID propertyId);
+
+    <S extends PropertyAttributeValue> List<S> saveAll(Iterable<S> entities);
+
 }
