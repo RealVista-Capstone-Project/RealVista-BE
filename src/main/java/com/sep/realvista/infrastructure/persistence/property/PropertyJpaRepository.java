@@ -25,15 +25,39 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
            + "LEFT JOIN FETCH p.location loc "
            + "LEFT JOIN FETCH loc.parent dist "
            + "LEFT JOIN FETCH dist.parent city "
-           + "WHERE p.ownerId = :ownerId AND p.deleted = false AND "
+           + "WHERE p.ownerId = :ownerId AND p.deleted = false "
+           + "AND p.status = 'AVAILABLE' AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)",
            countQuery = "SELECT COUNT(p) FROM Property p "
-           + "WHERE p.ownerId = :ownerId AND p.deleted = false AND "
+           + "WHERE p.ownerId = :ownerId AND p.deleted = false "
+           + "AND p.status = 'AVAILABLE' AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)")
     org.springframework.data.domain.Page<Property> findByOwnerIdAndKeyword(
             @Param("ownerId") UUID ownerId,
+            @Param("keyword") String keyword,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query(value = "SELECT DISTINCT p FROM Property p "
+           + "JOIN Engagement e ON e.propertyId = p.propertyId "
+           + "LEFT JOIN FETCH p.propertyType pt "
+           + "LEFT JOIN FETCH pt.propertyCategory "
+           + "LEFT JOIN FETCH p.location loc "
+           + "LEFT JOIN FETCH loc.parent dist "
+           + "LEFT JOIN FETCH dist.parent city "
+           + "WHERE e.status = 'ACCEPTED' AND (e.initiatorId = :agentId OR e.receiverId = :agentId) "
+           + "AND p.deleted = false AND p.status = 'AVAILABLE' AND "
+           + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
+           + "LOWER(p.descriptions) LIKE :keyword)",
+           countQuery = "SELECT COUNT(DISTINCT p) FROM Property p "
+           + "JOIN Engagement e ON e.propertyId = p.propertyId "
+           + "WHERE e.status = 'ACCEPTED' AND (e.initiatorId = :agentId OR e.receiverId = :agentId) "
+           + "AND p.deleted = false AND p.status = 'AVAILABLE' AND "
+           + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
+           + "LOWER(p.descriptions) LIKE :keyword)")
+    org.springframework.data.domain.Page<Property> findByAgentIdAndKeyword(
+            @Param("agentId") UUID agentId,
             @Param("keyword") String keyword,
             org.springframework.data.domain.Pageable pageable);
 }

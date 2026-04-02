@@ -42,6 +42,17 @@ public class PropertyRepositoryImpl implements PropertyRepository {
     }
 
     @Override
+    public org.springframework.data.domain.Page<Property> findByAgentIdAndCriteria(
+            UUID agentId,
+            String keyword,
+            org.springframework.data.domain.Pageable pageable) {
+        String keywordPattern = (keyword == null || keyword.isBlank())
+                ? null
+                : "%" + keyword.trim().toLowerCase() + "%";
+        return jpaRepository.findByAgentIdAndKeyword(agentId, keywordPattern, pageable);
+    }
+
+    @Override
     public boolean existsById(UUID id) {
         return jpaRepository.existsById(id);
     }

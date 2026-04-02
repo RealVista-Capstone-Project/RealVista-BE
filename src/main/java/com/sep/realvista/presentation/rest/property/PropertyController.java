@@ -72,6 +72,7 @@ public class PropertyController {
         return ResponseEntity.ok(ApiResponse.success("Property details retrieved successfully", response));
     }
 
+    // TODO: thêm RBAC cho agent - get by engagement
     @GetMapping("/me")
     @Operation(
             summary = "Get current user's properties",

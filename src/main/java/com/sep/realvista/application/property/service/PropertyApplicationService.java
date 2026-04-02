@@ -177,12 +177,22 @@ public class PropertyApplicationService {
     public PageResponse<PropertySummaryResponse> getMyProperties(
             PropertySearchCriteria criteria,
             Pageable pageable) {
-        UUID ownerId = getCurrentUserId();
-        log.info("Getting properties for owner: {} with criteria: {}", ownerId, criteria);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        UUID userId = getCurrentUserId();
         
+        boolean isAgent = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_AGENT"));
+
         String keyword = criteria != null ? criteria.getKeyword() : null;
-        Page<Property> propertiesPage =
-                propertyRepository.findByOwnerIdAndCriteria(ownerId, keyword, pageable);
+        Page<Property> propertiesPage;
+
+        if (isAgent) {
+            log.info("Getting properties for agent: {} with criteria: {}", userId, criteria);
+            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, pageable);
+        } else {
+            log.info("Getting properties for owner: {} with criteria: {}", userId, criteria);
+            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, pageable);
+        }
         
         List<PropertySummaryResponse> content = propertiesPage.getContent().stream().map(property -> {
             UUID propId = property.getPropertyId();

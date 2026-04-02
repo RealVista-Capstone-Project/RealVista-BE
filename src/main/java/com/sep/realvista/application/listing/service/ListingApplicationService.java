@@ -975,35 +975,36 @@ public class ListingApplicationService {
         }
         propertyRepository.save(property);
 
-        // 2. Synchronize all associated listings
+        // 2. Synchronize all associated listings of the same type
         List<Listing> listings = listingRepository.findByPropertyId(propertyId);
         Set<UUID> usersToNotify = new HashSet<>();
         
+        // Always notify the user who triggered the action and the property owner
+        usersToNotify.add(triggeringListing.getUserId());
+        usersToNotify.add(property.getOwnerId());
+        
         for (Listing l : listings) {
-            // Keep track of which users are associated with this property's listings
-            usersToNotify.add(l.getUserId());
-
-            // Skip listings that are already in a terminal state
-            if (l.getStatus() == ListingStatus.SOLD || l.getStatus() == ListingStatus.RENTED) {
+            // Skip the one that triggered this action or those already in a terminal state
+            if (l.getListingId().equals(triggeringListing.getListingId())
+                    || l.getStatus() == ListingStatus.SOLD 
+                    || l.getStatus() == ListingStatus.RENTED) {
                 continue;
             }
 
-            // Only mark PUBLISHED listings as closed to adhere to domain constraints
-            // (Listing.markAsSold/Rented requires PUBLISHED status)
-            if (l.getStatus() == ListingStatus.PUBLISHED) {
+            // Only close listings that have the same type as the triggering listing
+            if (l.getListingType() == triggeringListing.getListingType()
+                    && l.getStatus() == ListingStatus.PUBLISHED) {
+                
+                // Keep track of users whose listings were actually updated
+                usersToNotify.add(l.getUserId());
+
                 if (l.getListingType() == ListingType.SALE) {
                     l.markAsSold();
                 } else if (l.getListingType() == ListingType.RENT) {
                     l.markAsRented();
                 }
+                listingRepository.save(l);
             }
-        }
-        // Always notify the property owner
-        usersToNotify.add(property.getOwnerId());
-
-        // Save all modified listings
-        for (Listing l : listings) {
-            listingRepository.save(l);
         }
 
         // 3. Dispatch notifications
@@ -1012,6 +1013,9 @@ public class ListingApplicationService {
 
     private void sendClosingNotifications(Property property, Listing triggeringListing, Set<UUID> userIds,
                                           PropertyStatus status) {
+        log.info("Starting closing notifications for property {} - Status: {} | Recipients: {}",
+                property.getPropertyId(), status, userIds.size());
+
         String event = status == PropertyStatus.SOLD ? "sold" : "rented";
         EventType eventType = status == PropertyStatus.SOLD
                 ? EventType.LISTING_SOLD : EventType.LISTING_RENTED;

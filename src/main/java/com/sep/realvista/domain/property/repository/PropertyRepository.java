@@ -18,6 +18,11 @@ public interface PropertyRepository {
             String keyword, 
             org.springframework.data.domain.Pageable pageable);
 
+    org.springframework.data.domain.Page<Property> findByAgentIdAndCriteria(
+            UUID agentId,
+            String keyword,
+            org.springframework.data.domain.Pageable pageable);
+
     boolean existsById(UUID id);
 
     void deleteById(UUID id);
