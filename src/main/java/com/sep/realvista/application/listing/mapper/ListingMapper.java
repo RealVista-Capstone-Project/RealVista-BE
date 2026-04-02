@@ -48,6 +48,8 @@ public interface ListingMapper {
     @Mapping(target = "totalVideos", ignore = true)
     @Mapping(target = "total3DTours", ignore = true)
     @Mapping(target = "costBreakdown", ignore = true)
+    @Mapping(target = "isFavorite", ignore = true)
+    @Mapping(target = "isCreatedByOwner", ignore = true)
     ListingDetailResponse toDetailResponse(Listing listing);
 
     default ListingDetailResponse toDetailResponseWithMedia(
@@ -365,6 +367,7 @@ public interface ListingMapper {
                 .listingType(listing.getListingType())
                 .status(listing.getStatus())
                 .price(listing.getPrice())
+                .content(listing.getContent())
                 .publishedAt(listing.getPublishedAt())
                 .userType(listing.getUser() != null ? "USER" : null); // Default to USER, can be enhanced later
 
@@ -408,6 +411,7 @@ public interface ListingMapper {
                 .maxPrice(listing.getMaxPrice())
                 .isNegotiable(listing.getIsNegotiable())
                 .availableFrom(listing.getAvailableFrom())
+                .content(listing.getContent())
                 .publishedAt(listing.getPublishedAt())
                 .createdAt(listing.getCreatedAt())
                 .updatedAt(listing.getUpdatedAt());

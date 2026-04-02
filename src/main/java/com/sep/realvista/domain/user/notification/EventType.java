@@ -10,5 +10,6 @@ public enum EventType {
     NEW_MESSAGE,
     LISTING_EXPIRED,
     LISTING_SOLD,
+    LISTING_RENTED,
     SYSTEM
 }

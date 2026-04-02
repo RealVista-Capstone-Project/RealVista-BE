@@ -19,11 +19,11 @@ spring:
 
   # JPA Configuration
   jpa:
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
-
+        format_sql: false
+  
   # Cache
   cache:
     type: simple

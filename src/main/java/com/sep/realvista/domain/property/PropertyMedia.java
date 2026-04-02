@@ -67,6 +67,10 @@ public class PropertyMedia extends BaseEntity {
     @Builder.Default
     private Boolean isPrimary = false;
 
+    @Column(name = "is_property_standard")
+    @Builder.Default
+    private Boolean isPropertyStandard = true;
+
     public void markAsPrimary() {
         this.isPrimary = true;
     }
@@ -83,6 +87,14 @@ public class PropertyMedia extends BaseEntity {
 
     public void updateThumbnailUrl(String url) {
         this.thumbnailUrl = url;
+    }
+
+    public void updateMetadata(MediaType type, String thumbnailUrl, Boolean isPrimary) {
+        if (type != null) {
+            this.mediaType = type;
+        }
+        this.thumbnailUrl = thumbnailUrl;
+        this.isPrimary = isPrimary != null ? isPrimary : false;
     }
 
     public boolean isImage() {

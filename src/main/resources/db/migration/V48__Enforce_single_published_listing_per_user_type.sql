@@ -1,4 +1,4 @@
--- V45__Enforce_single_published_listing_per_user_type.sql
+-- V48__Enforce_single_published_listing_per_user_type.sql
 -- Ensure that each user has only one PUBLISHED listing per listing_type (SALE, RENT)
 -- Any extra published listings mapped to the same user and listing_type will be set to DRAFT
 -- Compatible with PostgreSQL and H2.
