@@ -19,11 +19,11 @@ import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.property.location.repository.LocationRepository;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
-import com.sep.realvista.domain.property.location.repository.LocationRepository;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.infrastructure.persistence.property.amenity.AmenityJpaRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
@@ -78,7 +78,7 @@ public class PropertyApplicationService {
 
         String titleSlug = UUID.randomUUID().toString(); // Temporary slug generation
 
-        UUID propertyLocationId = request.getLocationId() != null ? request.getLocationId() 
+        UUID propertyLocationId = request.getLocationId() != null ? request.getLocationId()
                 : resolveLocationId(request.getLatitude(), request.getLongitude());
 
         Property property = Property.builder()
@@ -213,14 +213,15 @@ public class PropertyApplicationService {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_AGENT"));
 
         String keyword = criteria != null ? criteria.getKeyword() : null;
+        PropertyStatus status = criteria != null ? criteria.getStatus() : null;
         Page<Property> propertiesPage;
 
         if (isAgent) {
             log.info("Getting properties for agent: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, pageable);
+            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, status, pageable);
         } else {
             log.info("Getting properties for owner: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, pageable);
+            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, status, pageable);
         }
 
         List<PropertySummaryResponse> content = propertiesPage.getContent().stream().map(property -> {
@@ -259,8 +260,8 @@ public class PropertyApplicationService {
             return null;
         }
         // Return the first one (already sorted by WARD -> DISTRICT -> CITY)
-        UUID resolvedId = locations.get(0).getLocationId();
-        log.info("Resolved location ID: {} ({})", resolvedId, locations.get(0).getName());
+        UUID resolvedId = locations.getFirst().getLocationId();
+        log.info("Resolved location ID: {} ({})", resolvedId, locations.getFirst().getName());
         return resolvedId;
     }
 
