@@ -81,6 +81,15 @@ public class PropertyApplicationService {
         UUID propertyLocationId = request.getLocationId() != null ? request.getLocationId()
                 : resolveLocationId(request.getLatitude(), request.getLongitude());
 
+        PropertyStatus finalStatus = isAgentCreatingForOwner ? PropertyStatus.PENDING : PropertyStatus.DRAFT;
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            try {
+                finalStatus = PropertyStatus.valueOf(request.getStatus().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid property status provided: {}. Using default.", request.getStatus());
+            }
+        }
+
         Property property = Property.builder()
                 .ownerId(ownerId)
                 .locationId(propertyLocationId)
@@ -94,7 +103,7 @@ public class PropertyApplicationService {
                 .lengthM(request.getLengthM())
                 .descriptions(request.getDescriptions())
                 .extraAttributes(request.getExtraAttributes())
-                .status(isAgentCreatingForOwner ? PropertyStatus.PENDING : PropertyStatus.DRAFT)
+                .status(finalStatus)
                 .slug(titleSlug)
                 .build();
 
@@ -177,6 +186,14 @@ public class PropertyApplicationService {
 
         if (request.getMedia() != null) {
             property.updateMedia(buildMedia(propertyId, request.getMedia(), ownerId));
+        }
+
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            try {
+                property.updateStatus(PropertyStatus.valueOf(request.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid property status provided during update: {}", request.getStatus());
+            }
         }
 
         propertyRepository.save(property);

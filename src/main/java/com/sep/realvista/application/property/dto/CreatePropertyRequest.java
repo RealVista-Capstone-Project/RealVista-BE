@@ -65,4 +65,7 @@ public class CreatePropertyRequest {
     
     @Valid
     private List<PropertyMediaRequest> media;
+
+    @JsonProperty("status")
+    private String status;
 }

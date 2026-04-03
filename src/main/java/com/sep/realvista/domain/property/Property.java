@@ -150,6 +150,12 @@ public class Property extends BaseEntity {
         return this.status == PropertyStatus.AVAILABLE;
     }
 
+    public void updateStatus(PropertyStatus newStatus) {
+        if (newStatus != null) {
+            this.status = newStatus;
+        }
+    }
+
     public void updateLocationAndType(UUID locationId, UUID propertyTypeId) {
         if (locationId != null) {
             this.locationId = locationId;
