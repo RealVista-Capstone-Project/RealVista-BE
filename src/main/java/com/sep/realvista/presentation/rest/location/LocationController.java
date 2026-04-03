@@ -2,7 +2,7 @@ package com.sep.realvista.presentation.rest.location;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.property.dto.LocationResponseDTO;
-import com.sep.realvista.application.property.service.LocationApplicationService;
+import com.sep.realvista.application.location.service.LocationApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
