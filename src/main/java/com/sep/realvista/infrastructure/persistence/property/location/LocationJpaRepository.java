@@ -11,6 +11,10 @@ import java.util.UUID;
 
 public interface LocationJpaRepository extends JpaRepository<Location, UUID> {
 
+    List<Location> findByTypeOrderByNameAsc(LocationType type);
+
+    List<Location> findByParentIdOrderByNameAsc(UUID parentId);
+
     @Query("SELECT l FROM Location l LEFT JOIN FETCH l.parent "
             + "WHERE l.type = :type AND l.deleted = false ORDER BY l.name")
     List<Location> findAllByTypeWithParent(@Param("type") LocationType type);

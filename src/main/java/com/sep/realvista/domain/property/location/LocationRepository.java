@@ -16,6 +16,16 @@ public interface LocationRepository {
     Optional<Location> findById(UUID locationId);
 
     /**
+     * Find all locations of a given type, ordered by name ascending.
+     */
+    List<Location> findByTypeOrderByNameAsc(LocationType type);
+
+    /**
+     * Find all child locations of a given parent, ordered by name ascending.
+     */
+    List<Location> findByParentIdOrderByNameAsc(UUID parentId);
+
+    /**
      * Find all active districts (non-deleted locations with type DISTRICT).
      */
     List<Location> findAllActiveDistricts();

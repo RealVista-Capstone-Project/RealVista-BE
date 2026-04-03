@@ -2,8 +2,10 @@ package com.sep.realvista.application.location.service;
 
 import com.sep.realvista.application.location.dto.DistrictLocationResponse;
 import com.sep.realvista.application.location.dto.WardResponse;
+import com.sep.realvista.application.property.dto.LocationResponseDTO;
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationRepository;
+import com.sep.realvista.domain.property.location.LocationType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,32 @@ import java.util.stream.Collectors;
 public class LocationApplicationService {
 
     private final LocationRepository locationRepository;
+
+    @Transactional(readOnly = true)
+    public List<LocationResponseDTO> getCities() {
+        log.info("Fetching all cities");
+        return locationRepository.findByTypeOrderByNameAsc(LocationType.CITY)
+                .stream()
+                .map(location -> LocationResponseDTO.builder()
+                        .locationId(location.getLocationId())
+                        .code(location.getCode())
+                        .name(location.getName())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<LocationResponseDTO> getChildrenLocations(UUID parentId) {
+        log.info("Fetching children locations for parent ID: {}", parentId);
+        return locationRepository.findByParentIdOrderByNameAsc(parentId)
+                .stream()
+                .map(location -> LocationResponseDTO.builder()
+                        .locationId(location.getLocationId())
+                        .code(location.getCode())
+                        .name(location.getName())
+                        .build())
+                .collect(Collectors.toList());
+    }
 
     @Transactional(readOnly = true)
     public List<DistrictLocationResponse> getAllDistrictsWithWards() {

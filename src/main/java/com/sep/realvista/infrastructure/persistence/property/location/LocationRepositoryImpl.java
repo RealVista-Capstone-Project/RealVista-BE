@@ -3,6 +3,7 @@ package com.sep.realvista.infrastructure.persistence.property.location;
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationRepository;
 import com.sep.realvista.domain.property.location.LocationType;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -19,6 +20,16 @@ public class LocationRepositoryImpl implements LocationRepository {
     @Override
     public Optional<Location> findById(UUID locationId) {
         return jpaRepository.findById(locationId);
+    }
+
+    @Override
+    public List<Location> findByTypeOrderByNameAsc(LocationType type) {
+        return jpaRepository.findByTypeOrderByNameAsc(type);
+    }
+
+    @Override
+    public List<Location> findByParentIdOrderByNameAsc(UUID parentId) {
+        return jpaRepository.findByParentIdOrderByNameAsc(parentId);
     }
 
     @Override
