@@ -12,4 +12,11 @@ import java.util.UUID;
 public interface LocationRepository extends JpaRepository<Location, UUID> {
     List<Location> findByTypeOrderByNameAsc(LocationType type);
     List<Location> findByParentIdOrderByNameAsc(UUID parentId);
+    
+    @org.springframework.data.jpa.repository.Query("SELECT l FROM Location l WHERE " +
+            ":lat >= l.southLat AND :lat <= l.northLat AND " +
+            ":lng >= l.westLng AND :lng <= l.eastLng " +
+            "ORDER BY CASE l.type WHEN 'WARD' THEN 1 WHEN 'DISTRICT' THEN 2 WHEN 'CITY' THEN 3 ELSE 4 END ASC")
+    List<Location> findContainingLocations(@org.springframework.data.repository.query.Param("lat") java.math.BigDecimal lat, 
+                                           @org.springframework.data.repository.query.Param("lng") java.math.BigDecimal lng);
 }

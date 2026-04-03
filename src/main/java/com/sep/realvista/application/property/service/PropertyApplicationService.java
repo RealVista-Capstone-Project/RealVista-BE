@@ -23,6 +23,7 @@ import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
+import com.sep.realvista.domain.property.location.repository.LocationRepository;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.infrastructure.persistence.property.amenity.AmenityJpaRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
@@ -55,6 +56,7 @@ public class PropertyApplicationService {
     private final PropertyAttributeRepository propertyAttributeRepository;
     private final PropertyAgentRepository propertyAgentRepository;
     private final UserRepository userRepository;
+    private final LocationRepository locationRepository;
     private final PropertyMapper propertyMapper;
     private final EntityManager entityManager;
 
@@ -76,9 +78,12 @@ public class PropertyApplicationService {
 
         String titleSlug = UUID.randomUUID().toString(); // Temporary slug generation
 
+        UUID propertyLocationId = request.getLocationId() != null ? request.getLocationId() 
+                : resolveLocationId(request.getLatitude(), request.getLongitude());
+
         Property property = Property.builder()
                 .ownerId(ownerId)
-                .locationId(request.getLocationId())
+                .locationId(propertyLocationId)
                 .propertyTypeId(resolvePropertyTypeId(request.getPropertyTypeCode()))
                 .streetAddress(request.getStreetAddress())
                 .latitude(request.getLatitude())
@@ -129,9 +134,14 @@ public class PropertyApplicationService {
         }
 
         // Update basic fields
-        if (request.getLocationId() != null || request.getPropertyTypeCode() != null) {
+        UUID newLocationId = request.getLocationId();
+        if (newLocationId == null && request.getLatitude() != null && request.getLongitude() != null) {
+            newLocationId = resolveLocationId(request.getLatitude(), request.getLongitude());
+        }
+
+        if (newLocationId != null || request.getPropertyTypeCode() != null) {
             property.updateLocationAndType(
-                    request.getLocationId(),
+                    newLocationId,
                     request.getPropertyTypeCode() != null ? resolvePropertyTypeId(request.getPropertyTypeCode()) : null
             );
         }
@@ -236,6 +246,22 @@ public class PropertyApplicationService {
                 .first(propertiesPage.isFirst())
                 .last(propertiesPage.isLast())
                 .build();
+    }
+
+    private UUID resolveLocationId(java.math.BigDecimal lat, java.math.BigDecimal lng) {
+        if (lat == null || lng == null) {
+            return null;
+        }
+        log.info("Resolving location for coordinates: [{}, {}]", lat, lng);
+        var locations = locationRepository.findContainingLocations(lat, lng);
+        if (locations.isEmpty()) {
+            log.warn("No location found for coordinates: [{}, {}]", lat, lng);
+            return null;
+        }
+        // Return the first one (already sorted by WARD -> DISTRICT -> CITY)
+        UUID resolvedId = locations.get(0).getLocationId();
+        log.info("Resolved location ID: {} ({})", resolvedId, locations.get(0).getName());
+        return resolvedId;
     }
 
     @Transactional(readOnly = true)
