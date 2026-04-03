@@ -3,7 +3,6 @@ package com.sep.realvista.infrastructure.persistence.property.location;
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationRepository;
 import com.sep.realvista.domain.property.location.LocationType;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
