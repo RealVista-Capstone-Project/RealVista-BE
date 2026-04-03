@@ -27,4 +27,8 @@ public interface PropertyAmenityRepository {
      * @return list of property amenities with amenity details
      */
     List<PropertyAmenity> findByPropertyIdsWithAmenity(List<UUID> propertyIds);
+
+    void saveAll(List<PropertyAmenity> amenities);
+    
+    void deleteByPropertyId(UUID propertyId);
 }

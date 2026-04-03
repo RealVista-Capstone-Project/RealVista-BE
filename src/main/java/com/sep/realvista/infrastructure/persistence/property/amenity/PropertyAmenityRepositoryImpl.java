@@ -27,4 +27,14 @@ public class PropertyAmenityRepositoryImpl implements PropertyAmenityRepository 
     public List<PropertyAmenity> findByPropertyIdsWithAmenity(List<UUID> propertyIds) {
         return jpaRepository.findByPropertyIdsWithAmenity(propertyIds);
     }
+
+    @Override
+    public void saveAll(List<PropertyAmenity> amenities) {
+        jpaRepository.saveAll(amenities);
+    }
+
+    @Override
+    public void deleteByPropertyId(UUID propertyId) {
+        jpaRepository.deleteByPropertyId(propertyId);
+    }
 }

@@ -36,6 +36,7 @@ public class ListingDetailResponse {
     private ListingStatus status;
     private String slug;
     private String name;
+    private String content;
     private BigDecimal price;
     @JsonProperty("min_price")
     private BigDecimal minPrice;
