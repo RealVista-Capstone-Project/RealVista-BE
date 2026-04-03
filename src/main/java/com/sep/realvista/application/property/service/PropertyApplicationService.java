@@ -17,9 +17,12 @@ import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRangeRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.property.location.repository.LocationRepository;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.PropertyAttributeRangeDTO;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
@@ -57,6 +60,7 @@ public class PropertyApplicationService {
     private final PropertyAgentRepository propertyAgentRepository;
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
+    private final PropertyAttributeRangeRepository propertyAttributeRangeRepository;
     private final PropertyMapper propertyMapper;
     private final EntityManager entityManager;
 
@@ -264,6 +268,35 @@ public class PropertyApplicationService {
                 .first(propertiesPage.isFirst())
                 .last(propertiesPage.isLast())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PropertyAttributeDTO> getAttributesWithRanges() {
+        log.info("Getting all searchable attributes with their ranges");
+        
+        return propertyAttributeRepository.findAllSearchable().stream().map(attr -> {
+            var ranges = propertyAttributeRangeRepository
+                    .findByPropertyAttributeId(attr.getPropertyAttributeId())
+                    .stream()
+                    .map(range -> PropertyAttributeRangeDTO.builder()
+                            .propertyAttributeRangeId(range.getPropertyAttributeRangeId())
+                            .label(range.getLabel())
+                            .minValue(range.getMinValue())
+                            .maxValue(range.getMaxValue())
+                            .displayOrder(range.getDisplayOrder())
+                            .build())
+                    .collect(Collectors.toList());
+
+            return PropertyAttributeDTO.builder()
+                    .attributeId(attr.getPropertyAttributeId())
+                    .attributeCode(attr.getCode())
+                    .attributeName(attr.getName())
+                    .dataType(attr.getDataType().name())
+                    .icon(attr.getIcon())
+                    .unit(attr.getUnit())
+                    .ranges(ranges)
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     private UUID resolveLocationId(java.math.BigDecimal lat, java.math.BigDecimal lng) {

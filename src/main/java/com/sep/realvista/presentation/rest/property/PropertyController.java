@@ -8,6 +8,7 @@ import com.sep.realvista.application.property.dto.PropertyDetailResponse;
 import com.sep.realvista.application.property.dto.PropertySearchCriteria;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.property.service.PropertyApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -98,6 +99,15 @@ public class PropertyController {
         log.info("REST request to get amenities");
         List<AmenityDTO> response = propertyApplicationService.getAmenities();
         return ResponseEntity.ok(ApiResponse.success("Amenities retrieved successfully", response));
+    }
+
+    @GetMapping("/attributes")
+    @Operation(summary = "Get all searchable property attributes with ranges",
+               description = "Retrieves the master list of all searchable attributes and their predefined selection ranges")
+    public ResponseEntity<ApiResponse<List<PropertyAttributeDTO>>> getAttributes() {
+        log.info("REST request to get searchable attributes with ranges");
+        List<PropertyAttributeDTO> response = propertyApplicationService.getAttributesWithRanges();
+        return ResponseEntity.ok(ApiResponse.success("Attributes retrieved successfully", response));
     }
 
     @PostMapping("/{propertyId}/verify-agent")
