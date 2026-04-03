@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -12,6 +13,7 @@ public class ListingSearchCriteria {
     private String propertyType;
     private String propertyCategory;
     private String location;
+    private UUID locationId;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
     private Double minArea;
