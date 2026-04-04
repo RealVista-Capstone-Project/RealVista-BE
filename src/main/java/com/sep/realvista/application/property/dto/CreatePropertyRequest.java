@@ -20,7 +20,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CreatePropertyRequest {
     
-    @NotNull(message = "Location ID is required")
+    @JsonProperty("owner_id")
+    private UUID ownerId;
+
     @JsonProperty("location_id")
     private UUID locationId;
     
@@ -63,4 +65,7 @@ public class CreatePropertyRequest {
     
     @Valid
     private List<PropertyMediaRequest> media;
+
+    @JsonProperty("status")
+    private String status;
 }

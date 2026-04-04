@@ -40,4 +40,12 @@ public interface LocationJpaRepository extends JpaRepository<Location, UUID> {
             + "  WHERE d.parentId = :cityId AND d.type = 'DISTRICT' AND d.deleted = false"
             + ")")
     List<UUID> findWardIdsByCityId(@Param("cityId") UUID cityId);
+
+    @Query("SELECT l FROM Location l "
+           + "WHERE l.southLat <= :lat AND l.northLat >= :lat "
+           + "AND l.westLng <= :lng AND l.eastLng >= :lng "
+           + "AND l.deleted = false "
+           + "ORDER BY CASE l.type WHEN 'WARD' THEN 1 WHEN 'DISTRICT' THEN 2 WHEN 'CITY' THEN 3 ELSE 4 END")
+    List<Location> findContainingLocations(@Param("lat") java.math.BigDecimal lat,
+                                           @Param("lng") java.math.BigDecimal lng);
 }

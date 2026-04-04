@@ -4,6 +4,7 @@ import com.sep.realvista.application.user.dto.ChangePasswordRequest;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UpdateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
+import com.sep.realvista.application.user.dto.UserSearchResponse;
 import com.sep.realvista.application.user.mapper.UserMapper;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.value.Email;
@@ -246,6 +247,33 @@ public class UserApplicationService {
             }
         }
         return false;
+    }
+
+    /**
+     * Search user by email for owner assignment.
+     * Returns masked phone number for security.
+     */
+    @Transactional(readOnly = true)
+    public UserSearchResponse searchUserByEmail(String email) {
+        log.info("Searching user by email: {}", email);
+        User user = userRepository.findByEmailValue(email)
+                .orElseThrow(() -> new UserNotFoundException(email));
+
+        return UserSearchResponse.builder()
+                .userId(user.getUserId())
+                .email(user.getEmail().getValue())
+                .fullName(user.getFullName())
+                .maskedPhone(maskPhone(user.getPhone()))
+                .phone(user.getPhone())
+                .build();
+    }
+
+    private String maskPhone(String phone) {
+        if (phone == null || phone.length() < 4) {
+            return "****";
+        }
+        // Example: 0912345678 -> 09******78
+        return phone.substring(0, 2) + "******" + phone.substring(phone.length() - 2);
     }
 }
 

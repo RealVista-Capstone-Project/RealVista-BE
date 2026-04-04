@@ -81,7 +81,8 @@ public class ListingAnalyticsController {
     }
 
     /**
-     * Listing creator or property owner may view analytics (same rule as listing modification elsewhere).
+     * Listing creator or property owner may view analytics (same rule as listing
+     * modification elsewhere).
      */
     private boolean canViewListingAnalytics(Listing listing, UUID userId) {
         if (listing.getUserId().equals(userId)) {

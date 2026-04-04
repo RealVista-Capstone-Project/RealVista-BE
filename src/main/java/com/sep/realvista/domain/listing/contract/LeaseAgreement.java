@@ -95,6 +95,17 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "verified_by")
     private UUID verifiedBy;
 
+    // ── DocuSign eSignature fields ──
+    @Column(name = "docusign_envelope_id", length = 100)
+    private String docusignEnvelopeId;
+
+    @Column(name = "docusign_status", length = 50)
+    private String docusignStatus;
+
+    public void submitToLandlord() {
+        this.status = LeaseStatus.PENDING_LANDLORD;
+    }
+
     public void submitToRenter() {
         this.status = LeaseStatus.PENDING_RENTER;
     }
@@ -120,5 +131,32 @@ public class LeaseAgreement extends BaseEntity {
 
     public void expire() {
         this.status = LeaseStatus.EXPIRED;
+    }
+
+    // ── DocuSign business methods ──
+
+    public void assignDocuSignEnvelope(String envelopeId) {
+        this.docusignEnvelopeId = envelopeId;
+        this.docusignStatus = "sent";
+    }
+
+    public void updateDocuSignStatus(String newDocuSignStatus) {
+        this.docusignStatus = newDocuSignStatus;
+    }
+
+    public void renterSignViaDocuSign() {
+        this.signedByRenterAt = LocalDateTime.now();
+        this.docusignStatus = "completed";
+        this.status = LeaseStatus.ACTIVE;
+    }
+
+    public void landlordSignViaDocuSign() {
+        this.signedByLandlordAt = LocalDateTime.now();
+        this.docusignStatus = "completed";
+        this.status = LeaseStatus.ACTIVE;
+    }
+
+    public void setLeaseDocumentUrl(String url) {
+        this.leaseDocumentUrl = url;
     }
 }
