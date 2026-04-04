@@ -27,6 +27,7 @@ public class PropertySummaryResponse {
     @JsonProperty("land_size_m2")
     private BigDecimal landSizeM2;
     
+    @JsonProperty("status")
     private PropertyStatus status;
     
     @JsonProperty("thumbnail_url")
@@ -37,4 +38,7 @@ public class PropertySummaryResponse {
 
     @JsonProperty("owner_phone")
     private String ownerPhone;
+
+    @JsonProperty("has_3d")
+    private Boolean has3d;
 }

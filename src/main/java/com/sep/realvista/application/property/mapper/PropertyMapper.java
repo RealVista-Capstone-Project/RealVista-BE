@@ -62,7 +62,7 @@ public class PropertyMapper {
                 .build();
     }
 
-    public PropertySummaryResponse toSummaryResponse(Property property, String thumbnailUrl) {
+    public PropertySummaryResponse toSummaryResponse(Property property, String thumbnailUrl, boolean has3d) {
         return PropertySummaryResponse.builder()
                 .propertyId(property.getPropertyId())
                 .propertyTypeId(property.getPropertyTypeId())
@@ -70,6 +70,7 @@ public class PropertyMapper {
                 .status(property.getStatus())
                 .landSizeM2(property.getLandSizeM2())
                 .thumbnailUrl(thumbnailUrl)
+                .has3d(has3d)
                 .build();
     }
 
@@ -104,6 +105,7 @@ public class PropertyMapper {
                 .mediaType(pm.getMediaType())
                 .isPrimary(pm.getIsPrimary())
                 .displayOrder(0)
+                .metadata(pm.getMetadata())
                 .build();
     }
 }

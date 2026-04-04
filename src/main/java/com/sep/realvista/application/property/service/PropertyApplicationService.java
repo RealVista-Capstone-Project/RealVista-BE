@@ -10,6 +10,7 @@ import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
 import com.sep.realvista.application.property.mapper.PropertyMapper;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyMedia;
+import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRepository;
@@ -196,15 +197,18 @@ public class PropertyApplicationService {
         List<Property> properties = propertyRepository.findByOwnerIdOrAgentId(userId);
         
         return properties.stream().map(property -> {
-            // Find thumbnail media (is_primary = true) if any exists to pass to mapper
-            String thumbnailUrl = propertyMediaRepository.findByPropertyId(property.getPropertyId())
-                    .stream()
+            List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(property.getPropertyId());
+            
+            String thumbnailUrl = media.stream()
                     .filter(pm -> Boolean.TRUE.equals(pm.getIsPrimary()))
                     .findFirst()
                     .map(PropertyMedia::getThumbnailUrl)
                     .orElse(null);
             
-            PropertySummaryResponse response = propertyMapper.toSummaryResponse(property, thumbnailUrl);
+            boolean has3d = media.stream()
+                    .anyMatch(pm -> pm != null && Boolean.TRUE.equals(pm.is3D()));
+            
+            PropertySummaryResponse response = propertyMapper.toSummaryResponse(property, thumbnailUrl, has3d);
             
             // Enrich with owner info
             userRepository.findById(property.getOwnerId()).ifPresent(owner -> {
@@ -364,14 +368,18 @@ public class PropertyApplicationService {
         }
 
         return properties.stream().map(property -> {
-            String thumbnailUrl = propertyMediaRepository.findByPropertyId(property.getPropertyId())
-                    .stream()
+            List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(property.getPropertyId());
+            
+            String thumbnailUrl = media.stream()
                     .filter(pm -> Boolean.TRUE.equals(pm.getIsPrimary()))
                     .findFirst()
                     .map(PropertyMedia::getThumbnailUrl)
                     .orElse(null);
             
-            PropertySummaryResponse response = propertyMapper.toSummaryResponse(property, thumbnailUrl);
+            boolean has3d = media.stream()
+                    .anyMatch(pm -> pm != null && Boolean.TRUE.equals(pm.is3D()));
+            
+            PropertySummaryResponse response = propertyMapper.toSummaryResponse(property, thumbnailUrl, has3d);
             
             userRepository.findById(property.getOwnerId()).ifPresent(owner -> {
                 response.setOwnerName(owner.getFullName());
