@@ -36,4 +36,6 @@ public interface PropertyAmenityJpaRepository extends JpaRepository<PropertyAmen
            + "WHERE pa.propertyId IN :propertyIds AND pa.deleted = false "
            + "ORDER BY pa.propertyId, a.amenityType, a.amenityName")
     List<PropertyAmenity> findByPropertyIdsWithAmenity(@Param("propertyIds") List<UUID> propertyIds);
+
+    void deleteByPropertyId(UUID propertyId);
 }

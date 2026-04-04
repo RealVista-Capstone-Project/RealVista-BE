@@ -4,6 +4,7 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.recommendation.dto.RecommendationResponse;
 import com.sep.realvista.application.recommendation.dto.UserBehaviorRequest;
 import com.sep.realvista.application.recommendation.service.RecommendationApplicationService;
+import com.sep.realvista.domain.listing.ListingType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -132,11 +133,15 @@ public class RecommendationController {
     )
     public ResponseEntity<ApiResponse<RecommendationResponse>> getRecommendations(
             @RequestParam(required = false) Integer limit,
+            @RequestParam(value = "listingType", required = false) String listingTypeParam,
+            @RequestParam(value = "listing_type", required = false) String listingTypeSnake,
             Authentication authentication) {
 
         String userId = extractUserId(authentication);
         String userName = extractUserName(authentication);
         String userRoles = extractUserRoles(authentication);
+        ListingType listingType = parseListingTypeQuery(listingTypeParam, listingTypeSnake);
+        log.debug("GET /recommendations userId={} listingType={}", userId, listingType);
 
         RecommendationResponse response;
 
@@ -144,10 +149,10 @@ public class RecommendationController {
         if (recommendationService.isThresholdMet(userId)) {
             log.info("Threshold met for user {} — refreshing recommendations", userId);
             response = recommendationService.refreshRecommendations(
-                    userId, limit, userName, userRoles);
+                    userId, limit, userName, userRoles, listingType);
         } else {
             response = recommendationService.getRecommendations(
-                    userId, limit, userName, userRoles);
+                    userId, limit, userName, userRoles, listingType);
         }
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -166,14 +171,17 @@ public class RecommendationController {
     )
     public ResponseEntity<ApiResponse<RecommendationResponse>> refreshRecommendations(
             @RequestParam(required = false) Integer limit,
+            @RequestParam(value = "listingType", required = false) String listingTypeParam,
+            @RequestParam(value = "listing_type", required = false) String listingTypeSnake,
             Authentication authentication) {
 
         String userId = extractUserId(authentication);
         String userName = extractUserName(authentication);
         String userRoles = extractUserRoles(authentication);
+        ListingType listingType = parseListingTypeQuery(listingTypeParam, listingTypeSnake);
 
         RecommendationResponse response = recommendationService.refreshRecommendations(
-                userId, limit, userName, userRoles);
+                userId, limit, userName, userRoles, listingType);
 
         return ResponseEntity.ok(ApiResponse.success(
                 "Recommendations refreshed successfully", response));
@@ -206,6 +214,23 @@ public class RecommendationController {
     }
 
     // ─── Helpers ─────────────────────────────────────────────────
+
+    /**
+     * Accept {@code listingType} or {@code listing_type} (snake_case clients).
+     */
+    private static ListingType parseListingTypeQuery(String listingTypeParam, String listingTypeSnake) {
+        String raw = listingTypeParam != null && !listingTypeParam.isBlank()
+                ? listingTypeParam.trim()
+                : (listingTypeSnake != null && !listingTypeSnake.isBlank() ? listingTypeSnake.trim() : null);
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return ListingType.valueOf(raw.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
 
     private String extractUserId(Authentication authentication) {
         if (authentication != null && authentication.getName() != null) {

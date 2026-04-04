@@ -2,6 +2,7 @@ package com.sep.realvista.infrastructure.external.ai;
 
 import com.sep.realvista.application.recommendation.dto.AiRecommendationResult;
 import com.sep.realvista.application.recommendation.dto.UserBehaviorRequest;
+import com.sep.realvista.domain.listing.ListingType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -89,7 +90,8 @@ public class AiServiceClient {
     public AiRecommendationResult getRecommendations(String userId,
                                                      int limit,
                                                      String userName,
-                                                     String userRoles) {
+                                                     String userRoles,
+                                                     ListingType listingType) {
         String url = aiServiceBaseUrl + "/recommendation/generate";
 
         try {
@@ -98,6 +100,9 @@ public class AiServiceClient {
             Map<String, Object> body = new HashMap<>();
             body.put("userId", userId);
             body.put("limit", limit);
+            if (listingType != null) {
+                body.put("listingType", listingType.name());
+            }
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 

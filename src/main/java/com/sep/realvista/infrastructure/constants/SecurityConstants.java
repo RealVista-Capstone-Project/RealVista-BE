@@ -46,10 +46,26 @@ public final class SecurityConstants {
                 "/ws/**",
                 "api/test/**",
                 "/api/v1/test/**",
-                "/api/v1/map/**"
+                "/api/v1/map/**",
+                "/api/v1/locations/**"
         };
 
         private PublicEndpoints() {
+            throw new AssertionError("Cannot instantiate constants class");
+        }
+    }
+
+    /**
+     * Internal service-to-service endpoints protected by API key.
+     */
+    public static final class InternalEndpoints {
+        public static final String[] INTERNAL_PATHS = {
+                "/internal/**"
+        };
+
+        public static final String API_KEY_HEADER = "x-service-api-key";
+
+        private InternalEndpoints() {
             throw new AssertionError("Cannot instantiate constants class");
         }
     }

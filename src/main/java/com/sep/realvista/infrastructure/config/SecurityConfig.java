@@ -2,6 +2,7 @@ package com.sep.realvista.infrastructure.config;
 
 import com.sep.realvista.infrastructure.constants.SecurityConstants;
 import com.sep.realvista.infrastructure.security.RestAuthenticationEntryPoint;
+import com.sep.realvista.infrastructure.security.apikey.InternalApiKeyAuthenticationFilter;
 import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
 import com.sep.realvista.infrastructure.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
@@ -21,6 +22,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
+import jakarta.servlet.DispatcherType;
+
 /**
  * Security configuration with JWT authentication.
  */
@@ -30,6 +33,7 @@ import org.springframework.web.cors.CorsConfiguration;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final InternalApiKeyAuthenticationFilter internalApiKeyFilter;
     private final UserDetailsService userDetailsService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final PasswordEncoder passwordEncoder;
@@ -37,12 +41,14 @@ public class SecurityConfig {
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthFilter,
+            InternalApiKeyAuthenticationFilter internalApiKeyFilter,
             UserDetailsService userDetailsService,
             OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
             PasswordEncoder passwordEncoder,
             RestAuthenticationEntryPoint restAuthenticationEntryPoint
     ) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.internalApiKeyFilter = internalApiKeyFilter;
         this.userDetailsService = userDetailsService;
         this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
         this.passwordEncoder = passwordEncoder;
@@ -65,6 +71,8 @@ public class SecurityConfig {
                     return config;
                 }))
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
+                        .requestMatchers(SecurityConstants.InternalEndpoints.INTERNAL_PATHS).permitAll()
                         .requestMatchers(SecurityConstants.PublicEndpoints.PUBLIC_PATHS).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -81,6 +89,7 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider)
+                .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

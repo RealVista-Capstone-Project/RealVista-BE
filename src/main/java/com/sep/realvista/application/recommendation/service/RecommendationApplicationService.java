@@ -5,6 +5,7 @@ import com.sep.realvista.application.recommendation.dto.AiRecommendationResult;
 import com.sep.realvista.application.recommendation.dto.RecommendationResponse;
 import com.sep.realvista.application.recommendation.dto.UserBehaviorRequest;
 import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.location.Location;
@@ -103,35 +104,40 @@ public class RecommendationApplicationService {
      * After receiving listing IDs from the AI service, enrich them with
      * full listing data from PostgreSQL.
      */
-    @Cacheable(value = "recommendations", key = "#userId")
+    @Cacheable(value = "recommendations",
+            key = "#userId + ':' + (#listingType != null ? #listingType.name() : 'ANY')")
     public RecommendationResponse getRecommendations(String userId,
                                                      Integer limit,
                                                      String userName,
-                                                     String userRoles) {
+                                                     String userRoles,
+                                                     ListingType listingType) {
         int effectiveLimit = (limit != null && limit > 0) ? limit : defaultLimit;
-        log.info("Generating recommendations for user {} (limit={})", userId, effectiveLimit);
+        log.info("Generating recommendations for user {} (limit={}, listingType={})",
+                userId, effectiveLimit, listingType);
 
         // This method body only runs on cache MISS.
         // On cache HIT, Spring returns the cached value directly.
-        return fetchAndEnrichRecommendations(userId, effectiveLimit, userName, userRoles);
+        return fetchAndEnrichRecommendations(userId, effectiveLimit, userName, userRoles, listingType);
     }
 
     /**
      * Force-refresh recommendations regardless of threshold.
      * Called when the threshold is met or when explicitly requested.
      */
-    @CacheEvict(value = "recommendations", key = "#userId")
+    @CacheEvict(value = "recommendations",
+            key = "#userId + ':' + (#listingType != null ? #listingType.name() : 'ANY')")
     public RecommendationResponse refreshRecommendations(String userId,
                                                          Integer limit,
                                                          String userName,
-                                                         String userRoles) {
+                                                         String userRoles,
+                                                         ListingType listingType) {
         int effectiveLimit = (limit != null && limit > 0) ? limit : defaultLimit;
-        log.info("Force-refreshing recommendations for user {}", userId);
+        log.info("Force-refreshing recommendations for user {} (listingType={})", userId, listingType);
 
         // Reset the event counter
         userEventCounters.remove(userId);
 
-        return fetchAndEnrichRecommendations(userId, effectiveLimit, userName, userRoles);
+        return fetchAndEnrichRecommendations(userId, effectiveLimit, userName, userRoles, listingType);
     }
 
     /**
@@ -154,11 +160,11 @@ public class RecommendationApplicationService {
     // ─── Internal ────────────────────────────────────────────────
 
     private RecommendationResponse fetchAndEnrichRecommendations(
-            String userId, int limit, String userName, String userRoles) {
+            String userId, int limit, String userName, String userRoles, ListingType listingType) {
 
         // 1. Call AI service
         AiRecommendationResult aiResult = aiServiceClient.getRecommendations(
-                userId, limit, userName, userRoles);
+                userId, limit, userName, userRoles, listingType);
 
         if (aiResult == null || aiResult.getRecommendations() == null
                 || aiResult.getRecommendations().isEmpty()) {
@@ -204,6 +210,9 @@ public class RecommendationApplicationService {
 
                             Listing listing = listingMap.get(lid);
                             if (listing == null) {
+                                return null;
+                            }
+                            if (listingType != null && listing.getListingType() != listingType) {
                                 return null;
                             }
 
