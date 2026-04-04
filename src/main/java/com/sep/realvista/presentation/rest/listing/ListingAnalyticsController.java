@@ -42,15 +42,9 @@ public class ListingAnalyticsController {
     @GetMapping("/{listingId}/analytics")
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("isAuthenticated()")
-<<<<<<< HEAD
-    @Operation(summary = "Get listing analytics", description = "Retrieves aggregated analytics metrics for a listing"
-            + " including views, unique viewers, tour bookings, and conversion rate."
-            + " The listing creator or the property owner may access.")
-=======
     @Operation(summary = "Get listing analytics",
             description = "Retrieves aggregated analytics metrics for a listing including views, unique viewers, "
                     + "tour bookings, and conversion rate. The listing creator or the property owner may access.")
->>>>>>> 1b038fe (Update ListingAnalyticsController.java)
     public ResponseEntity<ApiResponse<ListingAnalyticsDTO>> getListingAnalytics(
             @PathVariable UUID listingId,
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
