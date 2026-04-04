@@ -38,7 +38,7 @@ public class LocationController {
 
     @GetMapping("/{parentId}/children")
     @Operation(
-            summary = "Get children locations by parent ID", 
+            summary = "Get children locations by parent ID",
             description = "Get Districts by City ID or Wards by District ID"
     )
     public ResponseEntity<ApiResponse<List<LocationResponseDTO>>> getChildrenLocations(
@@ -49,7 +49,8 @@ public class LocationController {
     }
 
     @GetMapping("/search")
-    @Operation(summary = "Find specific location by coordinates", description = "Find Ward > District > City containing the point")
+    @Operation(summary = "Find specific location by coordinates",
+            description = "Find Ward > District > City containing the point")
     public ResponseEntity<ApiResponse<LocationResponseDTO>> searchByCoordinates(
             @Parameter(description = "Latitude") @RequestParam BigDecimal lat,
             @Parameter(description = "Longitude") @RequestParam BigDecimal lng) {

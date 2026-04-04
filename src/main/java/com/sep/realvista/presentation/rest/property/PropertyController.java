@@ -3,12 +3,12 @@ package com.sep.realvista.presentation.rest.property;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.listing.dto.AmenityDTO;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
 import com.sep.realvista.application.property.dto.PropertySearchCriteria;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
-import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.property.service.PropertyApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -93,8 +93,8 @@ public class PropertyController {
     }
 
     @GetMapping("/amenities")
-    @Operation(summary = "Get all amenities", 
-               description = "Retrieves the master list of all available property amenities")
+    @Operation(summary = "Get all amenities",
+            description = "Retrieves the master list of all available property amenities")
     public ResponseEntity<ApiResponse<List<AmenityDTO>>> getAmenities() {
         log.info("REST request to get amenities");
         List<AmenityDTO> response = propertyApplicationService.getAmenities();
@@ -103,7 +103,8 @@ public class PropertyController {
 
     @GetMapping("/attributes")
     @Operation(summary = "Get all searchable property attributes with ranges",
-               description = "Retrieves the master list of all searchable attributes and their predefined selection ranges")
+            description = "Retrieves the master list of all searchable attributes "
+                    + "and their predefined selection ranges")
     public ResponseEntity<ApiResponse<List<PropertyAttributeDTO>>> getAttributes() {
         log.info("REST request to get searchable attributes with ranges");
         List<PropertyAttributeDTO> response = propertyApplicationService.getAttributesWithRanges();
@@ -113,7 +114,7 @@ public class PropertyController {
     @PostMapping("/{propertyId}/verify-agent")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Verify property by agent",
-               description = "Allows an agent to verify a property they created for an owner via OTP success")
+            description = "Allows an agent to verify a property they created for an owner via OTP success")
     public ResponseEntity<ApiResponse<PropertyDetailResponse>> verifyPropertyByAgent(
             @PathVariable UUID propertyId) {
         log.info("REST request to verify Property: {}", propertyId);
@@ -124,7 +125,7 @@ public class PropertyController {
     @PostMapping("/{propertyId}/assign-agent")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Assign current user as agent to an existing property",
-               description = "Creates a link in property_agent table for the authenticated user")
+            description = "Creates a link in property_agent table for the authenticated user")
     public ResponseEntity<ApiResponse<PropertyDetailResponse>> assignAgentToProperty(
             @PathVariable UUID propertyId) {
         log.info("REST request to assign Agent to Property: {}", propertyId);
@@ -134,7 +135,7 @@ public class PropertyController {
 
     @GetMapping("/search")
     @Operation(summary = "Search for properties",
-               description = "Search for properties by address text or geographical bounding box")
+            description = "Search for properties by address text or geographical bounding box")
     public ResponseEntity<ApiResponse<List<PropertySummaryResponse>>> searchProperties(
             @RequestParam(required = false) String address,
             @RequestParam(name = "north_lat", required = false) BigDecimal northLat,
