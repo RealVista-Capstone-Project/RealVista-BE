@@ -54,7 +54,7 @@ public class MarbleClient {
         return null;
     }
     public JsonNode generateWorld(MarbleGenerateRequest request) {
-        String url = marbleBaseUrl + "/generate";
+        String url = marbleBaseUrl + "/worlds:generate";
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
