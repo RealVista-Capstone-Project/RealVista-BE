@@ -10,6 +10,7 @@ import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.location.Location;
+import com.sep.realvista.domain.property.location.LocationRepository;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class ListingSearchService {
     private final ListingMapper listingMapper;
     private final BookmarkRepository bookmarkRepository;
     private final PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
+    private final LocationRepository locationRepository;
 
     private static final class ListingFields {
         static final String STATUS = "status";
@@ -57,6 +59,7 @@ public class ListingSearchService {
     private static final class PropertyFields {
         static final String TYPE = "propertyType";
         static final String LOCATION = "location";
+        static final String LOCATION_ID = "locationId";
         static final String USABLE_SIZE_M2 = "usableSizeM2";
         static final String PROPERTY_ID = "propertyId";
         static final String EXTRA_ATTRIBUTES = "extraAttributes";
@@ -238,13 +241,30 @@ public class ListingSearchService {
                 log.debug("Added propertyCategory filter: {}", criteria.getPropertyCategory());
             }
 
-            // Location (LIKE search)
+            // Location (LIKE search on name - used by public API)
             if (criteria.getLocation() != null && !criteria.getLocation().isBlank()) {
                 predicates.add(cb.like(cb.lower(
                     propertyJoin.join(PropertyFields.LOCATION).get(LocationFields.NAME)),
                     "%" + criteria.getLocation().toLowerCase() + "%"
                 ));
                 log.debug("Added location LIKE filter: {}", criteria.getLocation());
+            }
+
+            // Location ID (hierarchical - used by internal AI API)
+            // Resolves city/district/ward UUID to all matching ward IDs,
+            // then filters properties whose locationId is in that set.
+            if (criteria.getLocationId() != null) {
+                List<UUID> wardIds = locationRepository.findDescendantWardIds(criteria.getLocationId());
+                if (!wardIds.isEmpty()) {
+                    predicates.add(propertyJoin.get(PropertyFields.LOCATION_ID).in(wardIds));
+                    log.debug("Added locationId filter: {} resolved to {} ward(s)",
+                            criteria.getLocationId(), wardIds.size());
+                } else {
+                    // No matching wards found — return no results
+                    predicates.add(cb.disjunction());
+                    log.debug("LocationId {} resolved to 0 wards, returning empty",
+                            criteria.getLocationId());
+                }
             }
 
             // Price Range

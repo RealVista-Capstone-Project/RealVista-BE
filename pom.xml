@@ -34,6 +34,7 @@
 		<spotbugs.version>4.8.2.0</spotbugs.version>
 		<jacoco.version>0.8.11</jacoco.version>
 		<h2.version>2.2.224</h2.version>
+		<docusign-esign.version>6.2.0</docusign-esign.version>
 		<flyway.url>jdbc:postgresql://localhost:5432/realvista_test</flyway.url>
 		<flyway.user>postgres</flyway.user>
 		<flyway.password>postgres</flyway.password>
@@ -79,6 +80,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
         <!-- Websocket -->
@@ -211,6 +216,59 @@
 			<groupId>software.amazon.awssdk</groupId>
 			<artifactId>s3</artifactId>
 			<version>2.25.11</version>
+		</dependency>
+
+		<!-- DocuSign eSignature SDK -->
+		<dependency>
+			<groupId>com.docusign</groupId>
+			<artifactId>docusign-esign-java</artifactId>
+			<version>${docusign-esign.version}</version>
+		</dependency>
+
+		<!-- JAX-RS API + Jersey runtime required by DocuSign SDK -->
+		<dependency>
+			<groupId>jakarta.ws.rs</groupId>
+			<artifactId>jakarta.ws.rs-api</artifactId>
+			<version>3.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.glassfish.jersey.core</groupId>
+			<artifactId>jersey-client</artifactId>
+			<version>3.1.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.glassfish.jersey.media</groupId>
+			<artifactId>jersey-media-multipart</artifactId>
+			<version>3.1.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.glassfish.jersey.media</groupId>
+			<artifactId>jersey-media-json-jackson</artifactId>
+			<version>3.1.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.glassfish.jersey.inject</groupId>
+			<artifactId>jersey-hk2</artifactId>
+			<version>3.1.6</version>
+		</dependency>
+
+		<!-- BouncyCastle - required by DocuSign SDK for RSA JWT signing -->
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk18on</artifactId>
+			<version>1.78.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcpkix-jdk18on</artifactId>
+			<version>1.78.1</version>
+		</dependency>
+
+		<!-- Auth0 Java JWT - required by DocuSign SDK for JWT token creation -->
+		<dependency>
+			<groupId>com.auth0</groupId>
+			<artifactId>java-jwt</artifactId>
+			<version>4.4.0</version>
 		</dependency>
 	</dependencies>
 
