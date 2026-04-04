@@ -1,0 +1,11 @@
+{
+  "listingId": "550e8400-e29b-41d4-a716-446655440001",
+  "renterId": "550e8400-e29b-41d4-a716-446655440002",
+  "landlordId": "550e8400-e29b-41d4-a716-446655440004",
+  "leaseDurationMonths": 12,
+  "monthlyRent": 5000000,
+  "securityDeposit": 10000000,
+  "leaseStartDate": "2026-04-01",
+  "leaseEndDate": "2027-04-01",
+  "leaseDocumentUrl": "https://www.w3.org/WAI/WCAG21/Techniques/pdf/sample.pdf"
+}
