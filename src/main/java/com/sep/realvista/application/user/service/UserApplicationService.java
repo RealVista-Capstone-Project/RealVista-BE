@@ -14,6 +14,17 @@ import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.domain.user.role.RoleCode;
+import com.sep.realvista.domain.user.role.RoleRepository;
+import com.sep.realvista.domain.user.role.UserRoleRepository;
+import com.sep.realvista.domain.user.role.Role;
+import com.sep.realvista.domain.user.role.UserRole;
+import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
+import com.sep.realvista.domain.user.preference.SettingPreference;
+import com.sep.realvista.domain.agent.repository.AgentProfileRepository;
+import com.sep.realvista.domain.agent.AgentProfile;
+import com.sep.realvista.domain.profile.repository.CustomerProfileRepository;
+import com.sep.realvista.domain.profile.CustomerProfile;
+
 import com.sep.realvista.infrastructure.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +49,11 @@ public class UserApplicationService {
     private final UserDomainService userDomainService;
     private final UserMapper userMapper;
     private final PasswordService passwordService;
+    private final RoleRepository roleRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final SettingPreferenceRepository settingPreferenceRepository;
+    private final AgentProfileRepository agentProfileRepository;
+    private final CustomerProfileRepository customerProfileRepository;
 
     /**
      * Create a new user.
@@ -45,8 +61,9 @@ public class UserApplicationService {
     public UserResponse createUser(CreateUserRequest request) {
         log.info("Creating new user with email: {}", request.getEmail());
 
-        // Validate unique email
+        // Validate unique email and phone
         userDomainService.validateUniqueEmail(request.getEmail());
+        userDomainService.validateUniquePhone(request.getPhoneNumber());
 
         // Build user entity
         User user = User.builder()
@@ -54,6 +71,7 @@ public class UserApplicationService {
                 .passwordHash(passwordService.encode(request.getPassword()))
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
+                .phone(request.getPhoneNumber())
                 .businessName(request.getFirstName() + " " + request.getLastName())
                 .status(UserStatus.ACTIVE)
                 .build();
@@ -62,7 +80,100 @@ public class UserApplicationService {
         User savedUser = userRepository.save(user);
         log.info("User created successfully with ID: {}", savedUser.getUserId());
 
+        // 1. Assign Role
+        RoleCode targetRoleCode = "AGENT".equalsIgnoreCase(request.getRole()) ? RoleCode.AGENT : RoleCode.BUYER;
+        Role role = roleRepository.findByRoleCode(targetRoleCode)
+                .orElseThrow(() -> new BusinessConflictException("Role not found", "ROLE_NOT_FOUND"));
+        
+        UserRole userRole = UserRole.create(savedUser, role);
+        userRoleRepository.save(userRole);
+
+        // 2. Create full true preferences
+        SettingPreference preference = SettingPreference.builder()
+                .userId(savedUser.getUserId())
+                .inAppEnabled(true)
+                .emailEnabled(true)
+                .pushEnabled(true)
+                .contactViaEmail(true)
+                .contactViaPhone(true)
+                .hidePhoneNumber(false)
+                .hideEmail(false)
+                .build();
+        settingPreferenceRepository.save(preference);
+
+        // 3. Create default profile
+        if (targetRoleCode == RoleCode.AGENT) {
+            AgentProfile profile = AgentProfile.builder()
+                    .userId(savedUser.getUserId())
+                    .rating(java.math.BigDecimal.ZERO)
+                    .propertiesSold(0)
+                    .build();
+            agentProfileRepository.save(profile);
+        } else {
+            CustomerProfile profile = CustomerProfile.builder()
+                    .userId(savedUser.getUserId())
+                    .profileName(savedUser.getFullName())
+                    .isActive(true)
+                    .build();
+            customerProfileRepository.save(profile);
+        }
+
         return userMapper.toResponse(savedUser);
+    }
+
+    /**
+     * Create a new user from Google login.
+     * Sets email verified to true and assigns default BUYER role.
+     */
+    public User createGoogleUser(String email, String firstName, String lastName, String avatarUrl) {
+        log.info("Creating new Google user with email: {}", email);
+
+        // Build user entity
+        User user = User.builder()
+                .email(Email.of(email))
+                .passwordHash(passwordService.encode(UUID.randomUUID().toString())) // Random password for Google
+                .firstName(firstName)
+                .lastName(lastName)
+                .avatarUrl(avatarUrl)
+                .businessName((firstName != null && lastName != null)
+                        ? firstName + " " + lastName : email.split("@")[0])
+                .status(UserStatus.ACTIVE)
+                .emailVerifiedAt(java.time.LocalDateTime.now()) // Auto-verify email for Google
+                .build();
+
+        // Save user
+        User savedUser = userRepository.save(user);
+        log.info("Google user created successfully with ID: {}", savedUser.getUserId());
+
+        // 1. Assign default BUYER Role
+        Role role = roleRepository.findByRoleCode(RoleCode.BUYER)
+                .orElseThrow(() -> new BusinessConflictException("Role not found: BUYER", "ROLE_NOT_FOUND"));
+        
+        UserRole userRole = UserRole.create(savedUser, role);
+        userRoleRepository.save(userRole);
+
+        // 2. Create default preferences
+        SettingPreference preference = SettingPreference.builder()
+                .userId(savedUser.getUserId())
+                .inAppEnabled(true)
+                .emailEnabled(true)
+                .pushEnabled(true)
+                .contactViaEmail(true)
+                .contactViaPhone(true)
+                .hidePhoneNumber(false)
+                .hideEmail(false)
+                .build();
+        settingPreferenceRepository.save(preference);
+
+        // 3. Create default customer profile
+        CustomerProfile profile = CustomerProfile.builder()
+                .userId(savedUser.getUserId())
+                .profileName(savedUser.getFullName())
+                .isActive(true)
+                .build();
+        customerProfileRepository.save(profile);
+
+        return savedUser;
     }
 
     /**
@@ -192,6 +303,33 @@ public class UserApplicationService {
             }
         }
         return false;
+    }
+
+    /**
+     * Process OAuth2 user: find existing or create new, and initialize roles.
+     * Transactional to avoid LazyInitializationException.
+     */
+    @Transactional
+    public User processOAuth2User(String email, String firstName, String lastName, String avatarUrl) {
+        User user = userRepository.findByEmailValue(email)
+                .map(existingUser -> {
+                    if (!existingUser.isEmailVerified()) {
+                        existingUser.verifyEmail();
+                        return userRepository.save(existingUser);
+                    }
+                    return existingUser;
+                })
+                .orElseGet(() -> createGoogleUser(email, firstName, lastName, avatarUrl));
+
+        // Eagerly initialize roles while session is open
+        user.getUserRoles().size(); 
+        user.getUserRoles().forEach(ur -> {
+            if (ur.getRole() != null) {
+                ur.getRole().getRoleCode();
+            }
+        });
+
+        return user;
     }
 
     /**

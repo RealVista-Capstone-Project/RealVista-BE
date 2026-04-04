@@ -21,5 +21,7 @@ public interface UserRepository {
     Optional<User> findByEmailValue(String email);
 
     boolean hasRole(UUID userId, RoleCode roleCode);
+
+    Optional<User> findByPhone(String phone);
 }
 
