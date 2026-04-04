@@ -47,6 +47,10 @@ public final class SecurityConstants {
         "/api/v1/test/**",
         "/api/v1/map/**",
         "/api/v1/locations/**",
+        "/api/v1/billing/plans/**",
+        "/api/v1/billing/packages/**",
+        "/api/v1/billing/webhook/**",
+        "/api/v1/billing/payment/vnpay-return",
         "/api/v1/leases/docusign/webhook"
     };
 

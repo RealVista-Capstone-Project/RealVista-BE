@@ -186,3 +186,21 @@ docusign:
   return-url: ${DOCUSIGN_RETURN_URL:http://localhost:3000/leases/signing-complete}
   webhook-hmac-key: ${DOCUSIGN_WEBHOOK_HMAC_KEY:}
   lease-template-id: ${DOCUSIGN_LEASE_TEMPLATE_ID:}
+
+# ── Payment Gateway Configuration ──
+# PayOS: api-url MUST be the API host only — PayOsService appends "/v2/payment-requests".
+# Register webhook URL on PayOS dashboard: https://<public-host>/api/v1/billing/webhook/payos
+# (PayOS cannot reach http://localhost — use ngrok/cloudflare tunnel for local dev.)
+# Values in .env (PAYOS_CLIENT_ID, etc.) override only when referenced below with ${...}.
+payment:
+  payos:
+    client-id: ${PAYOS_CLIENT_ID:28f71985-98d1-4ec1-a030-2ed3674b4205}
+    api-key: ${PAYOS_API_KEY:a1a2c844-8483-4bde-9848-6858a28dbfcd}
+    checksum-key: ${PAYOS_CHECKSUM_KEY:d5feead23b6f0f02afdadd0880f49a2ba38ec0c78d13be759cad61aaf6531824}
+    api-url: ${PAYOS_API_URL:https://api-merchant.payos.vn}
+  vnpay:
+    tmn-code: ${VNPAY_TMN_CODE:P5IZ4AXX}
+    hash-secret: ${VNPAY_HASH_SECRET:1LTYQVYIN4PKUOSX81JTLDDBJ6Z4Y3C1}
+    pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+    # Must match Return URL on VNPay merchant (register this exact URL, including query).
+    return-url: "${VNPAY_RETURN_URL:http://localhost:3000/vi/settings?tab=subscription}"
