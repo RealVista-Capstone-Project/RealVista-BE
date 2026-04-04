@@ -33,6 +33,7 @@ public final class SecurityConstants {
    */
   public static final class PublicEndpoints {
     public static final String[] PUBLIC_PATHS = {
+        "/api/v1/public/**",
         "/api/v1/auth/**",
         "/api/v1/listings/**",
         "/v1/api-docs/**",
@@ -116,22 +117,35 @@ public final class SecurityConstants {
    * "http://localhost:3000,http://152.42.235.208:8080").
    */
   public static final class Cors {
-    public static final List<String> DEFAULT_ORIGINS = List.of("http://localhost:3000",
-        "https://0fb4-14-161-6-119.ngrok-free.app", "https://db7b-14-161-6-119.ngrok-free.app");
-    public static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
-    public static final List<String> ALLOWED_HEADERS = List.of("Authorization", "Content-Type", "Accept", "Origin");
-    public static final List<String> EXPOSED_HEADERS = List.of("Authorization", "Content-Disposition");
+    public static final List<String> DEFAULT_ORIGINS = List.of(
+        "http://localhost:3000",
+        "https://0fb4-14-161-6-119.ngrok-free.app",
+        "https://db7b-14-161-6-119.ngrok-free.app"
+    );
+
+    public static final List<String> ALLOWED_METHODS = List.of(
+        "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
+    );
+
+    public static final List<String> ALLOWED_HEADERS = List.of(
+        "Authorization", "Content-Type", "Accept", "Origin"
+    );
+
+    public static final List<String> EXPOSED_HEADERS = List.of(
+        "Authorization", "Content-Disposition"
+    );
+
     public static final long MAX_AGE_SECONDS = 3600L;
 
     /**
-     * Builds the allowed origins list from DEFAULT_ORIGINS + CORS_ALLOWED_ORIGINS
-     * env var.
+     * Builds the allowed origins list from DEFAULT_ORIGINS + CORS_ALLOWED_ORIGINS env var.
      */
     public static List<String> getAllowedOrigins() {
       String extra = System.getenv("CORS_ALLOWED_ORIGINS");
       if (extra == null || extra.isBlank()) {
         return DEFAULT_ORIGINS;
       }
+
       List<String> origins = new java.util.ArrayList<>(DEFAULT_ORIGINS);
       for (String origin : extra.split(",")) {
         String trimmed = origin.trim();

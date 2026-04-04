@@ -27,5 +27,7 @@ public interface UserJpaRepository extends JpaRepository<User, UUID> {
            + "JOIN ur.role r "
            + "WHERE ur.userId = :userId AND r.roleCode = :roleCode")
     boolean hasRole(@Param("userId") UUID userId, @Param("roleCode") RoleCode roleCode);
+
+    Optional<User> findByPhone(String phone);
 }
 
