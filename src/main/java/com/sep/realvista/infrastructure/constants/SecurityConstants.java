@@ -64,6 +64,70 @@ public final class SecurityConstants {
     };
 
     public static final String API_KEY_HEADER = "x-service-api-key";
+    /**
+     * Public endpoints that don't require authentication.
+     */
+    public static final class PublicEndpoints {
+        public static final String[] PUBLIC_PATHS = {
+                "/api/v1/auth/**",
+                "/api/v1/listings/**",
+                "/v1/api-docs/**",
+                "/swagger-ui/**",
+                "/swagger-ui.html",
+                "/actuator/**",
+                "/actuator/health/**",
+                "/oauth2/**",
+                "/login/oauth2/**",
+                "/ws/**",
+                "api/test/**",
+                "/api/v1/test/**",
+                "/api/v1/map/**",
+                "/api/v1/locations/**"
+        };
+
+        private PublicEndpoints() {
+            throw new AssertionError("Cannot instantiate constants class");
+        }
+    }
+
+    /**
+     * Internal service-to-service endpoints protected by API key.
+     */
+    public static final class InternalEndpoints {
+        public static final String[] INTERNAL_PATHS = {
+                "/internal/**"
+        };
+
+        public static final String API_KEY_HEADER = "x-service-api-key";
+
+        private InternalEndpoints() {
+            throw new AssertionError("Cannot instantiate constants class");
+        }
+    }
+
+    /**
+     * OAuth2 constants.
+     */
+    public static final class OAuth2 {
+        // Frontend redirect paths
+        public static final String CALLBACK_PATH = "/vi/auth/callback";
+        public static final String ERROR_PATH = "/login";
+
+        // Query parameter names
+        public static final String PARAM_ACCESS_TOKEN = "access_token";
+        public static final String PARAM_USER_ID = "user_id";
+        public static final String PARAM_EMAIL = "email";
+        public static final String PARAM_ROLES = "roles";
+        public static final String PARAM_ERROR = "error";
+
+        // Error types
+        public static final String ERROR_NO_EMAIL = "no_email";
+        public static final String ERROR_AUTH_FAILED = "auth_failed";
+
+        private OAuth2() {
+            throw new AssertionError("Cannot instantiate constants class");
+        }
+    }
 
     private InternalEndpoints() {
       throw new AssertionError("Cannot instantiate constants class");

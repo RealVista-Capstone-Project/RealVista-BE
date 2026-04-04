@@ -2,6 +2,7 @@ package com.sep.realvista.infrastructure.config;
 
 import com.sep.realvista.infrastructure.constants.SecurityConstants;
 import com.sep.realvista.infrastructure.security.RestAuthenticationEntryPoint;
+import com.sep.realvista.infrastructure.security.apikey.InternalApiKeyAuthenticationFilter;
 import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
 import com.sep.realvista.infrastructure.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
@@ -20,6 +21,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
+
+import jakarta.servlet.DispatcherType;
 
 /**
  * Security configuration with JWT authentication.
