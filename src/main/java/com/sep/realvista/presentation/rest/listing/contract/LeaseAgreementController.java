@@ -211,8 +211,15 @@ public class LeaseAgreementController {
 
         // Parse envelope ID and status from the XML/JSON payload
         String payloadStr = new String(payload, StandardCharsets.UTF_8);
-        String envelopeId = extractField(payloadStr, "EnvelopeId", "envelopeId");
-        String status = extractField(payloadStr, "Status", "status");
+        log.info("DocuSign webhook received. Payload: {}", payloadStr);
+
+        // DocuSign XML uses <EnvelopeID> (capital I and D); JSON uses "envelopeId" nested in "data"
+        String envelopeId = extractField(payloadStr, "EnvelopeID", "envelopeId");
+
+        // DocuSign JSON uses "event": "envelope-completed"; XML uses <Status>completed</Status>
+        // Normalize by stripping the "envelope-" prefix from the event name
+        String rawStatus = extractField(payloadStr, "Status", "event");
+        String status = normalizeEventStatus(rawStatus);
 
         if (envelopeId != null && status != null) {
             leaseService.handleWebhookEvent(envelopeId, status);
@@ -222,6 +229,20 @@ public class LeaseAgreementController {
 
         // Always return 200 to DocuSign to acknowledge receipt
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Normalizes DocuSign event/status values to a consistent lowercase status string.
+     * <p>
+     * DocuSign JSON payloads use an "event" field with values like "envelope-completed",
+     * while XML payloads use a "Status" field with values like "completed".
+     * This method strips the "envelope-" prefix so both formats produce the same value.
+     */
+    private String normalizeEventStatus(String rawStatus) {
+        if (rawStatus == null) {
+            return null;
+        }
+        return rawStatus.toLowerCase().replace("envelope-", "");
     }
 
     /**
