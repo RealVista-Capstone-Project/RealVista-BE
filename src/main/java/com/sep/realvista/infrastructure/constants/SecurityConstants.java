@@ -33,6 +33,7 @@ public final class SecurityConstants {
    */
   public static final class PublicEndpoints {
     public static final String[] PUBLIC_PATHS = {
+        "/api/v1/public/**",
         "/api/v1/auth/**",
         "/api/v1/listings/**",
         "/v1/api-docs/**",

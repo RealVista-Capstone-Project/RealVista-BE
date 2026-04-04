@@ -61,8 +61,9 @@ public class UserApplicationService {
     public UserResponse createUser(CreateUserRequest request) {
         log.info("Creating new user with email: {}", request.getEmail());
 
-        // Validate unique email
+        // Validate unique email and phone
         userDomainService.validateUniqueEmail(request.getEmail());
+        userDomainService.validateUniquePhone(request.getPhoneNumber());
 
         // Build user entity
         User user = User.builder()
@@ -118,6 +119,61 @@ public class UserApplicationService {
         }
 
         return userMapper.toResponse(savedUser);
+    }
+
+    /**
+     * Create a new user from Google login.
+     * Sets email verified to true and assigns default BUYER role.
+     */
+    public User createGoogleUser(String email, String firstName, String lastName, String avatarUrl) {
+        log.info("Creating new Google user with email: {}", email);
+
+        // Build user entity
+        User user = User.builder()
+                .email(Email.of(email))
+                .passwordHash(passwordService.encode(UUID.randomUUID().toString())) // Random password for Google
+                .firstName(firstName)
+                .lastName(lastName)
+                .avatarUrl(avatarUrl)
+                .businessName((firstName != null && lastName != null)
+                        ? firstName + " " + lastName : email.split("@")[0])
+                .status(UserStatus.ACTIVE)
+                .emailVerifiedAt(java.time.LocalDateTime.now()) // Auto-verify email for Google
+                .build();
+
+        // Save user
+        User savedUser = userRepository.save(user);
+        log.info("Google user created successfully with ID: {}", savedUser.getUserId());
+
+        // 1. Assign default BUYER Role
+        Role role = roleRepository.findByRoleCode(RoleCode.BUYER)
+                .orElseThrow(() -> new BusinessConflictException("Role not found: BUYER", "ROLE_NOT_FOUND"));
+        
+        UserRole userRole = UserRole.create(savedUser, role);
+        userRoleRepository.save(userRole);
+
+        // 2. Create default preferences
+        SettingPreference preference = SettingPreference.builder()
+                .userId(savedUser.getUserId())
+                .inAppEnabled(true)
+                .emailEnabled(true)
+                .pushEnabled(true)
+                .contactViaEmail(true)
+                .contactViaPhone(true)
+                .hidePhoneNumber(false)
+                .hideEmail(false)
+                .build();
+        settingPreferenceRepository.save(preference);
+
+        // 3. Create default customer profile
+        CustomerProfile profile = CustomerProfile.builder()
+                .userId(savedUser.getUserId())
+                .profileName(savedUser.getFullName())
+                .isActive(true)
+                .build();
+        customerProfileRepository.save(profile);
+
+        return savedUser;
     }
 
     /**
@@ -247,6 +303,33 @@ public class UserApplicationService {
             }
         }
         return false;
+    }
+
+    /**
+     * Process OAuth2 user: find existing or create new, and initialize roles.
+     * Transactional to avoid LazyInitializationException.
+     */
+    @Transactional
+    public User processOAuth2User(String email, String firstName, String lastName, String avatarUrl) {
+        User user = userRepository.findByEmailValue(email)
+                .map(existingUser -> {
+                    if (!existingUser.isEmailVerified()) {
+                        existingUser.verifyEmail();
+                        return userRepository.save(existingUser);
+                    }
+                    return existingUser;
+                })
+                .orElseGet(() -> createGoogleUser(email, firstName, lastName, avatarUrl));
+
+        // Eagerly initialize roles while session is open
+        user.getUserRoles().size(); 
+        user.getUserRoles().forEach(ur -> {
+            if (ur.getRole() != null) {
+                ur.getRole().getRoleCode();
+            }
+        });
+
+        return user;
     }
 
     /**
