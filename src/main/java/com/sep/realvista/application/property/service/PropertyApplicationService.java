@@ -1,27 +1,36 @@
 package com.sep.realvista.application.property.service;
 
 import com.sep.realvista.application.common.dto.PageResponse;
-import com.sep.realvista.application.property.dto.PropertySearchCriteria;
-import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyAttributeRequest;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
 import com.sep.realvista.application.property.dto.PropertyMediaRequest;
+import com.sep.realvista.application.property.dto.PropertySearchCriteria;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
 import com.sep.realvista.application.property.mapper.PropertyMapper;
+import com.sep.realvista.domain.agent.PropertyAgent;
+import com.sep.realvista.domain.agent.PropertyAgentRepository;
+import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyMedia;
+import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRangeRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.property.location.repository.LocationRepository;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.PropertyAttributeRangeDTO;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
-import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
+import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.infrastructure.persistence.property.amenity.AmenityJpaRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,7 +39,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import jakarta.persistence.EntityManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +57,10 @@ public class PropertyApplicationService {
     private final PropertyAttributeValueRepository propertyAttributeValueRepository;
     private final PropertyTypeRepository propertyTypeRepository;
     private final PropertyAttributeRepository propertyAttributeRepository;
+    private final PropertyAgentRepository propertyAgentRepository;
+    private final UserRepository userRepository;
+    private final LocationRepository locationRepository;
+    private final PropertyAttributeRangeRepository propertyAttributeRangeRepository;
     private final PropertyMapper propertyMapper;
     private final EntityManager entityManager;
 
@@ -62,14 +74,29 @@ public class PropertyApplicationService {
 
     @Transactional
     public PropertyDetailResponse createProperty(CreatePropertyRequest request) {
-        UUID ownerId = getCurrentUserId();
-        log.info("Creating property for owner: {}", ownerId);
+        UUID currentUserId = getCurrentUserId();
+        UUID ownerId = request.getOwnerId() != null ? request.getOwnerId() : currentUserId;
+        boolean isAgentCreatingForOwner = !ownerId.equals(currentUserId);
+
+        log.info("Creating property for owner: {}. Created by: {}", ownerId, currentUserId);
 
         String titleSlug = UUID.randomUUID().toString(); // Temporary slug generation
 
+        UUID propertyLocationId = request.getLocationId() != null ? request.getLocationId()
+                : resolveLocationId(request.getLatitude(), request.getLongitude());
+
+        PropertyStatus finalStatus = isAgentCreatingForOwner ? PropertyStatus.PENDING : PropertyStatus.DRAFT;
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            try {
+                finalStatus = PropertyStatus.valueOf(request.getStatus().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid property status provided: {}. Using default.", request.getStatus());
+            }
+        }
+
         Property property = Property.builder()
                 .ownerId(ownerId)
-                .locationId(request.getLocationId())
+                .locationId(propertyLocationId)
                 .propertyTypeId(resolvePropertyTypeId(request.getPropertyTypeCode()))
                 .streetAddress(request.getStreetAddress())
                 .latitude(request.getLatitude())
@@ -80,16 +107,26 @@ public class PropertyApplicationService {
                 .lengthM(request.getLengthM())
                 .descriptions(request.getDescriptions())
                 .extraAttributes(request.getExtraAttributes())
+                .status(finalStatus)
                 .slug(titleSlug)
                 .build();
 
         Property savedProperty = propertyRepository.save(property);
         UUID propertyId = savedProperty.getPropertyId();
 
+        if (isAgentCreatingForOwner) {
+            PropertyAgent propertyAgent = PropertyAgent.builder()
+                    .propertyId(propertyId)
+                    .agentId(currentUserId)
+                    .build();
+            propertyAgentRepository.save(propertyAgent);
+            log.info("PropertyAgent link created for agent {} and property {}", currentUserId, propertyId);
+        }
+
         savedProperty.updateAmenities(buildAmenities(propertyId, request.getAmenityIds()));
         savedProperty.updateAttributes(buildAttributes(propertyId, request.getAttributes()));
         savedProperty.updateMedia(buildMedia(propertyId, request.getMedia(), ownerId));
-        
+
         propertyRepository.save(savedProperty);
         entityManager.flush();
         entityManager.clear();
@@ -110,24 +147,29 @@ public class PropertyApplicationService {
         }
 
         // Update basic fields
-        if (request.getLocationId() != null || request.getPropertyTypeCode() != null) {
+        UUID newLocationId = request.getLocationId();
+        if (newLocationId == null && request.getLatitude() != null && request.getLongitude() != null) {
+            newLocationId = resolveLocationId(request.getLatitude(), request.getLongitude());
+        }
+
+        if (newLocationId != null || request.getPropertyTypeCode() != null) {
             property.updateLocationAndType(
-                request.getLocationId(),
-                request.getPropertyTypeCode() != null ? resolvePropertyTypeId(request.getPropertyTypeCode()) : null
+                    newLocationId,
+                    request.getPropertyTypeCode() != null ? resolvePropertyTypeId(request.getPropertyTypeCode()) : null
             );
         }
 
         property.updateDetails(
-            request.getStreetAddress(),
-            request.getDescriptions(),
-            null // Slug update logic can be added if needed
+                request.getStreetAddress(),
+                request.getDescriptions(),
+                null // Slug update logic can be added if needed
         );
 
         property.updateDimensions(
-            request.getLandSizeM2(),
-            request.getUsableSizeM2(),
-            request.getWidthM(),
-            request.getLengthM()
+                request.getLandSizeM2(),
+                request.getUsableSizeM2(),
+                request.getWidthM(),
+                request.getLengthM()
         );
 
         if (request.getLatitude() != null && request.getLongitude() != null) {
@@ -148,6 +190,14 @@ public class PropertyApplicationService {
 
         if (request.getMedia() != null) {
             property.updateMedia(buildMedia(propertyId, request.getMedia(), ownerId));
+        }
+
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            try {
+                property.updateStatus(PropertyStatus.valueOf(request.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid property status provided during update: {}", request.getStatus());
+            }
         }
 
         propertyRepository.save(property);
@@ -179,21 +229,22 @@ public class PropertyApplicationService {
             Pageable pageable) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         UUID userId = getCurrentUserId();
-        
+
         boolean isAgent = auth != null && auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_AGENT"));
 
         String keyword = criteria != null ? criteria.getKeyword() : null;
+        PropertyStatus status = criteria != null ? criteria.getStatus() : null;
         Page<Property> propertiesPage;
 
         if (isAgent) {
             log.info("Getting properties for agent: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, pageable);
+            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, status, pageable);
         } else {
             log.info("Getting properties for owner: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, pageable);
+            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, status, pageable);
         }
-        
+
         List<PropertySummaryResponse> content = propertiesPage.getContent().stream().map(property -> {
             UUID propId = property.getPropertyId();
 
@@ -202,7 +253,7 @@ public class PropertyApplicationService {
             List<PropertyAttributeValue> attributes =
                     propertyAttributeValueRepository.findByPropertyIdWithAttribute(propId);
 
-            List<PropertyAmenity> amenities = 
+            List<PropertyAmenity> amenities =
                     propertyAmenityRepository.findByPropertyIdWithAmenity(propId);
 
             return propertyMapper.toSummaryResponse(property, media, attributes, amenities);
@@ -217,6 +268,51 @@ public class PropertyApplicationService {
                 .first(propertiesPage.isFirst())
                 .last(propertiesPage.isLast())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PropertyAttributeDTO> getAttributesWithRanges() {
+        log.info("Getting all searchable attributes with their ranges");
+        
+        return propertyAttributeRepository.findAllSearchable().stream().map(attr -> {
+            var ranges = propertyAttributeRangeRepository
+                    .findByPropertyAttributeId(attr.getPropertyAttributeId())
+                    .stream()
+                    .map(range -> PropertyAttributeRangeDTO.builder()
+                            .propertyAttributeRangeId(range.getPropertyAttributeRangeId())
+                            .label(range.getLabel())
+                            .minValue(range.getMinValue())
+                            .maxValue(range.getMaxValue())
+                            .displayOrder(range.getDisplayOrder())
+                            .build())
+                    .collect(Collectors.toList());
+
+            return PropertyAttributeDTO.builder()
+                    .attributeId(attr.getPropertyAttributeId())
+                    .attributeCode(attr.getCode())
+                    .attributeName(attr.getName())
+                    .dataType(attr.getDataType().name())
+                    .icon(attr.getIcon())
+                    .unit(attr.getUnit())
+                    .ranges(ranges)
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    private UUID resolveLocationId(java.math.BigDecimal lat, java.math.BigDecimal lng) {
+        if (lat == null || lng == null) {
+            return null;
+        }
+        log.info("Resolving location for coordinates: [{}, {}]", lat, lng);
+        var locations = locationRepository.findContainingLocations(lat, lng);
+        if (locations.isEmpty()) {
+            log.warn("No location found for coordinates: [{}, {}]", lat, lng);
+            return null;
+        }
+        // Return the first one (already sorted by WARD -> DISTRICT -> CITY)
+        UUID resolvedId = locations.getFirst().getLocationId();
+        log.info("Resolved location ID: {} ({})", resolvedId, locations.getFirst().getName());
+        return resolvedId;
     }
 
     @Transactional(readOnly = true)
@@ -270,22 +366,22 @@ public class PropertyApplicationService {
         return attributeRequests.stream()
                 .map(req -> {
                     UUID attributeId = req.getAttributeId();
-                    if (attributeId == null && req.getAttributeCode() != null 
+                    if (attributeId == null && req.getAttributeCode() != null
                             && !req.getAttributeCode().isBlank()) {
                         attributeId = propertyAttributeRepository.findByCode(req.getAttributeCode())
                                 .map(com.sep.realvista.domain.property.attribute.PropertyAttribute
                                         ::getPropertyAttributeId)
                                 .orElseThrow(() -> new ResourceNotFoundException(
-                                        String.format("PropertyAttribute not found with code: %s", 
+                                        String.format("PropertyAttribute not found with code: %s",
                                                 req.getAttributeCode())));
                     }
                     return PropertyAttributeValue.builder()
-                        .propertyId(propertyId)
-                        .propertyAttributeId(attributeId)
-                        .valueNumber(req.getValueNumber())
-                        .valueText(req.getValueText())
-                        .valueBoolean(req.getValueBoolean())
-                        .build();
+                            .propertyId(propertyId)
+                            .propertyAttributeId(attributeId)
+                            .valueNumber(req.getValueNumber())
+                            .valueText(req.getValueText())
+                            .valueBoolean(req.getValueBoolean())
+                            .build();
                 })
                 .collect(Collectors.toList());
     }
@@ -305,5 +401,80 @@ public class PropertyApplicationService {
                         .uploadBy(ownerId)
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public PropertyDetailResponse verifyPropertyByAgent(UUID propertyId) {
+        UUID agentId = getCurrentUserId();
+        log.info("Agent {} verifying property {}", agentId, propertyId);
+
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+
+        if (!propertyAgentRepository.existsByPropertyIdAndAgentId(propertyId, agentId)) {
+            throw new IllegalArgumentException("User is not authorized to verify this property");
+        }
+
+        property.verifyByAgent();
+        propertyRepository.save(property);
+
+        log.info("Property {} verified by agent {}", propertyId, agentId);
+
+        return getPropertyDetails(propertyId);
+    }
+
+    @Transactional
+    public PropertyDetailResponse assignAgentToProperty(UUID propertyId) {
+        UUID agentId = getCurrentUserId();
+        log.info("Assigning agent {} to property {}", agentId, propertyId);
+
+        // Create link if not already exists
+        if (!propertyAgentRepository.existsByPropertyIdAndAgentId(propertyId, agentId)) {
+            PropertyAgent propertyAgent = PropertyAgent.builder()
+                    .propertyId(propertyId)
+                    .agentId(agentId)
+                    .build();
+            propertyAgentRepository.save(propertyAgent);
+            log.info("PropertyAgent link created for agent {} and property {}", agentId, propertyId);
+        } else {
+            log.info("Agent {} already linked to property {}", agentId, propertyId);
+        }
+
+        return getPropertyDetails(propertyId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PropertySummaryResponse> searchProperties(String address, java.math.BigDecimal nLat,
+                                                          java.math.BigDecimal sLat, java.math.BigDecimal eLng,
+                                                          java.math.BigDecimal wLng) {
+        log.info("Searching properties with address: {}, bbox: [{}, {}, {}, {}]",
+                address, nLat, sLat, eLng, wLng);
+
+        List<Property> properties;
+        if (nLat != null && sLat != null && eLng != null && wLng != null) {
+            properties = propertyRepository.findInLocationRange(nLat, sLat, eLng, wLng);
+        } else if (address != null && !address.isBlank()) {
+            properties = propertyRepository.searchByAddress(address);
+        } else {
+            return new ArrayList<>();
+        }
+
+        return properties.stream().map(property -> {
+            String thumbnailUrl = propertyMediaRepository.findByPropertyId(property.getPropertyId())
+                    .stream()
+                    .filter(pm -> Boolean.TRUE.equals(pm.getIsPrimary()))
+                    .findFirst()
+                    .map(PropertyMedia::getThumbnailUrl)
+                    .orElse(null);
+
+            PropertySummaryResponse response = propertyMapper.toSummaryResponse(property, thumbnailUrl);
+
+            userRepository.findById(property.getOwnerId()).ifPresent(owner -> {
+                response.setOwnerName(owner.getFullName());
+                response.setOwnerPhone(owner.getPhone());
+            });
+
+            return response;
+        }).collect(Collectors.toList());
     }
 }

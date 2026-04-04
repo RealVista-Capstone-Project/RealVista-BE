@@ -95,6 +95,26 @@ public class PropertyMapper {
                 .build();
     }
 
+    public PropertySummaryResponse toSummaryResponse(Property property, String thumbnailUrl) {
+        return PropertySummaryResponse.builder()
+                .propertyId(property.getPropertyId())
+                .propertyTypeId(property.getPropertyTypeId())
+                .streetAddress(property.getStreetAddress())
+                .status(property.getStatus())
+                .landSizeM2(property.getLandSizeM2())
+                .usableSizeM2(property.getUsableSizeM2())
+                .widthM(property.getWidthM())
+                .lengthM(property.getLengthM())
+                .description(property.getDescriptions())
+                .media(thumbnailUrl != null ? List.of(MediaDTO.builder()
+                        .thumbnailUrl(thumbnailUrl)
+                        .isPrimary(true)
+                        .build()) : null)
+                .propertyTypeInfo(mapPropertyType(property))
+                .locationInfo(mapLocation(property))
+                .build();
+    }
+
     private PropertyTypeInfoDTO mapPropertyType(Property property) {
         var pt = property.getPropertyType();
         if (pt == null) {
