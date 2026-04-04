@@ -105,10 +105,17 @@ public class Property extends BaseEntity {
     private Map<String, Object> extraAttributes;
 
     public void publish() {
-        if (this.status != PropertyStatus.DRAFT) {
-            throw new IllegalStateException("Only draft properties can be published");
+        if (this.status != PropertyStatus.DRAFT && this.status != PropertyStatus.VERIFIED) {
+            throw new IllegalStateException("Only draft or verified properties can be published");
         }
         this.status = PropertyStatus.AVAILABLE;
+    }
+
+    public void verifyByAgent() {
+        if (this.status != PropertyStatus.PENDING) {
+            throw new IllegalStateException("Only pending properties can be verified by agent");
+        }
+        this.status = PropertyStatus.VERIFIED;
     }
 
     public void reserve() {
@@ -143,6 +150,12 @@ public class Property extends BaseEntity {
         return this.status == PropertyStatus.AVAILABLE;
     }
 
+    public void updateStatus(PropertyStatus newStatus) {
+        if (newStatus != null) {
+            this.status = newStatus;
+        }
+    }
+
     public void updateLocationAndType(UUID locationId, UUID propertyTypeId) {
         if (locationId != null) {
             this.locationId = locationId;
@@ -172,29 +185,29 @@ public class Property extends BaseEntity {
         this.lengthM = lengthM;
     }
 
-    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY,
                cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> attributeValues = 
+    private List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> attributeValues =
             new java.util.ArrayList<>();
 
-    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY,
                cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     @org.hibernate.annotations.Where(clause = "is_property_standard = true")
     @Builder.Default
     private List<PropertyMedia> mediaList = new java.util.ArrayList<>();
 
-    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY, 
+    @OneToMany(mappedBy = "property", fetch = FetchType.LAZY,
                cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<com.sep.realvista.domain.property.amenity.PropertyAmenity> amenities = 
+    private List<com.sep.realvista.domain.property.amenity.PropertyAmenity> amenities =
             new java.util.ArrayList<>();
 
     public void updateMedia(List<PropertyMedia> newMedia) {
         // Remove those not in new list (by URL)
-        this.mediaList.removeIf(existing -> 
+        this.mediaList.removeIf(existing ->
             newMedia.stream().noneMatch(n -> n.getMediaUrl().equals(existing.getMediaUrl())));
-        
+
         // Add new ones or update existing ones
         if (newMedia != null) {
             for (var m : newMedia) {
@@ -213,14 +226,14 @@ public class Property extends BaseEntity {
 
     public void updateAmenities(List<com.sep.realvista.domain.property.amenity.PropertyAmenity> newAmenities) {
         // Remove those not in new list
-        this.amenities.removeIf(existing -> 
+        this.amenities.removeIf(existing ->
             newAmenities.stream().noneMatch(n -> n.getAmenityId().equals(existing.getAmenityId())));
-        
+
         // Add those not in existing list
         if (newAmenities != null) {
             for (var newAmenity : newAmenities) {
-                if (this.amenities.stream().noneMatch(
-                        existing -> existing.getAmenityId().equals(newAmenity.getAmenityId()))) {
+                if (this.amenities.stream().noneMatch(existing ->
+                        existing.getAmenityId().equals(newAmenity.getAmenityId()))) {
                     this.amenities.add(newAmenity);
                 }
             }
@@ -230,10 +243,10 @@ public class Property extends BaseEntity {
     public void updateAttributes(
             List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> newAttributes) {
         // Remove those not in new list
-        this.attributeValues.removeIf(existing -> 
-            newAttributes.stream().noneMatch(
-                n -> n.getPropertyAttributeId().equals(existing.getPropertyAttributeId())));
-        
+        this.attributeValues.removeIf(existing ->
+            newAttributes.stream().noneMatch(n ->
+                n.getPropertyAttributeId().equals(existing.getPropertyAttributeId())));
+
         // Add or Update
         if (newAttributes != null) {
             for (var newAttr : newAttributes) {
@@ -242,10 +255,14 @@ public class Property extends BaseEntity {
                     .findFirst()
                     .ifPresentOrElse(
                         existing -> {
-                            // Update values in-place
-                            existing.updateNumberValue(newAttr.getValueNumber());
-                            existing.updateTextValue(newAttr.getValueText());
-                            existing.updateBooleanValue(newAttr.getValueBoolean());
+                            // Update only provided values to prevent clearing others
+                            if (newAttr.getValueNumber() != null) {
+                                existing.updateNumberValue(newAttr.getValueNumber());
+                            } else if (newAttr.getValueText() != null) {
+                                existing.updateTextValue(newAttr.getValueText());
+                            } else if (newAttr.getValueBoolean() != null) {
+                                existing.updateBooleanValue(newAttr.getValueBoolean());
+                            }
                         },
                         () -> {
                             this.attributeValues.add(newAttr);

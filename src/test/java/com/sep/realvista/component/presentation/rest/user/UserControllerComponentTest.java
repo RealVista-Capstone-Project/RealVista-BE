@@ -96,9 +96,11 @@ class UserControllerComponentTest {
         String requestBody = """
                 {
                     "email": "test@example.com",
-                    "password": "SecurePass123",
-                    "firstName": "John",
-                    "lastName": "Doe"
+                    "password": "SecurePass123!",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "phone_number": "+84912345678",
+                    "role": "BUYER"
                 }
                 """;
 
@@ -126,9 +128,11 @@ class UserControllerComponentTest {
         String requestBody = """
                 {
                     "email": "invalid-email",
-                    "password": "SecurePass123",
-                    "firstName": "John",
-                    "lastName": "Doe"
+                    "password": "SecurePass123!",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "phone_number": "+84912345678",
+                    "role": "BUYER"
                 }
                 """;
 
@@ -175,9 +179,11 @@ class UserControllerComponentTest {
         String requestBody = """
                 {
                     "email": "",
-                    "password": "SecurePass123",
-                    "firstName": "John",
-                    "lastName": "Doe"
+                    "password": "SecurePass123!",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "phone_number": "+84912345678",
+                    "role": "BUYER"
                 }
                 """;
 

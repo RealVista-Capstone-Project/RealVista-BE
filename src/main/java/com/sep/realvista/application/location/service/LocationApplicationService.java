@@ -11,9 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -95,5 +97,23 @@ public class LocationApplicationService {
                                 district.getLocationId(), Collections.emptyList()))
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    public Optional<LocationResponseDTO> findSpecificLocationByCoordinates(BigDecimal lat, BigDecimal lng) {
+        log.info("Finding specific location for coordinates: [{}, {}]", lat, lng);
+        var locations = locationRepository.findContainingLocations(lat, lng);
+        if (locations.isEmpty()) {
+            return Optional.empty();
+        }
+        // Return the first one (already sorted by WARD -> DISTRICT -> CITY)
+        return Optional.of(mapToDTO(locations.getFirst()));
+    }
+
+    private LocationResponseDTO mapToDTO(com.sep.realvista.domain.property.location.Location location) {
+        return LocationResponseDTO.builder()
+                .locationId(location.getLocationId())
+                .code(location.getCode())
+                .name(location.getName())
+                .build();
     }
 }
