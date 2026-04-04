@@ -49,21 +49,36 @@ public class Property3DGenerationService {
 
         // Build generate request
         MarbleGenerateRequest marbleRequest = MarbleGenerateRequest.builder()
-                .model(request.getModel())
+                .model(request.getModel() != null ? request.getModel() : "Marble 0.1-plus")
                 .displayName(request.getDisplayName() != null 
                         ? request.getDisplayName() : "Property 3D World")
-                .generationOptions(MarbleGenerateRequest.GenerationOptions.builder()
-                        .images(request.getImages().stream()
-                                .map(img -> MarbleGenerateRequest.ImageParam.builder()
-                                        .mediaAssetId(img.getMediaAssetId())
-                                        .cameraParameters(MarbleGenerateRequest.CameraParameters
-                                                .builder()
-                                                .azimuth(img.getAzimuth())
+                .worldPrompt(MarbleGenerateRequest.WorldPrompt.builder()
+                        .type("multi-image")
+                        .multiImagePrompt(request.getImages().stream()
+                                .map(img -> {
+                                    if (img.getMediaAssetId() == null) {
+                                        log.warn("MediaAssetId is null for image at azimuth {}", 
+                                                img.getAzimuth());
+                                    }
+                                    return MarbleGenerateRequest.MultiImagePrompt.builder()
+                                        .azimuth(img.getAzimuth())
+                                        .content(MarbleGenerateRequest.Content.builder()
+                                                .source("media_asset")
+                                                .mediaAssetId(img.getMediaAssetId())
                                                 .build())
-                                        .build())
+                                        .build();
+                                })
                                 .collect(Collectors.toList()))
+                        .reconstructImages(request.getImages().size() > 4)
                         .build())
                 .build();
+
+        try {
+            log.info("Initiating Marble 3D generation with payload: {}", 
+                    objectMapper.writeValueAsString(marbleRequest));
+        } catch (Exception e) {
+            log.warn("Failed to log Marble request payload", e);
+        }
 
         JsonNode response = marbleClient.generateWorld(marbleRequest);
         if (response == null || !response.hasNonNull("operation_id")) {
