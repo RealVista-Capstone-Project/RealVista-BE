@@ -3,6 +3,7 @@ package com.sep.realvista.presentation.rest.media;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.media.dto.MediaUploadResponse;
 import com.sep.realvista.application.media.service.MediaUploadApplicationService;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/media")
@@ -70,7 +73,13 @@ public class MediaUploadController {
 
             @Parameter(description = "Folder path in storage (e.g., 'prod/properties', "
                     + "'non-prod/test')", example = "non-prod/test")
-            @RequestParam(value = "folder", required = false, defaultValue = "media") String folder
+            @RequestParam(value = "folder", required = false, defaultValue = "media") String folder,
+
+            @Parameter(description = "Optional property ID to associate the media with",
+                    example = "123e4567-e89b-12d3-a456-426614174000")
+            @RequestParam(value = "propertyId", required = false) UUID propertyId,
+
+            @AuthenticationPrincipal SecurityUserDetails userDetails
     ) {
         // Debug logging
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -79,9 +88,11 @@ public class MediaUploadController {
                 auth != null ? auth.getName() : "null",
                 auth != null ? auth.getAuthorities() : "null");
 
-        log.info("Received upload request for file: {} to folder: {}", file.getOriginalFilename(), folder);
+        log.info("Received upload request for file: {} to folder: {}, propertyId: {}",
+                file.getOriginalFilename(), folder, propertyId);
 
-        MediaUploadResponse response = mediaUploadService.uploadMedia(file, folder);
+        MediaUploadResponse response = mediaUploadService
+                .uploadMedia(file, folder, propertyId, userDetails.getUserId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -118,10 +129,16 @@ public class MediaUploadController {
             @RequestParam("files") List<MultipartFile> files,
 
             @Parameter(description = "Folder path in storage", example = "listings")
-            @RequestParam(value = "folder", required = false, defaultValue = "media") String folder
+            @RequestParam(value = "folder", required = false, defaultValue = "media") String folder,
+
+            @Parameter(description = "Optional property ID to associate the media with",
+                    example = "123e4567-e89b-12d3-a456-426614174000")
+            @RequestParam(value = "propertyId", required = false) UUID propertyId,
+
+            @AuthenticationPrincipal SecurityUserDetails userDetails
     ) {
-        log.info("Received bulk upload request for {} files to folder: {}",
-                files.size(), folder);
+        log.info("Received bulk upload request for {} files to folder: {}, propertyId: {}",
+                files.size(), folder, propertyId);
 
         if (files.isEmpty()) {
             return ResponseEntity
@@ -130,7 +147,7 @@ public class MediaUploadController {
         }
 
         com.sep.realvista.application.media.dto.BulkMediaUploadResponse response =
-                mediaUploadService.uploadMultipleMedia(files, folder);
+                mediaUploadService.uploadMultipleMedia(files, folder, propertyId, userDetails.getUserId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

@@ -28,6 +28,8 @@ public class MediaDTO {
     private String thumbnailUrl;
     @JsonProperty("is_primary")
     private Boolean isPrimary;
+    @JsonProperty("is_property_standard")
+    private Boolean isPropertyStandard;
     @JsonProperty("display_order")
     private Integer displayOrder;
     @JsonProperty("metadata")

@@ -2,8 +2,10 @@ package com.sep.realvista.application.property.mapper;
 
 import java.util.UUID;
 import com.sep.realvista.application.listing.dto.AmenityDTO;
+import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.domain.property.Property;
@@ -62,15 +64,107 @@ public class PropertyMapper {
                 .build();
     }
 
-    public PropertySummaryResponse toSummaryResponse(Property property, String thumbnailUrl, boolean has3d) {
+    public PropertySummaryResponse toSummaryResponse(Property property, List<PropertyMedia> media,
+                                                     List<PropertyAttributeValue> attributes,
+                                                     List<PropertyAmenity> amenities) {
+        java.math.BigDecimal areaSqft = null;
+        if (property.getUsableSizeM2() != null) {
+            areaSqft = property.getUsableSizeM2().multiply(new java.math.BigDecimal("10.764"))
+                    .setScale(2, java.math.RoundingMode.HALF_UP);
+        }
+
         return PropertySummaryResponse.builder()
                 .propertyId(property.getPropertyId())
                 .propertyTypeId(property.getPropertyTypeId())
                 .streetAddress(property.getStreetAddress())
                 .status(property.getStatus())
                 .landSizeM2(property.getLandSizeM2())
-                .thumbnailUrl(thumbnailUrl)
-                .has3d(has3d)
+                .usableSizeM2(property.getUsableSizeM2())
+                .widthM(property.getWidthM())
+                .lengthM(property.getLengthM())
+                .areaSqft(areaSqft)
+                .description(property.getDescriptions())
+                .media(media != null ? media.stream()
+                        .map(this::mapMedia).collect(Collectors.toList()) : null)
+                .attributes(attributes != null ? attributes.stream()
+                        .map(this::mapAttribute).collect(Collectors.toList()) : null)
+                .amenities(amenities != null ? amenities.stream()
+                        .map(this::mapAmenity).collect(Collectors.toList()) : null)
+                .propertyTypeInfo(mapPropertyType(property))
+                .locationInfo(mapLocation(property))
+                .build();
+    }
+
+    public PropertySummaryResponse toSummaryResponse(Property property, String thumbnailUrl) {
+        return PropertySummaryResponse.builder()
+                .propertyId(property.getPropertyId())
+                .propertyTypeId(property.getPropertyTypeId())
+                .streetAddress(property.getStreetAddress())
+                .status(property.getStatus())
+                .landSizeM2(property.getLandSizeM2())
+                .usableSizeM2(property.getUsableSizeM2())
+                .widthM(property.getWidthM())
+                .lengthM(property.getLengthM())
+                .description(property.getDescriptions())
+                .media(thumbnailUrl != null ? List.of(MediaDTO.builder()
+                        .thumbnailUrl(thumbnailUrl)
+                        .isPrimary(true)
+                        .build()) : null)
+                .propertyTypeInfo(mapPropertyType(property))
+                .locationInfo(mapLocation(property))
+                .build();
+    }
+
+    private PropertyTypeInfoDTO mapPropertyType(Property property) {
+        var pt = property.getPropertyType();
+        if (pt == null) {
+            return null;
+        }
+        var cat = pt.getPropertyCategory();
+        return PropertyTypeInfoDTO.builder()
+                .propertyTypeId(pt.getPropertyTypeId())
+                .propertyTypeName(pt.getName())
+                .propertyTypeCode(pt.getCode())
+                .propertyCategoryId(cat != null ? cat.getPropertyCategoryId() : null)
+                .propertyCategoryName(cat != null ? cat.getName() : null)
+                .propertyCategoryCode(cat != null ? cat.getCode() : null)
+                .build();
+    }
+
+    private LocationInfoDTO mapLocation(Property property) {
+        var loc = property.getLocation();
+        if (loc == null) {
+            return null;
+        }
+
+        String wardName = null;
+        String districtName = null;
+        String cityName = null;
+
+        if (loc.isWard()) {
+            wardName = loc.getName();
+            if (loc.getParent() != null) {
+                districtName = loc.getParent().getName();
+                if (loc.getParent().getParent() != null) {
+                    cityName = loc.getParent().getParent().getName();
+                }
+            }
+        } else if (loc.isDistrict()) {
+            districtName = loc.getName();
+            if (loc.getParent() != null) {
+                cityName = loc.getParent().getName();
+            }
+        } else if (loc.isCity()) {
+            cityName = loc.getName();
+        }
+
+        return LocationInfoDTO.builder()
+                .locationId(loc.getLocationId())
+                .wardName(wardName)
+                .districtName(districtName)
+                .cityName(cityName)
+                .latitude(property.getLatitude())
+                .longitude(property.getLongitude())
                 .build();
     }
 
@@ -104,8 +198,8 @@ public class PropertyMapper {
                 .thumbnailUrl(pm.getThumbnailUrl())
                 .mediaType(pm.getMediaType())
                 .isPrimary(pm.getIsPrimary())
+                .isPropertyStandard(pm.getIsPropertyStandard())
                 .displayOrder(0)
-                .metadata(pm.getMetadata())
                 .build();
     }
 }

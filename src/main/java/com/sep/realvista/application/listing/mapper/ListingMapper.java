@@ -8,6 +8,9 @@ import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyInfoDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
+import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserStatus;
+import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.property.amenity.Amenity;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.listing.Listing;
@@ -19,7 +22,7 @@ import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationType;
 import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.PropertyMedia;
-import com.sep.realvista.domain.user.UserStatus;
+import com.sep.realvista.domain.property.Property;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -48,11 +51,30 @@ public interface ListingMapper {
     @Mapping(target = "totalVideos", ignore = true)
     @Mapping(target = "total3DTours", ignore = true)
     @Mapping(target = "costBreakdown", ignore = true)
+    @Mapping(target = "isFavorite", ignore = true)
+    @Mapping(target = "isCreatedByOwner", ignore = true)
+    @Mapping(target = "listingId", source = "listingId")
+    @Mapping(target = "propertyId", source = "propertyId")
+    @Mapping(target = "userId", source = "userId")
+    @Mapping(target = "listingType", source = "listingType")
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "content", source = "content")
+    @Mapping(target = "name", source = "name")
+    @Mapping(target = "slug", source = "slug")
+    @Mapping(target = "price", source = "price")
+    @Mapping(target = "minPrice", source = "minPrice")
+    @Mapping(target = "maxPrice", source = "maxPrice")
+    @Mapping(target = "isNegotiable", source = "isNegotiable")
+    @Mapping(target = "availableFrom", source = "availableFrom")
+    @Mapping(target = "publishedAt", source = "publishedAt")
+    @Mapping(target = "createdAt", source = "createdAt")
+    @Mapping(target = "updatedAt", source = "updatedAt")
     ListingDetailResponse toDetailResponse(Listing listing);
 
     default ListingDetailResponse toDetailResponseWithMedia(
             Listing listing,
-            List<ListingMedia> mediaList) {
+            List<ListingMedia> mediaList,
+            SettingPreference preference) {
         if (listing == null) {
             return null;
         }
@@ -74,9 +96,9 @@ public interface ListingMapper {
             }
         }
 
-        // Map agent/user
+        // Map agent/user with privacy logic
         if (listing.getUser() != null) {
-            response.setAgent(mapAgentInfo(listing.getUser()));
+            response.setAgent(mapAgentInfo(listing.getUser(), preference));
         }
 
         // Map media
@@ -91,8 +113,9 @@ public interface ListingMapper {
     default ListingDetailResponse toDetailResponseWithMediaAndAttributes(
             Listing listing,
             List<ListingMedia> mediaList,
-            List<PropertyAttributeValue> attributeValues) {
-        ListingDetailResponse response = toDetailResponseWithMedia(listing, mediaList);
+            List<PropertyAttributeValue> attributeValues,
+            SettingPreference preference) {
+        ListingDetailResponse response = toDetailResponseWithMedia(listing, mediaList, preference);
 
         // Map attributes
         if (attributeValues != null && !attributeValues.isEmpty()) {
@@ -136,8 +159,10 @@ public interface ListingMapper {
             Listing listing,
             List<ListingMedia> mediaList,
             List<PropertyAttributeValue> attributeValues,
-            List<PropertyAmenity> propertyAmenities) {
-        ListingDetailResponse response = toDetailResponseWithMediaAndAttributes(listing, mediaList, attributeValues);
+            List<PropertyAmenity> propertyAmenities,
+            SettingPreference preference) {
+        ListingDetailResponse response = toDetailResponseWithMediaAndAttributes(
+                listing, mediaList, attributeValues, preference);
 
         // Map amenities
         if (propertyAmenities != null && !propertyAmenities.isEmpty()) {
@@ -157,7 +182,7 @@ public interface ListingMapper {
         return pav.getValueText();
     }
 
-    default PropertyInfoDTO mapPropertyInfo(com.sep.realvista.domain.property.Property property) {
+    default PropertyInfoDTO mapPropertyInfo(Property property) {
         if (property == null) {
             return null;
         }
@@ -214,10 +239,15 @@ public interface ListingMapper {
         return builder.build();
     }
 
-    default AgentInfoDTO mapAgentInfo(com.sep.realvista.domain.user.User user) {
+    default AgentInfoDTO mapAgentInfo(User user, SettingPreference preference) {
         if (user == null) {
             return null;
         }
+        
+        // Privacy Logic: Only show phone if explicitly allowed by preference
+        boolean showPhone = preference != null && Boolean.FALSE.equals(preference.getHidePhoneNumber());
+        String phoneToShow = (showPhone && user.getPhone() != null) ? user.getPhone() : null;
+
         return AgentInfoDTO.builder()
                 .userId(user.getUserId())
                 .firstName(user.getFirstName())
@@ -225,7 +255,7 @@ public interface ListingMapper {
                 .fullName(user.getFullName())
                 .businessName(user.getBusinessName())
                 .email(user.getEmail() != null ? user.getEmail().getValue() : null)
-                .phone(user.getPhone())
+                .phone(phoneToShow)
                 .avatarUrl(user.getAvatarUrl())
                 .company(user.getBusinessName()) // Using businessName as company for now
                 .isVerified(user.getStatus() == UserStatus.VERIFIED || user.isEmailVerified())
@@ -366,6 +396,7 @@ public interface ListingMapper {
                 .listingType(listing.getListingType())
                 .status(listing.getStatus())
                 .price(listing.getPrice())
+                .content(listing.getContent())
                 .publishedAt(listing.getPublishedAt())
                 .userType(listing.getUser() != null ? "USER" : null); // Default to USER, can be enhanced later
 
@@ -409,6 +440,7 @@ public interface ListingMapper {
                 .maxPrice(listing.getMaxPrice())
                 .isNegotiable(listing.getIsNegotiable())
                 .availableFrom(listing.getAvailableFrom())
+                .content(listing.getContent())
                 .publishedAt(listing.getPublishedAt())
                 .createdAt(listing.getCreatedAt())
                 .updatedAt(listing.getUpdatedAt());

@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class MediaUploadResponse {
 
+    @JsonProperty("media_id")
+    private java.util.UUID mediaId;
+
     @JsonProperty("media_url")
     private String mediaUrl;
 

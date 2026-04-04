@@ -263,7 +263,7 @@ public class ListingController {
     public ResponseEntity<ApiResponse<PageResponse<ListingResponse>>>
     getManagedListings(
             @org.springdoc.core.annotations.ParameterObject ManagedListingSearchCriteria criteria,
-            @org.springframework.data.web.PageableDefault(size = 10)
+            @org.springframework.data.web.PageableDefault()
             org.springframework.data.domain.Pageable pageable,
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
@@ -305,31 +305,13 @@ public class ListingController {
 
     // ==================== Status Management Operations ====================
 
-    @PatchMapping("/{listingId}/submit-for-review")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Submit listing for review",
-            description = "Changes listing status from DRAFT to PENDING. "
-                    + "The listing creator or property owner can submit for review.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
-    submitForReview(
-            @PathVariable UUID listingId,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
-
-        log.info("Submitting listing ID: {} for review by user: {}", listingId, userDetails.getUserId());
-
-        com.sep.realvista.application.listing.dto.ListingResponse response =
-                listingApplicationService.submitForReview(listingId, userDetails.getUserId());
-
-        return ResponseEntity.ok(ApiResponse.success("Listing submitted for review", response));
-    }
-
     @PatchMapping("/{listingId}/publish")
     @SecurityRequirement(name = "Bearer Authentication")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Publish a listing",
             description = "Changes listing status from DRAFT/PENDING to PUBLISHED. "
-                    + "The listing creator or property owner can publish.")
+                    + "The listing creator or property owner can publish. "
+                    + "Requires the associated property to be in AVAILABLE (active) status.")
     public ResponseEntity<ApiResponse<ListingResponse>>
     publishListing(
             @PathVariable UUID listingId,

@@ -39,6 +39,9 @@ public interface ListingRepository {
 
     boolean existsById(UUID id);
 
+    boolean existsByPropertyIdAndListingTypeAndStatusAndUserId(
+            UUID propertyId, ListingType listingType, ListingStatus status, UUID userId);
+
     void deleteById(UUID id);
 
     void deleteAll();

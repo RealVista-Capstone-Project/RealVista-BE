@@ -83,6 +83,9 @@ public class ListingResponse {
     @JsonProperty("city_name")
     private String cityName;
 
+    @JsonProperty("content")
+    private String content;
+
     @JsonProperty("full_address")
     public String getFullAddress() {
         return AddressFormatter.formatFullAddress(streetAddress, wardName, districtName, cityName);

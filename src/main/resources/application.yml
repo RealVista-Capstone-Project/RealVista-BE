@@ -38,8 +38,8 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-        use_sql_comments: true
+        format_sql: false
+        use_sql_comments: false
         jdbc:
           batch_size: 20
         order_inserts: true
@@ -148,8 +148,8 @@ logging:
     root: ${LOG_LEVEL:INFO}
     com.sep.realvista: DEBUG
     org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    # org.hibernate.SQL: DEBUG
+    # org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:
     console: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
     file: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
@@ -178,3 +178,15 @@ digitalocean:
     endpoint: ${DIGITALOCEAN_SPACES_ENDPOINT:https://sgp1.digitaloceanspaces.com}
     bucket-name: ${DIGITALOCEAN_SPACES_BUCKET_NAME:realvista}
     cdn-endpoint: ${DIGITALOCEAN_SPACES_CDN_ENDPOINT:}
+
+# ── DocuSign eSignature Configuration ──
+docusign:
+  integration-key: ${DOCUSIGN_INTEGRATION_KEY:}
+  user-id: ${DOCUSIGN_USER_ID:}
+  account-id: ${DOCUSIGN_ACCOUNT_ID:}
+  rsa-private-key: ${DOCUSIGN_RSA_PRIVATE_KEY:}
+  base-url: ${DOCUSIGN_BASE_URL:https://demo.docusign.net/restapi}
+  auth-server: ${DOCUSIGN_AUTH_SERVER:account-d.docusign.com}
+  return-url: ${DOCUSIGN_RETURN_URL:http://localhost:3000/leases/signing-complete}
+  webhook-hmac-key: ${DOCUSIGN_WEBHOOK_HMAC_KEY:}
+  lease-template-id: ${DOCUSIGN_LEASE_TEMPLATE_ID:}

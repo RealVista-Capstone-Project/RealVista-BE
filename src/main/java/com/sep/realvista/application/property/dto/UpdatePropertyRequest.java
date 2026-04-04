@@ -56,4 +56,7 @@ public class UpdatePropertyRequest {
     
     @Valid
     private List<PropertyMediaRequest> media;
+
+    @JsonProperty("status")
+    private String status;
 }

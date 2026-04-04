@@ -17,7 +17,8 @@ package com.sep.realvista.domain.property;
  *   <li>REJECTED: Failed verification, needs correction</li>
  *   <li>AVAILABLE: Active and can be listed for sale/rent</li>
  *   <li>RESERVED: Someone has expressed interest/deposit</li>
- *   <li>SOLD: Property has been sold or rented</li>
+ *   <li>SOLD: Property has been sold</li>
+ *   <li>RENTED: Property has been rented</li>
  * </ul>
  */
 public enum PropertyStatus {
@@ -27,5 +28,6 @@ public enum PropertyStatus {
     REJECTED,
     AVAILABLE,
     RESERVED,
-    SOLD
+    SOLD,
+    RENTED
 }
