@@ -50,6 +50,22 @@ public interface ListingMapper {
     @Mapping(target = "costBreakdown", ignore = true)
     @Mapping(target = "isFavorite", ignore = true)
     @Mapping(target = "isCreatedByOwner", ignore = true)
+    @Mapping(target = "listingId", source = "listingId")
+    @Mapping(target = "propertyId", source = "propertyId")
+    @Mapping(target = "userId", source = "userId")
+    @Mapping(target = "listingType", source = "listingType")
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "content", source = "content")
+    @Mapping(target = "name", source = "name")
+    @Mapping(target = "slug", source = "slug")
+    @Mapping(target = "price", source = "price")
+    @Mapping(target = "minPrice", source = "minPrice")
+    @Mapping(target = "maxPrice", source = "maxPrice")
+    @Mapping(target = "isNegotiable", source = "isNegotiable")
+    @Mapping(target = "availableFrom", source = "availableFrom")
+    @Mapping(target = "publishedAt", source = "publishedAt")
+    @Mapping(target = "createdAt", source = "createdAt")
+    @Mapping(target = "updatedAt", source = "updatedAt")
     ListingDetailResponse toDetailResponse(Listing listing);
 
     default ListingDetailResponse toDetailResponseWithMedia(
