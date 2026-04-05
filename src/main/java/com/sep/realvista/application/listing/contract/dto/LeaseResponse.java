@@ -78,4 +78,43 @@ public class LeaseResponse {
 
     @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
+
+    // ── Enriched renter info ──────────────────────────────────────────────────
+
+    @JsonProperty("renter_full_name")
+    private String renterFullName;
+
+    @JsonProperty("renter_email")
+    private String renterEmail;
+
+    @JsonProperty("renter_phone")
+    private String renterPhone;
+
+    @JsonProperty("renter_avatar_url")
+    private String renterAvatarUrl;
+
+    // ── Enriched landlord info ────────────────────────────────────────────────
+
+    @JsonProperty("landlord_full_name")
+    private String landlordFullName;
+
+    @JsonProperty("landlord_email")
+    private String landlordEmail;
+
+    @JsonProperty("landlord_phone")
+    private String landlordPhone;
+
+    @JsonProperty("landlord_avatar_url")
+    private String landlordAvatarUrl;
+
+    // ── Enriched property info ────────────────────────────────────────────────
+
+    @JsonProperty("property_title")
+    private String propertyTitle;
+
+    @JsonProperty("property_address")
+    private String propertyAddress;
+
+    @JsonProperty("property_type")
+    private String propertyType;
 }

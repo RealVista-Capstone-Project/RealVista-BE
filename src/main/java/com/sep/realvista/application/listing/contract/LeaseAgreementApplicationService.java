@@ -101,13 +101,13 @@ public class LeaseAgreementApplicationService {
         LeaseAgreement saved = leaseAgreementRepository.save(lease);
         log.info("Lease agreement created: {} for property: {}",
                 saved.getLeaseAgreementId(), saved.getPropertyId());
-        return leaseAgreementMapper.toResponse(saved);
+        return toEnrichedResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public LeaseResponse getLeaseById(UUID leaseId) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
-        return leaseAgreementMapper.toResponse(lease);
+        return toEnrichedResponse(lease);
     }
 
     @Transactional(readOnly = true)
@@ -438,13 +438,13 @@ public class LeaseAgreementApplicationService {
     public LeaseResponse rejectLease(UUID leaseId, String reason) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
         lease.reject(reason);
-        return leaseAgreementMapper.toResponse(leaseAgreementRepository.save(lease));
+        return toEnrichedResponse(leaseAgreementRepository.save(lease));
     }
 
     public LeaseResponse terminateLease(UUID leaseId) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
         lease.terminate();
-        return leaseAgreementMapper.toResponse(leaseAgreementRepository.save(lease));
+        return toEnrichedResponse(leaseAgreementRepository.save(lease));
     }
 
     // ── Private Helpers ───────────────────────────────────────────────────────
@@ -479,7 +479,7 @@ public class LeaseAgreementApplicationService {
 
     private PageResponse<LeaseResponse> toPageResponse(Page<LeaseAgreement> page) {
         return PageResponse.<LeaseResponse>builder()
-                .content(page.getContent().stream().map(leaseAgreementMapper::toResponse).toList())
+                .content(page.getContent().stream().map(this::toEnrichedResponse).toList())
                 .page(page.getNumber())
                 .size(page.getSize())
                 .totalElements(page.getTotalElements())
@@ -487,5 +487,42 @@ public class LeaseAgreementApplicationService {
                 .first(page.isFirst())
                 .last(page.isLast())
                 .build();
+    }
+
+    /**
+     * Builds a {@link LeaseResponse} enriched with renter, landlord, and property details.
+     * Replaces the bare {@code leaseAgreementMapper.toResponse()} calls so that list and
+     * detail endpoints always include display-ready fields for the frontend.
+     */
+    private LeaseResponse toEnrichedResponse(LeaseAgreement lease) {
+        LeaseResponse response = leaseAgreementMapper.toResponse(lease);
+
+        // Enrich renter info
+        userRepository.findById(lease.getRenterId()).ifPresent(renter -> {
+            response.setRenterFullName(renter.getFullName());
+            response.setRenterEmail(renter.getEmail().getValue());
+            response.setRenterPhone(renter.getPhone());
+            response.setRenterAvatarUrl(renter.getAvatarUrl());
+        });
+
+        // Enrich landlord info
+        userRepository.findById(lease.getLandlordId()).ifPresent(landlord -> {
+            response.setLandlordFullName(landlord.getFullName());
+            response.setLandlordEmail(landlord.getEmail().getValue());
+            response.setLandlordPhone(landlord.getPhone());
+            response.setLandlordAvatarUrl(landlord.getAvatarUrl());
+        });
+
+        // Enrich property info (lazy association — safe within @Transactional context)
+        Property property = lease.getProperty();
+        if (property != null) {
+            response.setPropertyTitle(property.getStreetAddress());
+            response.setPropertyAddress(property.getStreetAddress());
+            if (property.getPropertyType() != null) {
+                response.setPropertyType(property.getPropertyType().getName());
+            }
+        }
+
+        return response;
     }
 }
