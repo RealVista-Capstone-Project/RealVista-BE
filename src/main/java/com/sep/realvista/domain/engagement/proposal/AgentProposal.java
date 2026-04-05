@@ -66,4 +66,11 @@ public class AgentProposal extends BaseEntity {
     public void setAsDraft() {
         this.status = AgentProposalStatus.DRAFT;
     }
+
+    public void update(String title, java.math.BigDecimal commissionRate, Integer experienceYears, String pitchContent) {
+        if (title != null) this.title = title;
+        if (commissionRate != null) this.commissionRate = commissionRate;
+        if (experienceYears != null) this.experienceYears = experienceYears;
+        if (pitchContent != null) this.pitchContent = pitchContent;
+    }
 }

@@ -53,6 +53,28 @@ public class AgentProposalApplicationService {
         return agentProposalMapper.toDto(savedProposal);
     }
 
+    @Transactional
+    public AgentProposalDto updateProposal(UUID proposalId, UUID userId, ApplyAgentProposalRequest request) {
+        log.info("Agent {} is updating proposal template: {}", userId, proposalId);
+
+        AgentProposal proposal = agentProposalRepository.findById(proposalId)
+                .orElseThrow(() -> new ResourceNotFoundException("AgentProposal", proposalId));
+
+        if (!proposal.getUserId().equals(userId)) {
+            throw new SecurityException("You do not have permission to modify this proposal");
+        }
+
+        proposal.update(
+                request.getTitle(),
+                request.getCommissionRate(),
+                request.getExperienceYears(),
+                request.getPitchContent()
+        );
+
+        AgentProposal updatedProposal = agentProposalRepository.save(proposal);
+        return agentProposalMapper.toDto(updatedProposal);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<AgentProposalDto> getMyProposals(UUID userId, int page, int size) {
         log.info("Getting proposal templates for agent {}", userId);

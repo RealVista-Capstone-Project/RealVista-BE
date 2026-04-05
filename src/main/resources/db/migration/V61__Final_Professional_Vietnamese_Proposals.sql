@@ -1,5 +1,7 @@
--- Consolidating agent proposals seed with high-quality Vietnamese content
--- This replaces V59 and V60 logic with a pristine set of 6 professional templates
+-- e:/FPT_Software_Engineer/Ky9/Capstone/RealVista-BE/src/main/resources/db/migration/V61__Final_Professional_Vietnamese_Proposals.sql
+
+-- Xóa dữ liệu cũ nếu có (để tránh lỗi khi chạy lại migration test)
+DELETE FROM agent_proposals WHERE user_id = (SELECT user_id FROM users WHERE email = 'agent001@realvista.com');
 
 INSERT INTO agent_proposals (
     agent_proposal_id, 
@@ -83,5 +85,4 @@ INSERT INTO agent_proposals (
     'ACTIVE', 
     CURRENT_TIMESTAMP, 
     CURRENT_TIMESTAMP
-)
-;
+);

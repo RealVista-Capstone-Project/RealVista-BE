@@ -1,5 +1,8 @@
 package com.sep.realvista.application.engagement.service;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
@@ -9,13 +12,18 @@ import com.sep.realvista.domain.agent.AgentProfileRepository;
 import com.sep.realvista.domain.agent.AgentReviewRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
 import com.sep.realvista.domain.engagement.Engagement;
 import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.EngagementStatus;
 import com.sep.realvista.domain.engagement.EngagementType;
+import com.sep.realvista.domain.engagement.proposal.AgentProposal;
+import com.sep.realvista.domain.engagement.proposal.repository.AgentProposalRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +53,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 @Slf4j
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class EngagementApplicationService {
 
     private final EngagementRepository engagementRepository;
@@ -53,6 +62,9 @@ public class EngagementApplicationService {
     private final EngagementMapper engagementMapper;
     private final ListingRepository listingRepository;
     private final PropertyAttributeValueRepository propertyAttributeValueRepository;
+    private final PropertyRepository propertyRepository;
+    private final AgentProposalRepository agentProposalRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * Gets hired agents for a property owner with pagination, optional status filter, and search.
@@ -228,6 +240,70 @@ public class EngagementApplicationService {
         engagementRepository.save(engagement);
 
         log.info("Engagement {} cancelled successfully", engagementId);
+    }
+
+    /**
+     * Submits an agent proposal for a specific property.
+     *
+     * <p>Initiates a new engagement between the logged-in agent and the property owner.
+     * The proposal content (template) is cloned into the engagement blob.
+     *
+     * @param agentUserId   the ID of the agent submitting the proposal
+     * @param request       the submission payload (proposal template ID and property ID)
+     * @return the newly created engagement ID
+     */
+    @Caching(evict = {
+            @CacheEvict(value = "hiredAgents", allEntries = true)
+    })
+    public UUID submitAgentProposal(UUID agentUserId, SubmitAgentProposalRequest request) {
+        log.info("Submitting agent proposal: {} for property: {} by agent: {}",
+                request.getAgentProposalId(), request.getPropertyId(), agentUserId);
+
+        // 1. Fetch and validate agent proposal template
+        AgentProposal proposalTemplate = agentProposalRepository.findById(request.getAgentProposalId())
+                .orElseThrow(() -> new ResourceNotFoundException("AgentProposal", request.getAgentProposalId()));
+
+        if (!proposalTemplate.getUserId().equals(agentUserId)) {
+            throw new BusinessConflictException(
+                    "You do not own this proposal template",
+                    "PROPOSAL_TEMPLATE_NOT_OWNED");
+        }
+
+        // 2. Fetch and validate target property
+        Property property = propertyRepository.findById(request.getPropertyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property", request.getPropertyId()));
+
+        // Cannot propose to self-owned property (edge case)
+        if (property.getOwnerId().equals(agentUserId)) {
+            throw new BusinessConflictException(
+                    "You cannot submit a proposal to your own property",
+                    "CANNOT_PROPOSE_TO_SELF");
+        }
+
+        // 3. Prepare content (JSON string)
+        String content = null;
+        try {
+            content = objectMapper.writeValueAsString(Map.of("message", proposalTemplate.getPitchContent()));
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize agent proposal content", e);
+            throw new BusinessConflictException("Failed to process proposal content", "JSON_SERIALIZATION_ERROR");
+        }
+
+        // 4. Create the engagement
+        Engagement engagement = Engagement.builder()
+                .initiatorId(agentUserId)
+                .receiverId(property.getOwnerId())
+                .engagementType(EngagementType.AGENT_PROPOSAL)
+                .propertyId(property.getPropertyId())
+                .status(EngagementStatus.SUBMITTED)
+                .content(content)
+                .build();
+
+        Engagement saved = engagementRepository.save(engagement);
+
+        log.info("Agent proposal submitted successfully. New engagement ID: {}", saved.getEngagementId());
+
+        return saved.getEngagementId();
     }
 
     /**

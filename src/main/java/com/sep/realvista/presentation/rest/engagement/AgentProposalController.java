@@ -91,4 +91,21 @@ public class AgentProposalController {
         agentProposalApplicationService.archiveProposal(id, userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success("Proposal template archived successfully", null));
     }
+
+    @org.springframework.web.bind.annotation.PutMapping("/{id}")
+    @PreAuthorize("hasRole('AGENT')")
+    @Operation(summary = "Update a proposal template", description = "Update an existing proposal template's details")
+    public ResponseEntity<ApiResponse<AgentProposalDto>> updateProposal(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @PathVariable UUID id,
+            @Valid @RequestBody ApplyAgentProposalRequest request) {
+
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+        log.info("Update proposal template request - traceId: {}, proposalId: {}, userId: {}", 
+                traceId, id, userDetails.getUserId());
+
+        AgentProposalDto response = agentProposalApplicationService.updateProposal(id, userDetails.getUserId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Proposal template updated successfully", response));
+    }
 }
