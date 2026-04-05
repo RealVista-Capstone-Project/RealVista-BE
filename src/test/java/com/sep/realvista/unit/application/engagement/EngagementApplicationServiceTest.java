@@ -1,5 +1,7 @@
 package com.sep.realvista.unit.application.engagement;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
@@ -20,7 +22,6 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
-import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.user.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,6 +79,9 @@ class EngagementApplicationServiceTest {
 
     @Mock
     private AgentProposalRepository agentProposalRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private EngagementApplicationService engagementApplicationService;
@@ -714,6 +718,8 @@ class EngagementApplicationServiceTest {
 
             verify(engagementRepository, never()).save(any());
         }
+    }
+
     // ========================================================================
     // submitAgentProposal
     // ========================================================================
@@ -747,20 +753,34 @@ class EngagementApplicationServiceTest {
 
         @Test
         @DisplayName("Should successfully submit agent proposal")
-        void shouldSubmitSuccessfully() {
+        void shouldSubmitSuccessfully() throws JsonProcessingException {
             // Arrange
+            UUID expectedEngagementId = UUID.randomUUID();
             when(agentProposalRepository.findById(request.getAgentProposalId()))
                     .thenReturn(Optional.of(agentProposal));
             when(propertyRepository.findById(request.getPropertyId()))
                     .thenReturn(Optional.of(property));
+            when(objectMapper.writeValueAsString(any()))
+                    .thenReturn("{\"message\":\"My expert pitch\"}");
             when(engagementRepository.save(any(Engagement.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
+                    .thenAnswer(invocation -> {
+                        Engagement e = (Engagement) invocation.getArgument(0);
+                        return Engagement.builder()
+                                .engagementId(expectedEngagementId)
+                                .initiatorId(e.getInitiatorId())
+                                .receiverId(e.getReceiverId())
+                                .engagementType(e.getEngagementType())
+                                .propertyId(e.getPropertyId())
+                                .content(e.getContent())
+                                .build();
+                    });
 
             // Act
             UUID result = engagementApplicationService.submitAgentProposal(agentUserId, request);
 
             // Assert
             assertThat(result).isNotNull();
+            assertThat(result).isEqualTo(expectedEngagementId);
             verify(engagementRepository).save(any(Engagement.class));
         }
 
@@ -790,14 +810,18 @@ class EngagementApplicationServiceTest {
             assertThatThrownBy(() ->
                     engagementApplicationService.submitAgentProposal(otherAgentId, request))
                     .isInstanceOf(BusinessConflictException.class)
-                    .hasMessageContaining("You don't own this proposal template");
+                    .hasMessageContaining("You do not own this proposal template");
         }
 
         @Test
         @DisplayName("Should throw BusinessConflictException when proposing to own property")
         void shouldThrowWhenProposingToOwnProperty() {
             // Arrange
-            property.setOwnerId(agentUserId); // Agent is the owner
+            // Rebuild property with the agent as owner for this test case
+            property = Property.builder()
+                    .propertyId(request.getPropertyId())
+                    .ownerId(agentUserId) // Agent is the owner
+                    .build();
             when(agentProposalRepository.findById(request.getAgentProposalId()))
                     .thenReturn(Optional.of(agentProposal));
             when(propertyRepository.findById(request.getPropertyId()))
