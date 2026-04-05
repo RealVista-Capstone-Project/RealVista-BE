@@ -105,7 +105,8 @@ public class AgentProposalController {
         log.info("Update proposal template request - traceId: {}, proposalId: {}, userId: {}", 
                 traceId, id, userDetails.getUserId());
 
-        AgentProposalDto response = agentProposalApplicationService.updateProposal(id, userDetails.getUserId(), request);
+        AgentProposalDto response = agentProposalApplicationService
+                .updateProposal(id, userDetails.getUserId(), request);
         return ResponseEntity.ok(ApiResponse.success("Proposal template updated successfully", response));
     }
 }

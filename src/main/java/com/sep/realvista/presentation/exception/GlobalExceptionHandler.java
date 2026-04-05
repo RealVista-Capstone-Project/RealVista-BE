@@ -96,7 +96,8 @@ public class GlobalExceptionHandler {
                 .getAllErrors()
                 .stream()
                 .map(error -> {
-                    String field = error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName();
+                    String field = error instanceof FieldError fieldError 
+                            ? fieldError.getField() : error.getObjectName();
                     return ErrorResponse.ValidationError.builder()
                             .field(field)
                             .message(error.getDefaultMessage())
