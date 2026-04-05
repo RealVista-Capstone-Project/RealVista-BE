@@ -40,7 +40,8 @@ import java.util.UUID;
  *   GET    /api/v1/leases/{id}                         — Get lease by ID
  *   GET    /api/v1/leases/renter/{renterId}            — List by renter
  *   GET    /api/v1/leases/landlord/{landlordId}        — List by landlord
- *   GET    /api/v1/leases/listing/{listingId}          — List by listing
+ *   GET    /api/v1/leases/property/{propertyId}        — List by property
+ *   GET    /api/v1/leases/listing/{listingId}          — List by listing (resolves to property)
  *   POST   /api/v1/leases/{id}/send-renter             — Send to renter for signing
  *   GET    /api/v1/leases/{id}/renter-signing-url      — Get renter signing URL
  *   POST   /api/v1/leases/{id}/send-landlord           — Send to landlord for signing
@@ -102,9 +103,20 @@ public class LeaseAgreementController {
                 leaseService.getLeasesByLandlord(landlordId, page, size)));
     }
 
+    @GetMapping("/property/{propertyId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "List leases by property")
+    public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByProperty(
+            @PathVariable UUID propertyId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(ApiResponse.success("Leases retrieved",
+                leaseService.getLeasesByProperty(propertyId, page, size)));
+    }
+
     @GetMapping("/listing/{listingId}")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "List leases by listing")
+    @Operation(summary = "List leases by listing (resolves to property internally)")
     public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByListing(
             @PathVariable UUID listingId,
             @RequestParam(defaultValue = "0") int page,

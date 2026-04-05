@@ -13,6 +13,9 @@ import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.contract.LeaseAgreement;
 import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.listing.contract.LeaseStatus;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -31,6 +35,8 @@ import java.util.UUID;
  * <p>
  * Orchestrates lease CRUD operations and coordinates with DocuSign for embedded signing.
  * Signing operations degrade gracefully when DocuSign is not configured.
+ * <p>
+ * Leases are now tied directly to a {@link Property} (not a listing).
  */
 @Service
 @RequiredArgsConstructor
@@ -39,6 +45,8 @@ import java.util.UUID;
 public class LeaseAgreementApplicationService {
 
     private final LeaseAgreementRepository leaseAgreementRepository;
+    private final PropertyRepository propertyRepository;
+    private final ListingRepository listingRepository;
     private final UserRepository userRepository;
     private final DocuSignService docuSignService;
     private final DocuSignConfig docuSignConfig;
@@ -49,10 +57,36 @@ public class LeaseAgreementApplicationService {
 
     /**
      * Creates a new lease agreement in DRAFT status.
+     * <p>
+     * Validates:
+     * <ul>
+     *   <li>Property exists</li>
+     *   <li>Property is in AVAILABLE status</li>
+     *   <li>No active lease already exists for the property</li>
+     * </ul>
      */
     public LeaseResponse createLease(CreateLeaseRequest request) {
+        // 1. Validate property exists
+        Property property = propertyRepository.findById(request.getPropertyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property", request.getPropertyId()));
+
+        // 2. Validate property is available for leasing
+        if (!property.isAvailable()) {
+            throw new BusinessConflictException(
+                    "Property is not available for leasing. Current status: " + property.getStatus());
+        }
+
+        // 3. Validate no active lease already exists for this property
+        List<LeaseAgreement> activeLeases = leaseAgreementRepository
+                .findActiveLeasesByPropertyId(request.getPropertyId());
+        if (!activeLeases.isEmpty()) {
+            throw new BusinessConflictException(
+                    "An active lease already exists for this property.");
+        }
+
+        // 4. Build and save
         LeaseAgreement lease = LeaseAgreement.builder()
-                .listingId(request.getListingId())
+                .propertyId(request.getPropertyId())
                 .renterId(request.getRenterId())
                 .landlordId(request.getLandlordId())
                 .agentId(request.getAgentId())
@@ -65,7 +99,8 @@ public class LeaseAgreementApplicationService {
                 .build();
 
         LeaseAgreement saved = leaseAgreementRepository.save(lease);
-        log.info("Lease agreement created: {}", saved.getLeaseAgreementId());
+        log.info("Lease agreement created: {} for property: {}",
+                saved.getLeaseAgreementId(), saved.getPropertyId());
         return leaseAgreementMapper.toResponse(saved);
     }
 
@@ -91,12 +126,26 @@ public class LeaseAgreementApplicationService {
         return toPageResponse(leases);
     }
 
+    /**
+     * Lists leases by property ID.
+     */
     @Transactional(readOnly = true)
-    public PageResponse<LeaseResponse> getLeasesByListing(UUID listingId, int page, int size) {
-        Page<LeaseAgreement> leases = leaseAgreementRepository.findByListingId(
-                listingId, PageRequest.of(page, size, Sort.by("createdAt").descending())
+    public PageResponse<LeaseResponse> getLeasesByProperty(UUID propertyId, int page, int size) {
+        Page<LeaseAgreement> leases = leaseAgreementRepository.findByPropertyId(
+                propertyId, PageRequest.of(page, size, Sort.by("createdAt").descending())
         );
         return toPageResponse(leases);
+    }
+
+    /**
+     * Lists leases by listing ID (backward-compatible endpoint).
+     * Resolves the listing to its property, then delegates to {@link #getLeasesByProperty}.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<LeaseResponse> getLeasesByListing(UUID listingId, int page, int size) {
+        var listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
+        return getLeasesByProperty(listing.getPropertyId(), page, size);
     }
 
     // ── DocuSign Signing Workflow ─────────────────────────────────────────────
@@ -107,8 +156,8 @@ public class LeaseAgreementApplicationService {
      * For template flow, the renter is already a recipient in the existing envelope —
      * no new envelope is created. For PDF flow, adds the renter as a new signer.
      *
-     * @param leaseId    UUID of the lease agreement
-     * @param returnUrl  Frontend URL to redirect to after signing (null = use default from config)
+     * @param leaseId   UUID of the lease agreement
+     * @param returnUrl Frontend URL to redirect to after signing (null = use default from config)
      * @return {@link SigningUrlResponse} with the embedded signing URL
      */
     public SigningUrlResponse sendToRenterForSigning(UUID leaseId, String returnUrl) {
@@ -216,8 +265,8 @@ public class LeaseAgreementApplicationService {
      * Uses template-based flow if a lease template is configured, otherwise
      * downloads the lease PDF from the stored URL and creates a DocuSign envelope.
      *
-     * @param leaseId    UUID of the lease agreement
-     * @param returnUrl  Frontend URL to redirect to after signing (null = use default from config)
+     * @param leaseId   UUID of the lease agreement
+     * @param returnUrl Frontend URL to redirect to after signing (null = use default from config)
      * @return {@link SigningUrlResponse} with the embedded signing URL
      */
     public SigningUrlResponse sendToLandlordForSigning(UUID leaseId, String returnUrl) {
@@ -347,8 +396,8 @@ public class LeaseAgreementApplicationService {
      * Handles DocuSign Connect webhook events (envelope status updates).
      * Called by the controller after signature verification.
      *
-     * @param envelopeId    DocuSign envelope ID from the webhook payload
-     * @param eventStatus   Envelope status from DocuSign (e.g. "completed", "declined")
+     * @param envelopeId  DocuSign envelope ID from the webhook payload
+     * @param eventStatus Envelope status from DocuSign (e.g. "completed", "declined")
      */
     public void handleWebhookEvent(String envelopeId, String eventStatus) {
         leaseAgreementRepository.findByDocusignEnvelopeId(envelopeId).ifPresentOrElse(
@@ -368,6 +417,13 @@ public class LeaseAgreementApplicationService {
                 // Envelope completed means all signers are done — renter is the last signer
                 if (lease.getStatus() == LeaseStatus.PENDING_RENTER) {
                     lease.renterSignViaDocuSign();
+                    // Auto-mark the property as RENTED now that the lease is ACTIVE
+                    propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
+                        property.markAsRented();
+                        propertyRepository.save(property);
+                        log.info("Property {} automatically marked as RENTED after lease {} completed signing",
+                                lease.getPropertyId(), lease.getLeaseAgreementId());
+                    });
                 }
             }
             case "declined", "voided" -> {

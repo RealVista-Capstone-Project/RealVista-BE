@@ -1,7 +1,7 @@
 package com.sep.realvista.domain.listing.contract;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
-import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.property.Property;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -27,7 +27,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "lease_agreements", indexes = {
-        @Index(name = "idx_lease_listing", columnList = "listing_id"),
+        @Index(name = "idx_lease_property", columnList = "property_id"),
         @Index(name = "idx_lease_renter", columnList = "renter_id"),
         @Index(name = "idx_lease_landlord", columnList = "landlord_id"),
         @Index(name = "idx_lease_agent", columnList = "agent_id"),
@@ -44,12 +44,12 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "lease_agreement_id")
     private UUID leaseAgreementId;
 
-    @Column(name = "listing_id", nullable = false)
-    private UUID listingId;
+    @Column(name = "property_id", nullable = false)
+    private UUID propertyId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "listing_id", insertable = false, updatable = false)
-    private Listing listing;
+    @JoinColumn(name = "property_id", insertable = false, updatable = false)
+    private Property property;
 
     @Column(name = "renter_id", nullable = false)
     private UUID renterId;
