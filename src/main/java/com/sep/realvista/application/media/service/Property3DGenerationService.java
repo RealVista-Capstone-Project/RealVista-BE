@@ -92,6 +92,7 @@ public class Property3DGenerationService {
                 .propertyId(propertyId)
                 .uploaderId(uploaderId)
                 .operationId(operationId)
+                .roomName(request.getRoomName())
                 .status(Property3DGenerationStatus.PENDING)
                 .build();
         generationRepository.save(generation);
@@ -150,6 +151,9 @@ public class Property3DGenerationService {
             );
             metadataMap.put("marble_assets", assetsMap);
             metadataMap.put("operation_id", generation.getOperationId());
+            if (generation.getRoomName() != null) {
+                metadataMap.put("room_name", generation.getRoomName());
+            }
 
             // User requested to keep old 3D medias untouched, so we just add the new one.
 
@@ -186,6 +190,7 @@ public class Property3DGenerationService {
                 .propertyId(gen.getPropertyId())
                 .operationId(gen.getOperationId())
                 .status(gen.getStatus())
+                .roomName(gen.getRoomName())
                 .errorMessage(gen.getErrorMessage())
                 .createdAt(gen.getCreatedAt() != null ? gen.getCreatedAt().toString() : null)
                 .build();

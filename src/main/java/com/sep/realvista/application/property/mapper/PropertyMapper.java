@@ -200,6 +200,7 @@ public class PropertyMapper {
                 .isPrimary(pm.getIsPrimary())
                 .isPropertyStandard(pm.getIsPropertyStandard())
                 .displayOrder(0)
+                .metadata(pm.getMetadata())
                 .build();
     }
 }

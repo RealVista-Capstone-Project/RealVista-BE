@@ -55,6 +55,9 @@ public class Property3DGeneration extends BaseEntity {
     @Column(name = "status", nullable = false, length = 50)
     private Property3DGenerationStatus status;
 
+    @Column(name = "room_name", length = 255)
+    private String roomName;
+
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 

@@ -20,7 +20,7 @@ import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRangeRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
-import com.sep.realvista.domain.property.location.repository.LocationRepository;
+import com.sep.realvista.domain.property.location.LocationRepository;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeRangeDTO;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;

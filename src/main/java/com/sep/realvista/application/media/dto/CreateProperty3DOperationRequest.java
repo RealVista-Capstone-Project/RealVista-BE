@@ -7,6 +7,7 @@ import java.util.List;
 public class CreateProperty3DOperationRequest {
     private String model;
     private String displayName;
+    private String roomName;
     private List<ImageAsset> images;
 
     @Data

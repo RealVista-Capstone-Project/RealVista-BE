@@ -36,7 +36,7 @@ public class PropertyMediaRepositoryImpl implements PropertyMediaRepository {
     }
 
     @Override
-    public <S extends PropertyMedia> Iterable<S> saveAll(Iterable<S> entities) {
+    public <S extends PropertyMedia> List<S> saveAll(Iterable<S> entities) {
         return jpaRepository.saveAll(entities);
     }
 }

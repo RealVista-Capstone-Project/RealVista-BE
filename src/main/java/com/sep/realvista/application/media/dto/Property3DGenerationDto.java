@@ -17,6 +17,7 @@ public class Property3DGenerationDto {
     private UUID propertyId;
     private String operationId;
     private Property3DGenerationStatus status;
+    private String roomName;
     private String errorMessage;
     private String createdAt;
 }
