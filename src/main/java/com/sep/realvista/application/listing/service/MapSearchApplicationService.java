@@ -100,11 +100,10 @@ public class MapSearchApplicationService {
                 .minPrice(request.getMinPrice())
                 .maxPrice(request.getMaxPrice())
                 .searchText(request.getSearchText())
-                .categories(request.getCategory() != null
-                        ? Arrays.stream(request.getCategory().split(","))
-                                .map(String::trim)
-                                .filter(s -> !s.isEmpty())
-                                .toList()
+                .propertyCategory(request.getPropertyCategory())
+                .propertyType(request.getPropertyType())
+                .categories(request.getPropertyCategory() != null
+                        ? Arrays.asList(request.getPropertyCategory().split(","))
                         : null)
                 .bedrooms(request.getBedrooms())
                 .bathrooms(request.getBathrooms())
@@ -219,8 +218,11 @@ public class MapSearchApplicationService {
         if (request.getSearchText() != null) {
             appliedFiltersBuilder.searchText(request.getSearchText());
         }
-        if (request.getCategory() != null) {
-            appliedFiltersBuilder.category(request.getCategory());
+        if (request.getPropertyCategory() != null) {
+            appliedFiltersBuilder.propertyCategory(request.getPropertyCategory());
+        }
+        if (request.getPropertyType() != null) {
+            appliedFiltersBuilder.propertyType(request.getPropertyType());
         }
         if (request.getMinPrice() != null || request.getMaxPrice() != null) {
             appliedFiltersBuilder.priceRange(MapSearchResponse.PriceRangeDTO.builder()

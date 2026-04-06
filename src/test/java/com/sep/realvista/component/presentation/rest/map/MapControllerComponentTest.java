@@ -273,7 +273,7 @@ class MapControllerComponentTest {
                                                                         .bedrooms(2)
                                                                         .bathrooms(1)
                                                                         .area(new BigDecimal("80"))
-                                                                        .category("apartment")
+                                                                        .propertyType("apartment")
                                                                         .searchText("Ben Nghe")
                                                                         .build())
                                                         .build())
@@ -294,7 +294,7 @@ class MapControllerComponentTest {
                                             "bedrooms": 2,
                                             "bathrooms": 1,
                                             "area": 80,
-                                            "category": "apartment",
+                                            "property_type": "apartment",
                                             "search_text": "Ben Nghe",
                                             "page": 1,
                                             "size": 10
@@ -398,7 +398,6 @@ class MapControllerComponentTest {
                                                         .eastLng(new BigDecimal("106.75"))
                                                         .westLng(new BigDecimal("106.60"))
                                                         .build())
-                                        .hasMore(true)
                                         .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                         .appliedFilters(MapSearchResponse.AppliedFiltersDTO
                                                                         .builder().build())
@@ -851,7 +850,7 @@ class MapControllerComponentTest {
                                                                         .bedrooms(2)
                                                                         .bathrooms(1)
                                                                         .area(new BigDecimal("80"))
-                                                                        .category("apartment")
+                                                                        .propertyType("apartment")
                                                                         .rentalPeriod("1-12")
                                                                         .build())
                                                         .build())
