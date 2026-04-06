@@ -31,18 +31,60 @@ public class LeaseTemplateData {
     /** Landlord's client-side user ID for embedded signing. */
     private String landlordClientUserId;
 
-    /** Lease start date formatted as string (tab label: leaseStartDate). */
-    private String leaseStartDate;
-
-    /** Lease end date formatted as string (tab label: leaseEndDate). */
-    private String leaseEndDate;
+    /**
+     * Handover/move-in date formatted as string (tab label: handoverDate).
+     * Mapped from leaseStartDate.
+     */
+    private String handoverDate;
 
     /** Lease duration in months (tab label: leaseDurationMonths). */
     private String leaseDurationMonths;
 
-    /** Monthly rent amount (tab label: monthlyRent). */
+    /**
+     * Monthly rent amount formatted with dot thousands separator (tab label: monthlyRent).
+     * Example: "1.500.000"
+     */
     private String monthlyRent;
 
-    /** Security deposit amount (tab label: securityDeposit). */
+    /**
+     * Monthly rent amount in Vietnamese words (tab label: monthlyRentByText).
+     * Example: "một triệu năm trăm nghìn đồng"
+     */
+    private String monthlyRentByText;
+
+    /**
+     * Security deposit formatted with dot thousands separator (tab label: securityDeposit).
+     * Example: "3.000.000"
+     */
     private String securityDeposit;
+
+    /**
+     * Security deposit in Vietnamese words (tab label: securityDepositByText).
+     * Example: "ba triệu đồng"
+     */
+    private String securityDepositByText;
+
+    /**
+     * Vietnamese day-of-week for contract creation date (tab label: contractDayOfWeek).
+     * Example: "Thứ Hai"
+     */
+    private String contractDayOfWeek;
+
+    /**
+     * Two-digit day of the contract creation date (tab label: contractDay).
+     * Example: "07"
+     */
+    private String contractDay;
+
+    /**
+     * Two-digit month of the contract creation date (tab label: contractMonth).
+     * Example: "02"
+     */
+    private String contractMonth;
+
+    /**
+     * Four-digit year of the contract creation date (tab label: contractYear).
+     * Example: "2026"
+     */
+    private String contractYear;
 }

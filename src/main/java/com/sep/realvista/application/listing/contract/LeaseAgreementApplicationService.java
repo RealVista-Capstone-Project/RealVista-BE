@@ -17,6 +17,7 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
+import com.sep.realvista.application.common.util.VietnameseCurrencyUtil;
 import com.sep.realvista.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -297,6 +300,10 @@ public class LeaseAgreementApplicationService {
             // Template-based flow: populate dynamic fields from lease + user data
             User renter = findUserOrThrow(lease.getRenterId());
 
+            // Compute contract creation date fields (current date at signing time)
+            LocalDate contractDate = LocalDate.now();
+            DateTimeFormatter handoverFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
             LeaseTemplateData templateData = LeaseTemplateData.builder()
                     .renterName(renter.getFirstName() + " " + renter.getLastName())
                     .renterEmail(renter.getEmail().getValue())
@@ -304,12 +311,21 @@ public class LeaseAgreementApplicationService {
                     .landlordName(landlord.getFirstName() + " " + landlord.getLastName())
                     .landlordEmail(landlord.getEmail().getValue())
                     .landlordClientUserId(landlord.getUserId().toString())
-                    .leaseStartDate(lease.getLeaseStartDate() != null ? lease.getLeaseStartDate().toString() : "")
-                    .leaseEndDate(lease.getLeaseEndDate() != null ? lease.getLeaseEndDate().toString() : "")
+                    .handoverDate(lease.getLeaseStartDate() != null
+                            ? lease.getLeaseStartDate().format(handoverFormatter) : "")
                     .leaseDurationMonths(String.valueOf(lease.getLeaseDurationMonths()))
-                    .monthlyRent(lease.getMonthlyRent() != null ? lease.getMonthlyRent().toPlainString() : "")
+                    .monthlyRent(lease.getMonthlyRent() != null
+                            ? VietnameseCurrencyUtil.formatAmount(lease.getMonthlyRent()) : "")
+                    .monthlyRentByText(lease.getMonthlyRent() != null
+                            ? VietnameseCurrencyUtil.amountToWords(lease.getMonthlyRent()) : "")
                     .securityDeposit(lease.getSecurityDeposit() != null
-                            ? lease.getSecurityDeposit().toPlainString() : "")
+                            ? VietnameseCurrencyUtil.formatAmount(lease.getSecurityDeposit()) : "")
+                    .securityDepositByText(lease.getSecurityDeposit() != null
+                            ? VietnameseCurrencyUtil.amountToWords(lease.getSecurityDeposit()) : "")
+                    .contractDayOfWeek(VietnameseCurrencyUtil.getDayOfWeekVietnamese(contractDate.getDayOfWeek()))
+                    .contractDay(String.format("%02d", contractDate.getDayOfMonth()))
+                    .contractMonth(String.format("%02d", contractDate.getMonthValue()))
+                    .contractYear(String.valueOf(contractDate.getYear()))
                     .build();
 
             envelopeId = docuSignService.createEnvelopeFromTemplate(
