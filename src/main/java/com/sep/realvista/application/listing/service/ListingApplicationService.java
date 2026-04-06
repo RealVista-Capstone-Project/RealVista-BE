@@ -16,6 +16,8 @@ import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
+import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.ListingStatus;
@@ -92,6 +94,8 @@ public class ListingApplicationService {
     @Lazy
     @Autowired
     private ListingApplicationService self;
+
+    private final SettingPreferenceRepository settingPreferenceRepository;
 
     /**
      * Verifies if a user can modify a listing.
@@ -192,16 +196,24 @@ public class ListingApplicationService {
                 .findByPropertyIdWithAmenity(property.getPropertyId());
         // Attach property and user for DTO mapping (read-only, not persisted)
         listing.attachProperty(property);
+        // Fetch agent's privacy preferences
+        SettingPreference preference = settingPreferenceRepository.findByUserId(listing.getUserId())
+                .orElse(null);
+
         log.info("Successfully fetched listing detail for ID: {} with {} attributes and {} amenities",
                 listingId, attributeValues.size(), propertyAmenities.size());
+
         ListingDetailResponse response = listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
-                listing, listingMedias, attributeValues, propertyAmenities);
+                listing, listingMedias, attributeValues, propertyAmenities, preference);
+
         // Set isCreatedByOwner flag
         boolean isCreatedByOwner = listing.getUserId().equals(property.getOwnerId());
         response.setIsCreatedByOwner(isCreatedByOwner);
+
         // Calculate and add cost breakdown (only for RENT listings)
         CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
         response.setCostBreakdown(costBreakdown);
+
         // Note: is_favorite is NOT set here - it will be set by the public method
         return response;
     }
@@ -484,7 +496,6 @@ public class ListingApplicationService {
             // 2. Verify no other published listing of same type exists for this user/property
             boolean duplicateExists = listingRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
                     property.getPropertyId(), request.getListingType(), ListingStatus.PUBLISHED, userId);
-
             if (duplicateExists) {
                 log.error("Listing creator {} already has a published {} listing for property {}",
                         userId, request.getListingType(), property.getPropertyId());

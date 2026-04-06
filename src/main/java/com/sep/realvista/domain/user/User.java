@@ -114,6 +114,10 @@ public class User extends BaseEntity {
         this.status = UserStatus.VERIFIED;
     }
 
+    public void verifyEmail() {
+        this.emailVerifiedAt = LocalDateTime.now();
+    }
+
     public void updateProfile(String firstName, String lastName, String avatarUrl) {
         this.firstName = firstName;
         this.lastName = lastName;

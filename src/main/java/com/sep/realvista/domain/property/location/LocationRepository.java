@@ -1,5 +1,7 @@
 package com.sep.realvista.domain.property.location;
 
+import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,4 +44,7 @@ public interface LocationRepository {
      * For a ward: returns just that ward's ID.
      */
     List<UUID> findDescendantWardIds(UUID locationId);
+
+    List<Location> findContainingLocations(@Param("lat") java.math.BigDecimal lat,
+                                           @Param("lng") java.math.BigDecimal lng);
 }

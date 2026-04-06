@@ -63,4 +63,9 @@ public class LocationRepositoryImpl implements LocationRepository {
                 return List.of();
         }
     }
+
+    @Override
+    public List<Location> findContainingLocations(java.math.BigDecimal lat, java.math.BigDecimal lng) {
+        return jpaRepository.findContainingLocations(lat, lng);
+    }
 }

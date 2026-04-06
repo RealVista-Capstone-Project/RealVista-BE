@@ -9,17 +9,10 @@ import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
-import com.sep.realvista.domain.common.value.Email;
-import com.sep.realvista.domain.profile.CustomerProfile;
-import com.sep.realvista.domain.profile.CustomerProfileRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
-import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
-import com.sep.realvista.domain.user.preference.SettingPreference;
-import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.infrastructure.security.oauth2.GoogleTokenVerifier;
-import com.sep.realvista.infrastructure.security.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -46,9 +39,6 @@ public class AuthService {
     private final UserRepository userRepository;
     private final AuthenticationMapper authenticationMapper;
     private final GoogleTokenVerifier googleTokenVerifier;
-    private final PasswordUtil passwordUtil;
-    private final SettingPreferenceRepository settingPreferenceRepository;
-    private final CustomerProfileRepository customerProfileRepository;
 
     @Transactional
     public UserResponse register(CreateUserRequest request) {
@@ -177,49 +167,14 @@ public class AuthService {
     private User findOrCreateGoogleUser(String email, String firstName,
                                         String lastName, String avatarUrl) {
         return userRepository.findByEmailValue(email)
-                .orElseGet(() -> createGoogleUser(email, firstName, lastName, avatarUrl));
-    }
-
-    private User createGoogleUser(String email, String firstName,
-                                  String lastName, String avatarUrl) {
-        log.info("Creating new user from Google login: {}", email);
-
-        // Generate a random hashed password for Google users (they won't use it)
-        String hashedPassword = passwordUtil.generateRandomHashedPassword();
-
-        // Generate business name from user's name or email
-        String businessName = (firstName != null && lastName != null)
-                ? firstName + " " + lastName
-                : email.split("@")[0];
-
-        User newUser = User.builder()
-                .email(Email.of(email))
-                .passwordHash(hashedPassword)
-                .firstName(firstName)
-                .lastName(lastName)
-                .businessName(businessName)
-                .avatarUrl(avatarUrl)
-                .status(UserStatus.ACTIVE) // Google users are automatically active
-                .build();
-
-        User savedUser = userRepository.save(newUser);
-        log.info("New Google user created with ID: {}", savedUser.getUserId());
-
-        // Create default SettingPreference
-        SettingPreference defaultSetting = SettingPreference.builder()
-                .userId(savedUser.getUserId())
-                .build();
-        settingPreferenceRepository.save(defaultSetting);
-
-        // Create default CustomerProfile
-        CustomerProfile defaultProfile = CustomerProfile.builder()
-                .userId(savedUser.getUserId())
-                .profileName(businessName)
-                .isActive(true)
-                .build();
-        customerProfileRepository.save(defaultProfile);
-
-        return savedUser;
+                .map(user -> {
+                    if (!user.isEmailVerified()) {
+                        user.verifyEmail();
+                        return userRepository.save(user);
+                    }
+                    return user;
+                })
+                .orElseGet(() -> userApplicationService.createGoogleUser(email, firstName, lastName, avatarUrl));
     }
 
     private Authentication authenticateUser(LoginRequest request) {

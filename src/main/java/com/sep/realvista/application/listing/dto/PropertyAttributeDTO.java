@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -39,6 +40,8 @@ public class PropertyAttributeDTO {
     private String valueText;
     @JsonProperty("value_boolean")
     private Boolean valueBoolean;
+
+    private List<PropertyAttributeRangeDTO> ranges;
 
     // Helper methods for common attributes
     public boolean isNumber() {

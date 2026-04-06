@@ -75,7 +75,8 @@ VALUES
     -- Hotel
     ('410e8400-e29b-41d4-a716-446655440118', 'Phòng', 'ROOMS_HOTEL', 'NUMBER', TRUE, 'bed', 'phòng', NOW(), NOW(), FALSE),
     ('410e8400-e29b-41d4-a716-446655440119', 'Sao', 'STARS', 'NUMBER', TRUE, 'star', 'sao', NOW(), NOW(), FALSE),
-    ('410e8400-e29b-41d4-a716-446655440120', 'Nhà hàng', 'RESTAURANT', 'BOOLEAN', TRUE, 'utensils', NULL, NOW(), NOW(), FALSE);
+    ('410e8400-e29b-41d4-a716-446655440120', 'Nhà hàng', 'RESTAURANT', 'BOOLEAN', TRUE, 'utensils', NULL, NOW(), NOW(), FALSE),
+    ('410e8400-e29b-41d4-a716-446655440121', 'Thang máy', 'ELEVATOR', 'BOOLEAN', TRUE, 'arrow-up-down', NULL, NOW(), NOW(), FALSE);
 
 -- ========== INDUSTRIAL ATTRIBUTES ==========
 INSERT INTO property_attributes (property_attribute_id, name, code, data_type, is_searchable, icon, unit, created_at, updated_at, deleted)
@@ -89,7 +90,9 @@ VALUES
     ('410e8400-e29b-41d4-a716-446655440207', 'Thoát nước', 'DRAINAGE', 'BOOLEAN', TRUE, 'droplet', NULL, NOW(), NOW(), FALSE),
     ('410e8400-e29b-41d4-a716-446655440208', 'Lối vào', 'ENTRANCES', 'NUMBER', TRUE, 'door-open', 'lối', NOW(), NOW(), FALSE),
     ('410e8400-e29b-41d4-a716-446655440209', 'Bảo vệ', 'SECURITY', 'BOOLEAN', TRUE, 'shield', NULL, NOW(), NOW(), FALSE),
-    ('410e8400-e29b-41d4-a716-446655440210', 'Kho lạnh', 'COLD_STORAGE', 'BOOLEAN', TRUE, 'thermometer', NULL, NOW(), NOW(), FALSE);
+    ('410e8400-e29b-41d4-a716-446655440210', 'Kho lạnh', 'COLD_STORAGE', 'BOOLEAN', TRUE, 'thermometer', NULL, NOW(), NOW(), FALSE),
+    ('410e8400-e29b-41d4-a716-446655440211', 'Bến bãi', 'LOADING_DOCKS', 'NUMBER', TRUE, 'anchor', 'bến', NOW(), NOW(), FALSE),
+    ('410e8400-e29b-41d4-a716-446655440212', 'Cần trục', 'CRANE', 'BOOLEAN', TRUE, 'hammer', NULL, NOW(), NOW(), FALSE);
 
 -- ========== LAND ATTRIBUTES ==========
 INSERT INTO property_attributes (property_attribute_id, name, code, data_type, is_searchable, icon, unit, created_at, updated_at, deleted)
@@ -185,7 +188,8 @@ VALUES
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440007', '410e8400-e29b-41d4-a716-446655440015', FALSE, NOW(), NOW(), FALSE), -- Parking
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440007', '410e8400-e29b-41d4-a716-446655440105', FALSE, NOW(), NOW(), FALSE), -- Reception
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440007', '410e8400-e29b-41d4-a716-446655440103', FALSE, NOW(), NOW(), FALSE), -- Restrooms
-    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440007', '410e8400-e29b-41d4-a716-446655440104', FALSE, NOW(), NOW(), FALSE); -- Individual AC
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440007', '410e8400-e29b-41d4-a716-446655440104', FALSE, NOW(), NOW(), FALSE), -- Individual AC
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440007', '410e8400-e29b-41d4-a716-446655440121', FALSE, NOW(), NOW(), FALSE); -- Elevator
 
 -- SHOPHOUSE (320e8400-e29b-41d4-a716-446655440008)
 INSERT INTO property_type_attributes (property_type_attribute_id, property_type_id, property_attribute_id, is_required, created_at, updated_at, deleted)
@@ -213,7 +217,8 @@ VALUES
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440010', '410e8400-e29b-41d4-a716-446655440113', FALSE, NOW(), NOW(), FALSE), -- Shops
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440010', '410e8400-e29b-41d4-a716-446655440114', FALSE, NOW(), NOW(), FALSE), -- Cinema
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440010', '410e8400-e29b-41d4-a716-446655440115', FALSE, NOW(), NOW(), FALSE), -- Food Court
-    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440010', '410e8400-e29b-41d4-a716-446655440015', FALSE, NOW(), NOW(), FALSE); -- Parking
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440010', '410e8400-e29b-41d4-a716-446655440015', FALSE, NOW(), NOW(), FALSE), -- Parking
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440010', '410e8400-e29b-41d4-a716-446655440121', FALSE, NOW(), NOW(), FALSE); -- Elevator
 
 -- RESTAURANT (320e8400-e29b-41d4-a716-446655440011)
 INSERT INTO property_type_attributes (property_type_attribute_id, property_type_id, property_attribute_id, is_required, created_at, updated_at, deleted)
@@ -242,7 +247,9 @@ VALUES
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440013', '410e8400-e29b-41d4-a716-446655440202', FALSE, NOW(), NOW(), FALSE), -- Truck Parking
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440013', '410e8400-e29b-41d4-a716-446655440203', FALSE, NOW(), NOW(), FALSE), -- Gates
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440013', '410e8400-e29b-41d4-a716-446655440204', FALSE, NOW(), NOW(), FALSE), -- Railway
-    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440013', '410e8400-e29b-41d4-a716-446655440205', FALSE, NOW(), NOW(), FALSE); -- Water
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440013', '410e8400-e29b-41d4-a716-446655440205', FALSE, NOW(), NOW(), FALSE), -- Water
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440013', '410e8400-e29b-41d4-a716-446655440211', FALSE, NOW(), NOW(), FALSE), -- Loading Docks
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440013', '410e8400-e29b-41d4-a716-446655440212', FALSE, NOW(), NOW(), FALSE); -- Crane
 
 -- FACTORY (320e8400-e29b-41d4-a716-446655440014)
 INSERT INTO property_type_attributes (property_type_attribute_id, property_type_id, property_attribute_id, is_required, created_at, updated_at, deleted)
@@ -251,7 +258,8 @@ VALUES
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440014', '410e8400-e29b-41d4-a716-446655440206', FALSE, NOW(), NOW(), FALSE), -- Power
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440014', '410e8400-e29b-41d4-a716-446655440101', FALSE, NOW(), NOW(), FALSE), -- Office Rooms
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440014', '410e8400-e29b-41d4-a716-446655440015', FALSE, NOW(), NOW(), FALSE), -- Parking
-    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440014', '410e8400-e29b-41d4-a716-446655440207', FALSE, NOW(), NOW(), FALSE); -- Drainage
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440014', '410e8400-e29b-41d4-a716-446655440207', FALSE, NOW(), NOW(), FALSE), -- Drainage
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440014', '410e8400-e29b-41d4-a716-446655440212', FALSE, NOW(), NOW(), FALSE); -- Crane
 
 -- WORKSHOP (320e8400-e29b-41d4-a716-446655440015)
 INSERT INTO property_type_attributes (property_type_attribute_id, property_type_id, property_attribute_id, is_required, created_at, updated_at, deleted)
@@ -270,7 +278,9 @@ VALUES
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440016', '410e8400-e29b-41d4-a716-446655440204', FALSE, NOW(), NOW(), FALSE), -- Railway
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440016', '410e8400-e29b-41d4-a716-446655440202', FALSE, NOW(), NOW(), FALSE), -- Truck Parking
     (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440016', '410e8400-e29b-41d4-a716-446655440209', FALSE, NOW(), NOW(), FALSE), -- Security
-    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440016', '410e8400-e29b-41d4-a716-446655440210', FALSE, NOW(), NOW(), FALSE); -- Cold Storage
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440016', '410e8400-e29b-41d4-a716-446655440210', FALSE, NOW(), NOW(), FALSE), -- Cold Storage
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440016', '410e8400-e29b-41d4-a716-446655440211', FALSE, NOW(), NOW(), FALSE), -- Loading Docks
+    (gen_random_uuid(), '320e8400-e29b-41d4-a716-446655440016', '410e8400-e29b-41d4-a716-446655440121', FALSE, NOW(), NOW(), FALSE); -- Elevator
 
 -- LAND_RESIDENTIAL (320e8400-e29b-41d4-a716-446655440017)
 INSERT INTO property_type_attributes (property_type_attribute_id, property_type_id, property_attribute_id, is_required, created_at, updated_at, deleted)
