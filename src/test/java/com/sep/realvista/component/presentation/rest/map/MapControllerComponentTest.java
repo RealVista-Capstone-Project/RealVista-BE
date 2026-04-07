@@ -273,7 +273,7 @@ class MapControllerComponentTest {
                                                                         .bedrooms(2)
                                                                         .bathrooms(1)
                                                                         .area(new BigDecimal("80"))
-                                                                        .category("apartment")
+                                                                        .propertyType("apartment")
                                                                         .searchText("Ben Nghe")
                                                                         .build())
                                                         .build())
@@ -294,7 +294,7 @@ class MapControllerComponentTest {
                                             "bedrooms": 2,
                                             "bathrooms": 1,
                                             "area": 80,
-                                            "category": "apartment",
+                                            "property_type": "apartment",
                                             "search_text": "Ben Nghe",
                                             "page": 1,
                                             "size": 10
@@ -398,7 +398,6 @@ class MapControllerComponentTest {
                                                         .eastLng(new BigDecimal("106.75"))
                                                         .westLng(new BigDecimal("106.60"))
                                                         .build())
-                                        .hasMore(true)
                                         .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
                                                         .appliedFilters(MapSearchResponse.AppliedFiltersDTO
                                                                         .builder().build())
@@ -428,8 +427,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.data.total_elements").value(3))
                                         .andExpect(jsonPath("$.data.total_pages").value(3))
                                         .andExpect(jsonPath("$.data.first").value(false))
-                                        .andExpect(jsonPath("$.data.last").value(false))
-                                        .andExpect(jsonPath("$.data.has_more").value(true));
+                                        .andExpect(jsonPath("$.data.last").value(false));
                 }
 
                 @Test
@@ -851,7 +849,7 @@ class MapControllerComponentTest {
                                                                         .bedrooms(2)
                                                                         .bathrooms(1)
                                                                         .area(new BigDecimal("80"))
-                                                                        .category("apartment")
+                                                                        .propertyType("apartment")
                                                                         .rentalPeriod("1-12")
                                                                         .build())
                                                         .build())
@@ -869,7 +867,7 @@ class MapControllerComponentTest {
                                             "bedrooms": 2,
                                             "bathrooms": 1,
                                             "area": 80,
-                                            "category": "apartment",
+                                            "property_type": "apartment",
                                             "rental_period": "1-12"
                                         }
                                         """;
@@ -896,7 +894,7 @@ class MapControllerComponentTest {
                                         .andExpect(jsonPath("$.data.filter_metadata"
                                                         + ".applied_filters.area").value(80))
                                         .andExpect(jsonPath("$.data.filter_metadata"
-                                                        + ".applied_filters.category").value("apartment"))
+                                                        + ".applied_filters.property_type").value("apartment"))
                                         .andExpect(jsonPath("$.data.filter_metadata"
                                                         + ".applied_filters.rental_period")
                                                         .value("1-12"));
