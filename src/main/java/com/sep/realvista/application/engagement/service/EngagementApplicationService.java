@@ -283,7 +283,11 @@ public class EngagementApplicationService {
         // 3. Prepare content (JSON string)
         String content = null;
         try {
-            content = objectMapper.writeValueAsString(Map.of("message", proposalTemplate.getPitchContent()));
+            String finalMessage = request.getMessage();
+            if (finalMessage == null || finalMessage.isBlank()) {
+                finalMessage = proposalTemplate.getPitchContent();
+            }
+            content = objectMapper.writeValueAsString(Map.of("message", finalMessage));
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize agent proposal content", e);
             throw new BusinessConflictException("Failed to process proposal content", "JSON_SERIALIZATION_ERROR");

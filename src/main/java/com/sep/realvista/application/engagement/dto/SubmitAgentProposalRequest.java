@@ -32,4 +32,7 @@ public class SubmitAgentProposalRequest {
     @JsonProperty("property_id")
     @JsonAlias({"property_id", "propertyId"})
     private UUID propertyId;
+
+    @JsonProperty("message")
+    private String message;
 }
