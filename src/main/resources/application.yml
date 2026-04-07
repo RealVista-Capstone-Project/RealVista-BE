@@ -183,6 +183,6 @@ docusign:
   rsa-private-key: ${DOCUSIGN_RSA_PRIVATE_KEY:}
   base-url: ${DOCUSIGN_BASE_URL:https://demo.docusign.net/restapi}
   auth-server: ${DOCUSIGN_AUTH_SERVER:account-d.docusign.com}
-  return-url: ${DOCUSIGN_RETURN_URL:http://localhost:3000/leases/signing-complete}
+  return-url: ${DOCUSIGN_RETURN_URL:http://localhost:3000}
   webhook-hmac-key: ${DOCUSIGN_WEBHOOK_HMAC_KEY:}
   lease-template-id: ${DOCUSIGN_LEASE_TEMPLATE_ID:}

@@ -138,9 +138,9 @@ public class LeaseAgreementController {
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> sendToRenterForSigning(
             @PathVariable UUID id,
-            @Parameter(description = "Override return URL after signing (optional)")
-            @RequestParam(required = false) String returnUrl) {
-        SigningUrlResponse response = leaseService.sendToRenterForSigning(id, returnUrl);
+            @Parameter(description = "Locale for the return URL path segment (default: vi)")
+            @RequestParam(defaultValue = "vi") String locale) {
+        SigningUrlResponse response = leaseService.sendToRenterForSigning(id, locale);
         return ResponseEntity.ok(ApiResponse.success("Signing URL generated for renter", response));
     }
 
@@ -153,8 +153,9 @@ public class LeaseAgreementController {
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> getRenterSigningUrl(
             @PathVariable UUID id,
-            @RequestParam(required = false) String returnUrl) {
-        SigningUrlResponse response = leaseService.getRenterSigningUrl(id, returnUrl);
+            @Parameter(description = "Locale for the return URL path segment (default: vi)")
+            @RequestParam(defaultValue = "vi") String locale) {
+        SigningUrlResponse response = leaseService.getRenterSigningUrl(id, locale);
         return ResponseEntity.ok(ApiResponse.success("Renter signing URL retrieved", response));
     }
 
@@ -167,8 +168,9 @@ public class LeaseAgreementController {
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> sendToLandlordForSigning(
             @PathVariable UUID id,
-            @RequestParam(required = false) String returnUrl) {
-        SigningUrlResponse response = leaseService.sendToLandlordForSigning(id, returnUrl);
+            @Parameter(description = "Locale for the return URL path segment (default: vi)")
+            @RequestParam(defaultValue = "vi") String locale) {
+        SigningUrlResponse response = leaseService.sendToLandlordForSigning(id, locale);
         return ResponseEntity.ok(ApiResponse.success("Signing URL generated for landlord", response));
     }
 
@@ -180,8 +182,9 @@ public class LeaseAgreementController {
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> getLandlordSigningUrl(
             @PathVariable UUID id,
-            @RequestParam(required = false) String returnUrl) {
-        SigningUrlResponse response = leaseService.getLandlordSigningUrl(id, returnUrl);
+            @Parameter(description = "Locale for the return URL path segment (default: vi)")
+            @RequestParam(defaultValue = "vi") String locale) {
+        SigningUrlResponse response = leaseService.getLandlordSigningUrl(id, locale);
         return ResponseEntity.ok(ApiResponse.success("Landlord signing URL retrieved", response));
     }
 

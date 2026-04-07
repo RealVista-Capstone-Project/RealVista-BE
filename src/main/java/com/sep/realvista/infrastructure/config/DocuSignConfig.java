@@ -40,7 +40,11 @@ public class DocuSignConfig {
     /** DocuSign OAuth2 authorization server host. */
     private String authServer = "account-d.docusign.com";
 
-    /** Frontend URL to redirect to after embedded signing completes. Set via DOCUSIGN_RETURN_URL env var. */
+    /**
+     * Frontend base URL used to build the post-signing redirect.
+     * The full redirect is: {@code {returnUrl}/{locale}/leases/signing-complete?leaseId=...&amp;role=...}
+     * Set via DOCUSIGN_RETURN_URL env var (e.g. {@code https://yourdomain.com}).
+     */
     private String returnUrl;
 
     /** HMAC key for verifying DocuSign Connect webhook payloads. */

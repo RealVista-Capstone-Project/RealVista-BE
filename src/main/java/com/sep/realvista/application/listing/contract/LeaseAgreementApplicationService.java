@@ -159,11 +159,11 @@ public class LeaseAgreementApplicationService {
      * For template flow, the renter is already a recipient in the existing envelope —
      * no new envelope is created. For PDF flow, adds the renter as a new signer.
      *
-     * @param leaseId   UUID of the lease agreement
-     * @param returnUrl Frontend URL to redirect to after signing (null = use default from config)
+     * @param leaseId UUID of the lease agreement
+     * @param locale  Locale segment for the frontend return URL (e.g. "vi", "en")
      * @return {@link SigningUrlResponse} with the embedded signing URL
      */
-    public SigningUrlResponse sendToRenterForSigning(UUID leaseId, String returnUrl) {
+    public SigningUrlResponse sendToRenterForSigning(UUID leaseId, String locale) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
 
         if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
@@ -213,7 +213,7 @@ public class LeaseAgreementApplicationService {
         leaseAgreementRepository.save(lease);
 
         // Generate embedded signing URL
-        String effectiveReturnUrl = returnUrl != null ? returnUrl : buildDefaultReturnUrl(leaseId, "renter");
+        String effectiveReturnUrl = buildDefaultReturnUrl(leaseId, "renter", locale);
         String signingUrl = docuSignService.getEmbeddedSigningUrl(
                 envelopeId,
                 renter.getEmail().getValue(),
@@ -233,7 +233,7 @@ public class LeaseAgreementApplicationService {
     /**
      * Re-generates the embedded signing URL for the renter (URL expires after ~5 minutes).
      */
-    public SigningUrlResponse getRenterSigningUrl(UUID leaseId, String returnUrl) {
+    public SigningUrlResponse getRenterSigningUrl(UUID leaseId, String locale) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
 
         if (lease.getStatus() != LeaseStatus.PENDING_RENTER) {
@@ -246,7 +246,7 @@ public class LeaseAgreementApplicationService {
         }
 
         User renter = findUserOrThrow(lease.getRenterId());
-        String effectiveReturnUrl = returnUrl != null ? returnUrl : buildDefaultReturnUrl(leaseId, "renter");
+        String effectiveReturnUrl = buildDefaultReturnUrl(leaseId, "renter", locale);
         String signingUrl = docuSignService.getEmbeddedSigningUrl(
                 lease.getDocusignEnvelopeId(),
                 renter.getEmail().getValue(),
@@ -268,11 +268,11 @@ public class LeaseAgreementApplicationService {
      * Uses template-based flow if a lease template is configured, otherwise
      * downloads the lease PDF from the stored URL and creates a DocuSign envelope.
      *
-     * @param leaseId   UUID of the lease agreement
-     * @param returnUrl Frontend URL to redirect to after signing (null = use default from config)
+     * @param leaseId UUID of the lease agreement
+     * @param locale  Locale segment for the frontend return URL (e.g. "vi", "en")
      * @return {@link SigningUrlResponse} with the embedded signing URL
      */
-    public SigningUrlResponse sendToLandlordForSigning(UUID leaseId, String returnUrl) {
+    public SigningUrlResponse sendToLandlordForSigning(UUID leaseId, String locale) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
 
         if (lease.getStatus() != LeaseStatus.DRAFT) {
@@ -357,7 +357,7 @@ public class LeaseAgreementApplicationService {
         leaseAgreementRepository.save(lease);
 
         // Generate embedded signing URL for landlord
-        String effectiveReturnUrl = returnUrl != null ? returnUrl : buildDefaultReturnUrl(leaseId, "landlord");
+        String effectiveReturnUrl = buildDefaultReturnUrl(leaseId, "landlord", locale);
         String signingUrl = docuSignService.getEmbeddedSigningUrl(
                 envelopeId,
                 landlord.getEmail().getValue(),
@@ -377,7 +377,7 @@ public class LeaseAgreementApplicationService {
     /**
      * Re-generates the embedded signing URL for the landlord.
      */
-    public SigningUrlResponse getLandlordSigningUrl(UUID leaseId, String returnUrl) {
+    public SigningUrlResponse getLandlordSigningUrl(UUID leaseId, String locale) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
 
         if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
@@ -390,7 +390,7 @@ public class LeaseAgreementApplicationService {
         }
 
         User landlord = findUserOrThrow(lease.getLandlordId());
-        String effectiveReturnUrl = returnUrl != null ? returnUrl : buildDefaultReturnUrl(leaseId, "landlord");
+        String effectiveReturnUrl = buildDefaultReturnUrl(leaseId, "landlord", locale);
         String signingUrl = docuSignService.getEmbeddedSigningUrl(
                 lease.getDocusignEnvelopeId(),
                 landlord.getEmail().getValue(),
@@ -515,8 +515,9 @@ public class LeaseAgreementApplicationService {
         }
     }
 
-    private String buildDefaultReturnUrl(UUID leaseId, String role) {
-        return docuSignConfig.getReturnUrl() + "?leaseId=" + leaseId + "&role=" + role;
+    private String buildDefaultReturnUrl(UUID leaseId, String role, String locale) {
+        return docuSignConfig.getReturnUrl() + "/" + locale + "/leases/signing-complete"
+                + "?leaseId=" + leaseId + "&role=" + role;
     }
 
     private PageResponse<LeaseResponse> toPageResponse(Page<LeaseAgreement> page) {
