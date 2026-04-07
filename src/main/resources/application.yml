@@ -203,4 +203,4 @@ payment:
     hash-secret: ${VNPAY_HASH_SECRET:1LTYQVYIN4PKUOSX81JTLDDBJ6Z4Y3C1}
     pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
     # Must match Return URL on VNPay merchant (register this exact URL, including query).
-    return-url: "${VNPAY_RETURN_URL:http://localhost:3000/vi/settings?tab=subscription}"
+    return-url: "${VNPAY_RETURN_URL:http://localhost:3000/vi/subscribe}"
