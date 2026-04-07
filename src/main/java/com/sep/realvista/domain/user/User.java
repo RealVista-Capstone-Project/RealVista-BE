@@ -23,6 +23,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -119,15 +120,45 @@ public class User extends BaseEntity {
     }
 
     public void updateProfile(String firstName, String lastName, String avatarUrl) {
-        this.firstName = firstName;
-        this.lastName = lastName;
+        if (firstName != null) {
+            this.firstName = firstName;
+        }
+        if (lastName != null) {
+            this.lastName = lastName;
+        }
         if (avatarUrl != null) {
             this.avatarUrl = avatarUrl;
         }
     }
 
+    public void updateEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        String currentEmail = this.email != null ? this.email.getValue() : null;
+        if (currentEmail != null && currentEmail.equalsIgnoreCase(normalizedEmail)) {
+            return;
+        }
+        this.email = Email.of(normalizedEmail);
+        this.emailVerifiedAt = null;
+    }
+
+    public void updateBusinessName(String businessName) {
+        if (businessName != null) {
+            this.businessName = businessName;
+        }
+    }
+
     public void updatePhone(String phone) {
-        this.phone = phone;
+        if (!java.util.Objects.equals(this.phone, phone)) {
+            this.phone = phone;
+            this.phoneVerifiedAt = null;
+        }
+    }
+
+    public void verifyPhone() {
+        this.phoneVerifiedAt = LocalDateTime.now();
     }
 
     public void updatePassword(String newPasswordHash) {
