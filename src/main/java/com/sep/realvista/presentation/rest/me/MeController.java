@@ -3,6 +3,9 @@ package com.sep.realvista.presentation.rest.me;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.user.dto.UpdateMeRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
+import com.sep.realvista.application.user.dto.SendEmailOtpRequest;
+import com.sep.realvista.application.user.dto.VerifyEmailRequest;
+import com.sep.realvista.application.user.dto.VerifyPhoneRequest;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.presentation.common.util.ControllerUtils;
@@ -16,9 +19,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/me")
@@ -50,5 +56,48 @@ public class MeController {
         User currentUser = controllerUtils.getCurrentUser(authentication);
         UserResponse response = userApplicationService.updateMe(currentUser.getUserId(), request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", response));
+    }
+
+    @PostMapping("/send-email-otp")
+    @Operation(
+            summary = "Send email OTP",
+            description = "Sends a 6-digit OTP to the provided email; "
+                    + "updates user's email if changed"
+    )
+    public ResponseEntity<ApiResponse<Map<String, Object>>> sendEmailOtp(
+            Authentication authentication,
+            @Valid @RequestBody SendEmailOtpRequest request
+    ) {
+        controllerUtils.initializeTraceId();
+        User currentUser = controllerUtils.getCurrentUser(authentication);
+        userApplicationService.sendEmailOtp(currentUser.getUserId(), request.getEmail());
+        long remaining = userApplicationService.emailOtpRemainingSeconds(currentUser.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("OTP sent", Map.of(
+                "expirySeconds", remaining > 0 ? remaining : 300L
+        )));
+    }
+
+    @PostMapping("/verify-email")
+    @Operation(summary = "Verify email with OTP", description = "Verifies email address using the OTP sent by email")
+    public ResponseEntity<ApiResponse<UserResponse>> verifyEmail(
+            Authentication authentication,
+            @Valid @RequestBody VerifyEmailRequest request
+    ) {
+        controllerUtils.initializeTraceId();
+        User currentUser = controllerUtils.getCurrentUser(authentication);
+        UserResponse response = userApplicationService.verifyEmail(currentUser.getUserId(), request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success("Email verified successfully", response));
+    }
+
+    @PostMapping("/verify-phone")
+    @Operation(summary = "Verify phone", description = "Marks the current user's phone number as verified")
+    public ResponseEntity<ApiResponse<UserResponse>> verifyPhone(
+            Authentication authentication,
+            @Valid @RequestBody VerifyPhoneRequest request
+    ) {
+        controllerUtils.initializeTraceId();
+        User currentUser = controllerUtils.getCurrentUser(authentication);
+        UserResponse response = userApplicationService.verifyPhone(currentUser.getUserId(), request.getPhone());
+        return ResponseEntity.ok(ApiResponse.success("Phone verified successfully", response));
     }
 }
