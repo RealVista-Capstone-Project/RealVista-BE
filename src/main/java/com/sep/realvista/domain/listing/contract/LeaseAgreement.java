@@ -1,6 +1,7 @@
 package com.sep.realvista.domain.listing.contract;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.property.Property;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -92,6 +93,12 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "reject_reason", columnDefinition = "TEXT")
     private String rejectReason;
 
+    @Column(name = "termination_reason", columnDefinition = "TEXT")
+    private String terminationReason;
+
+    @Column(name = "terminated_at")
+    private LocalDateTime terminatedAt;
+
     @Column(name = "verified_by")
     private UUID verifiedBy;
 
@@ -125,8 +132,14 @@ public class LeaseAgreement extends BaseEntity {
         this.rejectReason = reason;
     }
 
-    public void terminate() {
+    public void terminate(String reason) {
+        if (this.status != LeaseStatus.ACTIVE) {
+            throw new BusinessConflictException(
+                    "Only an ACTIVE lease can be terminated. Current status: " + this.status);
+        }
         this.status = LeaseStatus.TERMINATED;
+        this.terminationReason = reason;
+        this.terminatedAt = LocalDateTime.now();
     }
 
     public void expire() {

@@ -62,6 +62,12 @@ public class LeaseResponse {
     @JsonProperty("reject_reason")
     private String rejectReason;
 
+    @JsonProperty("termination_reason")
+    private String terminationReason;
+
+    @JsonProperty("terminated_at")
+    private LocalDateTime terminatedAt;
+
     @JsonProperty("verified_by")
     private UUID verifiedBy;
 

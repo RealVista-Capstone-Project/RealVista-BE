@@ -6,6 +6,7 @@ import com.sep.realvista.application.listing.contract.LeaseAgreementApplicationS
 import com.sep.realvista.application.listing.contract.dto.CreateLeaseRequest;
 import com.sep.realvista.application.listing.contract.dto.LeaseResponse;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
+import com.sep.realvista.application.listing.contract.dto.TerminateLeaseRequest;
 import com.sep.realvista.application.service.DocuSignService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -217,9 +218,16 @@ public class LeaseAgreementController {
 
     @PutMapping("/{id}/terminate")
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
-    @Operation(summary = "Terminate active lease agreement")
-    public ResponseEntity<ApiResponse<LeaseResponse>> terminateLease(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success("Lease terminated", leaseService.terminateLease(id)));
+    @Operation(
+            summary = "Terminate active lease agreement",
+            description = "Terminates an ACTIVE lease. Caller must be the landlord of the lease. "
+                    + "The property is automatically reset to AVAILABLE and the renter is notified."
+    )
+    public ResponseEntity<ApiResponse<LeaseResponse>> terminateLease(
+            @PathVariable UUID id,
+            @RequestBody(required = false) TerminateLeaseRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Lease terminated",
+                leaseService.terminateLease(id, request)));
     }
 
     // ── DocuSign Webhook (Public — no auth required) ──────────────────────────

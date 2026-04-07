@@ -5,9 +5,13 @@ import com.sep.realvista.application.listing.contract.dto.CreateLeaseRequest;
 import com.sep.realvista.application.listing.contract.dto.LeaseResponse;
 import com.sep.realvista.application.listing.contract.dto.LeaseTemplateData;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
+import com.sep.realvista.application.listing.contract.dto.TerminateLeaseRequest;
 import com.sep.realvista.application.listing.contract.mapper.LeaseAgreementMapper;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.DocuSignService;
 import com.sep.realvista.infrastructure.config.DocuSignConfig;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.contract.LeaseAgreement;
@@ -19,11 +23,15 @@ import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.application.common.util.VietnameseCurrencyUtil;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.notification.EntityType;
+import com.sep.realvista.domain.user.notification.EventType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -55,6 +63,7 @@ public class LeaseAgreementApplicationService {
     private final DocuSignConfig docuSignConfig;
     private final LeaseAgreementMapper leaseAgreementMapper;
     private final RestTemplate restTemplate;
+    private final NotificationApplicationService notificationService;
 
     // ── CRUD Operations ───────────────────────────────────────────────────────
 
@@ -483,10 +492,60 @@ public class LeaseAgreementApplicationService {
         return toEnrichedResponse(leaseAgreementRepository.save(lease));
     }
 
-    public LeaseResponse terminateLease(UUID leaseId) {
+    /**
+     * Terminates an active lease agreement.
+     * <p>
+     * Business rules enforced:
+     * <ul>
+     *   <li>The lease must be in {@link LeaseStatus#ACTIVE} status.</li>
+     *   <li>The caller must be the landlord of this specific lease.</li>
+     *   <li>The associated property is reset to AVAILABLE.</li>
+     *   <li>The renter is notified via all channels (WebSocket + FCM).</li>
+     * </ul>
+     *
+     * @param leaseId the lease to terminate
+     * @param request optional body carrying a termination reason
+     * @return the updated lease response
+     */
+    public LeaseResponse terminateLease(UUID leaseId, TerminateLeaseRequest request) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
-        lease.terminate();
-        return toEnrichedResponse(leaseAgreementRepository.save(lease));
+
+        // Ownership check — caller must be the landlord of THIS lease
+        UUID callerId = getCurrentUserId();
+        if (!lease.getLandlordId().equals(callerId)) {
+            throw new BusinessConflictException("Only the landlord of this lease can terminate it.");
+        }
+
+        String reason = (request != null) ? request.getReason() : null;
+
+        // Domain method guards ACTIVE status and records terminatedAt
+        lease.terminate(reason);
+        leaseAgreementRepository.save(lease);
+        log.info("Lease {} terminated by landlord {} — reason: {}", leaseId, callerId, reason);
+
+        // Reset property to AVAILABLE so it can be listed again
+        propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
+            property.markAsAvailable();
+            propertyRepository.save(property);
+            log.info("Property {} reset to AVAILABLE after lease {} termination",
+                    lease.getPropertyId(), leaseId);
+        });
+
+        // Notify renter
+        User renter = findUserOrThrow(lease.getRenterId());
+        notificationService.sendNotification(SendNotificationRequest.builder()
+                .userId(renter.getUserId())
+                .userEmail(renter.getEmail().getValue())
+                .title("Hợp đồng thuê nhà đã bị chấm dứt")
+                .message(reason != null
+                        ? "Chủ nhà đã chấm dứt hợp đồng thuê nhà của bạn. Lý do: " + reason
+                        : "Chủ nhà đã chấm dứt hợp đồng thuê nhà của bạn.")
+                .eventType(EventType.LEASE_TERMINATED)
+                .entityType(EntityType.LEASE)
+                .entityId(leaseId)
+                .build());
+
+        return toEnrichedResponse(lease);
     }
 
     // ── Private Helpers ───────────────────────────────────────────────────────
@@ -499,6 +558,14 @@ public class LeaseAgreementApplicationService {
     private User findUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+    }
+
+    private UUID getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof SecurityUserDetails userDetails) {
+            return userDetails.getUserId();
+        }
+        throw new BusinessConflictException("Authenticated user not found in security context.");
     }
 
     /**
