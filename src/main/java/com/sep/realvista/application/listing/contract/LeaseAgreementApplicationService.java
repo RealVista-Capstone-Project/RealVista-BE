@@ -29,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -123,18 +124,20 @@ public class LeaseAgreementApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<LeaseResponse> getLeasesByRenter(UUID renterId, int page, int size) {
-        Page<LeaseAgreement> leases = leaseAgreementRepository.findByRenterId(
-                renterId, PageRequest.of(page, size, Sort.by("createdAt").descending())
-        );
+    public PageResponse<LeaseResponse> getLeasesByRenter(UUID renterId, LeaseStatus status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<LeaseAgreement> leases = (status != null)
+                ? leaseAgreementRepository.findByRenterIdAndStatus(renterId, status, pageable)
+                : leaseAgreementRepository.findByRenterId(renterId, pageable);
         return toPageResponse(leases);
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<LeaseResponse> getLeasesByLandlord(UUID landlordId, int page, int size) {
-        Page<LeaseAgreement> leases = leaseAgreementRepository.findByLandlordId(
-                landlordId, PageRequest.of(page, size, Sort.by("createdAt").descending())
-        );
+    public PageResponse<LeaseResponse> getLeasesByLandlord(UUID landlordId, LeaseStatus status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<LeaseAgreement> leases = (status != null)
+                ? leaseAgreementRepository.findByLandlordIdAndStatus(landlordId, status, pageable)
+                : leaseAgreementRepository.findByLandlordId(landlordId, pageable);
         return toPageResponse(leases);
     }
 

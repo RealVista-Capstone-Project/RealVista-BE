@@ -8,6 +8,7 @@ import com.sep.realvista.application.listing.contract.dto.LeaseResponse;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
 import com.sep.realvista.application.listing.contract.dto.TerminateLeaseRequest;
 import com.sep.realvista.application.service.DocuSignService;
+import com.sep.realvista.domain.listing.contract.LeaseStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -88,10 +89,12 @@ public class LeaseAgreementController {
     @Operation(summary = "List leases by renter")
     public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByRenter(
             @PathVariable UUID renterId,
+            @Parameter(description = "Filter by lease status (e.g. ACTIVE, EXPIRED, TERMINATED). Omit to return all.")
+            @RequestParam(required = false) LeaseStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(ApiResponse.success("Leases retrieved",
-                leaseService.getLeasesByRenter(renterId, page, size)));
+                leaseService.getLeasesByRenter(renterId, status, page, size)));
     }
 
     @GetMapping("/landlord/{landlordId}")
@@ -99,10 +102,12 @@ public class LeaseAgreementController {
     @Operation(summary = "List leases by landlord")
     public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByLandlord(
             @PathVariable UUID landlordId,
+            @Parameter(description = "Filter by lease status (e.g. ACTIVE, EXPIRED, TERMINATED). Omit to return all.")
+            @RequestParam(required = false) LeaseStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(ApiResponse.success("Leases retrieved",
-                leaseService.getLeasesByLandlord(landlordId, page, size)));
+                leaseService.getLeasesByLandlord(landlordId, status, page, size)));
     }
 
     @GetMapping("/property/{propertyId}")

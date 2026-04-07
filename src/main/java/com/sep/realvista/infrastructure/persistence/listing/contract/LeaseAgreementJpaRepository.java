@@ -22,8 +22,24 @@ public interface LeaseAgreementJpaRepository extends JpaRepository<LeaseAgreemen
     @Query("SELECT la FROM LeaseAgreement la WHERE la.renterId = :renterId AND la.deleted = false")
     Page<LeaseAgreement> findByRenterId(@Param("renterId") UUID renterId, Pageable pageable);
 
+    @Query("SELECT la FROM LeaseAgreement la "
+            + "WHERE la.renterId = :renterId AND la.status = :status AND la.deleted = false")
+    Page<LeaseAgreement> findByRenterIdAndStatus(
+            @Param("renterId") UUID renterId,
+            @Param("status") LeaseStatus status,
+            Pageable pageable
+    );
+
     @Query("SELECT la FROM LeaseAgreement la WHERE la.landlordId = :landlordId AND la.deleted = false")
     Page<LeaseAgreement> findByLandlordId(@Param("landlordId") UUID landlordId, Pageable pageable);
+
+    @Query("SELECT la FROM LeaseAgreement la "
+            + "WHERE la.landlordId = :landlordId AND la.status = :status AND la.deleted = false")
+    Page<LeaseAgreement> findByLandlordIdAndStatus(
+            @Param("landlordId") UUID landlordId,
+            @Param("status") LeaseStatus status,
+            Pageable pageable
+    );
 
     @Query("SELECT la FROM LeaseAgreement la "
             + "WHERE la.propertyId = :propertyId AND la.status = :status AND la.deleted = false")
