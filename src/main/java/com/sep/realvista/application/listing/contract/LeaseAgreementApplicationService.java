@@ -430,8 +430,12 @@ public class LeaseAgreementApplicationService {
     private void processEnvelopeStatusUpdate(LeaseAgreement lease, String eventStatus) {
         switch (eventStatus.toLowerCase()) {
             case "completed" -> {
-                // Envelope completed means all signers are done — renter is the last signer
-                if (lease.getStatus() == LeaseStatus.PENDING_RENTER) {
+                // DocuSign fires "completed" only when ALL signers are done.
+                // In the template flow (landlord order-1, renter order-2) this means both parties signed.
+                // Accept both PENDING_RENTER (normal path after send-renter was called) and
+                // PENDING_LANDLORD (template flow — renter already in envelope, send-renter not needed).
+                if (lease.getStatus() == LeaseStatus.PENDING_RENTER
+                        || lease.getStatus() == LeaseStatus.PENDING_LANDLORD) {
                     lease.renterSignViaDocuSign();
                     // Auto-mark the property as RENTED now that the lease is ACTIVE
                     propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
@@ -450,6 +454,28 @@ public class LeaseAgreementApplicationService {
     }
 
     // ── Lease State Transitions ───────────────────────────────────────────────
+
+    /**
+     * Confirms that the landlord has completed signing and transitions the lease
+     * from PENDING_LANDLORD to PENDING_RENTER.
+     * <p>
+     * This is called by the frontend after DocuSign redirects back with
+     * {@code event=signing_complete} on the landlord's return URL.
+     */
+    public LeaseResponse confirmLandlordSigned(UUID leaseId) {
+        LeaseAgreement lease = findLeaseOrThrow(leaseId);
+
+        if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
+            throw new BusinessConflictException(
+                    "Lease must be in PENDING_LANDLORD status to confirm landlord signing. "
+                            + "Current status: " + lease.getStatus()
+            );
+        }
+
+        lease.submitToRenter();
+        log.info("Lease {} transitioned to PENDING_RENTER after landlord confirmed signing", leaseId);
+        return toEnrichedResponse(leaseAgreementRepository.save(lease));
+    }
 
     public LeaseResponse rejectLease(UUID leaseId, String reason) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);

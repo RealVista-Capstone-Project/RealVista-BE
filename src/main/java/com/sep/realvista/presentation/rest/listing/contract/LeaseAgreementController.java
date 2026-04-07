@@ -46,6 +46,7 @@ import java.util.UUID;
  *   GET    /api/v1/leases/{id}/renter-signing-url      — Get renter signing URL
  *   POST   /api/v1/leases/{id}/send-landlord           — Send to landlord for signing
  *   GET    /api/v1/leases/{id}/landlord-signing-url    — Get landlord signing URL
+ *   POST   /api/v1/leases/{id}/confirm-landlord-signed — Confirm landlord signed (PENDING_LANDLORD→PENDING_RENTER)
  *   PUT    /api/v1/leases/{id}/reject                  — Reject lease
  *   PUT    /api/v1/leases/{id}/terminate               — Terminate active lease
  *   POST   /api/v1/leases/docusign/webhook             — DocuSign Connect webhook (public)
@@ -82,7 +83,7 @@ public class LeaseAgreementController {
     }
 
     @GetMapping("/renter/{renterId}")
-    @PreAuthorize("hasAnyRole('RENTER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
     @Operation(summary = "List leases by renter")
     public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByRenter(
             @PathVariable UUID renterId,
@@ -144,7 +145,7 @@ public class LeaseAgreementController {
     }
 
     @GetMapping("/{id}/renter-signing-url")
-    @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'RENTER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'TENANT', 'ADMIN')")
     @Operation(
             summary = "Get renter embedded signing URL",
             description = "Regenerates the DocuSign embedded signing URL for the renter. "
@@ -185,6 +186,21 @@ public class LeaseAgreementController {
     }
 
     // ── Lease State Transitions ───────────────────────────────────────────────
+
+    @PostMapping("/{id}/confirm-landlord-signed")
+    @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
+    @Operation(
+            summary = "Confirm landlord has signed",
+            description = "Transitions the lease from PENDING_LANDLORD to PENDING_RENTER. "
+                    + "Call this endpoint after DocuSign redirects back to the frontend "
+                    + "with event=signing_complete on the landlord return URL."
+    )
+    public ResponseEntity<ApiResponse<LeaseResponse>> confirmLandlordSigned(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Landlord signing confirmed, lease is now pending renter",
+                leaseService.confirmLandlordSigned(id)
+        ));
+    }
 
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
