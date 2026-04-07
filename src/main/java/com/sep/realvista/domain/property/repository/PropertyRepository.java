@@ -40,4 +40,24 @@ public interface PropertyRepository {
                                        java.math.BigDecimal eastLng, java.math.BigDecimal westLng);
 
     List<Property> searchByAddress(String address);
+
+    /**
+     * Finds a paginated feed of properties available for agent proposals.
+     *
+     * <p>Returns AVAILABLE properties that are not already assigned to the given agent,
+     * with optional filtering by keyword, property type, and location.
+     *
+     * @param agentId        the agent's user ID (to exclude already-assigned properties)
+     * @param keyword        optional keyword to search street address or descriptions
+     * @param propertyTypeId optional property type filter
+     * @param locationId     optional location (ward/district/city) filter
+     * @param pageable       pagination parameters
+     * @return page of properties available for proposal
+     */
+    org.springframework.data.domain.Page<Property> findPropertyFeed(
+            UUID agentId,
+            String keyword,
+            UUID propertyTypeId,
+            UUID locationId,
+            org.springframework.data.domain.Pageable pageable);
 }
