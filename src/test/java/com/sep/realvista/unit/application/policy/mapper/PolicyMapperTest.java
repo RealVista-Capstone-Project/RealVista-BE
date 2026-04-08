@@ -2,8 +2,8 @@ package com.sep.realvista.unit.application.policy.mapper;
 
 import com.sep.realvista.application.policy.dto.PolicyDto;
 import com.sep.realvista.application.policy.mapper.PolicyMapper;
-import com.sep.realvista.application.policy.mapper.PolicyMapperImpl;
 import com.sep.realvista.domain.policy.Policy;
+import org.mapstruct.factory.Mappers;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PolicyMapperTest {
 
-    private final PolicyMapper mapper = new PolicyMapperImpl();
+    private final PolicyMapper mapper = Mappers.getMapper(PolicyMapper.class);
 
     @Test
     void shouldMapPolicyToDto() {
