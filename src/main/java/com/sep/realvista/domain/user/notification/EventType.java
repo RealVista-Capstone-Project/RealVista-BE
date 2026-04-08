@@ -11,5 +11,6 @@ public enum EventType {
     LISTING_EXPIRED,
     LISTING_SOLD,
     LISTING_RENTED,
+    LEASE_TERMINATED,
     SYSTEM
 }

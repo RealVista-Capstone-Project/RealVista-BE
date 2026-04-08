@@ -139,6 +139,10 @@ public class Property extends BaseEntity {
         this.status = PropertyStatus.RENTED;
     }
 
+    public void markAsAvailable() {
+        this.status = PropertyStatus.AVAILABLE;
+    }
+
     public void cancelReservation() {
         if (this.status != PropertyStatus.RESERVED) {
             throw new IllegalStateException("Only reserved properties can have reservation cancelled");

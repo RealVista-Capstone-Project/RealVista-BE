@@ -34,8 +34,8 @@ public class LeaseAgreementRepositoryImpl implements LeaseAgreementRepository {
     }
 
     @Override
-    public Page<LeaseAgreement> findByListingId(UUID listingId, Pageable pageable) {
-        return jpaRepository.findByListingId(listingId, pageable);
+    public Page<LeaseAgreement> findByPropertyId(UUID propertyId, Pageable pageable) {
+        return jpaRepository.findByPropertyId(propertyId, pageable);
     }
 
     @Override
@@ -49,7 +49,7 @@ public class LeaseAgreementRepositoryImpl implements LeaseAgreementRepository {
     }
 
     @Override
-    public List<LeaseAgreement> findActiveLeasesByListingId(UUID listingId) {
-        return jpaRepository.findByListingIdAndStatus(listingId, LeaseStatus.ACTIVE);
+    public List<LeaseAgreement> findActiveLeasesByPropertyId(UUID propertyId) {
+        return jpaRepository.findByPropertyIdAndStatus(propertyId, LeaseStatus.ACTIVE);
     }
 }

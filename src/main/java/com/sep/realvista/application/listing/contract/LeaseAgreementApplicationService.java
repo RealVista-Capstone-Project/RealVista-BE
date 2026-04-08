@@ -5,25 +5,40 @@ import com.sep.realvista.application.listing.contract.dto.CreateLeaseRequest;
 import com.sep.realvista.application.listing.contract.dto.LeaseResponse;
 import com.sep.realvista.application.listing.contract.dto.LeaseTemplateData;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
+import com.sep.realvista.application.listing.contract.dto.TerminateLeaseRequest;
 import com.sep.realvista.application.listing.contract.mapper.LeaseAgreementMapper;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.DocuSignService;
 import com.sep.realvista.infrastructure.config.DocuSignConfig;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.contract.LeaseAgreement;
 import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.listing.contract.LeaseStatus;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
+import com.sep.realvista.application.common.util.VietnameseCurrencyUtil;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.notification.EntityType;
+import com.sep.realvista.domain.user.notification.EventType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -31,6 +46,8 @@ import java.util.UUID;
  * <p>
  * Orchestrates lease CRUD operations and coordinates with DocuSign for embedded signing.
  * Signing operations degrade gracefully when DocuSign is not configured.
+ * <p>
+ * Leases are now tied directly to a {@link Property} (not a listing).
  */
 @Service
 @RequiredArgsConstructor
@@ -39,20 +56,49 @@ import java.util.UUID;
 public class LeaseAgreementApplicationService {
 
     private final LeaseAgreementRepository leaseAgreementRepository;
+    private final PropertyRepository propertyRepository;
+    private final ListingRepository listingRepository;
     private final UserRepository userRepository;
     private final DocuSignService docuSignService;
     private final DocuSignConfig docuSignConfig;
     private final LeaseAgreementMapper leaseAgreementMapper;
     private final RestTemplate restTemplate;
+    private final NotificationApplicationService notificationService;
 
     // ── CRUD Operations ───────────────────────────────────────────────────────
 
     /**
      * Creates a new lease agreement in DRAFT status.
+     * <p>
+     * Validates:
+     * <ul>
+     *   <li>Property exists</li>
+     *   <li>Property is in AVAILABLE status</li>
+     *   <li>No active lease already exists for the property</li>
+     * </ul>
      */
     public LeaseResponse createLease(CreateLeaseRequest request) {
+        // 1. Validate property exists
+        Property property = propertyRepository.findById(request.getPropertyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property", request.getPropertyId()));
+
+        // 2. Validate property is available for leasing
+        if (!property.isAvailable()) {
+            throw new BusinessConflictException(
+                    "Property is not available for leasing. Current status: " + property.getStatus());
+        }
+
+        // 3. Validate no active lease already exists for this property
+        List<LeaseAgreement> activeLeases = leaseAgreementRepository
+                .findActiveLeasesByPropertyId(request.getPropertyId());
+        if (!activeLeases.isEmpty()) {
+            throw new BusinessConflictException(
+                    "An active lease already exists for this property.");
+        }
+
+        // 4. Build and save
         LeaseAgreement lease = LeaseAgreement.builder()
-                .listingId(request.getListingId())
+                .propertyId(request.getPropertyId())
                 .renterId(request.getRenterId())
                 .landlordId(request.getLandlordId())
                 .agentId(request.getAgentId())
@@ -65,14 +111,15 @@ public class LeaseAgreementApplicationService {
                 .build();
 
         LeaseAgreement saved = leaseAgreementRepository.save(lease);
-        log.info("Lease agreement created: {}", saved.getLeaseAgreementId());
-        return leaseAgreementMapper.toResponse(saved);
+        log.info("Lease agreement created: {} for property: {}",
+                saved.getLeaseAgreementId(), saved.getPropertyId());
+        return toEnrichedResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public LeaseResponse getLeaseById(UUID leaseId) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
-        return leaseAgreementMapper.toResponse(lease);
+        return toEnrichedResponse(lease);
     }
 
     @Transactional(readOnly = true)
@@ -91,12 +138,26 @@ public class LeaseAgreementApplicationService {
         return toPageResponse(leases);
     }
 
+    /**
+     * Lists leases by property ID.
+     */
     @Transactional(readOnly = true)
-    public PageResponse<LeaseResponse> getLeasesByListing(UUID listingId, int page, int size) {
-        Page<LeaseAgreement> leases = leaseAgreementRepository.findByListingId(
-                listingId, PageRequest.of(page, size, Sort.by("createdAt").descending())
+    public PageResponse<LeaseResponse> getLeasesByProperty(UUID propertyId, int page, int size) {
+        Page<LeaseAgreement> leases = leaseAgreementRepository.findByPropertyId(
+                propertyId, PageRequest.of(page, size, Sort.by("createdAt").descending())
         );
         return toPageResponse(leases);
+    }
+
+    /**
+     * Lists leases by listing ID (backward-compatible endpoint).
+     * Resolves the listing to its property, then delegates to {@link #getLeasesByProperty}.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<LeaseResponse> getLeasesByListing(UUID listingId, int page, int size) {
+        var listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
+        return getLeasesByProperty(listing.getPropertyId(), page, size);
     }
 
     // ── DocuSign Signing Workflow ─────────────────────────────────────────────
@@ -107,11 +168,11 @@ public class LeaseAgreementApplicationService {
      * For template flow, the renter is already a recipient in the existing envelope —
      * no new envelope is created. For PDF flow, adds the renter as a new signer.
      *
-     * @param leaseId    UUID of the lease agreement
-     * @param returnUrl  Frontend URL to redirect to after signing (null = use default from config)
+     * @param leaseId UUID of the lease agreement
+     * @param locale  Locale segment for the frontend return URL (e.g. "vi", "en")
      * @return {@link SigningUrlResponse} with the embedded signing URL
      */
-    public SigningUrlResponse sendToRenterForSigning(UUID leaseId, String returnUrl) {
+    public SigningUrlResponse sendToRenterForSigning(UUID leaseId, String locale) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
 
         if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
@@ -161,7 +222,7 @@ public class LeaseAgreementApplicationService {
         leaseAgreementRepository.save(lease);
 
         // Generate embedded signing URL
-        String effectiveReturnUrl = returnUrl != null ? returnUrl : buildDefaultReturnUrl(leaseId, "renter");
+        String effectiveReturnUrl = buildDefaultReturnUrl(leaseId, "renter", locale);
         String signingUrl = docuSignService.getEmbeddedSigningUrl(
                 envelopeId,
                 renter.getEmail().getValue(),
@@ -181,7 +242,7 @@ public class LeaseAgreementApplicationService {
     /**
      * Re-generates the embedded signing URL for the renter (URL expires after ~5 minutes).
      */
-    public SigningUrlResponse getRenterSigningUrl(UUID leaseId, String returnUrl) {
+    public SigningUrlResponse getRenterSigningUrl(UUID leaseId, String locale) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
 
         if (lease.getStatus() != LeaseStatus.PENDING_RENTER) {
@@ -194,7 +255,7 @@ public class LeaseAgreementApplicationService {
         }
 
         User renter = findUserOrThrow(lease.getRenterId());
-        String effectiveReturnUrl = returnUrl != null ? returnUrl : buildDefaultReturnUrl(leaseId, "renter");
+        String effectiveReturnUrl = buildDefaultReturnUrl(leaseId, "renter", locale);
         String signingUrl = docuSignService.getEmbeddedSigningUrl(
                 lease.getDocusignEnvelopeId(),
                 renter.getEmail().getValue(),
@@ -216,11 +277,11 @@ public class LeaseAgreementApplicationService {
      * Uses template-based flow if a lease template is configured, otherwise
      * downloads the lease PDF from the stored URL and creates a DocuSign envelope.
      *
-     * @param leaseId    UUID of the lease agreement
-     * @param returnUrl  Frontend URL to redirect to after signing (null = use default from config)
+     * @param leaseId UUID of the lease agreement
+     * @param locale  Locale segment for the frontend return URL (e.g. "vi", "en")
      * @return {@link SigningUrlResponse} with the embedded signing URL
      */
-    public SigningUrlResponse sendToLandlordForSigning(UUID leaseId, String returnUrl) {
+    public SigningUrlResponse sendToLandlordForSigning(UUID leaseId, String locale) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
 
         if (lease.getStatus() != LeaseStatus.DRAFT) {
@@ -248,6 +309,10 @@ public class LeaseAgreementApplicationService {
             // Template-based flow: populate dynamic fields from lease + user data
             User renter = findUserOrThrow(lease.getRenterId());
 
+            // Compute contract creation date fields (current date at signing time)
+            LocalDate contractDate = LocalDate.now();
+            DateTimeFormatter handoverFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
             LeaseTemplateData templateData = LeaseTemplateData.builder()
                     .renterName(renter.getFirstName() + " " + renter.getLastName())
                     .renterEmail(renter.getEmail().getValue())
@@ -255,12 +320,21 @@ public class LeaseAgreementApplicationService {
                     .landlordName(landlord.getFirstName() + " " + landlord.getLastName())
                     .landlordEmail(landlord.getEmail().getValue())
                     .landlordClientUserId(landlord.getUserId().toString())
-                    .leaseStartDate(lease.getLeaseStartDate() != null ? lease.getLeaseStartDate().toString() : "")
-                    .leaseEndDate(lease.getLeaseEndDate() != null ? lease.getLeaseEndDate().toString() : "")
+                    .handoverDate(lease.getLeaseStartDate() != null
+                            ? lease.getLeaseStartDate().format(handoverFormatter) : "")
                     .leaseDurationMonths(String.valueOf(lease.getLeaseDurationMonths()))
-                    .monthlyRent(lease.getMonthlyRent() != null ? lease.getMonthlyRent().toPlainString() : "")
+                    .monthlyRent(lease.getMonthlyRent() != null
+                            ? VietnameseCurrencyUtil.formatAmount(lease.getMonthlyRent()) : "")
+                    .monthlyRentByText(lease.getMonthlyRent() != null
+                            ? VietnameseCurrencyUtil.amountToWords(lease.getMonthlyRent()) : "")
                     .securityDeposit(lease.getSecurityDeposit() != null
-                            ? lease.getSecurityDeposit().toPlainString() : "")
+                            ? VietnameseCurrencyUtil.formatAmount(lease.getSecurityDeposit()) : "")
+                    .securityDepositByText(lease.getSecurityDeposit() != null
+                            ? VietnameseCurrencyUtil.amountToWords(lease.getSecurityDeposit()) : "")
+                    .contractDayOfWeek(VietnameseCurrencyUtil.getDayOfWeekVietnamese(contractDate.getDayOfWeek()))
+                    .contractDay(String.format("%02d", contractDate.getDayOfMonth()))
+                    .contractMonth(String.format("%02d", contractDate.getMonthValue()))
+                    .contractYear(String.valueOf(contractDate.getYear()))
                     .build();
 
             envelopeId = docuSignService.createEnvelopeFromTemplate(
@@ -292,7 +366,7 @@ public class LeaseAgreementApplicationService {
         leaseAgreementRepository.save(lease);
 
         // Generate embedded signing URL for landlord
-        String effectiveReturnUrl = returnUrl != null ? returnUrl : buildDefaultReturnUrl(leaseId, "landlord");
+        String effectiveReturnUrl = buildDefaultReturnUrl(leaseId, "landlord", locale);
         String signingUrl = docuSignService.getEmbeddedSigningUrl(
                 envelopeId,
                 landlord.getEmail().getValue(),
@@ -312,7 +386,7 @@ public class LeaseAgreementApplicationService {
     /**
      * Re-generates the embedded signing URL for the landlord.
      */
-    public SigningUrlResponse getLandlordSigningUrl(UUID leaseId, String returnUrl) {
+    public SigningUrlResponse getLandlordSigningUrl(UUID leaseId, String locale) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
 
         if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
@@ -325,7 +399,7 @@ public class LeaseAgreementApplicationService {
         }
 
         User landlord = findUserOrThrow(lease.getLandlordId());
-        String effectiveReturnUrl = returnUrl != null ? returnUrl : buildDefaultReturnUrl(leaseId, "landlord");
+        String effectiveReturnUrl = buildDefaultReturnUrl(leaseId, "landlord", locale);
         String signingUrl = docuSignService.getEmbeddedSigningUrl(
                 lease.getDocusignEnvelopeId(),
                 landlord.getEmail().getValue(),
@@ -347,8 +421,8 @@ public class LeaseAgreementApplicationService {
      * Handles DocuSign Connect webhook events (envelope status updates).
      * Called by the controller after signature verification.
      *
-     * @param envelopeId    DocuSign envelope ID from the webhook payload
-     * @param eventStatus   Envelope status from DocuSign (e.g. "completed", "declined")
+     * @param envelopeId  DocuSign envelope ID from the webhook payload
+     * @param eventStatus Envelope status from DocuSign (e.g. "completed", "declined")
      */
     public void handleWebhookEvent(String envelopeId, String eventStatus) {
         leaseAgreementRepository.findByDocusignEnvelopeId(envelopeId).ifPresentOrElse(
@@ -365,9 +439,20 @@ public class LeaseAgreementApplicationService {
     private void processEnvelopeStatusUpdate(LeaseAgreement lease, String eventStatus) {
         switch (eventStatus.toLowerCase()) {
             case "completed" -> {
-                // Envelope completed means all signers are done — renter is the last signer
-                if (lease.getStatus() == LeaseStatus.PENDING_RENTER) {
+                // DocuSign fires "completed" only when ALL signers are done.
+                // In the template flow (landlord order-1, renter order-2) this means both parties signed.
+                // Accept both PENDING_RENTER (normal path after send-renter was called) and
+                // PENDING_LANDLORD (template flow — renter already in envelope, send-renter not needed).
+                if (lease.getStatus() == LeaseStatus.PENDING_RENTER
+                        || lease.getStatus() == LeaseStatus.PENDING_LANDLORD) {
                     lease.renterSignViaDocuSign();
+                    // Auto-mark the property as RENTED now that the lease is ACTIVE
+                    propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
+                        property.markAsRented();
+                        propertyRepository.save(property);
+                        log.info("Property {} automatically marked as RENTED after lease {} completed signing",
+                                lease.getPropertyId(), lease.getLeaseAgreementId());
+                    });
                 }
             }
             case "declined", "voided" -> {
@@ -379,16 +464,88 @@ public class LeaseAgreementApplicationService {
 
     // ── Lease State Transitions ───────────────────────────────────────────────
 
+    /**
+     * Confirms that the landlord has completed signing and transitions the lease
+     * from PENDING_LANDLORD to PENDING_RENTER.
+     * <p>
+     * This is called by the frontend after DocuSign redirects back with
+     * {@code event=signing_complete} on the landlord's return URL.
+     */
+    public LeaseResponse confirmLandlordSigned(UUID leaseId) {
+        LeaseAgreement lease = findLeaseOrThrow(leaseId);
+
+        if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
+            throw new BusinessConflictException(
+                    "Lease must be in PENDING_LANDLORD status to confirm landlord signing. "
+                            + "Current status: " + lease.getStatus()
+            );
+        }
+
+        lease.submitToRenter();
+        log.info("Lease {} transitioned to PENDING_RENTER after landlord confirmed signing", leaseId);
+        return toEnrichedResponse(leaseAgreementRepository.save(lease));
+    }
+
     public LeaseResponse rejectLease(UUID leaseId, String reason) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
         lease.reject(reason);
-        return leaseAgreementMapper.toResponse(leaseAgreementRepository.save(lease));
+        return toEnrichedResponse(leaseAgreementRepository.save(lease));
     }
 
-    public LeaseResponse terminateLease(UUID leaseId) {
+    /**
+     * Terminates an active lease agreement.
+     * <p>
+     * Business rules enforced:
+     * <ul>
+     *   <li>The lease must be in {@link LeaseStatus#ACTIVE} status.</li>
+     *   <li>The caller must be the landlord of this specific lease.</li>
+     *   <li>The associated property is reset to AVAILABLE.</li>
+     *   <li>The renter is notified via all channels (WebSocket + FCM).</li>
+     * </ul>
+     *
+     * @param leaseId the lease to terminate
+     * @param request optional body carrying a termination reason
+     * @return the updated lease response
+     */
+    public LeaseResponse terminateLease(UUID leaseId, TerminateLeaseRequest request) {
         LeaseAgreement lease = findLeaseOrThrow(leaseId);
-        lease.terminate();
-        return leaseAgreementMapper.toResponse(leaseAgreementRepository.save(lease));
+
+        // Ownership check — caller must be the landlord of THIS lease
+        UUID callerId = getCurrentUserId();
+        if (!lease.getLandlordId().equals(callerId)) {
+            throw new BusinessConflictException("Only the landlord of this lease can terminate it.");
+        }
+
+        String reason = (request != null) ? request.getReason() : null;
+
+        // Domain method guards ACTIVE status and records terminatedAt
+        lease.terminate(reason);
+        leaseAgreementRepository.save(lease);
+        log.info("Lease {} terminated by landlord {} — reason: {}", leaseId, callerId, reason);
+
+        // Reset property to AVAILABLE so it can be listed again
+        propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
+            property.markAsAvailable();
+            propertyRepository.save(property);
+            log.info("Property {} reset to AVAILABLE after lease {} termination",
+                    lease.getPropertyId(), leaseId);
+        });
+
+        // Notify renter
+        User renter = findUserOrThrow(lease.getRenterId());
+        notificationService.sendNotification(SendNotificationRequest.builder()
+                .userId(renter.getUserId())
+                .userEmail(renter.getEmail().getValue())
+                .title("Hợp đồng thuê nhà đã bị chấm dứt")
+                .message(reason != null
+                        ? "Chủ nhà đã chấm dứt hợp đồng thuê nhà của bạn. Lý do: " + reason
+                        : "Chủ nhà đã chấm dứt hợp đồng thuê nhà của bạn.")
+                .eventType(EventType.LEASE_TERMINATED)
+                .entityType(EntityType.LEASE)
+                .entityId(leaseId)
+                .build());
+
+        return toEnrichedResponse(lease);
     }
 
     // ── Private Helpers ───────────────────────────────────────────────────────
@@ -401,6 +558,14 @@ public class LeaseAgreementApplicationService {
     private User findUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+    }
+
+    private UUID getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof SecurityUserDetails userDetails) {
+            return userDetails.getUserId();
+        }
+        throw new BusinessConflictException("Authenticated user not found in security context.");
     }
 
     /**
@@ -417,13 +582,14 @@ public class LeaseAgreementApplicationService {
         }
     }
 
-    private String buildDefaultReturnUrl(UUID leaseId, String role) {
-        return docuSignConfig.getReturnUrl() + "?leaseId=" + leaseId + "&role=" + role;
+    private String buildDefaultReturnUrl(UUID leaseId, String role, String locale) {
+        return docuSignConfig.getReturnUrl() + "/" + locale + "/leases/signing-complete"
+                + "?leaseId=" + leaseId + "&role=" + role;
     }
 
     private PageResponse<LeaseResponse> toPageResponse(Page<LeaseAgreement> page) {
         return PageResponse.<LeaseResponse>builder()
-                .content(page.getContent().stream().map(leaseAgreementMapper::toResponse).toList())
+                .content(page.getContent().stream().map(this::toEnrichedResponse).toList())
                 .page(page.getNumber())
                 .size(page.getSize())
                 .totalElements(page.getTotalElements())
@@ -431,5 +597,42 @@ public class LeaseAgreementApplicationService {
                 .first(page.isFirst())
                 .last(page.isLast())
                 .build();
+    }
+
+    /**
+     * Builds a {@link LeaseResponse} enriched with renter, landlord, and property details.
+     * Replaces the bare {@code leaseAgreementMapper.toResponse()} calls so that list and
+     * detail endpoints always include display-ready fields for the frontend.
+     */
+    private LeaseResponse toEnrichedResponse(LeaseAgreement lease) {
+        LeaseResponse response = leaseAgreementMapper.toResponse(lease);
+
+        // Enrich renter info
+        userRepository.findById(lease.getRenterId()).ifPresent(renter -> {
+            response.setRenterFullName(renter.getFullName());
+            response.setRenterEmail(renter.getEmail().getValue());
+            response.setRenterPhone(renter.getPhone());
+            response.setRenterAvatarUrl(renter.getAvatarUrl());
+        });
+
+        // Enrich landlord info
+        userRepository.findById(lease.getLandlordId()).ifPresent(landlord -> {
+            response.setLandlordFullName(landlord.getFullName());
+            response.setLandlordEmail(landlord.getEmail().getValue());
+            response.setLandlordPhone(landlord.getPhone());
+            response.setLandlordAvatarUrl(landlord.getAvatarUrl());
+        });
+
+        // Enrich property info (lazy association — safe within @Transactional context)
+        Property property = lease.getProperty();
+        if (property != null) {
+            response.setPropertyTitle(property.getStreetAddress());
+            response.setPropertyAddress(property.getStreetAddress());
+            if (property.getPropertyType() != null) {
+                response.setPropertyType(property.getPropertyType().getName());
+            }
+        }
+
+        return response;
     }
 }

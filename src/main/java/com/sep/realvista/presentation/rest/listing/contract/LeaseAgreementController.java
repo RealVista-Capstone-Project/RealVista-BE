@@ -6,6 +6,7 @@ import com.sep.realvista.application.listing.contract.LeaseAgreementApplicationS
 import com.sep.realvista.application.listing.contract.dto.CreateLeaseRequest;
 import com.sep.realvista.application.listing.contract.dto.LeaseResponse;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
+import com.sep.realvista.application.listing.contract.dto.TerminateLeaseRequest;
 import com.sep.realvista.application.service.DocuSignService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,11 +41,13 @@ import java.util.UUID;
  *   GET    /api/v1/leases/{id}                         — Get lease by ID
  *   GET    /api/v1/leases/renter/{renterId}            — List by renter
  *   GET    /api/v1/leases/landlord/{landlordId}        — List by landlord
- *   GET    /api/v1/leases/listing/{listingId}          — List by listing
+ *   GET    /api/v1/leases/property/{propertyId}        — List by property
+ *   GET    /api/v1/leases/listing/{listingId}          — List by listing (resolves to property)
  *   POST   /api/v1/leases/{id}/send-renter             — Send to renter for signing
  *   GET    /api/v1/leases/{id}/renter-signing-url      — Get renter signing URL
  *   POST   /api/v1/leases/{id}/send-landlord           — Send to landlord for signing
  *   GET    /api/v1/leases/{id}/landlord-signing-url    — Get landlord signing URL
+ *   POST   /api/v1/leases/{id}/confirm-landlord-signed — Confirm landlord signed (PENDING_LANDLORD→PENDING_RENTER)
  *   PUT    /api/v1/leases/{id}/reject                  — Reject lease
  *   PUT    /api/v1/leases/{id}/terminate               — Terminate active lease
  *   POST   /api/v1/leases/docusign/webhook             — DocuSign Connect webhook (public)
@@ -81,7 +84,7 @@ public class LeaseAgreementController {
     }
 
     @GetMapping("/renter/{renterId}")
-    @PreAuthorize("hasAnyRole('RENTER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('TENANT', 'ADMIN')")
     @Operation(summary = "List leases by renter")
     public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByRenter(
             @PathVariable UUID renterId,
@@ -102,9 +105,20 @@ public class LeaseAgreementController {
                 leaseService.getLeasesByLandlord(landlordId, page, size)));
     }
 
+    @GetMapping("/property/{propertyId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "List leases by property")
+    public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByProperty(
+            @PathVariable UUID propertyId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(ApiResponse.success("Leases retrieved",
+                leaseService.getLeasesByProperty(propertyId, page, size)));
+    }
+
     @GetMapping("/listing/{listingId}")
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "List leases by listing")
+    @Operation(summary = "List leases by listing (resolves to property internally)")
     public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByListing(
             @PathVariable UUID listingId,
             @RequestParam(defaultValue = "0") int page,
@@ -125,14 +139,14 @@ public class LeaseAgreementController {
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> sendToRenterForSigning(
             @PathVariable UUID id,
-            @Parameter(description = "Override return URL after signing (optional)")
-            @RequestParam(required = false) String returnUrl) {
-        SigningUrlResponse response = leaseService.sendToRenterForSigning(id, returnUrl);
+            @Parameter(description = "Locale for the return URL path segment (default: vi)")
+            @RequestParam(defaultValue = "vi") String locale) {
+        SigningUrlResponse response = leaseService.sendToRenterForSigning(id, locale);
         return ResponseEntity.ok(ApiResponse.success("Signing URL generated for renter", response));
     }
 
     @GetMapping("/{id}/renter-signing-url")
-    @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'RENTER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'TENANT', 'ADMIN')")
     @Operation(
             summary = "Get renter embedded signing URL",
             description = "Regenerates the DocuSign embedded signing URL for the renter. "
@@ -140,8 +154,9 @@ public class LeaseAgreementController {
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> getRenterSigningUrl(
             @PathVariable UUID id,
-            @RequestParam(required = false) String returnUrl) {
-        SigningUrlResponse response = leaseService.getRenterSigningUrl(id, returnUrl);
+            @Parameter(description = "Locale for the return URL path segment (default: vi)")
+            @RequestParam(defaultValue = "vi") String locale) {
+        SigningUrlResponse response = leaseService.getRenterSigningUrl(id, locale);
         return ResponseEntity.ok(ApiResponse.success("Renter signing URL retrieved", response));
     }
 
@@ -154,8 +169,9 @@ public class LeaseAgreementController {
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> sendToLandlordForSigning(
             @PathVariable UUID id,
-            @RequestParam(required = false) String returnUrl) {
-        SigningUrlResponse response = leaseService.sendToLandlordForSigning(id, returnUrl);
+            @Parameter(description = "Locale for the return URL path segment (default: vi)")
+            @RequestParam(defaultValue = "vi") String locale) {
+        SigningUrlResponse response = leaseService.sendToLandlordForSigning(id, locale);
         return ResponseEntity.ok(ApiResponse.success("Signing URL generated for landlord", response));
     }
 
@@ -167,12 +183,28 @@ public class LeaseAgreementController {
     )
     public ResponseEntity<ApiResponse<SigningUrlResponse>> getLandlordSigningUrl(
             @PathVariable UUID id,
-            @RequestParam(required = false) String returnUrl) {
-        SigningUrlResponse response = leaseService.getLandlordSigningUrl(id, returnUrl);
+            @Parameter(description = "Locale for the return URL path segment (default: vi)")
+            @RequestParam(defaultValue = "vi") String locale) {
+        SigningUrlResponse response = leaseService.getLandlordSigningUrl(id, locale);
         return ResponseEntity.ok(ApiResponse.success("Landlord signing URL retrieved", response));
     }
 
     // ── Lease State Transitions ───────────────────────────────────────────────
+
+    @PostMapping("/{id}/confirm-landlord-signed")
+    @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
+    @Operation(
+            summary = "Confirm landlord has signed",
+            description = "Transitions the lease from PENDING_LANDLORD to PENDING_RENTER. "
+                    + "Call this endpoint after DocuSign redirects back to the frontend "
+                    + "with event=signing_complete on the landlord return URL."
+    )
+    public ResponseEntity<ApiResponse<LeaseResponse>> confirmLandlordSigned(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Landlord signing confirmed, lease is now pending renter",
+                leaseService.confirmLandlordSigned(id)
+        ));
+    }
 
     @PutMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
@@ -186,9 +218,16 @@ public class LeaseAgreementController {
 
     @PutMapping("/{id}/terminate")
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
-    @Operation(summary = "Terminate active lease agreement")
-    public ResponseEntity<ApiResponse<LeaseResponse>> terminateLease(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success("Lease terminated", leaseService.terminateLease(id)));
+    @Operation(
+            summary = "Terminate active lease agreement",
+            description = "Terminates an ACTIVE lease. Caller must be the landlord of the lease. "
+                    + "The property is automatically reset to AVAILABLE and the renter is notified."
+    )
+    public ResponseEntity<ApiResponse<LeaseResponse>> terminateLease(
+            @PathVariable UUID id,
+            @RequestBody(required = false) TerminateLeaseRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Lease terminated",
+                leaseService.terminateLease(id, request)));
     }
 
     // ── DocuSign Webhook (Public — no auth required) ──────────────────────────

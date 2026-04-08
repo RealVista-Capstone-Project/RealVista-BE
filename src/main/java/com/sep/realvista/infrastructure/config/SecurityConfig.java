@@ -1,7 +1,9 @@
 package com.sep.realvista.infrastructure.config;
 
 import com.sep.realvista.infrastructure.constants.SecurityConstants;
+import com.sep.realvista.infrastructure.security.RestAccessDeniedHandler;
 import com.sep.realvista.infrastructure.security.RestAuthenticationEntryPoint;
+import com.sep.realvista.infrastructure.security.apikey.InternalApiKeyAuthenticationFilter;
 import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
 import com.sep.realvista.infrastructure.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
@@ -33,23 +35,27 @@ public class SecurityConfig {
         private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
         private final PasswordEncoder passwordEncoder;
         private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+        private final RestAccessDeniedHandler restAccessDeniedHandler;
 
         public SecurityConfig(
                         JwtAuthenticationFilter jwtAuthFilter,
                         UserDetailsService userDetailsService,
                         OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
                         PasswordEncoder passwordEncoder,
-                        RestAuthenticationEntryPoint restAuthenticationEntryPoint) {
+                        RestAuthenticationEntryPoint restAuthenticationEntryPoint,
+                        RestAccessDeniedHandler restAccessDeniedHandler) {
                 this.jwtAuthFilter = jwtAuthFilter;
                 this.userDetailsService = userDetailsService;
                 this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
                 this.passwordEncoder = passwordEncoder;
                 this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
+                this.restAccessDeniedHandler = restAccessDeniedHandler;
         }
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                        AuthenticationProvider authenticationProvider) throws Exception {
+                        AuthenticationProvider authenticationProvider,
+                        InternalApiKeyAuthenticationFilter internalApiKeyAuthFilter) throws Exception {
                 http
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .cors(cors -> cors.configurationSource(req -> {
@@ -65,19 +71,30 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(SecurityConstants.PublicEndpoints.PUBLIC_PATHS)
                                                 .permitAll()
+                                                .requestMatchers(SecurityConstants.InternalEndpoints.INTERNAL_PATHS)
+                                                .hasRole("INTERNAL_SERVICE")
                                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth2 -> oauth2
                                                 .authorizationEndpoint(authorization -> authorization
                                                                 .baseUri(SecurityConstants.Url.LOGIN_GOOGLE))
                                                 .successHandler(oAuth2AuthenticationSuccessHandler))
                                 .exceptionHandling(exceptions -> exceptions
-                                                .authenticationEntryPoint(restAuthenticationEntryPoint))
+                                                .authenticationEntryPoint(restAuthenticationEntryPoint)
+                                                .accessDeniedHandler(restAccessDeniedHandler))
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authenticationProvider(authenticationProvider)
+                                .addFilterBefore(internalApiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();
+        }
+
+        @Bean
+        public InternalApiKeyAuthenticationFilter internalApiKeyAuthenticationFilter(
+                        com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+                        @org.springframework.beans.factory.annotation.Value("${realvista.ai.api-key:}") String apiKey) {
+                return new InternalApiKeyAuthenticationFilter(apiKey, objectMapper);
         }
 
         @Bean
