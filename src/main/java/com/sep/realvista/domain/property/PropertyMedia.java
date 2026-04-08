@@ -116,4 +116,10 @@ public class PropertyMedia extends BaseEntity {
     public boolean is3D() {
         return mediaType == MediaType.THREE_D;
     }
+
+    public void updateRoomNameInMetadata(String newRoomName) {
+        if (this.metadata != null) {
+            this.metadata.put("room_name", newRoomName);
+        }
+    }
 }

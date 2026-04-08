@@ -13,4 +13,5 @@ public interface Property3DGenerationRepository {
     Optional<Property3DGeneration> findByOperationId(String operationId);
     List<Property3DGeneration> findByPropertyId(UUID propertyId);
     List<Property3DGeneration> findByStatus(Property3DGenerationStatus status);
+    void delete(Property3DGeneration generation);
 }
