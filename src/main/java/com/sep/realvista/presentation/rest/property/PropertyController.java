@@ -45,7 +45,8 @@ public class PropertyController {
 
         @PostMapping
         @PreAuthorize("isAuthenticated()")
-        @Operation(summary = "Create a new property", description = "Allows an authenticated user to create a draft property")
+        @Operation(summary = "Create a new property",
+                        description = "Allows an authenticated user to create a draft property")
         public ResponseEntity<ApiResponse<PropertyDetailResponse>> createProperty(
                         @Valid @RequestBody CreatePropertyRequest request) {
                 log.info("REST request to create Property");
@@ -66,7 +67,8 @@ public class PropertyController {
         }
 
         @GetMapping("/{propertyId}")
-        @Operation(summary = "Get property details by ID", description = "Retrieves complete property details including attributes and media")
+        @Operation(summary = "Get property details by ID",
+                        description = "Retrieves complete property details including attributes and media")
         public ResponseEntity<ApiResponse<PropertyDetailResponse>> getPropertyDetails(@PathVariable UUID propertyId) {
                 log.info("REST request to get Property details: {}", propertyId);
                 PropertyDetailResponse response = propertyApplicationService.getPropertyDetails(propertyId);
@@ -74,8 +76,9 @@ public class PropertyController {
         }
 
         @GetMapping("/me")
-        @Operation(summary = "Get current user's properties", description = "Retrieves a paginated list of properties owned "
-                        + "by the authenticated user with optional search")
+        @Operation(summary = "Get current user's properties",
+                        description = "Retrieves a paginated list of properties owned "
+                                        + "by the authenticated user with optional search")
         public ResponseEntity<ApiResponse<PageResponse<PropertySummaryResponse>>> getMyProperties(
                         @ParameterObject PropertySearchCriteria criteria,
                         @PageableDefault() Pageable pageable) {
@@ -88,7 +91,8 @@ public class PropertyController {
         }
 
         @GetMapping("/amenities")
-        @Operation(summary = "Get all amenities", description = "Retrieves the master list of all available property amenities")
+        @Operation(summary = "Get all amenities",
+                        description = "Retrieves the master list of all available property amenities")
         public ResponseEntity<ApiResponse<List<AmenityDTO>>> getAmenities() {
                 log.info("REST request to get amenities");
                 List<AmenityDTO> response = propertyApplicationService.getAmenities();
@@ -96,8 +100,9 @@ public class PropertyController {
         }
 
         @GetMapping("/attributes")
-        @Operation(summary = "Get all searchable property attributes with ranges", description = "Retrieves the master list of all searchable attributes "
-                        + "and their predefined selection ranges")
+        @Operation(summary = "Get all searchable property attributes with ranges",
+                        description = "Retrieves the master list of all searchable attributes "
+                                        + "and their predefined selection ranges")
         public ResponseEntity<ApiResponse<List<PropertyAttributeDTO>>> getAttributes() {
                 log.info("REST request to get searchable attributes with ranges");
                 List<PropertyAttributeDTO> response = propertyApplicationService.getAttributesWithRanges();
@@ -106,7 +111,8 @@ public class PropertyController {
 
         @PostMapping("/{propertyId}/verify-agent")
         @PreAuthorize("isAuthenticated()")
-        @Operation(summary = "Verify property by agent", description = "Allows an agent to verify a property they created for an owner via OTP success")
+        @Operation(summary = "Verify property by agent",
+                        description = "Allows an agent to verify a property they created for an owner via OTP success")
         public ResponseEntity<ApiResponse<PropertyDetailResponse>> verifyPropertyByAgent(
                         @PathVariable UUID propertyId) {
                 log.info("REST request to verify Property: {}", propertyId);
@@ -116,7 +122,8 @@ public class PropertyController {
 
         @PostMapping("/{propertyId}/assign-agent")
         @PreAuthorize("isAuthenticated()")
-        @Operation(summary = "Assign current user as agent to an existing property", description = "Creates a link in property_agent table for the authenticated user")
+        @Operation(summary = "Assign current user as agent to an existing property",
+                        description = "Creates a link in property_agent table for the authenticated user")
         public ResponseEntity<ApiResponse<PropertyDetailResponse>> assignAgentToProperty(
                         @PathVariable UUID propertyId) {
                 log.info("REST request to assign Agent to Property: {}", propertyId);
@@ -125,7 +132,8 @@ public class PropertyController {
         }
 
         @GetMapping("/search")
-        @Operation(summary = "Search for properties", description = "Search for properties by address text or geographical bounding box")
+        @Operation(summary = "Search for properties",
+                        description = "Search for properties by address text or geographical bounding box")
         public ResponseEntity<ApiResponse<List<PropertySummaryResponse>>> searchProperties(
                         @RequestParam(required = false) String address,
                         @RequestParam(name = "north_lat", required = false) BigDecimal northLat,
