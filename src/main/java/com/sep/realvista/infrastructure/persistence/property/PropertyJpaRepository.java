@@ -81,4 +81,41 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
     @Query("SELECT p FROM Property p "
             + "WHERE LOWER(p.streetAddress) LIKE LOWER(CONCAT('%', :address, '%')) AND p.deleted = false")
     List<Property> searchByAddress(@Param("address") String address);
+
+    /**
+     * Finds AVAILABLE properties not already assigned to the given agent,
+     * with optional keyword, propertyType, and location filters.
+     *
+     * <p>Eagerly fetches propertyType (with category) and location (ward → district → city)
+     * to avoid N+1 queries when building the feed response.
+     *
+     * <p>Excludes properties where the agent already has an active PropertyAgent link.
+     */
+    @Query(value = "SELECT DISTINCT p FROM Property p "
+            + "LEFT JOIN FETCH p.propertyType pt "
+            + "LEFT JOIN FETCH pt.propertyCategory "
+            + "LEFT JOIN FETCH p.location loc "
+            + "LEFT JOIN FETCH loc.parent dist "
+            + "LEFT JOIN FETCH dist.parent city "
+            + "WHERE p.status = 'AVAILABLE' AND p.deleted = false "
+            + "AND NOT EXISTS (SELECT pa FROM com.sep.realvista.domain.agent.PropertyAgent pa "
+            + "  WHERE pa.propertyId = p.propertyId AND pa.agentId = :agentId AND pa.deleted = false) "
+            + "AND (:propertyTypeId IS NULL OR p.propertyTypeId = :propertyTypeId) "
+            + "AND (:locationId IS NULL OR p.locationId = :locationId) "
+            + "AND (:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword "
+            + "  OR LOWER(p.descriptions) LIKE :keyword)",
+            countQuery = "SELECT COUNT(DISTINCT p) FROM Property p "
+            + "WHERE p.status = 'AVAILABLE' AND p.deleted = false "
+            + "AND NOT EXISTS (SELECT pa FROM com.sep.realvista.domain.agent.PropertyAgent pa "
+            + "  WHERE pa.propertyId = p.propertyId AND pa.agentId = :agentId AND pa.deleted = false) "
+            + "AND (:propertyTypeId IS NULL OR p.propertyTypeId = :propertyTypeId) "
+            + "AND (:locationId IS NULL OR p.locationId = :locationId) "
+            + "AND (:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword "
+            + "  OR LOWER(p.descriptions) LIKE :keyword)")
+    org.springframework.data.domain.Page<Property> findPropertyFeed(
+            @Param("agentId") UUID agentId,
+            @Param("keyword") String keyword,
+            @Param("propertyTypeId") UUID propertyTypeId,
+            @Param("locationId") UUID locationId,
+            Pageable pageable);
 }

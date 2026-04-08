@@ -7,6 +7,7 @@ import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
+import com.sep.realvista.application.property.dto.PropertyFeedItemResponse;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyMedia;
@@ -112,6 +113,47 @@ public class PropertyMapper {
                         .build()) : null)
                 .propertyTypeInfo(mapPropertyType(property))
                 .locationInfo(mapLocation(property))
+                .build();
+    }
+
+    /**
+     * Maps a Property and its related collections to a PropertyFeedItemResponse.
+     *
+     * @param property          the property entity (with eagerly fetched type and location)
+     * @param media             media items for this property
+     * @param attributes        attribute values for this property
+     * @param amenities         amenities for this property
+     * @param hasActiveProposal whether the agent has already submitted a proposal
+     * @return the feed item response DTO
+     */
+    public PropertyFeedItemResponse toFeedItemResponse(
+            Property property,
+            List<PropertyMedia> media,
+            List<PropertyAttributeValue> attributes,
+            List<PropertyAmenity> amenities,
+            boolean hasActiveProposal) {
+
+        return PropertyFeedItemResponse.builder()
+                .propertyId(property.getPropertyId())
+                .ownerId(property.getOwnerId())
+                .streetAddress(property.getStreetAddress())
+                .latitude(property.getLatitude())
+                .longitude(property.getLongitude())
+                .landSizeM2(property.getLandSizeM2())
+                .usableSizeM2(property.getUsableSizeM2())
+                .widthM(property.getWidthM())
+                .lengthM(property.getLengthM())
+                .status(property.getStatus())
+                .descriptions(property.getDescriptions())
+                .propertyTypeInfo(mapPropertyType(property))
+                .locationInfo(mapLocation(property))
+                .media(media != null ? media.stream()
+                        .map(this::mapMedia).collect(Collectors.toList()) : null)
+                .attributes(attributes != null ? attributes.stream()
+                        .map(this::mapAttribute).collect(Collectors.toList()) : null)
+                .amenities(amenities != null ? amenities.stream()
+                        .map(this::mapAmenity).collect(Collectors.toList()) : null)
+                .hasActiveProposal(hasActiveProposal)
                 .build();
     }
 
