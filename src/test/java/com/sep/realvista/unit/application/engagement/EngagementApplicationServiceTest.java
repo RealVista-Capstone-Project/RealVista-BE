@@ -753,7 +753,7 @@ class EngagementApplicationServiceTest {
 
         @Test
         @DisplayName("Should successfully submit agent proposal")
-        void shouldSubmitSuccessfully() throws JsonProcessingException {
+        void shouldSubmitSuccessfully() {
             // Arrange
             UUID expectedEngagementId = UUID.randomUUID();
             when(agentProposalRepository.findById(request.getAgentProposalId()))
