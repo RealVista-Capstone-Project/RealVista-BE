@@ -80,7 +80,10 @@ public class MapSearchResponse extends PageResponse<PropertyMapMarker> {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class AppliedFiltersDTO {
+        @Deprecated
         private String category;
+        private String propertyCategory;
+        private String propertyType;
         private PriceRangeDTO priceRange;
         private Integer bedrooms;
         private Integer bathrooms;
