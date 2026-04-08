@@ -74,4 +74,7 @@ public class PropertyDetailResponse {
     
     @JsonProperty("media")
     private List<MediaDTO> media;
+
+    @JsonProperty("has_3d")
+    private boolean has3d;
 }

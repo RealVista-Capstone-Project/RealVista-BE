@@ -36,6 +36,8 @@ public class PropertyMapper {
             }
         }
 
+        boolean has3d = media != null && media.stream().anyMatch(PropertyMedia::is3D);
+
         return PropertyDetailResponse.builder()
                 .propertyId(property.getPropertyId())
                 .ownerId(property.getOwnerId())
@@ -55,6 +57,7 @@ public class PropertyMapper {
                 .descriptions(property.getDescriptions())
                 .slug(property.getSlug())
                 .extraAttributes(property.getExtraAttributes())
+                .has3d(has3d)
                 .attributes(attributes != null ? attributes.stream()
                         .map(this::mapAttribute).collect(Collectors.toList()) : null)
                 .amenities(amenities != null ? amenities.stream()
@@ -73,6 +76,18 @@ public class PropertyMapper {
                     .setScale(2, java.math.RoundingMode.HALF_UP);
         }
 
+        boolean has3d = media != null && media.stream().anyMatch(PropertyMedia::is3D);
+
+        String thumbnailUrl = media == null ? null : media.stream()
+                .filter(pm -> Boolean.TRUE.equals(pm.getIsPrimary()) && pm.getMediaUrl() != null)
+                .findFirst()
+                .map(pm -> pm.getThumbnailUrl() != null ? pm.getThumbnailUrl() : pm.getMediaUrl())
+                .orElseGet(() -> media.stream()
+                        .filter(pm -> pm.getMediaUrl() != null)
+                        .findFirst()
+                        .map(pm -> pm.getThumbnailUrl() != null ? pm.getThumbnailUrl() : pm.getMediaUrl())
+                        .orElse(null));
+
         return PropertySummaryResponse.builder()
                 .propertyId(property.getPropertyId())
                 .propertyTypeId(property.getPropertyTypeId())
@@ -84,6 +99,8 @@ public class PropertyMapper {
                 .lengthM(property.getLengthM())
                 .areaSqft(areaSqft)
                 .description(property.getDescriptions())
+                .has3d(has3d)
+                .thumbnailUrl(thumbnailUrl)
                 .media(media != null ? media.stream()
                         .map(this::mapMedia).collect(Collectors.toList()) : null)
                 .attributes(attributes != null ? attributes.stream()
@@ -106,6 +123,7 @@ public class PropertyMapper {
                 .widthM(property.getWidthM())
                 .lengthM(property.getLengthM())
                 .description(property.getDescriptions())
+                .thumbnailUrl(thumbnailUrl)
                 .media(thumbnailUrl != null ? List.of(MediaDTO.builder()
                         .thumbnailUrl(thumbnailUrl)
                         .isPrimary(true)
