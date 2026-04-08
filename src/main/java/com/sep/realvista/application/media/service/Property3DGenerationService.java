@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.media.dto.Property3DGenerationDto;
+import com.sep.realvista.application.media.dto.UpdateProperty3DOperationRequest;
 import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.Property3DGeneration;
 import com.sep.realvista.domain.property.Property3DGenerationStatus;
@@ -96,6 +97,75 @@ public class Property3DGenerationService {
                 .status(Property3DGenerationStatus.PENDING)
                 .build();
         generationRepository.save(generation);
+
+        return mapToDto(generation);
+    }
+
+    @Transactional
+    public void deleteOperation(UUID propertyId, UUID operationId) {
+        Property3DGeneration generation = generationRepository.findById(operationId)
+                .orElseThrow(() -> new IllegalArgumentException("3D operation not found"));
+
+        if (!generation.getPropertyId().equals(propertyId)) {
+            throw new IllegalArgumentException("Operation does not belong to the specified property");
+        }
+
+        String roomName = generation.getRoomName();
+
+        // Soft-delete all matching THREE_D PropertyMedia records for this room
+        if (roomName != null) {
+            List<PropertyMedia> mediaList = mediaRepository.findByPropertyId(propertyId);
+            mediaList.stream()
+                    .filter(m -> m.is3D() && m.getMetadata() != null)
+                    .filter(m -> roomName.equals(m.getMetadata().get("room_name")))
+                    .forEach(m -> {
+                        m.markAsDeleted();
+                        mediaRepository.save(m);
+                    });
+        }
+
+        // Soft-delete ALL generation records for this property+room (including older retries)
+        List<Property3DGeneration> allForRoom = generationRepository.findByPropertyId(propertyId)
+                .stream()
+                .filter(g -> roomName == null
+                        ? g.getRoomName() == null
+                        : roomName.equals(g.getRoomName()))
+                .collect(java.util.stream.Collectors.toList());
+
+        for (Property3DGeneration g : allForRoom) {
+            generationRepository.delete(g);
+        }
+    }
+
+    @Transactional
+    public Property3DGenerationDto updateOperation(
+            UUID propertyId, UUID operationId, UpdateProperty3DOperationRequest request) {
+
+        Property3DGeneration generation = generationRepository.findById(operationId)
+                .orElseThrow(() -> new IllegalArgumentException("3D operation not found"));
+
+        if (!generation.getPropertyId().equals(propertyId)) {
+            throw new IllegalArgumentException("Operation does not belong to the specified property");
+        }
+
+        String oldRoomName = generation.getRoomName();
+        String newRoomName = request.getRoomName().trim();
+
+        // Update generation record
+        generation.updateRoomName(newRoomName);
+        generationRepository.save(generation);
+
+        // Also update the matching PropertyMedia metadata entry if it exists
+        if (oldRoomName != null) {
+            List<PropertyMedia> mediaList = mediaRepository.findByPropertyId(propertyId);
+            mediaList.stream()
+                    .filter(m -> m.is3D() && m.getMetadata() != null)
+                    .filter(m -> oldRoomName.equals(m.getMetadata().get("room_name")))
+                    .forEach(m -> {
+                        m.updateRoomNameInMetadata(newRoomName);
+                        mediaRepository.save(m);
+                    });
+        }
 
         return mapToDto(generation);
     }
