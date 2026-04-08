@@ -262,11 +262,16 @@ public class DocuSignServiceImpl implements DocuSignService {
             renterTabs.setTextTabs(List.of(
                     buildTextTab("renterName", data.getRenterName()),
                     buildTextTab("landlordName", data.getLandlordName()),
-                    buildTextTab("leaseStartDate", data.getLeaseStartDate()),
-                    buildTextTab("leaseEndDate", data.getLeaseEndDate()),
+                    buildTextTab("handoverDate", data.getHandoverDate()),
                     buildTextTab("leaseDurationMonths", data.getLeaseDurationMonths()),
                     buildTextTab("monthlyRent", data.getMonthlyRent()),
-                    buildTextTab("securityDeposit", data.getSecurityDeposit())
+                    buildTextTab("monthlyRentByText", data.getMonthlyRentByText()),
+                    buildTextTab("securityDeposit", data.getSecurityDeposit()),
+                    buildTextTab("securityDepositByText", data.getSecurityDepositByText()),
+                    buildTextTab("contractDayOfWeek", data.getContractDayOfWeek()),
+                    buildTextTab("contractDay", data.getContractDay()),
+                    buildTextTab("contractMonth", data.getContractMonth()),
+                    buildTextTab("contractYear", data.getContractYear())
             ));
 
             // Build tabs with dynamic field values for landlord role
@@ -274,11 +279,16 @@ public class DocuSignServiceImpl implements DocuSignService {
             landlordTabs.setTextTabs(List.of(
                     buildTextTab("renterName", data.getRenterName()),
                     buildTextTab("landlordName", data.getLandlordName()),
-                    buildTextTab("leaseStartDate", data.getLeaseStartDate()),
-                    buildTextTab("leaseEndDate", data.getLeaseEndDate()),
+                    buildTextTab("handoverDate", data.getHandoverDate()),
                     buildTextTab("leaseDurationMonths", data.getLeaseDurationMonths()),
                     buildTextTab("monthlyRent", data.getMonthlyRent()),
-                    buildTextTab("securityDeposit", data.getSecurityDeposit())
+                    buildTextTab("monthlyRentByText", data.getMonthlyRentByText()),
+                    buildTextTab("securityDeposit", data.getSecurityDeposit()),
+                    buildTextTab("securityDepositByText", data.getSecurityDepositByText()),
+                    buildTextTab("contractDayOfWeek", data.getContractDayOfWeek()),
+                    buildTextTab("contractDay", data.getContractDay()),
+                    buildTextTab("contractMonth", data.getContractMonth()),
+                    buildTextTab("contractYear", data.getContractYear())
             ));
 
             // Landlord role (routing order 1 — signs first)

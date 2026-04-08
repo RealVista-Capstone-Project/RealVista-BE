@@ -21,11 +21,11 @@ public interface LeaseAgreementRepository {
 
     Optional<LeaseAgreement> findByDocusignEnvelopeId(String envelopeId);
 
-    Page<LeaseAgreement> findByListingId(UUID listingId, Pageable pageable);
+    Page<LeaseAgreement> findByPropertyId(UUID propertyId, Pageable pageable);
 
     Page<LeaseAgreement> findByRenterId(UUID renterId, Pageable pageable);
 
     Page<LeaseAgreement> findByLandlordId(UUID landlordId, Pageable pageable);
 
-    List<LeaseAgreement> findActiveLeasesByListingId(UUID listingId);
+    List<LeaseAgreement> findActiveLeasesByPropertyId(UUID propertyId);
 }
