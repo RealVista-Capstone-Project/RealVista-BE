@@ -36,6 +36,12 @@ public class PropertyMediaRepositoryImpl implements PropertyMediaRepository {
     }
 
     @Override
+    public void delete(PropertyMedia media) {
+        media.markAsDeleted();
+        jpaRepository.save(media);
+    }
+
+    @Override
     public <S extends PropertyMedia> List<S> saveAll(Iterable<S> entities) {
         return jpaRepository.saveAll(entities);
     }

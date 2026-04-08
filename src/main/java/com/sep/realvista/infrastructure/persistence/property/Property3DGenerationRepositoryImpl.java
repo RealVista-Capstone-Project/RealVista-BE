@@ -40,4 +40,10 @@ public class Property3DGenerationRepositoryImpl implements Property3DGenerationR
     public List<Property3DGeneration> findByStatus(Property3DGenerationStatus status) {
         return jpaRepository.findByStatusAndDeletedIsFalse(status);
     }
+
+    @Override
+    public void delete(Property3DGeneration generation) {
+        generation.markAsDeleted();
+        jpaRepository.save(generation);
+    }
 }

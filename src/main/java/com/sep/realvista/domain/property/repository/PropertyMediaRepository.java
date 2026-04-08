@@ -12,5 +12,6 @@ public interface PropertyMediaRepository {
     void deleteByPropertyId(UUID propertyId);
     PropertyMedia save(PropertyMedia propertyMedia);
     Optional<PropertyMedia> findById(UUID id);
+    void delete(PropertyMedia propertyMedia);
     <S extends PropertyMedia> List<S> saveAll(Iterable<S> entities);
 }
