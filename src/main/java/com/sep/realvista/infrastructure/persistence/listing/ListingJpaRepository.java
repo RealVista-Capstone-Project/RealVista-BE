@@ -39,6 +39,15 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     @Query("SELECT l FROM Listing l WHERE l.status = :status AND l.deleted = false")
     List<Listing> findByStatus(@Param("status") ListingStatus status);
 
+    /**
+     * Find all PUBLISHED listings whose publishedAt timestamp is strictly before the given cutoff.
+     * Used by the listing expiry scheduler.
+     */
+    @Query("SELECT l FROM Listing l "
+            + "WHERE l.status = 'PUBLISHED' AND l.deleted = false "
+            + "AND l.publishedAt < :cutoff")
+    List<Listing> findPublishedListingsPublishedBefore(@Param("cutoff") java.time.LocalDateTime cutoff);
+
     @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status "
             + "AND l.deleted = false")
     List<Listing> findByListingTypeAndStatus(@Param("listingType") ListingType listingType,

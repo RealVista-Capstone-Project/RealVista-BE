@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -74,4 +75,13 @@ public interface ListingRepository {
      * @return list of similar listings with similarity scores
      */
     List<SimilarListing> findSimilarListings(UUID listingId, int limit);
+
+    /**
+     * Find all published listings whose publishedAt timestamp is before the given cutoff.
+     * Used by the listing expiry scheduler to expire stale published listings.
+     *
+     * @param cutoff the threshold date-time; listings published before this are candidates for expiry
+     * @return list of published listings older than the cutoff
+     */
+    List<Listing> findPublishedListingsPublishedBefore(LocalDateTime cutoff);
 }
