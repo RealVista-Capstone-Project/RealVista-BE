@@ -418,20 +418,22 @@ public class UserApplicationService {
 
         String normalizedEmail = targetEmail.trim().toLowerCase(Locale.ROOT);
 
-        // Validate uniqueness without updating the user record yet
-        userRepository.findByEmailValue(normalizedEmail).ifPresent(existing -> {
-            if (!existing.getUserId().equals(userId)) {
-                throw new BusinessConflictException(
-                        "Email already exists: " + normalizedEmail,
-                        "EMAIL_ALREADY_EXISTS"
-                );
-            }
-        });
+        // Update email on the user record if it has changed
+        String currentEmail = user.getEmail() != null ? user.getEmail().getValue() : null;
+        if (!normalizedEmail.equals(currentEmail)) {
+            userRepository.findByEmailValue(normalizedEmail).ifPresent(existing -> {
+                if (!existing.getUserId().equals(userId)) {
+                    throw new BusinessConflictException(
+                            "Email already exists: " + normalizedEmail,
+                            "EMAIL_ALREADY_EXISTS"
+                    );
+                }
+            });
+            user.updateEmail(normalizedEmail);
+            userRepository.save(user);
+        }
 
-        // Store the pending target email alongside the OTP so verifyEmail() can apply it
-        otpService.store(EMAIL_OTP_TARGET_PREFIX + userId, normalizedEmail, OTP_EXPIRY_MINUTES);
         String otp = otpService.generateAndStore(EMAIL_OTP_PREFIX + userId, OTP_EXPIRY_MINUTES);
-
         String fullName = user.getFullName();
         emailService.sendTemplateMessageAsync(
                 normalizedEmail,
@@ -447,21 +449,14 @@ public class UserApplicationService {
     }
 
     /**
-     * Verify the email OTP, apply the pending email update, and stamp emailVerifiedAt.
+     * Verify the email OTP and stamp emailVerifiedAt.
      */
     @CacheEvict(value = "users", key = "#userId")
     public UserResponse verifyEmail(UUID userId, String otp) {
         if (!otpService.verify(EMAIL_OTP_PREFIX + userId, otp)) {
             throw new BusinessConflictException("OTP không hợp lệ hoặc đã hết hạn", "INVALID_OTP");
         }
-
-        String pendingEmail = otpService.get(EMAIL_OTP_TARGET_PREFIX + userId);
-        otpService.remove(EMAIL_OTP_TARGET_PREFIX + userId);
-
         User user = userDomainService.getUserOrThrow(userId);
-        if (pendingEmail != null && !pendingEmail.isBlank()) {
-            user.updateEmail(pendingEmail);
-        }
         user.verifyEmail();
         User saved = userRepository.save(user);
         log.info("Email verified for user {}", userId);

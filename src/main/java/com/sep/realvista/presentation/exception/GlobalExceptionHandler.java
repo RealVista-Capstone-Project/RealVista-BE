@@ -5,7 +5,6 @@ import com.sep.realvista.application.common.dto.ErrorResponse;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
-import com.sep.realvista.domain.common.exception.ServiceUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -229,24 +228,6 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(error);
-    }
-
-    @ExceptionHandler(ServiceUnavailableException.class)
-    public ResponseEntity<ErrorResponse> handleServiceUnavailable(
-            ServiceUnavailableException ex,
-            HttpServletRequest request
-    ) {
-        log.error("Service unavailable: {}", ex.getMessage());
-
-        ErrorResponse error = ErrorResponse.builder()
-                .status(HttpStatus.SERVICE_UNAVAILABLE.value())
-                .message(ex.getMessage())
-                .errorCode(ex.getErrorCode())
-                .timestamp(LocalDateTime.now())
-                .path(request.getRequestURI())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
     }
 
     @ExceptionHandler(Exception.class)
