@@ -120,6 +120,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                         criteria.getBounds(), typeStr,
                         criteria.getMinPrice(), criteria.getMaxPrice(),
                         criteria.getSearchText(), categories, filterByCategory,
+                        criteria.getPropertyCategory(), criteria.getPropertyType(),
                         criteria.getBedrooms(), criteria.getBathrooms(),
                         criteria.getArea(), criteria.getSize(), offset);
             }
@@ -127,6 +128,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                     criteria.getBounds(), typeStr,
                     criteria.getMinPrice(), criteria.getMaxPrice(),
                     criteria.getSearchText(), categories, filterByCategory,
+                    criteria.getPropertyCategory(), criteria.getPropertyType(),
                     criteria.getBedrooms(), criteria.getBathrooms(),
                     criteria.getArea(), criteria.getSize(), offset);
         } else if ("createdAt".equalsIgnoreCase(criteria.getSortBy())) {
@@ -134,6 +136,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                     criteria.getBounds(), typeStr,
                     criteria.getMinPrice(), criteria.getMaxPrice(),
                     criteria.getSearchText(), categories, filterByCategory,
+                    criteria.getPropertyCategory(), criteria.getPropertyType(),
                     criteria.getBedrooms(), criteria.getBathrooms(),
                     criteria.getArea(), criteria.getSize(), offset);
         }
@@ -143,6 +146,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                 criteria.getBounds(), typeStr,
                 criteria.getMinPrice(), criteria.getMaxPrice(),
                 criteria.getSearchText(), categories, filterByCategory,
+                criteria.getPropertyCategory(), criteria.getPropertyType(),
                 criteria.getBedrooms(), criteria.getBathrooms(),
                 criteria.getArea(), criteria.getSize(), offset);
     }
@@ -158,6 +162,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                 criteria.getBounds(), criteria.getListingTypeStr(),
                 criteria.getMinPrice(), criteria.getMaxPrice(),
                 criteria.getSearchText(), categories, filterByCategory,
+                criteria.getPropertyCategory(), criteria.getPropertyType(),
                 criteria.getBedrooms(), criteria.getBathrooms(),
                 criteria.getArea());
     }
