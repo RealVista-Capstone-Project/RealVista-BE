@@ -65,4 +65,8 @@ public class Property3DGeneration extends BaseEntity {
         this.status = status;
         this.errorMessage = errorMessage;
     }
+
+    public void updateRoomName(String roomName) {
+        this.roomName = roomName;
+    }
 }
