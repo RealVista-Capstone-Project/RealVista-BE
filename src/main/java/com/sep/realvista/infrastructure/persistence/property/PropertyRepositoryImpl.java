@@ -87,4 +87,17 @@ public class PropertyRepositoryImpl implements PropertyRepository {
     public List<Property> searchByAddress(String address) {
         return jpaRepository.searchByAddress(address);
     }
+
+    @Override
+    public org.springframework.data.domain.Page<Property> findPropertyFeed(
+            UUID agentId,
+            String keyword,
+            UUID propertyTypeId,
+            UUID locationId,
+            org.springframework.data.domain.Pageable pageable) {
+        String keywordPattern = (keyword == null || keyword.isBlank())
+                ? null
+                : "%" + keyword.trim().toLowerCase(java.util.Locale.ROOT) + "%";
+        return jpaRepository.findPropertyFeed(agentId, keywordPattern, propertyTypeId, locationId, pageable);
+    }
 }

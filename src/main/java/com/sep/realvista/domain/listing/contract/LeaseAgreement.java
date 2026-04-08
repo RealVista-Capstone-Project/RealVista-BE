@@ -1,7 +1,8 @@
 package com.sep.realvista.domain.listing.contract;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
-import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.property.Property;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -27,7 +28,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "lease_agreements", indexes = {
-        @Index(name = "idx_lease_listing", columnList = "listing_id"),
+        @Index(name = "idx_lease_property", columnList = "property_id"),
         @Index(name = "idx_lease_renter", columnList = "renter_id"),
         @Index(name = "idx_lease_landlord", columnList = "landlord_id"),
         @Index(name = "idx_lease_agent", columnList = "agent_id"),
@@ -44,12 +45,12 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "lease_agreement_id")
     private UUID leaseAgreementId;
 
-    @Column(name = "listing_id", nullable = false)
-    private UUID listingId;
+    @Column(name = "property_id", nullable = false)
+    private UUID propertyId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "listing_id", insertable = false, updatable = false)
-    private Listing listing;
+    @JoinColumn(name = "property_id", insertable = false, updatable = false)
+    private Property property;
 
     @Column(name = "renter_id", nullable = false)
     private UUID renterId;
@@ -92,6 +93,12 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "reject_reason", columnDefinition = "TEXT")
     private String rejectReason;
 
+    @Column(name = "termination_reason", columnDefinition = "TEXT")
+    private String terminationReason;
+
+    @Column(name = "terminated_at")
+    private LocalDateTime terminatedAt;
+
     @Column(name = "verified_by")
     private UUID verifiedBy;
 
@@ -125,8 +132,14 @@ public class LeaseAgreement extends BaseEntity {
         this.rejectReason = reason;
     }
 
-    public void terminate() {
+    public void terminate(String reason) {
+        if (this.status != LeaseStatus.ACTIVE) {
+            throw new BusinessConflictException(
+                    "Only an ACTIVE lease can be terminated. Current status: " + this.status);
+        }
         this.status = LeaseStatus.TERMINATED;
+        this.terminationReason = reason;
+        this.terminatedAt = LocalDateTime.now();
     }
 
     public void expire() {
