@@ -2,7 +2,7 @@ package com.sep.realvista.infrastructure.persistence.engagement.proposal;
 
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
-import com.sep.realvista.domain.engagement.proposal.AgentProposalStatus;
+import com.sep.realvista.infrastructure.persistence.engagement.hired.EngagementJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +21,7 @@ import java.util.UUID;
 public class AgentProposalRepositoryImpl implements AgentProposalRepository {
 
     private final AgentProposalJpaRepository jpaRepository;
+    private final EngagementJpaRepository engagementJpaRepository;
 
     @Override
     public AgentProposal save(AgentProposal agentProposal) {
@@ -49,7 +50,6 @@ public class AgentProposalRepositoryImpl implements AgentProposalRepository {
 
     @Override
     public Set<UUID> findActiveProposalPropertyIds(UUID agentUserId) {
-        return new HashSet<>(
-                jpaRepository.findActiveProposalPropertyIds(agentUserId, AgentProposalStatus.ARCHIVED));
+        return new HashSet<>(engagementJpaRepository.findAgentActiveProposalPropertyIds(agentUserId));
     }
 }

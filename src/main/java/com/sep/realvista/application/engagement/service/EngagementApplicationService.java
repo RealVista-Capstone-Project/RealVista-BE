@@ -18,7 +18,7 @@ import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.EngagementStatus;
 import com.sep.realvista.domain.engagement.EngagementType;
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
-import com.sep.realvista.domain.engagement.proposal.repository.AgentProposalRepository;
+import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;

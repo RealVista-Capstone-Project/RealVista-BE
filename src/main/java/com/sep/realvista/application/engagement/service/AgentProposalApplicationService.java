@@ -8,7 +8,7 @@ import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalStatus;
-import com.sep.realvista.domain.engagement.proposal.repository.AgentProposalRepository;
+import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
