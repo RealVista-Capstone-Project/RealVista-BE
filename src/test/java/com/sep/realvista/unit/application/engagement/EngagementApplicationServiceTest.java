@@ -1,7 +1,7 @@
 package com.sep.realvista.unit.application.engagement;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
@@ -760,8 +760,8 @@ class EngagementApplicationServiceTest {
                     .thenReturn(Optional.of(agentProposal));
             when(propertyRepository.findById(request.getPropertyId()))
                     .thenReturn(Optional.of(property));
-            when(objectMapper.writeValueAsString(any()))
-                    .thenReturn("{\"message\":\"My expert pitch\"}");
+            when(objectMapper.valueToTree(any()))
+                    .thenReturn(NullNode.getInstance());
             when(engagementRepository.save(any(Engagement.class)))
                     .thenAnswer(invocation -> {
                         Engagement e = (Engagement) invocation.getArgument(0);

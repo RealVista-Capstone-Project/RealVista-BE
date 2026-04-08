@@ -1,7 +1,5 @@
 package com.sep.realvista.application.engagement.service;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
@@ -53,7 +51,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 @Slf4j
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class EngagementApplicationService {
 
     private final EngagementRepository engagementRepository;
@@ -280,18 +277,12 @@ public class EngagementApplicationService {
                     "CANNOT_PROPOSE_TO_SELF");
         }
 
-        // 3. Prepare content (JSON string)
-        String content = null;
-        try {
-            String finalMessage = request.getMessage();
-            if (finalMessage == null || finalMessage.isBlank()) {
-                finalMessage = proposalTemplate.getPitchContent();
-            }
-            content = objectMapper.writeValueAsString(Map.of("message", finalMessage));
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize agent proposal content", e);
-            throw new BusinessConflictException("Failed to process proposal content", "JSON_SERIALIZATION_ERROR");
-        }
+        Map<String, Object> contentMap = new java.util.HashMap<>();
+        contentMap.put("title", proposalTemplate.getTitle());
+        contentMap.put("commissionRate", proposalTemplate.getCommissionRate());
+        contentMap.put("experienceYears", proposalTemplate.getExperienceYears());
+        contentMap.put("pitchContent", proposalTemplate.getPitchContent());
+        contentMap.put("message", request.getMessage() != null ? request.getMessage() : "");
 
         // 4. Create the engagement
         Engagement engagement = Engagement.builder()
@@ -300,7 +291,7 @@ public class EngagementApplicationService {
                 .engagementType(EngagementType.AGENT_PROPOSAL)
                 .propertyId(property.getPropertyId())
                 .status(EngagementStatus.SUBMITTED)
-                .content(content)
+                .content(objectMapper.valueToTree(contentMap))
                 .build();
 
         Engagement saved = engagementRepository.save(engagement);
