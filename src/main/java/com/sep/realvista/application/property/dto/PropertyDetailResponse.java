@@ -2,6 +2,7 @@ package com.sep.realvista.application.property.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sep.realvista.application.listing.dto.AmenityDTO;
+import com.sep.realvista.application.listing.dto.ListingSummaryDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.domain.property.PropertyStatus;
@@ -74,4 +75,7 @@ public class PropertyDetailResponse {
     
     @JsonProperty("media")
     private List<MediaDTO> media;
+    
+    @JsonProperty("active_listings")
+    private List<ListingSummaryDTO> activeListings;
 }

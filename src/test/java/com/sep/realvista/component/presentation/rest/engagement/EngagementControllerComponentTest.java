@@ -3,6 +3,7 @@ package com.sep.realvista.component.presentation.rest.engagement;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
+import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
 import com.sep.realvista.application.engagement.dto.CreateReviewRequest;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
 import com.sep.realvista.application.engagement.dto.ReviewResponse;
@@ -615,6 +616,46 @@ class EngagementControllerComponentTest {
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.rating").value(3.0))
                     .andExpect(jsonPath("$.data.comment").doesNotExist());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/engagements/agent-proposal")
+    class SubmitAgentProposal {
+
+        @Test
+        @DisplayName("Should return 201 when proposal submitted successfully")
+        void shouldReturn201OnSuccess() throws Exception {
+            // Arrange
+            SubmitAgentProposalRequest request = SubmitAgentProposalRequest.builder()
+                    .agentProposalId(UUID.randomUUID())
+                    .propertyId(UUID.randomUUID())
+                    .build();
+
+            when(engagementApplicationService.submitAgentProposal(any(), any()))
+                    .thenReturn(engagementId);
+
+            // Act & Assert
+            mockMvc.perform(post("/api/v1/engagements/agent-proposal")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.data.engagement_id").value(engagementId.toString()));
+        }
+
+        @Test
+        @DisplayName("Should return 400 when property_id is missing")
+        void shouldReturn400WhenPropertyIdMissing() throws Exception {
+            // Arrange
+            String requestBody = "{\"agent_proposal_id\": \"" + UUID.randomUUID() + "\"}";
+
+            // Act & Assert
+            mockMvc.perform(post("/api/v1/engagements/agent-proposal")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error_code").value("VALIDATION_ERROR"));
         }
     }
 }

@@ -171,15 +171,25 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
      * and listing (LEFT JOIN because listingId may be null).
      */
     @Query("""
-            SELECT e FROM Engagement e
-            LEFT JOIN FETCH e.initiator
-            LEFT JOIN FETCH e.receiver
-            LEFT JOIN FETCH e.property p
-            LEFT JOIN FETCH p.location
-            LEFT JOIN FETCH p.propertyType
-            LEFT JOIN FETCH e.listing
+            SELECT e.propertyId FROM Engagement e
             WHERE e.engagementId = :id
             AND e.deleted = false
             """)
     Optional<Engagement> findByIdWithFetches(@Param("id") UUID id);
+
+    /**
+     * Finds property IDs of properties where the agent has submitted a proposal that is not REJECTED or CANCELLED.
+     */
+    @Query("""
+            SELECT e.propertyId FROM Engagement e
+            WHERE e.initiatorId = :agentId
+            AND e.engagementType = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
+            AND e.status NOT IN (
+                com.sep.realvista.domain.engagement.EngagementStatus.REJECTED,
+                com.sep.realvista.domain.engagement.EngagementStatus.CANCELLED
+            )
+            AND e.deleted = false
+            AND e.propertyId IS NOT NULL
+            """)
+    List<UUID> findAgentActiveProposalPropertyIds(@Param("agentId") UUID agentId);
 }

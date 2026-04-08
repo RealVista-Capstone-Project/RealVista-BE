@@ -30,6 +30,9 @@ import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.application.listing.dto.ListingSummaryDTO;
+import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.infrastructure.persistence.property.amenity.AmenityJpaRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
@@ -64,6 +67,7 @@ public class PropertyApplicationService {
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
     private final PropertyAttributeRangeRepository propertyAttributeRangeRepository;
+    private final ListingRepository listingRepository;
     private final PropertyMapper propertyMapper;
     private final EntityManager entityManager;
     private final AgentProposalRepository agentProposalRepository;
@@ -224,7 +228,24 @@ public class PropertyApplicationService {
         List<PropertyAttributeValue> attributes = propertyAttributeValueRepository
                 .findByPropertyIdWithAttribute(propertyId);
 
-        return propertyMapper.toDetailResponse(property, media, attributes, amenities);
+        PropertyDetailResponse response = propertyMapper.toDetailResponse(property, media, attributes, amenities);
+
+        // Fetch active listings for this property
+        List<ListingSummaryDTO> activeListings = listingRepository.findByPropertyId(propertyId).stream()
+                .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+                .map(l -> ListingSummaryDTO.builder()
+                        .listingId(l.getListingId())
+                        .name(l.getName())
+                        .slug(l.getSlug())
+                        .price(l.getPrice())
+                        .listingType(l.getListingType())
+                        .thumbnailUrl(listingRepository.findThumbnailByListingId(l.getListingId()).orElse(null))
+                        .agentName(l.getUser() != null ? l.getUser().getFullName() : null)
+                        .build())
+                .collect(Collectors.toList());
+
+        response.setActiveListings(activeListings);
+        return response;
     }
 
     @Transactional(readOnly = true)

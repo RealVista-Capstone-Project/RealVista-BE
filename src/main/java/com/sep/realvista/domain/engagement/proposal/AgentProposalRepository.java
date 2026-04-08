@@ -1,5 +1,9 @@
 package com.sep.realvista.domain.engagement.proposal;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -18,6 +22,26 @@ public interface AgentProposalRepository {
      * @return the saved proposal
      */
     AgentProposal save(AgentProposal proposal);
+
+    /**
+     * Finds a proposal by its ID.
+     */
+    Optional<AgentProposal> findById(UUID id);
+
+    /**
+     * Finds proposals by user ID with pagination.
+     */
+    Page<AgentProposal> findByUserId(UUID userId, Pageable pageable);
+
+    /**
+     * Checks if a proposal with given title exists for an agent.
+     */
+    boolean existsByUserIdAndTitle(UUID userId, String title);
+
+    /**
+     * Deletes a proposal by ID.
+     */
+    void deleteById(UUID id);
 
     /**
      * Returns the set of property IDs for which the given agent has an active (non-ARCHIVED) proposal.

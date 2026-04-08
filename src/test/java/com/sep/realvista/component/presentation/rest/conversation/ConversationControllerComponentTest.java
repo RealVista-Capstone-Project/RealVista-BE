@@ -10,6 +10,8 @@ import com.sep.realvista.application.conversation.service.ConversationApplicatio
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.conversation.MessageType;
+import com.sep.realvista.domain.common.value.Email;
+import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,6 +75,18 @@ class ConversationControllerComponentTest {
                 List.of(),
                 true
         );
+
+        User currentUser = User.builder()
+                .userId(currentUserId)
+                .email(Email.of("test@example.com"))
+                .build();
+        User otherUser = User.builder()
+                .userId(otherUserId)
+                .email(Email.of("other@example.com"))
+                .build();
+
+        when(userDomainService.getUserOrThrow(eq(currentUserId))).thenReturn(currentUser);
+        when(userDomainService.getUserOrThrow(eq(otherUserId))).thenReturn(otherUser);
     }
 
     @Nested
