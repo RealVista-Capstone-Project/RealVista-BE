@@ -28,6 +28,7 @@ public class AgentProposalApplicationService {
 
     private final AgentProposalRepository agentProposalRepository;
     private final AgentProposalMapper agentProposalMapper;
+    private final com.sep.realvista.domain.property.repository.PropertyTypeRepository propertyTypeRepository;
 
     @Transactional
     public AgentProposalDto createProposal(UUID userId, ApplyAgentProposalRequest request) {
@@ -46,7 +47,7 @@ public class AgentProposalApplicationService {
                 .commissionRate(request.getCommissionRate())
                 .experienceYears(request.getExperienceYears())
                 .pitchContent(request.getPitchContent())
-                .specialty(request.getSpecialty())
+                .specialty(resolveSpecialty(request.getSpecialty()))
                 .priceRange(request.getPriceRange())
                 .status(AgentProposalStatus.ACTIVE)
                 .build();
@@ -71,7 +72,7 @@ public class AgentProposalApplicationService {
                 request.getCommissionRate(),
                 request.getExperienceYears(),
                 request.getPitchContent(),
-                request.getSpecialty(),
+                resolveSpecialty(request.getSpecialty()),
                 request.getPriceRange()
         );
 
@@ -111,8 +112,23 @@ public class AgentProposalApplicationService {
         if (!proposal.getUserId().equals(userId)) {
             throw new SecurityException("You do not have permission to modify this proposal");
         }
-
         proposal.archive();
         agentProposalRepository.save(proposal);
+    }
+
+    private UUID resolveSpecialty(String specialty) {
+        if (specialty == null || specialty.isBlank()) {
+            return null;
+        }
+
+        // Try UUID
+        try {
+            return UUID.fromString(specialty);
+        } catch (IllegalArgumentException ignored) {}
+
+        // Try Code
+        return propertyTypeRepository.findByCode(specialty)
+                .map(com.sep.realvista.domain.property.PropertyType::getPropertyTypeId)
+                .orElse(null);
     }
 }

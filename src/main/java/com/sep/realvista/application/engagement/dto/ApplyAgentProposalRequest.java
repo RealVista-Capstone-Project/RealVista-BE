@@ -35,7 +35,7 @@ public class ApplyAgentProposalRequest {
     @NotBlank(message = "Pitch content is required")
     private String pitchContent;
 
-    private UUID specialty;
+    private String specialty;
 
     private Map<String, Object> priceRange;
 }
