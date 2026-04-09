@@ -598,6 +598,16 @@ public class BillingApplicationService {
         }
     }
 
+    private void cancelActiveBoostPackages(UUID userId) {
+        List<UserListingBoostPackage> activeBoosts = userListingBoostPackageRepository
+                .findByUserIdAndStatus(userId, UserListingBoostPackageStatus.ACTIVE);
+
+        for (UserListingBoostPackage boost : activeBoosts) {
+            boost.cancel();
+            userListingBoostPackageRepository.save(boost);
+        }
+    }
+
     private void activateAfterPayment(Transaction txn) {
         if (txn.getTransactionType() == TransactionType.SUBSCRIPTION) {
             FeaturePackage pkg = featurePackageRepository.findByCode(txn.getPlanCode())
@@ -621,7 +631,9 @@ public class BillingApplicationService {
             UserFeatureSubscription saved = userFeatureSubscriptionRepository.save(sub);
             txn.complete(saved.getUserFeatureSubscriptionId());
         } else {
-            // BOOST type
+            // BOOST type - cancel existing active boost if user buys a different one
+            cancelActiveBoostPackages(txn.getUserId());
+
             BoostPackage pkg = boostPackageRepository.findByCode(txn.getPlanCode())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Boost package not found: " + txn.getPlanCode()));
