@@ -189,6 +189,10 @@ public class MediaUploadController {
             @Parameter(description = "Full URL of the media file to delete", required = true)
             @RequestParam("mediaUrl") String mediaUrl
     ) {
+        if (mediaUrl == null || mediaUrl.trim().isEmpty()) {
+            throw new IllegalArgumentException("Media URL is required");
+        }
+
         log.info("Received delete request for media URL: {}", mediaUrl);
         mediaUploadService.deleteMediaByUrl(mediaUrl);
         return ResponseEntity.ok(ApiResponse.success("Media file deleted successfully", null));
