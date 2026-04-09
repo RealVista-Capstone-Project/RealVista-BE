@@ -59,6 +59,9 @@ public class PropertySummaryResponse {
 
     private List<MediaDTO> media;
 
+    @JsonProperty("thumbnail_url")
+    private String thumbnailUrl;
+
     private List<AmenityDTO> amenities;
 
     @JsonProperty("price_range")
@@ -69,4 +72,7 @@ public class PropertySummaryResponse {
 
     @JsonProperty("owner_phone")
     private String ownerPhone;
+
+    @JsonProperty("has_3d")
+    private boolean has3d;
 }

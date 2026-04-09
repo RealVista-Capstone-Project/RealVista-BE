@@ -284,6 +284,7 @@ public interface ListingMapper {
                 .thumbnailUrl(propertyMedia.getThumbnailUrl())
                 .isPrimary(listingMedia.getIsPrimary())
                 .displayOrder(listingMedia.getDisplayOrder())
+                .metadata(propertyMedia.getMetadata())
                 .build();
     }
 

@@ -38,7 +38,7 @@ public class MediaUploadApplicationService {
 
     @Transactional
     public BulkMediaUploadResponse uploadMultipleMedia(List<MultipartFile> files, String folder,
-                                                       UUID propertyId, UUID userId) {
+            UUID propertyId, UUID userId) {
         log.info("Starting bulk upload of {} files to folder: {}", files.size(), folder);
 
         List<MediaUploadResponse> uploadedFiles = new ArrayList<>();
@@ -71,7 +71,7 @@ public class MediaUploadApplicationService {
     }
 
     private MediaUploadResponse processFileUpload(MultipartFile file, String folder,
-                                                  UUID propertyId, UUID userId) throws IOException {
+            UUID propertyId, UUID userId) throws IOException {
         String fileName = file.getOriginalFilename();
         log.info("Processing file upload: {} to folder: {} (Size: {} bytes, Type: {})",
                 fileName, folder, file.getSize(), file.getContentType());
@@ -108,14 +108,34 @@ public class MediaUploadApplicationService {
     }
 
     @Transactional
-    public void deleteMedia(String mediaUrl) {
+    public void deleteMedia(UUID mediaId) {
+        PropertyMedia media = propertyMediaRepository.findById(mediaId)
+                .orElseThrow(() -> new IllegalArgumentException("Media not found with ID: " + mediaId));
+
+        log.info("Deleting media record: {} and file: {}", mediaId, media.getMediaUrl());
+
+        // 1. Delete record from database
+        propertyMediaRepository.delete(media);
+
+        // 2. Delete file from cloud storage
         try {
-            log.info("Deleting media: {}", mediaUrl);
-            spacesStorageService.deleteFile(mediaUrl);
-            log.info("Media deleted successfully: {}", mediaUrl);
+            spacesStorageService.deleteFile(media.getMediaUrl());
         } catch (Exception e) {
-            log.error("Failed to delete media: {}", mediaUrl, e);
-            throw new RuntimeException("Failed to delete media: " + e.getMessage(), e);
+            log.error("Failed to delete file from storage for media {}: {}", mediaId, e.getMessage());
+            // No throw: prioritizing DB cleanup for the user experience, storage cleanup is
+            // async or retryable.
+        }
+    }
+
+    @Transactional
+    public void deleteMediaByUrl(String mediaUrl) {
+        try {
+            log.info("Deleting media by URL: {}", mediaUrl);
+            spacesStorageService.deleteFile(mediaUrl);
+            log.info("Media file deleted successfully: {}", mediaUrl);
+        } catch (Exception e) {
+            log.error("Failed to delete media file: {}", mediaUrl, e.getMessage());
+            throw new RuntimeException("Failed to delete media file: " + e.getMessage(), e);
         }
     }
 
