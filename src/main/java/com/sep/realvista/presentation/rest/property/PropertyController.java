@@ -157,11 +157,12 @@ public class PropertyController {
         @PreAuthorize("hasRole('AGENT')")
         @Operation(
                         summary = "Get property feed for agents",
-                        description = "Returns a paginated feed of AVAILABLE properties that agents can browse "
-                                        + "and submit proposals for. Excludes properties the agent is already assigned to. "
-                                        + "The 'has_active_proposal' flag indicates the agent has already submitted a proposal "
-                                        + "for that property. Supports optional filtering by keyword, property type, "
-                                        + "and location.")
+                        description = "Returns a paginated feed of AVAILABLE properties"
+                                        + " that agents can browse and submit proposals for."
+                                        + " Excludes properties the agent is already assigned to."
+                                        + " The 'has_active_proposal' flag indicates the agent"
+                                        + " has already submitted a proposal for that property."
+                                        + " Supports optional filtering by keyword, type, location.")
         public ResponseEntity<ApiResponse<PageResponse<PropertyFeedItemResponse>>> getPropertyFeed(
                         @AuthenticationPrincipal SecurityUserDetails userDetails,
                         @ParameterObject PropertyFeedCriteria criteria,
