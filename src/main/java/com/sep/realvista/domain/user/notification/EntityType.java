@@ -5,5 +5,6 @@ public enum EntityType {
     APPOINTMENT,
     MESSAGE,
     USER,
-    PROPERTY
+    PROPERTY,
+    LEASE
 }

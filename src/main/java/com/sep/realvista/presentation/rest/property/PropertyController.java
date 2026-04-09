@@ -6,11 +6,16 @@ import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
+import com.sep.realvista.application.property.dto.PropertyFeedCriteria;
+import com.sep.realvista.application.property.dto.PropertyFeedItemResponse;
 import com.sep.realvista.application.property.dto.PropertySearchCriteria;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
 import com.sep.realvista.application.property.service.PropertyApplicationService;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +26,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,6 +44,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/properties")
 @RequiredArgsConstructor
 @Tag(name = "Properties", description = "Endpoints for Property CRUD operations")
+@SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 public class PropertyController {
 
@@ -144,5 +151,28 @@ public class PropertyController {
                 List<PropertySummaryResponse> response = propertyApplicationService.searchProperties(
                                 address, northLat, southLat, eastLng, westLng);
                 return ResponseEntity.ok(ApiResponse.success("Properties found successfully", response));
+        }
+
+        @GetMapping("/feed")
+        @PreAuthorize("hasRole('AGENT')")
+        @Operation(
+                        summary = "Get property feed for agents",
+                        description = "Returns a paginated feed of AVAILABLE properties that agents can browse "
+                                        + "and submit proposals for. Excludes properties the agent is already assigned to. "
+                                        + "The 'has_active_proposal' flag indicates the agent has already submitted a proposal "
+                                        + "for that property. Supports optional filtering by keyword, property type, and location.")
+        public ResponseEntity<ApiResponse<PageResponse<PropertyFeedItemResponse>>> getPropertyFeed(
+                        @AuthenticationPrincipal SecurityUserDetails userDetails,
+                        @ParameterObject PropertyFeedCriteria criteria,
+                        @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
+                        @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size) {
+                UUID agentId = userDetails.getUserId();
+                log.info("REST request to get property feed for agent: {}", agentId);
+                org.springframework.data.domain.Pageable pageable =
+                                org.springframework.data.domain.PageRequest.of(page, size,
+                                                org.springframework.data.domain.Sort.by("createdAt").descending());
+                PageResponse<PropertyFeedItemResponse> response =
+                                propertyApplicationService.getPropertyFeed(agentId, criteria, pageable);
+                return ResponseEntity.ok(ApiResponse.success("Property feed retrieved successfully", response));
         }
 }

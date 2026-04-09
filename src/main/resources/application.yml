@@ -118,6 +118,13 @@ realvista:
   recommendation:
     threshold: ${RECOMMENDATION_THRESHOLD:5}
     default-limit: ${RECOMMENDATION_DEFAULT_LIMIT:10}
+  listing:
+    # Maximum number of days a listing may remain PUBLISHED (business rule: 14 days)
+    max-lifetime-days: ${LISTING_MAX_LIFETIME_DAYS:14}
+    # Cron expression for the expiry job – runs at the top of every hour by default
+    expiry-cron: ${LISTING_EXPIRY_CRON:0 0 * * * *}
+    expiry-warning-days: ${LISTING_EXPIRY_WARNING_DAYS:3}
+    expiry-warning-cron: ${LISTING_EXPIRY_WARNING_CRON:0 0 8 * * *}
 
   marble:
     api-url: ${MARBLE_API_URL:https://api.worldlabs.ai/marble/v1}
@@ -187,6 +194,6 @@ docusign:
   rsa-private-key: ${DOCUSIGN_RSA_PRIVATE_KEY:}
   base-url: ${DOCUSIGN_BASE_URL:https://demo.docusign.net/restapi}
   auth-server: ${DOCUSIGN_AUTH_SERVER:account-d.docusign.com}
-  return-url: ${DOCUSIGN_RETURN_URL:http://localhost:3000/leases/signing-complete}
+  return-url: ${DOCUSIGN_RETURN_URL:http://localhost:3000}
   webhook-hmac-key: ${DOCUSIGN_WEBHOOK_HMAC_KEY:}
   lease-template-id: ${DOCUSIGN_LEASE_TEMPLATE_ID:}
