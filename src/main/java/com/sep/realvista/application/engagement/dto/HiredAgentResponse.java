@@ -50,5 +50,5 @@ public class HiredAgentResponse {
     private LocalDateTime hiredAt;
     private boolean hasReview;
     private String cancellationReason;
-    private String content;
+    private com.fasterxml.jackson.databind.JsonNode content;
 }

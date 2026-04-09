@@ -17,5 +17,6 @@ public interface ConversationMapper {
     @Mapping(source = "otherUser.userId", target = "otherUserId")
     @Mapping(source = "otherUser.fullName", target = "otherUserName")
     @Mapping(source = "otherUser.avatarUrl", target = "otherUserAvatarUrl")
+    @Mapping(target = "conversationCreated", ignore = true)
     ConversationResponse toResponse(Conversation conversation, User otherUser);
 }

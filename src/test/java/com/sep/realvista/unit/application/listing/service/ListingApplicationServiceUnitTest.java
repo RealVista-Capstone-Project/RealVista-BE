@@ -617,7 +617,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 5)).thenReturn(mockSimilarListings);
-                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findAllAttributesByPropertyIds(any()))
                                 .thenReturn(mockAttributes);
 
                 // Act
@@ -645,7 +645,7 @@ class ListingApplicationServiceUnitTest {
 
                 verify(listingRepository).existsById(listingId);
                 verify(listingRepository).findSimilarListings(listingId, 5);
-                verify(propertyAttributeValueRepository).findRequiredAttributesByPropertyIds(any());
+                verify(propertyAttributeValueRepository).findAllAttributesByPropertyIds(any());
         }
 
         @Test
@@ -668,7 +668,7 @@ class ListingApplicationServiceUnitTest {
                 verify(listingRepository).findSimilarListings(listingId, 5);
                 // JPA repository not called when similar listings is empty (early return in
                 // fetchRequiredAttributes)
-                verify(propertyAttributeValueRepository, never()).findRequiredAttributesByPropertyIds(any());
+                verify(propertyAttributeValueRepository, never()).findAllAttributesByPropertyIds(any());
         }
 
         @Test
@@ -693,7 +693,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 1)).thenReturn(mockSimilarListings.subList(0, 1));
-                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findAllAttributesByPropertyIds(any()))
                                 .thenReturn(new ArrayList<>());
 
                 // Act
@@ -713,7 +713,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 10)).thenReturn(mockSimilarListings);
-                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findAllAttributesByPropertyIds(any()))
                                 .thenReturn(mockAttributes);
 
                 // Act
@@ -733,7 +733,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 5)).thenReturn(mockSimilarListings);
-                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findAllAttributesByPropertyIds(any()))
                                 .thenReturn(mockAttributes);
 
                 // Act
@@ -750,7 +750,7 @@ class ListingApplicationServiceUnitTest {
                 assertThat(firstAttribute.getUnit()).isEqualTo("room");
                 assertThat(firstAttribute.getValueNumber()).isIn(new BigDecimal("3.0"), new BigDecimal("2.0"));
 
-                verify(propertyAttributeValueRepository).findRequiredAttributesByPropertyIds(any());
+                verify(propertyAttributeValueRepository).findAllAttributesByPropertyIds(any());
         }
 
         @Test
@@ -759,7 +759,7 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 5)).thenReturn(mockSimilarListings);
-                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findAllAttributesByPropertyIds(any()))
                                 .thenReturn(new ArrayList<>());
 
                 // Act
@@ -770,7 +770,7 @@ class ListingApplicationServiceUnitTest {
                 SimilarListingDTO firstListing = response.getListings().get(0);
                 assertThat(firstListing.getAttributes()).isNotNull().isEmpty();
 
-                verify(propertyAttributeValueRepository).findRequiredAttributesByPropertyIds(any());
+                verify(propertyAttributeValueRepository).findAllAttributesByPropertyIds(any());
         }
 
         @Test
@@ -797,7 +797,7 @@ class ListingApplicationServiceUnitTest {
 
                 when(listingRepository.existsById(listingId)).thenReturn(true);
                 when(listingRepository.findSimilarListings(listingId, 5)).thenReturn(List.of(listingWithScore));
-                when(propertyAttributeValueRepository.findRequiredAttributesByPropertyIds(any()))
+                when(propertyAttributeValueRepository.findAllAttributesByPropertyIds(any()))
                                 .thenReturn(new ArrayList<>());
 
                 // Act

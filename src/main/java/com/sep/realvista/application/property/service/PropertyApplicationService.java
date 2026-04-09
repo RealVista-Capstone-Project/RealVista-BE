@@ -4,6 +4,8 @@ import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyAttributeRequest;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
+import com.sep.realvista.application.property.dto.PropertyFeedCriteria;
+import com.sep.realvista.application.property.dto.PropertyFeedItemResponse;
 import com.sep.realvista.application.property.dto.PropertyMediaRequest;
 import com.sep.realvista.application.property.dto.PropertySearchCriteria;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
@@ -12,6 +14,7 @@ import com.sep.realvista.application.property.mapper.PropertyMapper;
 import com.sep.realvista.domain.agent.PropertyAgent;
 import com.sep.realvista.domain.agent.PropertyAgentRepository;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.PropertyStatus;
@@ -27,6 +30,9 @@ import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.application.listing.dto.ListingSummaryDTO;
+import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.infrastructure.persistence.property.amenity.AmenityJpaRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
@@ -61,8 +67,10 @@ public class PropertyApplicationService {
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
     private final PropertyAttributeRangeRepository propertyAttributeRangeRepository;
+    private final ListingRepository listingRepository;
     private final PropertyMapper propertyMapper;
     private final EntityManager entityManager;
+    private final AgentProposalRepository agentProposalRepository;
 
     private UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -220,7 +228,24 @@ public class PropertyApplicationService {
         List<PropertyAttributeValue> attributes = propertyAttributeValueRepository
                 .findByPropertyIdWithAttribute(propertyId);
 
-        return propertyMapper.toDetailResponse(property, media, attributes, amenities);
+        PropertyDetailResponse response = propertyMapper.toDetailResponse(property, media, attributes, amenities);
+
+        // Fetch active listings for this property
+        List<ListingSummaryDTO> activeListings = listingRepository.findByPropertyId(propertyId).stream()
+                .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+                .map(l -> ListingSummaryDTO.builder()
+                        .listingId(l.getListingId())
+                        .name(l.getName())
+                        .slug(l.getSlug())
+                        .price(l.getPrice())
+                        .listingType(l.getListingType())
+                        .thumbnailUrl(listingRepository.findThumbnailByListingId(l.getListingId()).orElse(null))
+                        .agentName(l.getUser() != null ? l.getUser().getFullName() : null)
+                        .build())
+                .collect(Collectors.toList());
+
+        response.setActiveListings(activeListings);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -313,6 +338,70 @@ public class PropertyApplicationService {
         UUID resolvedId = locations.getFirst().getLocationId();
         log.info("Resolved location ID: {} ({})", resolvedId, locations.getFirst().getName());
         return resolvedId;
+    }
+
+    /**
+     * Returns a paginated feed of AVAILABLE properties for an agent to browse and submit proposals.
+     *
+     * <p>Excludes properties the agent is already assigned to.
+     * Marks each item with {@code has_active_proposal = true} when the agent already
+     * has a DRAFT or ACTIVE proposal for that property.
+     *
+     * @param agentId  the authenticated agent's user ID
+     * @param criteria optional filter (keyword, propertyTypeId, locationId)
+     * @param pageable pagination parameters
+     * @return paginated feed of property items
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<PropertyFeedItemResponse> getPropertyFeed(
+            UUID agentId,
+            PropertyFeedCriteria criteria,
+            org.springframework.data.domain.Pageable pageable) {
+
+        log.info("Getting property feed for agent: {}, criteria: {}", agentId, criteria);
+
+        String keyword = criteria != null ? criteria.getKeyword() : null;
+        UUID propertyTypeId = criteria != null ? criteria.getPropertyTypeId() : null;
+        UUID locationId = criteria != null ? criteria.getLocationId() : null;
+
+        org.springframework.data.domain.Page<Property> page = propertyRepository.findPropertyFeed(
+                agentId, keyword, propertyTypeId, locationId, pageable);
+
+        // Batch-fetch property IDs where this agent already has an active proposal
+        java.util.Set<UUID> proposalPropertyIds = agentProposalRepository.findActiveProposalPropertyIds(agentId);
+
+        List<PropertyFeedItemResponse> content = page.getContent().stream().map(property -> {
+            UUID propId = property.getPropertyId();
+
+            List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propId);
+            List<PropertyAttributeValue> attributes =
+                    propertyAttributeValueRepository.findByPropertyIdWithAttribute(propId);
+            List<PropertyAmenity> amenities =
+                    propertyAmenityRepository.findByPropertyIdWithAmenity(propId);
+
+            boolean hasActiveProposal = proposalPropertyIds.contains(propId);
+
+            PropertyFeedItemResponse item = propertyMapper.toFeedItemResponse(
+                    property, media, attributes, amenities, hasActiveProposal);
+
+            // Resolve owner name
+            userRepository.findById(property.getOwnerId()).ifPresent(owner ->
+                    item.setOwnerName(owner.getFullName()));
+
+            return item;
+        }).collect(Collectors.toList());
+
+        log.info("Property feed retrieved: {} items for agent: {}", content.size(), agentId);
+
+        return PageResponse.<PropertyFeedItemResponse>builder()
+                .content(content)
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .build();
     }
 
     @Transactional(readOnly = true)
