@@ -1,4 +1,4 @@
-package com.sep.realvista.domain.billing.subscription;
+package com.sep.realvista.domain.billing.boost;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
 import com.sep.realvista.domain.user.User;
@@ -24,28 +24,22 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
-@Table(name = "user_subscriptions", indexes = {
-        @Index(name = "idx_user_subscription_plan", columnList = "subscription_plan_id"),
-        @Index(name = "idx_user_subscription_user", columnList = "user_id"),
-        @Index(name = "idx_user_subscription_status", columnList = "status")
+@Table(name = "user_listing_boost_packages", indexes = {
+        @Index(name = "idx_user_boost_pkg_user", columnList = "user_id"),
+        @Index(name = "idx_user_boost_pkg_boost_pkg", columnList = "boost_package_id"),
+        @Index(name = "idx_user_boost_pkg_status", columnList = "status"),
+        @Index(name = "idx_user_boost_pkg_user_status", columnList = "user_id, status")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class UserSubscription extends BaseEntity {
+public class UserListingBoostPackage extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "user_subscription_id")
-    private UUID userSubscriptionId;
-
-    @Column(name = "subscription_plan_id", nullable = false)
-    private UUID subscriptionPlanId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "subscription_plan_id", insertable = false, updatable = false)
-    private SubscriptionPlan subscriptionPlan;
+    @Column(name = "user_listing_boost_package_id")
+    private UUID userListingBoostPackageId;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
@@ -54,26 +48,46 @@ public class UserSubscription extends BaseEntity {
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
     private User user;
 
+    @Column(name = "boost_package_id", nullable = false)
+    private UUID boostPackageId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "boost_package_id", insertable = false, updatable = false)
+    private BoostPackage boostPackage;
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(name = "end_date", nullable = false)
+    @Column(name = "end_date")
     private LocalDate endDate;
+
+    @Column(name = "remaining_featured_quota")
+    private Integer remainingFeaturedQuota;
+
+    @Column(name = "remaining_hot_badge_quota")
+    private Integer remainingHotBadgeQuota;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private UserSubscriptionStatus status = UserSubscriptionStatus.ACTIVE;
+    private UserListingBoostPackageStatus status = UserListingBoostPackageStatus.ACTIVE;
 
     public boolean isExpired() {
+        if (endDate == null) {
+            return false;
+        }
         return LocalDate.now().isAfter(endDate);
     }
 
+    public boolean isUsable() {
+        return status == UserListingBoostPackageStatus.ACTIVE && !isExpired();
+    }
+
     public void cancel() {
-        this.status = UserSubscriptionStatus.CANCELLED;
+        this.status = UserListingBoostPackageStatus.CANCELLED;
     }
 
     public void expire() {
-        this.status = UserSubscriptionStatus.EXPIRED;
+        this.status = UserListingBoostPackageStatus.EXPIRED;
     }
 }

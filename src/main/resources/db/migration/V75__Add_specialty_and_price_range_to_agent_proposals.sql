@@ -1,4 +1,4 @@
--- V66__Add_specialty_and_price_range_to_agent_proposals.sql
+-- V75__Add_specialty_and_price_range_to_agent_proposals.sql
 -- Add specialty and price_range columns to agent_proposals table
 
 ALTER TABLE agent_proposals
