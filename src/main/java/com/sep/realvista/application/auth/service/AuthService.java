@@ -13,7 +13,6 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.infrastructure.security.oauth2.GoogleTokenVerifier;
-import com.sep.realvista.infrastructure.security.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -40,7 +39,6 @@ public class AuthService {
     private final UserRepository userRepository;
     private final AuthenticationMapper authenticationMapper;
     private final GoogleTokenVerifier googleTokenVerifier;
-    private final PasswordUtil passwordUtil;
 
     @Transactional
     public UserResponse register(CreateUserRequest request) {

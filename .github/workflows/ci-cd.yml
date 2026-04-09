@@ -640,13 +640,13 @@ jobs:
             docker compose up -d
 
             echo "Waiting for database to be healthy..."
-            for i in $(seq 1 12); do
+            for i in $(seq 1 20); do
               STATUS=$(docker inspect --format='{{.State.Health.Status}}' db-non-prod 2>/dev/null || echo "starting")
               if [ "${STATUS}" == "healthy" ]; then
                 echo "Database is healthy!"
                 break
               fi
-              echo "  Database status: ${STATUS} (attempt ${i}/12)..."
+              echo "  Database status: ${STATUS} (attempt ${i}/20)..."
               sleep 5
             done
 

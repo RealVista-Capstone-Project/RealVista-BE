@@ -1,4 +1,4 @@
--- V44__Insert_policies.sql
+-- V61__Insert_policies.sql
 -- Inserts 14 highly detailed, comprehensive policy documents mimicking the length and strictness of leading real estate portals.
 
 INSERT INTO policies (policy_id, title, slug, content)

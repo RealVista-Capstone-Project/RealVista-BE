@@ -1,4 +1,4 @@
--- V43__Create_policies_table.sql
+-- V60__Create_policies_table.sql
 -- Creates the policies table for managing system policies like Terms of Service, Privacy Policy, etc.
 
 CREATE TABLE policies

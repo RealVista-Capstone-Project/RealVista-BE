@@ -7,6 +7,11 @@ spring:
     frontend:
       url: http://localhost:3000
 
+  # Mail Configuration for Tests
+  mail:
+    username: test-noreply@realvista.local
+    password: test-mail-password
+
   # H2 In-Memory Database Configuration
   datasource:
     url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;INIT=CREATE ALIAS IF NOT EXISTS jsonb_extract_path_text FOR "com.sep.realvista.integration.H2JsonFunctions.jsonbExtractPathText"
@@ -75,3 +80,13 @@ spring:
 management:
   security:
     enabled: false
+
+# Dummy Spaces configuration for tests to prevent S3Client crash
+digitalocean:
+  spaces:
+    access-key: dummy-access-key
+    secret-key: dummy-secret-key
+    region: sgp1
+    endpoint: https://sgp1.digitaloceanspaces.com
+    bucket-name: dummy-bucket
+    cdn-endpoint: https://dummy-bucket.sgp1.cdn.digitaloceanspaces.com

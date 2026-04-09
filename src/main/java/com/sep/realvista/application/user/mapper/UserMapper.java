@@ -22,6 +22,10 @@ public interface UserMapper {
     @Mapping(target = "email", source = "email.value")
     @Mapping(target = "fullName", source = ".", qualifiedByName = "getFullName")
     @Mapping(target = "roles", source = "userRoles", qualifiedByName = "userRolesToStrings")
+    @Mapping(target = "isEmailVerified", expression = "java(user.isEmailVerified())")
+    @Mapping(target = "isPhoneVerified", expression = "java(user.isPhoneVerified())")
+    @Mapping(target = "emailVerifiedAt", source = "emailVerifiedAt")
+    @Mapping(target = "phoneVerifiedAt", source = "phoneVerifiedAt")
     UserResponse toResponse(User user);
 
     @Mapping(target = "userId", ignore = true)
