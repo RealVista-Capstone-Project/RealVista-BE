@@ -34,6 +34,8 @@ public interface UserMapper {
     @Mapping(target = "emailVerifiedAt", ignore = true)
     @Mapping(target = "phoneVerifiedAt", ignore = true)
     @Mapping(target = "businessName", ignore = true)
+    @Mapping(target = "workingStartTime", ignore = true)
+    @Mapping(target = "workingEndTime", ignore = true)
     User toEntity(CreateUserRequest request);
 
     @Named("stringToEmail")
