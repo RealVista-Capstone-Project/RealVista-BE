@@ -75,3 +75,13 @@ spring:
 management:
   security:
     enabled: false
+
+# Dummy Spaces configuration for tests to prevent S3Client crash
+digitalocean:
+  spaces:
+    access-key: dummy-access-key
+    secret-key: dummy-secret-key
+    region: sgp1
+    endpoint: https://sgp1.digitaloceanspaces.com
+    bucket-name: dummy-bucket
+    cdn-endpoint: https://dummy-bucket.sgp1.cdn.digitaloceanspaces.com
