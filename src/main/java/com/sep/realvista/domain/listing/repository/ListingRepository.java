@@ -84,4 +84,15 @@ public interface ListingRepository {
      * @return list of published listings older than the cutoff
      */
     List<Listing> findPublishedListingsPublishedBefore(LocalDateTime cutoff);
+
+    /**
+     * Find all published listings whose publishedAt timestamp is strictly before windowEnd
+     * and greater than or equal to windowStart.
+     * Used by the listing expiry scheduler to notify about stale published listings.
+     *
+     * @param windowStart the beginning of the time window
+     * @param windowEnd the end of the time window
+     * @return list of published listings within the window
+     */
+    List<Listing> findPublishedListingsPublishedBetween(LocalDateTime windowStart, LocalDateTime windowEnd);
 }

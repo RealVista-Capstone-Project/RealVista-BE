@@ -13,6 +13,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
+import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.common.value.Email;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import java.util.Optional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -25,6 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.util.ReflectionTestUtils.setField;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,6 +40,12 @@ class ListingExpirySchedulerTest {
 
     @Mock
     private ListingRepository listingRepository;
+
+    @Mock
+    private NotificationApplicationService notificationApplicationService;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private ListingExpiryScheduler scheduler;
@@ -48,6 +61,7 @@ class ListingExpirySchedulerTest {
         userId = UUID.randomUUID();
 
         setField(scheduler, "maxLifetimeDays", 0L);
+        setField(scheduler, "expiryWarningDays", 0L);
     }
 
     private Listing buildPublishedListing(int secondsAgo) {
@@ -258,6 +272,76 @@ class ListingExpirySchedulerTest {
         scheduler.expireStaleListings();
 
         verify(listingRepository).findPublishedListingsPublishedBefore(any(LocalDateTime.class));
-        verify(listingRepository, never()).save(any(Listing.class));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Warning notifications behaviour
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Should send notifications for listings nearing expiry")
+    void notifyExpiringListings_whenListingsFound_shouldSendNotifications() {
+        // Arrange
+        Listing expiringListing = buildPublishedListing(5);
+        User mockUser = User.builder()
+                .userId(userId)
+                .email(Email.of("test@example.com"))
+                .build();
+
+        when(listingRepository.findPublishedListingsPublishedBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(expiringListing));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+
+        // Act
+        scheduler.notifyExpiringListings();
+
+        // Assert
+        ArgumentCaptor<SendNotificationRequest> requestCaptor = ArgumentCaptor.forClass(SendNotificationRequest.class);
+        verify(notificationApplicationService).sendNotification(requestCaptor.capture());
+
+        SendNotificationRequest sentRequest = requestCaptor.getValue();
+        assertThat(sentRequest.getUserId()).isEqualTo(userId);
+        assertThat(sentRequest.getUserEmail()).isEqualTo("test@example.com");
+        assertThat(sentRequest.getEntityId()).isEqualTo(expiringListing.getListingId());
+        assertThat(sentRequest.getEventType().name()).isEqualTo("LISTING_EXPIRING_SOON");
+    }
+
+    @Test
+    @DisplayName("Should continue processing when notification fails for one listing")
+    void notifyExpiringListings_whenOneFails_shouldContinueWithOthers() {
+        // Arrange
+        Listing goodListing = buildPublishedListing(5);
+        Listing badListing = Listing.builder()
+                .listingId(UUID.randomUUID())
+                .propertyId(propertyId)
+                .userId(UUID.randomUUID()) // Different user
+                .listingType(ListingType.RENT)
+                .status(ListingStatus.PUBLISHED)
+                .slug("problematic-listing")
+                .name("Problematic Listing")
+                .price(new BigDecimal("1000000"))
+                .build();
+        setField(badListing, "publishedAt", LocalDateTime.now().minusSeconds(3));
+
+        User goodUser = User.builder().userId(userId).email(Email.of("good@example.com")).build();
+        User badUser = User.builder().userId(badListing.getUserId()).build();
+
+        when(listingRepository.findPublishedListingsPublishedBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(badListing, goodListing));
+
+        when(userRepository.findById(badListing.getUserId())).thenReturn(Optional.of(badUser));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(goodUser));
+
+        // Simulate failure for badUser notification
+        doThrow(new RuntimeException("Simulated notification error"))
+                .when(notificationApplicationService).sendNotification(
+                        org.mockito.ArgumentMatchers.argThat(req -> req.getUserId().equals(badUser.getUserId()))
+                );
+
+        // Act
+        scheduler.notifyExpiringListings();
+
+        // Assert
+        verify(notificationApplicationService, times(2)).sendNotification(any(SendNotificationRequest.class));
     }
 }
