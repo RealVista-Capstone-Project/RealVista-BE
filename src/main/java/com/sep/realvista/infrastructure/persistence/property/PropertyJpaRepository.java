@@ -43,19 +43,23 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
             Pageable pageable);
  
     @Query(value = "SELECT DISTINCT p FROM Property p "
-           + "JOIN Engagement e ON e.propertyId = p.propertyId "
+           + "LEFT JOIN Engagement e ON e.propertyId = p.propertyId AND e.status = 'ACCEPTED' "
+           + "LEFT JOIN com.sep.realvista.domain.agent.PropertyAgent pa ON pa.propertyId = p.propertyId "
            + "LEFT JOIN FETCH p.propertyType pt "
            + "LEFT JOIN FETCH pt.propertyCategory "
            + "LEFT JOIN FETCH p.location loc "
            + "LEFT JOIN FETCH loc.parent dist "
            + "LEFT JOIN FETCH dist.parent city "
-           + "WHERE e.status = 'ACCEPTED' AND (e.initiatorId = :agentId OR e.receiverId = :agentId) "
+           + "WHERE ( (e.initiatorId = :agentId OR e.receiverId = :agentId) "
+           + "OR (pa.agentId = :agentId AND pa.deleted = false) ) "
            + "AND p.deleted = false AND (:status IS NULL OR p.status = :status) AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)",
            countQuery = "SELECT COUNT(DISTINCT p) FROM Property p "
-           + "JOIN Engagement e ON e.propertyId = p.propertyId "
-           + "WHERE e.status = 'ACCEPTED' AND (e.initiatorId = :agentId OR e.receiverId = :agentId) "
+           + "LEFT JOIN Engagement e ON e.propertyId = p.propertyId AND e.status = 'ACCEPTED' "
+           + "LEFT JOIN com.sep.realvista.domain.agent.PropertyAgent pa ON pa.propertyId = p.propertyId "
+           + "WHERE ( (e.initiatorId = :agentId OR e.receiverId = :agentId) "
+           + "OR (pa.agentId = :agentId AND pa.deleted = false) ) "
            + "AND p.deleted = false AND (:status IS NULL OR p.status = :status) AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)")

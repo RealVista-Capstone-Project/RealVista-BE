@@ -5,6 +5,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -21,10 +22,14 @@ public class EmailServiceImpl implements EmailService {
     private final JavaMailSender emailSender;
     private final org.thymeleaf.spring6.SpringTemplateEngine templateEngine;
 
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+
     @Override
     public void sendSimpleMessage(String to, String subject, String text) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
             message.setTo(to);
             message.setSubject(subject);
             message.setText(text);
@@ -52,16 +57,17 @@ public class EmailServiceImpl implements EmailService {
         try {
             MimeMessage message = emailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            
+
+            helper.setFrom(fromEmail);
             helper.setTo(to);
             helper.setSubject(subject);
-            helper.setText(htmlBody, true); // true = isHtml
+            helper.setText(htmlBody, true);
 
             emailSender.send(message);
             log.info("HTML Email sent to {}", to);
         } catch (MessagingException e) {
-            log.error("Failed to send HTML email to {}", to, e);
-            throw new RuntimeException("Failed to send HTML email", e);
+            log.error("Failed to send HTML email to {}: {}", to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send HTML email: " + e.getMessage(), e);
         }
     }
 
@@ -76,32 +82,29 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
-
     @Override
-    public void sendTemplateMessage(String to, String subject, String templateName, 
+    public void sendTemplateMessage(String to, String subject, String templateName,
                                     java.util.Map<String, Object> variables) {
         try {
             org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
             context.setVariables(variables);
-            
-            // Assuming templates are in "mail/" subfolder
             String htmlBody = templateEngine.process("mail/" + templateName, context);
-            
             sendHtmlMessage(to, subject, htmlBody);
         } catch (Exception e) {
-            log.error("Failed to send template email to {}", to, e);
-            throw new RuntimeException("Failed to send template email", e);
+            log.error("Failed to send template email '{}' to {}: {}", templateName, to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send template email: " + e.getMessage(), e);
         }
     }
 
     @Async
     @Override
-    public CompletableFuture<Void> sendTemplateMessageAsync(String to, String subject, String templateName, 
+    public CompletableFuture<Void> sendTemplateMessageAsync(String to, String subject, String templateName,
                                                             java.util.Map<String, Object> variables) {
         try {
             sendTemplateMessage(to, subject, templateName, variables);
             return CompletableFuture.completedFuture(null);
         } catch (Exception e) {
+            log.error("Async template email '{}' to {} failed: {}", templateName, to, e.getMessage(), e);
             return CompletableFuture.failedFuture(e);
         }
     }

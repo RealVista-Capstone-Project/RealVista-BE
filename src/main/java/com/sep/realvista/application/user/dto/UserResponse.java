@@ -28,6 +28,10 @@ public class UserResponse {
     private UserStatus status;
     private Set<String> roles;
     private String avatarUrl;
+    private Boolean isEmailVerified;
+    private Boolean isPhoneVerified;
+    private LocalDateTime emailVerifiedAt;
+    private LocalDateTime phoneVerifiedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -354,18 +354,18 @@ class MediaUploadControllerComponentTest {
         void deleteMedia_withAdminRole_shouldReturn200() throws Exception {
             setAuthentication(mockAdminDetails);
             String mediaUrl = "https://realvista.sgp1.cdn.digitaloceanspaces.com/test/file.jpg";
-            doNothing().when(mediaUploadService).deleteMedia(mediaUrl);
+            doNothing().when(mediaUploadService).deleteMediaByUrl(mediaUrl);
 
-            mockMvc.perform(delete("/api/v1/media")
+            mockMvc.perform(delete("/api/v1/media/by-url")
                             .param("mediaUrl", mediaUrl)
                             .with(user(mockAdminDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true))
-                    .andExpect(jsonPath("$.message").value("Media deleted successfully"));
+                    .andExpect(jsonPath("$.message").value("Media file deleted successfully"));
 
-            verify(mediaUploadService, times(1)).deleteMedia(mediaUrl);
+            verify(mediaUploadService, times(1)).deleteMediaByUrl(mediaUrl);
         }
 
         @Test
@@ -373,9 +373,9 @@ class MediaUploadControllerComponentTest {
         void deleteMedia_withAgentRole_shouldReturn200() throws Exception {
             setAuthentication(mockAgentDetails);
             String mediaUrl = "https://realvista.sgp1.cdn.digitaloceanspaces.com/properties/image.jpg";
-            doNothing().when(mediaUploadService).deleteMedia(mediaUrl);
+            doNothing().when(mediaUploadService).deleteMediaByUrl(mediaUrl);
 
-            mockMvc.perform(delete("/api/v1/media")
+            mockMvc.perform(delete("/api/v1/media/by-url")
                             .param("mediaUrl", mediaUrl)
                             .with(user(mockAgentDetails))
                             .with(csrf()))
@@ -383,23 +383,25 @@ class MediaUploadControllerComponentTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.success").value(true));
 
-            verify(mediaUploadService, times(1)).deleteMedia(mediaUrl);
+            verify(mediaUploadService, times(1)).deleteMediaByUrl(mediaUrl);
         }
 
         @Test
         @DisplayName("Should return 400 when mediaUrl is empty")
         void deleteMedia_withEmptyUrl_shouldReturn400() throws Exception {
             setAuthentication(mockAdminDetails);
-            mockMvc.perform(delete("/api/v1/media")
+            mockMvc.perform(delete("/api/v1/media/by-url")
                             .param("mediaUrl", "")
                             .with(user(mockAdminDetails))
                             .with(csrf()))
                     .andDo(print())
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.success").value(false))
-                    .andExpect(jsonPath("$.message").value("Media URL is required"));
+                    .andExpect(jsonPath("$.status").value(400))
+                    .andExpect(jsonPath("$.message").value("Media URL is required"))
+                    .andExpect(jsonPath("$.error_code").value("INVALID_ARGUMENT"))
+                    .andExpect(jsonPath("$.path").value("/api/v1/media/by-url"));
 
-            verify(mediaUploadService, never()).deleteMedia(anyString());
+            verify(mediaUploadService, never()).deleteMediaByUrl(anyString());
         }
 
         @Test
@@ -408,9 +410,9 @@ class MediaUploadControllerComponentTest {
             setAuthentication(mockAdminDetails);
             String mediaUrl = "https://realvista.sgp1.cdn.digitaloceanspaces.com/test/file.jpg";
             doThrow(new RuntimeException("Failed to delete media: File not found"))
-                    .when(mediaUploadService).deleteMedia(mediaUrl);
+                    .when(mediaUploadService).deleteMediaByUrl(mediaUrl);
 
-            mockMvc.perform(delete("/api/v1/media")
+            mockMvc.perform(delete("/api/v1/media/by-url")
                             .param("mediaUrl", mediaUrl)
                             .with(user(mockAdminDetails))
                             .with(csrf()))
@@ -418,7 +420,7 @@ class MediaUploadControllerComponentTest {
                     .andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.status").value(500));
 
-            verify(mediaUploadService, times(1)).deleteMedia(mediaUrl);
+            verify(mediaUploadService, times(1)).deleteMediaByUrl(mediaUrl);
         }
     }
 }

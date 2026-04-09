@@ -51,8 +51,17 @@ public class Transaction extends BaseEntity {
     @Column(name = "transaction_type", nullable = false, length = 50)
     private TransactionType transactionType;
 
-    @Column(name = "reference_id", nullable = false)
+    /** Set after payment is confirmed — links to UserSubscription or ListingBoost UUID. */
+    @Column(name = "reference_id")
     private UUID referenceId;
+
+    /** Gateway order code (PayOS integer or VNPay txn ref equivalent). Unique per transaction. */
+    @Column(name = "order_code", unique = true)
+    private Long orderCode;
+
+    /** The plan/package code that was purchased (e.g. BASIC, PRO, PREMIUM). */
+    @Column(name = "plan_code", length = 50)
+    private String planCode;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
@@ -66,8 +75,9 @@ public class Transaction extends BaseEntity {
     @Builder.Default
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
-    public void complete() {
+    public void complete(UUID createdReferenceId) {
         this.paymentStatus = PaymentStatus.COMPLETED;
+        this.referenceId = createdReferenceId;
     }
 
     public void fail() {

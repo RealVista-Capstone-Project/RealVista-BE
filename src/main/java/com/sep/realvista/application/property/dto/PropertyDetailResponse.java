@@ -23,59 +23,62 @@ import java.util.UUID;
 public class PropertyDetailResponse {
     @JsonProperty("property_id")
     private UUID propertyId;
-    
+
     @JsonProperty("owner_id")
     private UUID ownerId;
-    
+
     @JsonProperty("location_id")
     private UUID locationId;
-    
+
     @JsonProperty("district_id")
     private UUID districtId;
 
     @JsonProperty("city_id")
     private UUID cityId;
-    
+
     @JsonProperty("property_type_id")
     private UUID propertyTypeId;
 
     @JsonProperty("property_type_code")
     private String propertyTypeCode;
-    
+
     @JsonProperty("street_address")
     private String streetAddress;
-    
+
     private BigDecimal latitude;
     private BigDecimal longitude;
-    
+
     @JsonProperty("land_size_m2")
     private BigDecimal landSizeM2;
-    
+
     @JsonProperty("usable_size_m2")
     private BigDecimal usableSizeM2;
-    
+
     @JsonProperty("width_m")
     private BigDecimal widthM;
-    
+
     @JsonProperty("length_m")
     private BigDecimal lengthM;
-    
+
     private PropertyStatus status;
     private String descriptions;
     private String slug;
-    
+
     @JsonProperty("extra_attributes")
     private Map<String, Object> extraAttributes;
 
     @JsonProperty("attributes")
     private List<PropertyAttributeDTO> attributes;
-    
+
     @JsonProperty("amenities")
     private List<AmenityDTO> amenities;
-    
+
     @JsonProperty("media")
     private List<MediaDTO> media;
-    
+
+    @JsonProperty("has_3d")
+    private boolean has3d;
+
     @JsonProperty("active_listings")
     private List<ListingSummaryDTO> activeListings;
 }
