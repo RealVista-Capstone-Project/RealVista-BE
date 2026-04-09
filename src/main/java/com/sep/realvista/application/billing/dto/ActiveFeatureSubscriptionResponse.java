@@ -1,5 +1,7 @@
 package com.sep.realvista.application.billing.dto;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 
@@ -8,16 +10,15 @@ import java.util.UUID;
 
 @Data
 @Builder
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ActiveFeatureSubscriptionResponse {
     private UUID subscriptionId;
     private String packageCode;
     private String packageName;
     private String featureType;
-    /** Package quota cap when not unlimited (for usage %). Null when unlimited. */
     private Integer quotaLimit;
     private Integer remainingQuota;
     private boolean unlimited;
-    /** Tier 0–4: Free, Basic, Premium, Pro, Pro+ */
     private int tierLevel;
     private LocalDate startDate;
     private LocalDate endDate;

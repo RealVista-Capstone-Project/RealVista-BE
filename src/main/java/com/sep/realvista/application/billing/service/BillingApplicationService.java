@@ -582,6 +582,7 @@ public class BillingApplicationService {
                     .startDate(LocalDate.now())
                     .endDate(endDate)
                     .remainingQuota(remainingQuota)
+                    .status(UserFeatureSubscriptionStatus.ACTIVE)
                     .build();
 
             UserFeatureSubscription saved = userFeatureSubscriptionRepository.save(sub);
@@ -621,7 +622,7 @@ public class BillingApplicationService {
                 .build();
         txn = transactionRepository.save(txn);
 
-        // Activate subscription/boost
+        // Activate subscription/boost (handles auto-cancel old & create new subscription)
         activateAfterPayment(txn);
     }
 
