@@ -115,7 +115,6 @@ public class PropertyApplicationService {
                 .lengthM(request.getLengthM())
                 .descriptions(request.getDescriptions())
                 .extraAttributes(request.getExtraAttributes())
-                .priceRange(request.getPriceRange())
                 .status(finalStatus)
                 .slug(titleSlug)
                 .build();
@@ -187,10 +186,6 @@ public class PropertyApplicationService {
 
         if (request.getExtraAttributes() != null) {
             property.updateExtraAttributes(request.getExtraAttributes());
-        }
-
-        if (request.getPriceRange() != null) {
-            property.updatePriceRange(request.getPriceRange());
         }
 
         if (request.getAmenityIds() != null) {

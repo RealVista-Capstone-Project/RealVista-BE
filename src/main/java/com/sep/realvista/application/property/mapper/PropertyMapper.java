@@ -65,7 +65,6 @@ public class PropertyMapper {
                         .map(this::mapAmenity).collect(Collectors.toList()) : null)
                 .media(media != null ? media.stream()
                         .map(this::mapMedia).collect(Collectors.toList()) : null)
-                .priceRange(property.getPriceRange())
                 .build();
     }
 
@@ -111,7 +110,6 @@ public class PropertyMapper {
                         .map(this::mapAmenity).collect(Collectors.toList()) : null)
                 .propertyTypeInfo(mapPropertyType(property))
                 .locationInfo(mapLocation(property))
-                .priceRange(property.getPriceRange())
                 .build();
     }
 
@@ -133,7 +131,6 @@ public class PropertyMapper {
                         .build()) : null)
                 .propertyTypeInfo(mapPropertyType(property))
                 .locationInfo(mapLocation(property))
-                .priceRange(property.getPriceRange())
                 .build();
     }
 
@@ -174,7 +171,6 @@ public class PropertyMapper {
                         .map(this::mapAttribute).collect(Collectors.toList()) : null)
                 .amenities(amenities != null ? amenities.stream()
                         .map(this::mapAmenity).collect(Collectors.toList()) : null)
-                .priceRange(property.getPriceRange())
                 .hasActiveProposal(hasActiveProposal)
                 .build();
     }

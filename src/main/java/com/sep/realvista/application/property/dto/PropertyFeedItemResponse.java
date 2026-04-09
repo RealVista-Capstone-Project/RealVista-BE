@@ -71,9 +71,6 @@ public class PropertyFeedItemResponse {
     private List<PropertyAttributeDTO> attributes;
 
     private List<AmenityDTO> amenities;
-    
-    @JsonProperty("price_range")
-    private java.util.Map<String, Object> priceRange;
 
     /**
      * Whether the authenticated agent has already submitted a proposal for this property.

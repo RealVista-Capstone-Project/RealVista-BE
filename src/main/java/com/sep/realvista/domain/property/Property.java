@@ -104,10 +104,6 @@ public class Property extends BaseEntity {
     @Column(name = "extra_attributes", columnDefinition = "jsonb")
     private Map<String, Object> extraAttributes;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "price_range", columnDefinition = "jsonb")
-    private Map<String, Object> priceRange;
-
     public void publish() {
         if (this.status != PropertyStatus.DRAFT && this.status != PropertyStatus.VERIFIED) {
             throw new IllegalStateException("Only draft or verified properties can be published");
@@ -186,7 +182,7 @@ public class Property extends BaseEntity {
     }
 
     public void updateDimensions(BigDecimal landSizeM2, BigDecimal usableSizeM2,
-                                  BigDecimal widthM, BigDecimal lengthM) {
+                                 BigDecimal widthM, BigDecimal lengthM) {
         this.landSizeM2 = landSizeM2;
         this.usableSizeM2 = usableSizeM2;
         this.widthM = widthM;
@@ -194,19 +190,19 @@ public class Property extends BaseEntity {
     }
 
     @OneToMany(mappedBy = "property", fetch = FetchType.LAZY,
-               cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+            cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<com.sep.realvista.domain.property.attribute.PropertyAttributeValue> attributeValues =
             new java.util.ArrayList<>();
 
     @OneToMany(mappedBy = "property", fetch = FetchType.LAZY,
-               cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+            cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     @org.hibernate.annotations.Where(clause = "is_property_standard = true")
     @Builder.Default
     private List<PropertyMedia> mediaList = new java.util.ArrayList<>();
 
     @OneToMany(mappedBy = "property", fetch = FetchType.LAZY,
-               cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+            cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<com.sep.realvista.domain.property.amenity.PropertyAmenity> amenities =
             new java.util.ArrayList<>();
@@ -214,20 +210,20 @@ public class Property extends BaseEntity {
     public void updateMedia(List<PropertyMedia> newMedia) {
         // Remove those not in new list (by URL)
         this.mediaList.removeIf(existing ->
-            newMedia.stream().noneMatch(n -> n.getMediaUrl().equals(existing.getMediaUrl())));
+                newMedia.stream().noneMatch(n -> n.getMediaUrl().equals(existing.getMediaUrl())));
 
         // Add new ones or update existing ones
         if (newMedia != null) {
             for (var m : newMedia) {
                 this.mediaList.stream()
-                    .filter(existing -> existing.getMediaUrl().equals(m.getMediaUrl()))
-                    .findFirst()
-                    .ifPresentOrElse(
-                        existing -> {
-                            existing.updateMetadata(m.getMediaType(), m.getThumbnailUrl(), m.getIsPrimary());
-                        },
-                        () -> this.mediaList.add(m)
-                    );
+                        .filter(existing -> existing.getMediaUrl().equals(m.getMediaUrl()))
+                        .findFirst()
+                        .ifPresentOrElse(
+                                existing -> {
+                                    existing.updateMetadata(m.getMediaType(), m.getThumbnailUrl(), m.getIsPrimary());
+                                },
+                                () -> this.mediaList.add(m)
+                        );
             }
         }
     }
@@ -235,7 +231,7 @@ public class Property extends BaseEntity {
     public void updateAmenities(List<com.sep.realvista.domain.property.amenity.PropertyAmenity> newAmenities) {
         // Remove those not in new list
         this.amenities.removeIf(existing ->
-            newAmenities.stream().noneMatch(n -> n.getAmenityId().equals(existing.getAmenityId())));
+                newAmenities.stream().noneMatch(n -> n.getAmenityId().equals(existing.getAmenityId())));
 
         // Add those not in existing list
         if (newAmenities != null) {
@@ -288,12 +284,6 @@ public class Property extends BaseEntity {
     public void updateExtraAttributes(Map<String, Object> extraAttributes) {
         if (extraAttributes != null) {
             this.extraAttributes = extraAttributes;
-        }
-    }
-
-    public void updatePriceRange(Map<String, Object> priceRange) {
-        if (priceRange != null) {
-            this.priceRange = priceRange;
         }
     }
 }
