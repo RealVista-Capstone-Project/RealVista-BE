@@ -486,4 +486,3 @@ public class UserApplicationService {
         return otpService.remainingSeconds(EMAIL_OTP_PREFIX + userId);
     }
 }
-

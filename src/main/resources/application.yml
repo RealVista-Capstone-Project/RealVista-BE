@@ -126,6 +126,10 @@ realvista:
     expiry-warning-days: ${LISTING_EXPIRY_WARNING_DAYS:3}
     expiry-warning-cron: ${LISTING_EXPIRY_WARNING_CRON:0 0 8 * * *}
 
+  marble:
+    api-url: ${MARBLE_API_URL:https://api.worldlabs.ai/marble/v1}
+    api-key: ${MARBLE_API_KEY:}
+
 # Actuator Configuration
 management:
   endpoints:
