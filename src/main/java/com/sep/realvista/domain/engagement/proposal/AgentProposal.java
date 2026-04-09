@@ -15,8 +15,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -55,6 +58,13 @@ public class AgentProposal extends BaseEntity {
     @Column(name = "pitch_content", columnDefinition = "TEXT")
     private String pitchContent;
 
+    @Column(name = "specialty")
+    private UUID specialty;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "price_range", columnDefinition = "jsonb")
+    private Map<String, Object> priceRange;
+
     public void activate() {
         this.status = AgentProposalStatus.ACTIVE;
     }
@@ -68,7 +78,8 @@ public class AgentProposal extends BaseEntity {
     }
 
     public void update(String title, java.math.BigDecimal commissionRate, 
-                       Integer experienceYears, String pitchContent) {
+                       Integer experienceYears, String pitchContent,
+                       UUID specialty, Map<String, Object> priceRange) {
         if (title != null) {
             this.title = title;
         }
@@ -80,6 +91,12 @@ public class AgentProposal extends BaseEntity {
         }
         if (pitchContent != null) {
             this.pitchContent = pitchContent;
+        }
+        if (specialty != null) {
+            this.specialty = specialty;
+        }
+        if (priceRange != null) {
+            this.priceRange = priceRange;
         }
     }
 }

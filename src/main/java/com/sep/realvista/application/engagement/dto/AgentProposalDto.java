@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -23,6 +24,8 @@ public class AgentProposalDto {
     private Integer experienceYears;
     private AgentProposalStatus status;
     private String pitchContent;
+    private UUID specialty;
+    private Map<String, Object> priceRange;
     
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

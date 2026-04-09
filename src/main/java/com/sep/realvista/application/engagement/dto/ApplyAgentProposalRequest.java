@@ -11,6 +11,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Map;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -32,4 +34,8 @@ public class ApplyAgentProposalRequest {
 
     @NotBlank(message = "Pitch content is required")
     private String pitchContent;
+
+    private UUID specialty;
+
+    private Map<String, Object> priceRange;
 }

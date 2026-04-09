@@ -46,6 +46,8 @@ public class AgentProposalApplicationService {
                 .commissionRate(request.getCommissionRate())
                 .experienceYears(request.getExperienceYears())
                 .pitchContent(request.getPitchContent())
+                .specialty(request.getSpecialty())
+                .priceRange(request.getPriceRange())
                 .status(AgentProposalStatus.ACTIVE)
                 .build();
 
@@ -68,7 +70,9 @@ public class AgentProposalApplicationService {
                 request.getTitle(),
                 request.getCommissionRate(),
                 request.getExperienceYears(),
-                request.getPitchContent()
+                request.getPitchContent(),
+                request.getSpecialty(),
+                request.getPriceRange()
         );
 
         AgentProposal updatedProposal = agentProposalRepository.save(proposal);
