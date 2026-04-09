@@ -98,8 +98,8 @@ public class ListingExpiryScheduler {
                     SendNotificationRequest request = SendNotificationRequest.builder()
                             .userId(user.getUserId())
                             .userEmail(user.getEmail() != null ? user.getEmail().getValue() : null)
-                            .title("Listing Expiring Soon")
-                            .message(String.format("Your listing '%s' will expire in %d days.",
+                            .title("Tin đăng sắp hết hạn")
+                            .message(String.format("Tin đăng '%s' của bạn sẽ hết hạn trong %d ngày tới.",
                                     listing.getName(), expiryWarningDays))
                             .eventType(EventType.LISTING_EXPIRING_SOON)
                             .entityType(EntityType.LISTING)
