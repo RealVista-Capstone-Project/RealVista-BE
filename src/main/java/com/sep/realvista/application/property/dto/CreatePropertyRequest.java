@@ -60,6 +60,9 @@ public class CreatePropertyRequest {
     @JsonProperty("amenity_ids")
     private List<UUID> amenityIds;
 
+    @JsonProperty("price_range")
+    private Map<String, Object> priceRange;
+
     @JsonProperty("attributes")
     private List<PropertyAttributeRequest> attributes;
     

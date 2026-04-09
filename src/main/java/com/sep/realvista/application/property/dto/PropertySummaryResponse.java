@@ -60,6 +60,9 @@ public class PropertySummaryResponse {
     private List<MediaDTO> media;
 
     private List<AmenityDTO> amenities;
+
+    @JsonProperty("price_range")
+    private java.util.Map<String, Object> priceRange;
     
     @JsonProperty("owner_name")
     private String ownerName;

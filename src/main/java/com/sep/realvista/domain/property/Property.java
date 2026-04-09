@@ -104,6 +104,10 @@ public class Property extends BaseEntity {
     @Column(name = "extra_attributes", columnDefinition = "jsonb")
     private Map<String, Object> extraAttributes;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "price_range", columnDefinition = "jsonb")
+    private Map<String, Object> priceRange;
+
     public void publish() {
         if (this.status != PropertyStatus.DRAFT && this.status != PropertyStatus.VERIFIED) {
             throw new IllegalStateException("Only draft or verified properties can be published");
@@ -284,6 +288,12 @@ public class Property extends BaseEntity {
     public void updateExtraAttributes(Map<String, Object> extraAttributes) {
         if (extraAttributes != null) {
             this.extraAttributes = extraAttributes;
+        }
+    }
+
+    public void updatePriceRange(Map<String, Object> priceRange) {
+        if (priceRange != null) {
+            this.priceRange = priceRange;
         }
     }
 }
