@@ -66,7 +66,7 @@ public class PropertyDetailResponse {
     
     @JsonProperty("extra_attributes")
     private Map<String, Object> extraAttributes;
-    
+
     @JsonProperty("attributes")
     private List<PropertyAttributeDTO> attributes;
     

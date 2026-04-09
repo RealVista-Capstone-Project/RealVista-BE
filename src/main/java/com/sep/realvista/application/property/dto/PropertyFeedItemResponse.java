@@ -6,6 +6,7 @@ import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
+import com.sep.realvista.domain.common.value.PriceRangeVO;
 import com.sep.realvista.domain.property.PropertyStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -59,6 +60,9 @@ public class PropertyFeedItemResponse {
     private PropertyStatus status;
 
     private String descriptions;
+
+    @JsonProperty("price_range")
+    private PriceRangeVO priceRange;
 
     @JsonProperty("property_type_info")
     private PropertyTypeInfoDTO propertyTypeInfo;
