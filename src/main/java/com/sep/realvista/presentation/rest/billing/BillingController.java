@@ -1,5 +1,6 @@
 package com.sep.realvista.presentation.rest.billing;
 
+import com.sep.realvista.application.billing.dto.ActiveBoostPackageResponse;
 import com.sep.realvista.application.billing.dto.ActiveFeatureSubscriptionResponse;
 import com.sep.realvista.application.billing.dto.BoostPackageResponse;
 import com.sep.realvista.application.billing.dto.CheckoutRequest;
@@ -210,6 +211,16 @@ public class BillingController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 billingService.getMyFeatureSubscriptionsByType(currentUser.getUserId(), FeatureType.AI_REQUEST)));
+    }
+
+    @GetMapping("/boosts/me")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @Operation(summary = "Get the current user's active boost packages")
+    public ResponseEntity<ApiResponse<List<ActiveBoostPackageResponse>>> getMyBoostPackages(
+            @AuthenticationPrincipal SecurityUserDetails currentUser
+    ) {
+        var boosts = billingService.getMyBoostPackages(currentUser.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(boosts));
     }
 
     @GetMapping("/subscriptions/me/quota/{featureType}")

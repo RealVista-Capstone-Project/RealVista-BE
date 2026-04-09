@@ -1,5 +1,6 @@
 package com.sep.realvista.application.billing.service;
 
+import com.sep.realvista.application.billing.dto.ActiveBoostPackageResponse;
 import com.sep.realvista.application.billing.dto.ActiveFeatureSubscriptionResponse;
 import com.sep.realvista.application.billing.dto.BoostPackageResponse;
 import com.sep.realvista.application.billing.dto.CheckoutRequest;
@@ -8,7 +9,10 @@ import com.sep.realvista.application.billing.dto.FeaturePackageResponse;
 import com.sep.realvista.application.billing.dto.TransactionResponse;
 import com.sep.realvista.application.billing.dto.TransactionStatusResponse;
 import com.sep.realvista.domain.billing.boost.BoostPackage;
+import com.sep.realvista.domain.billing.boost.UserListingBoostPackage;
+import com.sep.realvista.domain.billing.boost.UserListingBoostPackageStatus;
 import com.sep.realvista.domain.billing.boost.repository.BoostPackageRepository;
+import com.sep.realvista.domain.billing.boost.repository.UserListingBoostPackageRepository;
 import com.sep.realvista.domain.billing.checkout.CheckoutOrder;
 import com.sep.realvista.domain.billing.checkout.CheckoutOrderRepository;
 import com.sep.realvista.domain.billing.subscription.FeaturePackage;
@@ -55,6 +59,7 @@ public class BillingApplicationService {
     private final FeaturePackageRepository featurePackageRepository;
     private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
     private final BoostPackageRepository boostPackageRepository;
+    private final UserListingBoostPackageRepository userListingBoostPackageRepository;
     private final CheckoutOrderRepository checkoutOrderRepository;
     private final TransactionRepository transactionRepository;
     private final PayOsService payOsService;
@@ -505,6 +510,34 @@ public class BillingApplicationService {
         userFeatureSubscriptionRepository.save(sub);
     }
 
+    /**
+     * Get user's active boost packages (purchased boost quotas).
+     */
+    public List<ActiveBoostPackageResponse> getMyBoostPackages(UUID userId) {
+        List<UserListingBoostPackage> boosts = userListingBoostPackageRepository.findAllActiveByUserId(userId);
+        return boosts.stream()
+                .map(this::toActiveBoostPackageResponse)
+                .collect(Collectors.toList());
+    }
+
+    private ActiveBoostPackageResponse toActiveBoostPackageResponse(UserListingBoostPackage boost) {
+        BoostPackage pkg = boost.getBoostPackage();
+        return ActiveBoostPackageResponse.builder()
+                .boostPackageId(pkg.getBoostPackageId())
+                .code(pkg.getCode())
+                .name(pkg.getName())
+                .description(pkg.getDescription())
+                .featuredQuota(pkg.getFeaturedQuota())
+                .hotBadgeQuota(pkg.getHotBadgeQuota())
+                .durationDays(pkg.getDurationDays())
+                .startDate(boost.getStartDate())
+                .endDate(boost.getEndDate())
+                .remainingFeaturedQuota(boost.getRemainingFeaturedQuota())
+                .remainingHotBadgeQuota(boost.getRemainingHotBadgeQuota())
+                .status(boost.getStatus().name())
+                .build();
+    }
+
     // -------------------------------------------------------------------------
     // Get user's total quota for a feature type
     // -------------------------------------------------------------------------
@@ -588,7 +621,25 @@ public class BillingApplicationService {
             UserFeatureSubscription saved = userFeatureSubscriptionRepository.save(sub);
             txn.complete(saved.getUserFeatureSubscriptionId());
         } else {
-            txn.complete(UUID.randomUUID());
+            // BOOST type
+            BoostPackage pkg = boostPackageRepository.findByCode(txn.getPlanCode())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Boost package not found: " + txn.getPlanCode()));
+
+            LocalDate endDate = LocalDate.now().plusDays(pkg.getDurationDays());
+
+            UserListingBoostPackage boost = UserListingBoostPackage.builder()
+                    .userId(txn.getUserId())
+                    .boostPackageId(pkg.getBoostPackageId())
+                    .startDate(LocalDate.now())
+                    .endDate(endDate)
+                    .remainingFeaturedQuota(pkg.getFeaturedQuota())
+                    .remainingHotBadgeQuota(pkg.getHotBadgeQuota())
+                    .status(UserListingBoostPackageStatus.ACTIVE)
+                    .build();
+
+            UserListingBoostPackage saved = userListingBoostPackageRepository.save(boost);
+            txn.complete(saved.getUserListingBoostPackageId());
         }
         transactionRepository.save(txn);
         log.info("Payment activated for txn={}, type={}, plan={}",
