@@ -271,8 +271,8 @@ public class ListingApplicationService {
         // Fetch similar listings from repository
         List<SimilarListing> similarListings = listingRepository.findSimilarListings(listingId, validatedLimit);
         log.info("Found {} similar listings for listingId: {}", similarListings.size(), listingId);
-        // Batch-fetch required attributes for all similar listings' properties
-        Map<UUID, List<PropertyAttributeDTO>> attributesByPropertyId = fetchRequiredAttributes(similarListings);
+        // Batch-fetch attributes for all similar listings' properties
+        Map<UUID, List<PropertyAttributeDTO>> attributesByPropertyId = fetchTopAttributes(similarListings);
         // Map to DTOs
         List<SimilarListingDTO> dtoList = similarListings.stream()
                 .map(sl -> mapToSimilarListingDTO(sl, attributesByPropertyId))
@@ -285,10 +285,10 @@ public class ListingApplicationService {
     }
 
     /**
-     * Batch-fetch required attributes for all similar listings' properties.
-     * Returns up to 3 required attributes per property, grouped by property ID.
+     * Batch-fetch attributes for all similar listings' properties.
+     * Returns up to 3 attributes per property, grouped by property ID.
      */
-    private Map<UUID, List<PropertyAttributeDTO>> fetchRequiredAttributes(List<SimilarListing> similarListings) {
+    private Map<UUID, List<PropertyAttributeDTO>> fetchTopAttributes(List<SimilarListing> similarListings) {
         if (similarListings.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -296,7 +296,7 @@ public class ListingApplicationService {
                 .map(SimilarListing::getPropertyId)
                 .collect(Collectors.toList());
         List<PropertyAttributeValue> allAttributes = propertyAttributeValueRepository
-                .findRequiredAttributesByPropertyIds(propertyIds);
+                .findAllAttributesByPropertyIds(propertyIds);
         // Group by propertyId, limit to 3 per property
         return allAttributes.stream()
                 .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId))

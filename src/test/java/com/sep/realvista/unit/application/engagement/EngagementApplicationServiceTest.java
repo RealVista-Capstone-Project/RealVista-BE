@@ -1,5 +1,7 @@
 package com.sep.realvista.unit.application.engagement;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
@@ -14,8 +16,12 @@ import com.sep.realvista.domain.engagement.Engagement;
 import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.EngagementStatus;
 import com.sep.realvista.domain.engagement.EngagementType;
+import com.sep.realvista.domain.engagement.proposal.AgentProposal;
+import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
-import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
+import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.user.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,6 +73,15 @@ class EngagementApplicationServiceTest {
 
     @Mock
     private PropertyAttributeValueRepository propertyAttributeValueRepository;
+
+    @Mock
+    private PropertyRepository propertyRepository;
+
+    @Mock
+    private AgentProposalRepository agentProposalRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private EngagementApplicationService engagementApplicationService;
@@ -702,6 +717,121 @@ class EngagementApplicationServiceTest {
                     .hasMessageContaining("Only ACCEPTED or SUBMITTED engagements can be cancelled");
 
             verify(engagementRepository, never()).save(any());
+        }
+    }
+
+    // ========================================================================
+    // submitAgentProposal
+    // ========================================================================
+
+    @Nested
+    @DisplayName("submitAgentProposal")
+    class SubmitAgentProposal {
+
+        private SubmitAgentProposalRequest request;
+        private AgentProposal agentProposal;
+        private Property property;
+
+        @BeforeEach
+        void setUp() {
+            request = SubmitAgentProposalRequest.builder()
+                    .agentProposalId(UUID.randomUUID())
+                    .propertyId(UUID.randomUUID())
+                    .build();
+
+            agentProposal = AgentProposal.builder()
+                    .agentProposalId(request.getAgentProposalId())
+                    .userId(agentUserId)
+                    .pitchContent("My expert pitch")
+                    .build();
+
+            property = Property.builder()
+                    .propertyId(request.getPropertyId())
+                    .ownerId(ownerId)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("Should successfully submit agent proposal")
+        void shouldSubmitSuccessfully() {
+            // Arrange
+            UUID expectedEngagementId = UUID.randomUUID();
+            when(agentProposalRepository.findById(request.getAgentProposalId()))
+                    .thenReturn(Optional.of(agentProposal));
+            when(propertyRepository.findById(request.getPropertyId()))
+                    .thenReturn(Optional.of(property));
+            when(objectMapper.valueToTree(any()))
+                    .thenReturn(NullNode.getInstance());
+            when(engagementRepository.save(any(Engagement.class)))
+                    .thenAnswer(invocation -> {
+                        Engagement e = (Engagement) invocation.getArgument(0);
+                        return Engagement.builder()
+                                .engagementId(expectedEngagementId)
+                                .initiatorId(e.getInitiatorId())
+                                .receiverId(e.getReceiverId())
+                                .engagementType(e.getEngagementType())
+                                .propertyId(e.getPropertyId())
+                                .content(e.getContent())
+                                .build();
+                    });
+
+            // Act
+            UUID result = engagementApplicationService.submitAgentProposal(agentUserId, request);
+
+            // Assert
+            assertThat(result).isNotNull();
+            assertThat(result).isEqualTo(expectedEngagementId);
+            verify(engagementRepository).save(any(Engagement.class));
+        }
+
+        @Test
+        @DisplayName("Should throw ResourceNotFoundException when proposal not found")
+        void shouldThrowWhenProposalNotFound() {
+            // Arrange
+            when(agentProposalRepository.findById(request.getAgentProposalId()))
+                    .thenReturn(Optional.empty());
+
+            // Act & Assert
+            assertThatThrownBy(() ->
+                    engagementApplicationService.submitAgentProposal(agentUserId, request))
+                    .isInstanceOf(ResourceNotFoundException.class)
+                    .hasMessageContaining("AgentProposal");
+        }
+
+        @Test
+        @DisplayName("Should throw BusinessConflictException when agent does not own proposal template")
+        void shouldThrowWhenAgentDoesNotOwnProposal() {
+            // Arrange
+            UUID otherAgentId = UUID.randomUUID();
+            when(agentProposalRepository.findById(request.getAgentProposalId()))
+                    .thenReturn(Optional.of(agentProposal));
+
+            // Act & Assert
+            assertThatThrownBy(() ->
+                    engagementApplicationService.submitAgentProposal(otherAgentId, request))
+                    .isInstanceOf(BusinessConflictException.class)
+                    .hasMessageContaining("You do not own this proposal template");
+        }
+
+        @Test
+        @DisplayName("Should throw BusinessConflictException when proposing to own property")
+        void shouldThrowWhenProposingToOwnProperty() {
+            // Arrange
+            // Rebuild property with the agent as owner for this test case
+            property = Property.builder()
+                    .propertyId(request.getPropertyId())
+                    .ownerId(agentUserId) // Agent is the owner
+                    .build();
+            when(agentProposalRepository.findById(request.getAgentProposalId()))
+                    .thenReturn(Optional.of(agentProposal));
+            when(propertyRepository.findById(request.getPropertyId()))
+                    .thenReturn(Optional.of(property));
+
+            // Act & Assert
+            assertThatThrownBy(() ->
+                    engagementApplicationService.submitAgentProposal(agentUserId, request))
+                    .isInstanceOf(BusinessConflictException.class)
+                    .hasMessageContaining("cannot submit a proposal to your own property");
         }
     }
 }

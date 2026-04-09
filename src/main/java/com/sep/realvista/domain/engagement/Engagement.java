@@ -68,8 +68,8 @@ public class Engagement extends BaseEntity {
     private EngagementType engagementType;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "json")
-    private String content;
+    @Column(name = "content", columnDefinition = "json")
+    private com.fasterxml.jackson.databind.JsonNode content;
 
     @Column(name = "listing_id")
     private UUID listingId;

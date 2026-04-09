@@ -95,10 +95,14 @@ public class GlobalExceptionHandler {
         List<ErrorResponse.ValidationError> validationErrors = ex.getBindingResult()
                 .getAllErrors()
                 .stream()
-                .map(error -> ErrorResponse.ValidationError.builder()
-                        .field(((FieldError) error).getField())
-                        .message(error.getDefaultMessage())
-                        .build())
+                .map(error -> {
+                    String field = error instanceof FieldError fieldError 
+                            ? fieldError.getField() : error.getObjectName();
+                    return ErrorResponse.ValidationError.builder()
+                            .field(field)
+                            .message(error.getDefaultMessage())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         ErrorResponse error = ErrorResponse.builder()
