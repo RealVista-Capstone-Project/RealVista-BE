@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.Map;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -25,7 +24,7 @@ public class ApplyAgentProposalRequest {
 
     @NotNull(message = "Commission rate is required")
     @DecimalMin(value = "0.0", inclusive = false, message = "Commission rate must be greater than 0")
-    @DecimalMax(value = "100.0", inclusive = true, message = "Commission rate cannot exceed 100")
+    @DecimalMax(value = "100.0", message = "Commission rate cannot exceed 100")
     private BigDecimal commissionRate;
 
     @NotNull(message = "Experience years is required")

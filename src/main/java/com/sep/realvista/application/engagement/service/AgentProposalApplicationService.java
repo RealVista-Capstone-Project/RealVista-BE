@@ -121,12 +121,6 @@ public class AgentProposalApplicationService {
             return null;
         }
 
-        // Try UUID
-        try {
-            return UUID.fromString(specialty);
-        } catch (IllegalArgumentException ignored) {}
-
-        // Try Code
         return propertyTypeRepository.findByCode(specialty)
                 .map(com.sep.realvista.domain.property.PropertyType::getPropertyTypeId)
                 .orElse(null);
