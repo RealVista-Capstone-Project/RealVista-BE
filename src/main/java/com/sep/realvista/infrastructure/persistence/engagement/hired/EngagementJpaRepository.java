@@ -177,7 +177,10 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
             LEFT JOIN FETCH e.property p
             LEFT JOIN FETCH p.location
             LEFT JOIN FETCH p.propertyType
+<<<<<<< Updated upstream
             LEFT JOIN FETCH e.listing
+=======
+>>>>>>> Stashed changes
             WHERE e.engagementId = :id
             AND e.deleted = false
             """)
