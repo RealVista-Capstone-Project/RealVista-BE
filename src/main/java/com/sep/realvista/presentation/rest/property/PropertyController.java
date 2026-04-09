@@ -160,7 +160,8 @@ public class PropertyController {
                         description = "Returns a paginated feed of AVAILABLE properties that agents can browse "
                                         + "and submit proposals for. Excludes properties the agent is already assigned to. "
                                         + "The 'has_active_proposal' flag indicates the agent has already submitted a proposal "
-                                        + "for that property. Supports optional filtering by keyword, property type, and location.")
+                                        + "for that property. Supports optional filtering by keyword, property type, "
+                                        + "and location.")
         public ResponseEntity<ApiResponse<PageResponse<PropertyFeedItemResponse>>> getPropertyFeed(
                         @AuthenticationPrincipal SecurityUserDetails userDetails,
                         @ParameterObject PropertyFeedCriteria criteria,

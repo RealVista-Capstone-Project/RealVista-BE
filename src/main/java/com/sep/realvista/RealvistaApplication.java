@@ -5,8 +5,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-import org.springframework.scheduling.annotation.EnableScheduling;
-
 /**
  * RealVista Backend Application.
  * Spring Boot application implementing Clean Architecture and DDD principles.
