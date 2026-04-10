@@ -91,7 +91,10 @@ public class AgentProposalControllerComponentTest {
         request.setTitle("My Proposal");
         request.setCommissionRate(BigDecimal.valueOf(2.5));
         request.setExperienceYears(3);
-        request.setPitchContent("I will sell this quick!");
+        request.setSpecialty("APARTMENT");
+        request.setPitchContent(
+                "I will sell this quick! ".repeat(3).trim()
+                        + " This pitch is long enough for active proposal validation (50+ chars).");
 
         AgentProposalDto responseDto = AgentProposalDto.builder()
                 .agentProposalId(proposalId)

@@ -99,4 +99,23 @@ public class AgentProposal extends BaseEntity {
             this.priceRange = priceRange;
         }
     }
+
+    /**
+     * Full replace from API (PUT) so nullable fields can be cleared on draft updates.
+     */
+    public void replaceContent(String title, BigDecimal commissionRate, Integer experienceYears,
+                              String pitchContent, UUID specialty, Map<String, Object> priceRange) {
+        this.title = title != null ? title.trim() : "";
+        this.commissionRate = commissionRate;
+        this.experienceYears = experienceYears;
+        this.pitchContent = pitchContent != null ? pitchContent : "";
+        this.specialty = specialty;
+        this.priceRange = priceRange;
+    }
+
+    public void setProposalStatus(AgentProposalStatus newStatus) {
+        if (newStatus != null) {
+            this.status = newStatus;
+        }
+    }
 }
