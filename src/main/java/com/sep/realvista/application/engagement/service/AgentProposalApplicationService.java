@@ -4,6 +4,8 @@ import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.AgentProposalDto;
 import com.sep.realvista.application.engagement.dto.ApplyAgentProposalRequest;
 import com.sep.realvista.application.engagement.mapper.AgentProposalMapper;
+import com.sep.realvista.domain.agent.AgentProfile;
+import com.sep.realvista.domain.agent.AgentProfileRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
@@ -25,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +38,7 @@ public class AgentProposalApplicationService {
     private final AgentProposalRepository agentProposalRepository;
     private final AgentProposalMapper agentProposalMapper;
     private final PropertyTypeRepository propertyTypeRepository;
+    private final AgentProfileRepository agentProfileRepository;
 
     @Transactional
     public AgentProposalDto createProposal(UUID userId, ApplyAgentProposalRequest request) {
@@ -58,18 +62,21 @@ public class AgentProposalApplicationService {
 
         String pitch = request.getPitchContent() != null ? request.getPitchContent() : "";
 
+        ResolvedSpecialty resolvedSpecialty = resolveSpecialty(request.getSpecialty());
+
         AgentProposal proposal = AgentProposal.builder()
                 .userId(userId)
                 .title(title)
                 .commissionRate(request.getCommissionRate())
                 .experienceYears(request.getExperienceYears())
                 .pitchContent(pitch)
-                .specialty(resolveSpecialty(request.getSpecialty()))
+                .specialty(resolvedSpecialty.id())
                 .priceRange(request.getPriceRange())
                 .status(targetStatus)
                 .build();
 
         AgentProposal savedProposal = agentProposalRepository.save(proposal);
+        syncAgentProfileSpecialties(userId, resolvedSpecialty.name());
         return agentProposalMapper.toDto(savedProposal);
     }
 
@@ -93,13 +100,15 @@ public class AgentProposalApplicationService {
 
         String pitch = request.getPitchContent() != null ? request.getPitchContent() : "";
 
+        ResolvedSpecialty resolvedSpecialty = resolveSpecialty(request.getSpecialty());
+
         if (draft) {
             proposal.replaceContent(
                     title,
                     request.getCommissionRate(),
                     request.getExperienceYears(),
                     pitch,
-                    resolveSpecialty(request.getSpecialty()),
+                    resolvedSpecialty.id(),
                     request.getPriceRange());
         } else {
             proposal.update(
@@ -107,7 +116,7 @@ public class AgentProposalApplicationService {
                     request.getCommissionRate(),
                     request.getExperienceYears(),
                     pitch,
-                    resolveSpecialty(request.getSpecialty()),
+                    resolvedSpecialty.id(),
                     request.getPriceRange());
         }
         if (request.getStatus() != null) {
@@ -115,6 +124,7 @@ public class AgentProposalApplicationService {
         }
 
         AgentProposal updatedProposal = agentProposalRepository.save(proposal);
+        syncAgentProfileSpecialties(userId, resolvedSpecialty.name());
         return agentProposalMapper.toDto(updatedProposal);
     }
 
@@ -276,14 +286,46 @@ public class AgentProposalApplicationService {
         return defaultVal;
     }
 
-    private UUID resolveSpecialty(String specialty) {
+    private ResolvedSpecialty resolveSpecialty(String specialty) {
         if (specialty == null || specialty.isBlank()) {
-            return null;
+            return new ResolvedSpecialty(null, null);
         }
 
         return propertyTypeRepository.findByCode(specialty)
-                .map(PropertyType::getPropertyTypeId)
-                .orElse(null);
+                .map(pt -> new ResolvedSpecialty(pt.getPropertyTypeId(), pt.getName()))
+                .orElse(new ResolvedSpecialty(null, null));
+    }
+
+    private void syncAgentProfileSpecialties(UUID userId, String propertyTypeName) {
+        if (propertyTypeName == null || propertyTypeName.isBlank()) {
+            return;
+        }
+        agentProfileRepository.findByUserId(userId).ifPresent(profile -> {
+            String merged = mergeSpecialties(profile.getSpecialties(), propertyTypeName);
+            if (!Objects.equals(profile.getSpecialties(), merged)) {
+                profile.updateSpecialties(merged);
+                agentProfileRepository.save(profile);
+            }
+        });
+    }
+
+    private static String mergeSpecialties(String existing, String toAppend) {
+        String incoming = toAppend.trim();
+        if (incoming.isEmpty()) {
+            return existing;
+        }
+        if (existing == null || existing.isBlank()) {
+            return incoming;
+        }
+        List<String> parts = Arrays.stream(existing.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+        boolean present = parts.stream().anyMatch(s -> s.equalsIgnoreCase(incoming));
+        if (!present) {
+            parts.add(incoming);
+        }
+        return String.join(", ", parts);
     }
 
     /**
@@ -310,5 +352,8 @@ public class AgentProposalApplicationService {
                 dtos.get(i).setSpecialtyCode(codeById.get(sid));
             }
         }
+    }
+
+    private record ResolvedSpecialty(UUID id, String name) {
     }
 }
