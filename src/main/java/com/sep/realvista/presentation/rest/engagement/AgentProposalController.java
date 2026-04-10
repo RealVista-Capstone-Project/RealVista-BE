@@ -42,8 +42,9 @@ public class AgentProposalController {
 
     @PostMapping
     @PreAuthorize("hasRole('AGENT')")
-    @Operation(summary = "Create a new proposal template", 
-               description = "Submit a proposal template for future use in engagements")
+    @Operation(summary = "Create a new proposal template",
+               description = "Submit a proposal template. "
+                       + "Set status to DRAFT for a partial save; omit or ACTIVE to publish.")
     public ResponseEntity<ApiResponse<AgentProposalDto>> createProposal(
             @AuthenticationPrincipal SecurityUserDetails userDetails,
             @Valid @RequestBody ApplyAgentProposalRequest request) {
@@ -94,7 +95,8 @@ public class AgentProposalController {
 
     @org.springframework.web.bind.annotation.PutMapping("/{id}")
     @PreAuthorize("hasRole('AGENT')")
-    @Operation(summary = "Update a proposal template", description = "Update an existing proposal template's details")
+    @Operation(summary = "Update a proposal template",
+               description = "Replace proposal fields. Use status DRAFT or ACTIVE to save as draft or publish.")
     public ResponseEntity<ApiResponse<AgentProposalDto>> updateProposal(
             @AuthenticationPrincipal SecurityUserDetails userDetails,
             @PathVariable UUID id,
