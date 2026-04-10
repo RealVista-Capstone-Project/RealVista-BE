@@ -1,6 +1,7 @@
 package com.sep.realvista.infrastructure.persistence.engagement.hired;
 
 import com.sep.realvista.domain.engagement.Engagement;
+import com.sep.realvista.domain.engagement.EngagementType;
 import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.EngagementStatus;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,6 @@ import java.util.UUID;
 
 /**
  * JPA implementation of EngagementRepository interface.
- *
  * Bridges the domain repository contract with Spring Data JPA.
  */
 @Repository
@@ -53,5 +53,14 @@ public class EngagementRepositoryImpl implements EngagementRepository {
     @Override
     public Page<Engagement> findAllHiredAgentEngagements(UUID ownerId, String search, Pageable pageable) {
         return jpaRepository.findAllHiredAgentEngagements(ownerId, HIRED_STATUSES, search, pageable);
+    }
+
+    @Override
+    public Optional<Engagement> findLatestAgentProposalEngagement(UUID initiatorId, UUID receiverId) {
+        return jpaRepository.findTopByInitiatorIdAndReceiverIdAndEngagementTypeAndDeletedFalseOrderByUpdatedAtDesc(
+                initiatorId,
+                receiverId,
+                EngagementType.AGENT_PROPOSAL
+        );
     }
 }
