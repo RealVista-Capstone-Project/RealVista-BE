@@ -1,5 +1,7 @@
 package com.sep.realvista.unit.infrastructure;
 
+import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
+import com.sep.realvista.domain.billing.boost.repository.UserListingBoostPackageRepository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
@@ -40,6 +42,12 @@ class ListingExpirySchedulerTest {
 
     @Mock
     private ListingRepository listingRepository;
+
+    @Mock
+    private ListingBoostRepository listingBoostRepository;
+
+    @Mock
+    private UserListingBoostPackageRepository userBoostPackageRepository;
 
     @Mock
     private NotificationApplicationService notificationApplicationService;
@@ -92,6 +100,7 @@ class ListingExpirySchedulerTest {
         Listing expiredListing = buildPublishedListing(5);
         when(listingRepository.findPublishedListingsPublishedBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of(expiredListing));
+        when(listingBoostRepository.findActiveByListingIds(any())).thenReturn(List.of());
         when(listingRepository.save(any(Listing.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // Act
@@ -138,6 +147,7 @@ class ListingExpirySchedulerTest {
 
         when(listingRepository.findPublishedListingsPublishedBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of(listing1, listing2, listing3));
+        when(listingBoostRepository.findActiveByListingIds(any())).thenReturn(List.of());
         when(listingRepository.save(any(Listing.class))).thenAnswer(inv -> inv.getArgument(0));
 
         // Act
@@ -239,6 +249,8 @@ class ListingExpirySchedulerTest {
 
         when(listingRepository.findPublishedListingsPublishedBefore(any(LocalDateTime.class)))
                 .thenReturn(List.of(badListing, goodListing));
+
+        when(listingBoostRepository.findActiveByListingIds(any())).thenReturn(List.of());
 
         // First save throws, second succeeds
         when(listingRepository.save(badListing))
