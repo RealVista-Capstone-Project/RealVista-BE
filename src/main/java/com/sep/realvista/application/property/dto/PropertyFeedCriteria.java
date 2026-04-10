@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Data
@@ -22,4 +23,16 @@ public class PropertyFeedCriteria {
 
     @Parameter(description = "Filter by location ID (ward/district/city)")
     private UUID locationId;
+
+    @Parameter(description = "Minimum price for rent")
+    private BigDecimal minRentPrice;
+
+    @Parameter(description = "Maximum price for rent")
+    private BigDecimal maxRentPrice;
+
+    @Parameter(description = "Minimum price for buy")
+    private BigDecimal minBuyPrice;
+
+    @Parameter(description = "Maximum price for buy")
+    private BigDecimal maxBuyPrice;
 }
