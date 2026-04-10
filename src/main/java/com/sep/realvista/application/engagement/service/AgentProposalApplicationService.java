@@ -7,8 +7,10 @@ import com.sep.realvista.application.engagement.mapper.AgentProposalMapper;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
-import com.sep.realvista.domain.engagement.proposal.AgentProposalStatus;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
+import com.sep.realvista.domain.engagement.proposal.AgentProposalStatus;
+import com.sep.realvista.domain.property.PropertyType;
+import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,6 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -28,7 +33,7 @@ public class AgentProposalApplicationService {
 
     private final AgentProposalRepository agentProposalRepository;
     private final AgentProposalMapper agentProposalMapper;
-    private final com.sep.realvista.domain.property.repository.PropertyTypeRepository propertyTypeRepository;
+    private final PropertyTypeRepository propertyTypeRepository;
 
     @Transactional
     public AgentProposalDto createProposal(UUID userId, ApplyAgentProposalRequest request) {
@@ -87,9 +92,11 @@ public class AgentProposalApplicationService {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
         Page<AgentProposal> proposals = agentProposalRepository.findByUserId(userId, pageable);
 
-        List<AgentProposalDto> content = proposals.getContent().stream()
+        List<AgentProposal> pageEntities = proposals.getContent();
+        List<AgentProposalDto> content = pageEntities.stream()
                 .map(agentProposalMapper::toDto)
                 .collect(Collectors.toList());
+        attachSpecialtyCodes(content, pageEntities);
 
         return PageResponse.<AgentProposalDto>builder()
                 .content(content)
@@ -122,7 +129,33 @@ public class AgentProposalApplicationService {
         }
 
         return propertyTypeRepository.findByCode(specialty)
-                .map(com.sep.realvista.domain.property.PropertyType::getPropertyTypeId)
+                .map(PropertyType::getPropertyTypeId)
                 .orElse(null);
+    }
+
+    /**
+     * Resolves {@link PropertyType#getCode()} for each non-null specialty id (batch).
+     */
+    private Map<UUID, String> loadSpecialtyCodesById(Set<UUID> specialtyIds) {
+        if (specialtyIds == null || specialtyIds.isEmpty()) {
+            return Map.of();
+        }
+        return propertyTypeRepository.findAllByIdIn(specialtyIds).stream()
+                .filter(pt -> pt.getCode() != null && !pt.getCode().isBlank())
+                .collect(Collectors.toMap(PropertyType::getPropertyTypeId, PropertyType::getCode, (a, b) -> a));
+    }
+
+    private void attachSpecialtyCodes(List<AgentProposalDto> dtos, List<AgentProposal> entities) {
+        Set<UUID> ids = entities.stream()
+                .map(AgentProposal::getSpecialty)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> codeById = loadSpecialtyCodesById(ids);
+        for (int i = 0; i < dtos.size(); i++) {
+            UUID sid = entities.get(i).getSpecialty();
+            if (sid != null) {
+                dtos.get(i).setSpecialtyCode(codeById.get(sid));
+            }
+        }
     }
 }
