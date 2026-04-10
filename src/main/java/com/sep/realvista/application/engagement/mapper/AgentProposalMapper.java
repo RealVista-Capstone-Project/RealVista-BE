@@ -20,6 +20,8 @@ public class AgentProposalMapper {
                 .experienceYears(proposal.getExperienceYears())
                 .status(proposal.getStatus())
                 .pitchContent(proposal.getPitchContent())
+                .specialty(proposal.getSpecialty())
+                .priceRange(proposal.getPriceRange())
                 .createdAt(proposal.getCreatedAt())
                 .updatedAt(proposal.getUpdatedAt())
                 .build();

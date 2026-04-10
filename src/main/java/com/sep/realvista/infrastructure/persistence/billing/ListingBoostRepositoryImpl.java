@@ -1,5 +1,6 @@
 package com.sep.realvista.infrastructure.persistence.billing;
 
+import com.sep.realvista.domain.billing.boost.BoostType;
 import com.sep.realvista.domain.billing.boost.ListingBoost;
 import com.sep.realvista.domain.billing.boost.ListingBoostStatus;
 import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
@@ -8,19 +9,51 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
 public class ListingBoostRepositoryImpl implements ListingBoostRepository {
 
-    private final ListingBoostJpaRepository jpaRepository;
+    private final ListingBoostJpaRepository jpa;
+
+    @Override
+    public ListingBoost save(ListingBoost listingBoost) {
+        return jpa.save(listingBoost);
+    }
+
+    @Override
+    public Optional<ListingBoost> findById(UUID id) {
+        return jpa.findById(id);
+    }
+
+    @Override
+    public List<ListingBoost> findActiveByListingId(UUID listingId) {
+        return jpa.findByListingIdAndStatusAndDeletedFalse(listingId, ListingBoostStatus.ACTIVE);
+    }
+
+    @Override
+    public Optional<ListingBoost> findActiveByListingIdAndBoostType(UUID listingId, BoostType boostType) {
+        return jpa.findByListingIdAndBoostTypeAndStatusAndDeletedFalse(
+                listingId, boostType, ListingBoostStatus.ACTIVE);
+    }
+
+    @Override
+    public List<ListingBoost> findActiveByUserId(UUID userId) {
+        return jpa.findByUserIdAndStatusAndDeletedFalse(userId, ListingBoostStatus.ACTIVE);
+    }
+
+    @Override
+    public List<ListingBoost> findActiveByListingIds(List<UUID> listingIds) {
+        return jpa.findByListingIdInAndStatusAndDeletedFalse(listingIds, ListingBoostStatus.ACTIVE);
+    }
 
     @Override
     public List<ListingBoost> findAllActiveByListingIds(List<UUID> listingIds, LocalDate now) {
         if (listingIds == null || listingIds.isEmpty()) {
             return List.of();
         }
-        return jpaRepository.findAllActiveByListingIds(listingIds, ListingBoostStatus.ACTIVE, now);
+        return jpa.findAllActiveByListingIds(listingIds, ListingBoostStatus.ACTIVE, now);
     }
 }
