@@ -43,7 +43,8 @@ public class AgentProposalController {
     @PostMapping
     @PreAuthorize("hasRole('AGENT')")
     @Operation(summary = "Create a new proposal template",
-               description = "Submit a proposal template. Set status to DRAFT for a partial save; omit or ACTIVE to publish.")
+               description = "Submit a proposal template. "
+                       + "Set status to DRAFT for a partial save; omit or ACTIVE to publish.")
     public ResponseEntity<ApiResponse<AgentProposalDto>> createProposal(
             @AuthenticationPrincipal SecurityUserDetails userDetails,
             @Valid @RequestBody ApplyAgentProposalRequest request) {

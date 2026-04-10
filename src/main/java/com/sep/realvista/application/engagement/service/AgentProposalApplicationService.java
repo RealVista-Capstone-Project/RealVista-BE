@@ -4,7 +4,6 @@ import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.AgentProposalDto;
 import com.sep.realvista.application.engagement.dto.ApplyAgentProposalRequest;
 import com.sep.realvista.application.engagement.mapper.AgentProposalMapper;
-import com.sep.realvista.domain.agent.AgentProfile;
 import com.sep.realvista.domain.agent.AgentProfileRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
