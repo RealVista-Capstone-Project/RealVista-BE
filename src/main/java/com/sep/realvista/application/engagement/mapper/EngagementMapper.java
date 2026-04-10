@@ -1,5 +1,6 @@
 package com.sep.realvista.application.engagement.mapper;
 
+import com.sep.realvista.application.engagement.dto.EngagementDto;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
 import com.sep.realvista.application.engagement.dto.SoldListingInfo;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
@@ -12,6 +13,7 @@ import com.sep.realvista.domain.property.attribute.PropertyAttribute;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.user.User;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 
 import java.util.List;
@@ -26,7 +28,22 @@ public interface EngagementMapper {
     /**
      * Simple mapping from Engagement entity to EngagementDto.
      */
+    @Mapping(target = "content", source = "content", qualifiedByName = "jsonNodeToString")
+    @Mapping(target = "listingTitle", ignore = true)
+    @Mapping(target = "propertyAddress", ignore = true)
+    @Mapping(target = "propertyImageUrl", ignore = true)
     EngagementDto toDto(Engagement engagement);
+
+    @Named("jsonNodeToString")
+    default String jsonNodeToString(com.fasterxml.jackson.databind.JsonNode node) {
+        if (node == null) {
+            return null;
+        }
+        return node.toString();
+    }
+
+    /**
+     * Maps an Engagement with its associated agent User, AgentProfile,
      * review status, listing thumbnail, and property attributes
      * to a HiredAgentResponse DTO.
      *
