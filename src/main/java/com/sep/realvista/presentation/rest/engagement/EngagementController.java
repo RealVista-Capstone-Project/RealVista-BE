@@ -1,14 +1,8 @@
 package com.sep.realvista.presentation.rest.engagement;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
-import com.sep.realvista.application.common.dto.PageResponse;
-import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
-import com.sep.realvista.application.engagement.dto.CreateReviewRequest;
 import com.sep.realvista.application.engagement.dto.EngagementDto;
-import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
-import com.sep.realvista.application.engagement.dto.ReviewResponse;
 import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
-import com.sep.realvista.application.engagement.service.AgentReviewApplicationService;
 import com.sep.realvista.application.engagement.service.EngagementApplicationService;
 import com.sep.realvista.application.service.engagement.EngagementService;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
@@ -45,7 +39,6 @@ public class EngagementController {
 
     private final EngagementService engagementService;
     private final EngagementApplicationService engagementApplicationService;
-    private final AgentReviewApplicationService agentReviewApplicationService;
 
     @GetMapping
     @Operation(summary = "Get my engagements", description = "Retrieve all engagements initiated by the current user")
