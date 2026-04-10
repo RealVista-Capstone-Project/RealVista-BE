@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -38,6 +39,7 @@ class EmailServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(emailService, "fromEmail", "noreply@realvista.com");
     }
 
     @Test

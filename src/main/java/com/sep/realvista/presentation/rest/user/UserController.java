@@ -5,6 +5,7 @@ import com.sep.realvista.application.user.dto.ChangePasswordRequest;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UpdateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
+import com.sep.realvista.application.user.dto.UserSearchResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -57,6 +59,18 @@ public class UserController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("User created successfully", user));
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search user by email", description = "Finds user for owner assignment (masked phone)")
+    public ResponseEntity<ApiResponse<UserSearchResponse>> searchUserByEmail(@RequestParam String email) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        log.info("Searching user by email - traceId: {}, email: {}", traceId, email);
+
+        UserSearchResponse user = userApplicationService.searchUserByEmail(email);
+        return ResponseEntity.ok(ApiResponse.success(user));
     }
 
     @GetMapping("/{id}")

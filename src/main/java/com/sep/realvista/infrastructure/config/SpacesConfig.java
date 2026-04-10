@@ -28,12 +28,17 @@ public class SpacesConfig {
 
     @Bean
     public S3Client s3Client() {
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+        String safeAccessKey = (accessKey == null || accessKey.trim().isEmpty()) ? "dummy-access-key" : accessKey;
+        String safeSecretKey = (secretKey == null || secretKey.trim().isEmpty()) ? "dummy-secret-key" : secretKey;
+        String safeRegion = (region == null || region.trim().isEmpty()) ? "sgp1" : region;
+        String safeEndpoint = (endpoint == null || endpoint.trim().isEmpty()) ? "https://sgp1.digitaloceanspaces.com" : endpoint;
+
+        AwsBasicCredentials credentials = AwsBasicCredentials.create(safeAccessKey, safeSecretKey);
 
         return S3Client.builder()
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .region(Region.of(region))
-                .endpointOverride(URI.create(endpoint))
+                .region(Region.of(safeRegion))
+                .endpointOverride(URI.create(safeEndpoint))
                 .serviceConfiguration(S3Configuration.builder()
                         .pathStyleAccessEnabled(false)
                         .build())

@@ -101,10 +101,16 @@ public class MapSearchRequest {
     private String searchText;
 
     /**
-     * Optional property category/type filter.
+     * Optional property category filter.
      */
-    @Schema(description = "Property category filter", example = "apartment")
-    private String category;
+    @Schema(description = "Property category filter", example = "residential")
+    private String propertyCategory;
+
+    /**
+     * Optional property type filter.
+     */
+    @Schema(description = "Property type filter", example = "apartment")
+    private String propertyType;
 
     /**
      * Optional filter for number of bedrooms.

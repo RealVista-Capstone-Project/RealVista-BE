@@ -22,6 +22,10 @@ public interface UserMapper {
     @Mapping(target = "email", source = "email.value")
     @Mapping(target = "fullName", source = ".", qualifiedByName = "getFullName")
     @Mapping(target = "roles", source = "userRoles", qualifiedByName = "userRolesToStrings")
+    @Mapping(target = "isEmailVerified", expression = "java(user.isEmailVerified())")
+    @Mapping(target = "isPhoneVerified", expression = "java(user.isPhoneVerified())")
+    @Mapping(target = "emailVerifiedAt", source = "emailVerifiedAt")
+    @Mapping(target = "phoneVerifiedAt", source = "phoneVerifiedAt")
     UserResponse toResponse(User user);
 
     @Mapping(target = "userId", ignore = true)
@@ -34,6 +38,8 @@ public interface UserMapper {
     @Mapping(target = "emailVerifiedAt", ignore = true)
     @Mapping(target = "phoneVerifiedAt", ignore = true)
     @Mapping(target = "businessName", ignore = true)
+    @Mapping(target = "workingStartTime", ignore = true)
+    @Mapping(target = "workingEndTime", ignore = true)
     User toEntity(CreateUserRequest request);
 
     @Named("stringToEmail")

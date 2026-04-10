@@ -53,5 +53,10 @@ public class UserRepositoryImpl implements UserRepository {
     public boolean hasRole(UUID userId, RoleCode roleCode) {
         return jpaRepository.hasRole(userId, roleCode);
     }
+
+    @Override
+    public Optional<User> findByPhone(String phone) {
+        return jpaRepository.findByPhone(phone);
+    }
 }
 

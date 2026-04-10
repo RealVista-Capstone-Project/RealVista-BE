@@ -10,6 +10,8 @@ import com.sep.realvista.application.conversation.service.ConversationApplicatio
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.conversation.MessageType;
+import com.sep.realvista.domain.common.value.Email;
+import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -39,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @AutoConfigureMockMvc
 @DisplayName("ConversationController Component Tests")
 class ConversationControllerComponentTest {
@@ -73,6 +77,18 @@ class ConversationControllerComponentTest {
                 List.of(),
                 true
         );
+
+        User currentUser = User.builder()
+                .userId(currentUserId)
+                .email(Email.of("test@example.com"))
+                .build();
+        User otherUser = User.builder()
+                .userId(otherUserId)
+                .email(Email.of("other@example.com"))
+                .build();
+
+        when(userDomainService.getUserOrThrow(eq(currentUserId))).thenReturn(currentUser);
+        when(userDomainService.getUserOrThrow(eq(otherUserId))).thenReturn(otherUser);
     }
 
     @Nested

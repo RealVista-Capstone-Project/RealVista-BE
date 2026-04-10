@@ -20,6 +20,8 @@ public class MapSearchCriteria {
     private final BigDecimal minPrice;
     private final BigDecimal maxPrice;
     private final String searchText;
+    private final String propertyCategory;
+    private final String propertyType;
     private final List<String> categories;
     private final Integer bedrooms;
     private final Integer bathrooms;

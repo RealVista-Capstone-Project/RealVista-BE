@@ -39,6 +39,26 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     @Query("SELECT l FROM Listing l WHERE l.status = :status AND l.deleted = false")
     List<Listing> findByStatus(@Param("status") ListingStatus status);
 
+    /**
+     * Find all PUBLISHED listings whose publishedAt timestamp is strictly before the given cutoff.
+     * Used by the listing expiry scheduler.
+     */
+    @Query("SELECT l FROM Listing l "
+            + "WHERE l.status = 'PUBLISHED' AND l.deleted = false "
+            + "AND l.publishedAt < :cutoff")
+    List<Listing> findPublishedListingsPublishedBefore(@Param("cutoff") java.time.LocalDateTime cutoff);
+
+    /**
+     * Find all PUBLISHED listings whose publishedAt timestamp is strictly before the given windowEnd
+     * and greater than or equal to windowStart.
+     * Used by the listing expiry scheduler to send warning notifications.
+     */
+    @Query("SELECT l FROM Listing l "
+            + "WHERE l.status = 'PUBLISHED' AND l.deleted = false "
+            + "AND l.publishedAt >= :windowStart AND l.publishedAt < :windowEnd")
+    List<Listing> findPublishedListingsPublishedBetween(@Param("windowStart") java.time.LocalDateTime windowStart,
+                                                        @Param("windowEnd") java.time.LocalDateTime windowEnd);
+
     @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status "
             + "AND l.deleted = false")
     List<Listing> findByListingTypeAndStatus(@Param("listingType") ListingType listingType,
@@ -52,6 +72,15 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
 
     @Query("SELECT l FROM Listing l WHERE l.deleted = false")
     List<Listing> findByDeletedFalse();
+
+    @Query("SELECT COUNT(l) > 0 FROM Listing l WHERE l.property.propertyId = :propertyId "
+            + "AND l.listingType = :listingType AND l.status = :status AND l.userId = :userId "
+            + "AND l.deleted = false")
+    boolean existsByPropertyIdAndListingTypeAndStatusAndUserId(
+            @Param("propertyId") UUID propertyId,
+            @Param("listingType") ListingType listingType,
+            @Param("status") ListingStatus status,
+            @Param("userId") UUID userId);
 
     /**
      * Find published listings within geographical bounds with all filters.
@@ -93,6 +122,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
                   LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
               ))
               AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
+              AND (:propertyCategory IS NULL OR LOWER(pc.code) = LOWER(:propertyCategory))
+              AND (:propertyType IS NULL OR LOWER(pt.code) = LOWER(:propertyType))
               AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
               AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
               AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -108,6 +139,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             @Param("searchText") String searchText,
             @Param("categories") List<String> categories,
             @Param("filterByCategory") boolean filterByCategory,
+            @Param("propertyCategory") String propertyCategory,
+            @Param("propertyType") String propertyType,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area,
@@ -152,6 +185,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
                   LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
               ))
               AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
+              AND (:propertyCategory IS NULL OR LOWER(pc.code) = LOWER(:propertyCategory))
+              AND (:propertyType IS NULL OR LOWER(pt.code) = LOWER(:propertyType))
               AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
               AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
               AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -167,6 +202,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             @Param("searchText") String searchText,
             @Param("categories") List<String> categories,
             @Param("filterByCategory") boolean filterByCategory,
+            @Param("propertyCategory") String propertyCategory,
+            @Param("propertyType") String propertyType,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area,
@@ -211,6 +248,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
                   LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
               ))
               AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
+              AND (:propertyCategory IS NULL OR LOWER(pc.code) = LOWER(:propertyCategory))
+              AND (:propertyType IS NULL OR LOWER(pt.code) = LOWER(:propertyType))
               AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
               AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
               AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -226,6 +265,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             @Param("searchText") String searchText,
             @Param("categories") List<String> categories,
             @Param("filterByCategory") boolean filterByCategory,
+            @Param("propertyCategory") String propertyCategory,
+            @Param("propertyType") String propertyType,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area,
@@ -270,6 +311,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
                   LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
               ))
               AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
+              AND (:propertyCategory IS NULL OR LOWER(pc.code) = LOWER(:propertyCategory))
+              AND (:propertyType IS NULL OR LOWER(pt.code) = LOWER(:propertyType))
               AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
               AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
               AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -285,6 +328,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             @Param("searchText") String searchText,
             @Param("categories") List<String> categories,
             @Param("filterByCategory") boolean filterByCategory,
+            @Param("propertyCategory") String propertyCategory,
+            @Param("propertyType") String propertyType,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area,
@@ -329,6 +374,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
                   LOWER(loc.name) LIKE LOWER(CONCAT('%', :searchText, '%'))
               ))
               AND (:filterByCategory = false OR LOWER(pc.code) IN (:categories))
+              AND (:propertyCategory IS NULL OR LOWER(pc.code) = LOWER(:propertyCategory))
+              AND (:propertyType IS NULL OR LOWER(pt.code) = LOWER(:propertyType))
               AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
               AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
               AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
@@ -342,6 +389,8 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             @Param("searchText") String searchText,
             @Param("categories") List<String> categories,
             @Param("filterByCategory") boolean filterByCategory,
+            @Param("propertyCategory") String propertyCategory,
+            @Param("propertyType") String propertyType,
             @Param("bedrooms") Integer bedrooms,
             @Param("bathrooms") Integer bathrooms,
             @Param("area") BigDecimal area);

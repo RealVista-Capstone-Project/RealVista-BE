@@ -26,6 +26,7 @@ public class ListingSearchResponse {
     private ListingStatus status;
     private BigDecimal price;
     private Double area; // Usable size
+    private String content;
 
     @JsonProperty("street_address")
     private String streetAddress;

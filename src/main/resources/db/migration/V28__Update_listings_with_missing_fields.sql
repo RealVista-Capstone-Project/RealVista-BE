@@ -103,7 +103,7 @@ SET slug = LOWER(
         ),
         '-+', '-', 'g'
     )
-) || '-' || FLOOR(RANDOM() * 10000 + 1000)::text
+) || '-' || SUBSTRING(listing_id::text, 1, 8)
 WHERE deleted = FALSE;
 
 -- ============================================================================
@@ -112,7 +112,7 @@ WHERE deleted = FALSE;
 
 -- Update any remaining duplicate slugs by appending additional random numbers
 UPDATE listings 
-SET slug = slug || '-' || FLOOR(RANDOM() * 10000 + 1000)::text
+SET slug = slug || '-' || SUBSTRING(listing_id::text, 1, 8)
 WHERE listing_id IN (
     SELECT listing_id FROM (
         SELECT listing_id, 

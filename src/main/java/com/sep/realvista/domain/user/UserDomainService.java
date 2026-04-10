@@ -19,6 +19,12 @@ public class UserDomainService {
         }
     }
 
+    public void validateUniquePhone(String phone) {
+        if (phone != null && !phone.isBlank() && userRepository.findByPhone(phone).isPresent()) {
+            throw new BusinessConflictException("Phone number already exists: " + phone, "PHONE_NUMBER_ALREADY_EXISTS");
+        }
+    }
+
     public User getUserOrThrow(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));

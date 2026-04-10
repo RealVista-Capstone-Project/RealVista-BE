@@ -1,0 +1,75 @@
+package com.sep.realvista.application.property.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sep.realvista.application.listing.dto.AmenityDTO;
+import com.sep.realvista.application.listing.dto.LocationInfoDTO;
+import com.sep.realvista.application.listing.dto.MediaDTO;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
+import com.sep.realvista.domain.property.PropertyStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PropertySummaryResponse {
+    @JsonProperty("property_id")
+    private UUID propertyId;
+
+    @JsonProperty("property_type_id")
+    private UUID propertyTypeId;
+
+    @JsonProperty("street_address")
+    private String streetAddress;
+
+    @JsonProperty("land_size_m2")
+    private BigDecimal landSizeM2;
+
+    @JsonProperty("usable_size_m2")
+    private BigDecimal usableSizeM2;
+
+    @JsonProperty("width_m")
+    private BigDecimal widthM;
+
+    @JsonProperty("length_m")
+    private BigDecimal lengthM;
+
+    @JsonProperty("area_sqft")
+    private BigDecimal areaSqft;
+
+    private String description;
+
+    private PropertyStatus status;
+
+    private List<PropertyAttributeDTO> attributes;
+
+    @JsonProperty("property_type_info")
+    private PropertyTypeInfoDTO propertyTypeInfo;
+
+    @JsonProperty("location_info")
+    private LocationInfoDTO locationInfo;
+
+    private List<MediaDTO> media;
+
+    @JsonProperty("thumbnail_url")
+    private String thumbnailUrl;
+
+    private List<AmenityDTO> amenities;
+    
+    @JsonProperty("owner_name")
+    private String ownerName;
+
+    @JsonProperty("owner_phone")
+    private String ownerPhone;
+
+    @JsonProperty("has_3d")
+    private boolean has3d;
+}

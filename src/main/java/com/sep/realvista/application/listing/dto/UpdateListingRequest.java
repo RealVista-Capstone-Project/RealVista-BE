@@ -1,5 +1,6 @@
 package com.sep.realvista.application.listing.dto;
 
+import com.sep.realvista.domain.listing.ListingType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -9,6 +10,8 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * DTO for updating an existing listing.
@@ -36,10 +39,30 @@ public class UpdateListingRequest {
 
     private Boolean isNegotiable;
 
+    private String content;
+
     /**
      * Available from date - only for RENT listings.
      * NULL or past/today date = Available immediately.
      * Future date = Available from that specific date.
      */
     private LocalDate availableFrom;
+
+    /**
+     * Ordered list of property media IDs selected for this listing.
+     * The order determines display_order (0-indexed).
+     */
+    private List<UUID> mediaIds;
+
+    /**
+     * The property media ID that should be marked as primary (is_primary = true).
+     * Must be one of the items in mediaIds.
+     */
+    private UUID primaryMediaId;
+
+    /**
+     * The listing type (RENT / SALE).
+     * Can only be updated if the listing is not PUBLISHED, SOLD, or RENTED.
+     */
+    private ListingType listingType;
 }

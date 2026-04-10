@@ -38,8 +38,8 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-        use_sql_comments: true
+        format_sql: false
+        use_sql_comments: false
         jdbc:
           batch_size: 20
         order_inserts: true
@@ -118,6 +118,17 @@ realvista:
   recommendation:
     threshold: ${RECOMMENDATION_THRESHOLD:5}
     default-limit: ${RECOMMENDATION_DEFAULT_LIMIT:10}
+  listing:
+    # Maximum number of days a listing may remain PUBLISHED (business rule: 14 days)
+    max-lifetime-days: ${LISTING_MAX_LIFETIME_DAYS:14}
+    # Cron expression for the expiry job – runs at the top of every hour by default
+    expiry-cron: ${LISTING_EXPIRY_CRON:0 0 * * * *}
+    expiry-warning-days: ${LISTING_EXPIRY_WARNING_DAYS:3}
+    expiry-warning-cron: ${LISTING_EXPIRY_WARNING_CRON:0 0 8 * * *}
+
+  marble:
+    api-url: ${MARBLE_API_URL:https://api.worldlabs.ai/marble/v1}
+    api-key: ${MARBLE_API_KEY:}
 
 # Actuator Configuration
 management:
@@ -144,8 +155,8 @@ logging:
     root: ${LOG_LEVEL:INFO}
     com.sep.realvista: DEBUG
     org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    # org.hibernate.SQL: DEBUG
+    # org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:
     console: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
     file: '%d{yyyy-MM-dd HH:mm:ss} - %X{traceId} - %5p [%t] %c{1}:%L - %m%n'
@@ -174,3 +185,33 @@ digitalocean:
     endpoint: ${DIGITALOCEAN_SPACES_ENDPOINT:https://sgp1.digitaloceanspaces.com}
     bucket-name: ${DIGITALOCEAN_SPACES_BUCKET_NAME:realvista}
     cdn-endpoint: ${DIGITALOCEAN_SPACES_CDN_ENDPOINT:}
+
+# ── DocuSign eSignature Configuration ──
+docusign:
+  integration-key: ${DOCUSIGN_INTEGRATION_KEY:}
+  user-id: ${DOCUSIGN_USER_ID:}
+  account-id: ${DOCUSIGN_ACCOUNT_ID:}
+  rsa-private-key: ${DOCUSIGN_RSA_PRIVATE_KEY:}
+  base-url: ${DOCUSIGN_BASE_URL:https://demo.docusign.net/restapi}
+  auth-server: ${DOCUSIGN_AUTH_SERVER:account-d.docusign.com}
+  return-url: ${DOCUSIGN_RETURN_URL:http://localhost:3000}
+  webhook-hmac-key: ${DOCUSIGN_WEBHOOK_HMAC_KEY:}
+  lease-template-id: ${DOCUSIGN_LEASE_TEMPLATE_ID:}
+
+# ── Payment Gateway Configuration ──
+# PayOS: api-url MUST be the API host only — PayOsService appends "/v2/payment-requests".
+# Register webhook URL on PayOS dashboard: https://<public-host>/api/v1/billing/webhook/payos
+# (PayOS cannot reach http://localhost — use ngrok/cloudflare tunnel for local dev.)
+# Values in .env (PAYOS_CLIENT_ID, etc.) override only when referenced below with ${...}.
+payment:
+  payos:
+    client-id: ${PAYOS_CLIENT_ID:28f71985-98d1-4ec1-a030-2ed3674b4205}
+    api-key: ${PAYOS_API_KEY:a1a2c844-8483-4bde-9848-6858a28dbfcd}
+    checksum-key: ${PAYOS_CHECKSUM_KEY:d5feead23b6f0f02afdadd0880f49a2ba38ec0c78d13be759cad61aaf6531824}
+    api-url: ${PAYOS_API_URL:https://api-merchant.payos.vn}
+  vnpay:
+    tmn-code: ${VNPAY_TMN_CODE:P5IZ4AXX}
+    hash-secret: ${VNPAY_HASH_SECRET:1LTYQVYIN4PKUOSX81JTLDDBJ6Z4Y3C1}
+    pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+    # Must match Return URL on VNPay merchant (register this exact URL, including query).
+    return-url: "${VNPAY_RETURN_URL:http://localhost:3000/vi/subscribe}"

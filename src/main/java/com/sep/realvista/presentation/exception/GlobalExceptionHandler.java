@@ -95,10 +95,14 @@ public class GlobalExceptionHandler {
         List<ErrorResponse.ValidationError> validationErrors = ex.getBindingResult()
                 .getAllErrors()
                 .stream()
-                .map(error -> ErrorResponse.ValidationError.builder()
-                        .field(((FieldError) error).getField())
-                        .message(error.getDefaultMessage())
-                        .build())
+                .map(error -> {
+                    String field = error instanceof FieldError fieldError 
+                            ? fieldError.getField() : error.getObjectName();
+                    return ErrorResponse.ValidationError.builder()
+                            .field(field)
+                            .message(error.getDefaultMessage())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         ErrorResponse error = ErrorResponse.builder()
@@ -201,6 +205,24 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST.value())
                 .message(ex.getMessage())
                 .errorCode("INVALID_ARGUMENT")
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalStateException(
+            IllegalStateException ex,
+            HttpServletRequest request
+    ) {
+        log.error("Illegal state: {}", ex.getMessage());
+
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message(ex.getMessage())
+                .errorCode("ILLEGAL_STATE")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
                 .build();

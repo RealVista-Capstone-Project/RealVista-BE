@@ -19,7 +19,11 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
 import java.util.UUID;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "property_medias", indexes = {
@@ -63,9 +67,17 @@ public class PropertyMedia extends BaseEntity {
     @Column(name = "thumbnail_url", columnDefinition = "TEXT")
     private String thumbnailUrl;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private Map<String, Object> metadata;
+
     @Column(name = "is_primary")
     @Builder.Default
     private Boolean isPrimary = false;
+
+    @Column(name = "is_property_standard")
+    @Builder.Default
+    private Boolean isPropertyStandard = true;
 
     public void markAsPrimary() {
         this.isPrimary = true;
@@ -85,6 +97,14 @@ public class PropertyMedia extends BaseEntity {
         this.thumbnailUrl = url;
     }
 
+    public void updateMetadata(MediaType type, String thumbnailUrl, Boolean isPrimary) {
+        if (type != null) {
+            this.mediaType = type;
+        }
+        this.thumbnailUrl = thumbnailUrl;
+        this.isPrimary = isPrimary != null ? isPrimary : false;
+    }
+
     public boolean isImage() {
         return mediaType == MediaType.IMAGE;
     }
@@ -95,5 +115,11 @@ public class PropertyMedia extends BaseEntity {
 
     public boolean is3D() {
         return mediaType == MediaType.THREE_D;
+    }
+
+    public void updateRoomNameInMetadata(String newRoomName) {
+        if (this.metadata != null) {
+            this.metadata.put("room_name", newRoomName);
+        }
     }
 }

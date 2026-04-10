@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -88,6 +89,13 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
+    public boolean existsByPropertyIdAndListingTypeAndStatusAndUserId(
+            UUID propertyId, ListingType listingType, ListingStatus status, UUID userId) {
+        return jpaRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
+                propertyId, listingType, status, userId);
+    }
+
+    @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }
@@ -113,6 +121,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                         criteria.getBounds(), typeStr,
                         criteria.getMinPrice(), criteria.getMaxPrice(),
                         criteria.getSearchText(), categories, filterByCategory,
+                        criteria.getPropertyCategory(), criteria.getPropertyType(),
                         criteria.getBedrooms(), criteria.getBathrooms(),
                         criteria.getArea(), criteria.getSize(), offset);
             }
@@ -120,6 +129,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                     criteria.getBounds(), typeStr,
                     criteria.getMinPrice(), criteria.getMaxPrice(),
                     criteria.getSearchText(), categories, filterByCategory,
+                    criteria.getPropertyCategory(), criteria.getPropertyType(),
                     criteria.getBedrooms(), criteria.getBathrooms(),
                     criteria.getArea(), criteria.getSize(), offset);
         } else if ("createdAt".equalsIgnoreCase(criteria.getSortBy())) {
@@ -127,6 +137,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                     criteria.getBounds(), typeStr,
                     criteria.getMinPrice(), criteria.getMaxPrice(),
                     criteria.getSearchText(), categories, filterByCategory,
+                    criteria.getPropertyCategory(), criteria.getPropertyType(),
                     criteria.getBedrooms(), criteria.getBathrooms(),
                     criteria.getArea(), criteria.getSize(), offset);
         }
@@ -136,6 +147,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                 criteria.getBounds(), typeStr,
                 criteria.getMinPrice(), criteria.getMaxPrice(),
                 criteria.getSearchText(), categories, filterByCategory,
+                criteria.getPropertyCategory(), criteria.getPropertyType(),
                 criteria.getBedrooms(), criteria.getBathrooms(),
                 criteria.getArea(), criteria.getSize(), offset);
     }
@@ -151,6 +163,7 @@ public class ListingRepositoryImpl implements ListingRepository {
                 criteria.getBounds(), criteria.getListingTypeStr(),
                 criteria.getMinPrice(), criteria.getMaxPrice(),
                 criteria.getSearchText(), categories, filterByCategory,
+                criteria.getPropertyCategory(), criteria.getPropertyType(),
                 criteria.getBedrooms(), criteria.getBathrooms(),
                 criteria.getArea());
     }
@@ -159,5 +172,17 @@ public class ListingRepositoryImpl implements ListingRepository {
     public List<SimilarListing> findSimilarListings(UUID listingId, int limit) {
         log.debug("Finding similar listings for listingId: {}, limit: {}", listingId, limit);
         return customRepository.findSimilarListings(listingId, limit);
+    }
+
+    @Override
+    public List<Listing> findPublishedListingsPublishedBefore(LocalDateTime cutoff) {
+        log.debug("Finding published listings published before: {}", cutoff);
+        return jpaRepository.findPublishedListingsPublishedBefore(cutoff);
+    }
+
+    @Override
+    public List<Listing> findPublishedListingsPublishedBetween(LocalDateTime windowStart, LocalDateTime windowEnd) {
+        log.debug("Finding published listings published between: {} and {}", windowStart, windowEnd);
+        return jpaRepository.findPublishedListingsPublishedBetween(windowStart, windowEnd);
     }
 }

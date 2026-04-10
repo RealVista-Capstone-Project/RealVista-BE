@@ -10,130 +10,169 @@ import java.util.List;
  */
 public final class SecurityConstants {
 
-    private SecurityConstants() {
-        throw new AssertionError("Cannot instantiate constants class");
+  private SecurityConstants() {
+    throw new AssertionError("Cannot instantiate constants class");
+  }
+
+  /**
+   * JWT token constants.
+   */
+  public static final class Jwt {
+    public static final String TOKEN_PREFIX = "Bearer ";
+    public static final String HEADER_NAME = "Authorization";
+    public static final String TOKEN_TYPE = "Bearer";
+    public static final long DEFAULT_EXPIRATION_MS = 86400000L; // 24 hours
+
+    private Jwt() {
+      throw new AssertionError("Cannot instantiate constants class");
     }
+  }
+
+  /**
+   * Public endpoints that don't require authentication.
+   */
+  public static final class PublicEndpoints {
+    public static final String[] PUBLIC_PATHS = {
+        "/api/v1/public/**",
+        "/api/v1/auth/**",
+        "/api/v1/listings/**",
+        "/v1/api-docs/**",
+        "/swagger-ui/**",
+        "/swagger-ui.html",
+        "/actuator/**",
+        "/actuator/health/**",
+        "/oauth2/**",
+        "/login/oauth2/**",
+        "/ws/**",
+        "/api/test/**",
+        "/api/v1/test/**",
+        "/api/v1/map/**",
+        "/api/v1/locations/**",
+        "/api/v1/billing/plans/**",
+        "/api/v1/billing/packages/**",
+        "/api/v1/billing/webhook/**",
+        "/api/v1/billing/payment/vnpay-return",
+        "/api/v1/leases/docusign/webhook"
+    };
+
+    private PublicEndpoints() {
+      throw new AssertionError("Cannot instantiate constants class");
+    }
+  }
+
+  /**
+   * Internal service-to-service endpoints protected by API key.
+   */
+  public static final class InternalEndpoints {
+    public static final String[] INTERNAL_PATHS = {
+        "/internal/**"
+    };
+
+    public static final String API_KEY_HEADER = "x-service-api-key";
+
+    private InternalEndpoints() {
+      throw new AssertionError("Cannot instantiate constants class");
+    }
+  }
+
+  /**
+   * OAuth2 constants.
+   */
+  public static final class OAuth2 {
+    // Frontend redirect paths
+    public static final String CALLBACK_PATH = "/vi/auth/callback";
+    public static final String ERROR_PATH = "/login";
+
+    // Query parameter names
+    public static final String PARAM_ACCESS_TOKEN = "access_token";
+    public static final String PARAM_USER_ID = "user_id";
+    public static final String PARAM_EMAIL = "email";
+    public static final String PARAM_ROLES = "roles";
+    public static final String PARAM_ERROR = "error";
+
+    // Error types
+    public static final String ERROR_NO_EMAIL = "no_email";
+    public static final String ERROR_AUTH_FAILED = "auth_failed";
+
+    private OAuth2() {
+      throw new AssertionError("Cannot instantiate constants class");
+    }
+  }
+
+  /**
+   * Cache names.
+   */
+  public static final class Cache {
+    public static final String USERS = "users";
+    public static final String USER_DETAILS = "userDetails";
+    public static final String RECOMMENDATIONS = "recommendations";
+    public static final int DEFAULT_TTL_MINUTES = 60;
+
+    private Cache() {
+      throw new AssertionError("Cannot instantiate constants class");
+    }
+  }
+
+  /**
+   * CORS configuration.
+   * Allowed origins can be extended via the CORS_ALLOWED_ORIGINS environment
+   * variable
+   * (comma-separated list, e.g.
+   * "http://localhost:3000,http://152.42.235.208:8080").
+   */
+  public static final class Cors {
+    public static final List<String> DEFAULT_ORIGINS = List.of(
+        "http://localhost:3000",
+        "https://0fb4-14-161-6-119.ngrok-free.app",
+        "https://db7b-14-161-6-119.ngrok-free.app"
+    );
+
+    public static final List<String> ALLOWED_METHODS = List.of(
+        "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
+    );
+
+    public static final List<String> ALLOWED_HEADERS = List.of(
+        "Authorization", "Content-Type", "Accept", "Origin"
+    );
+
+    public static final List<String> EXPOSED_HEADERS = List.of(
+        "Authorization", "Content-Disposition"
+    );
+
+    public static final long MAX_AGE_SECONDS = 3600L;
 
     /**
-     * JWT token constants.
+     * Builds the allowed origins list from DEFAULT_ORIGINS + CORS_ALLOWED_ORIGINS env var.
      */
-    public static final class Jwt {
-        public static final String TOKEN_PREFIX = "Bearer ";
-        public static final String HEADER_NAME = "Authorization";
-        public static final String TOKEN_TYPE = "Bearer";
-        public static final long DEFAULT_EXPIRATION_MS = 86400000L; // 24 hours
+    public static List<String> getAllowedOrigins() {
+      String extra = System.getenv("CORS_ALLOWED_ORIGINS");
+      if (extra == null || extra.isBlank()) {
+        return DEFAULT_ORIGINS;
+      }
 
-        private Jwt() {
-            throw new AssertionError("Cannot instantiate constants class");
+      List<String> origins = new java.util.ArrayList<>(DEFAULT_ORIGINS);
+      for (String origin : extra.split(",")) {
+        String trimmed = origin.trim();
+        if (!trimmed.isEmpty() && !origins.contains(trimmed)) {
+          origins.add(trimmed);
         }
+      }
+      return List.copyOf(origins);
     }
 
-    /**
-     * Public endpoints that don't require authentication.
-     */
-    public static final class PublicEndpoints {
-        public static final String[] PUBLIC_PATHS = {
-                "/api/v1/auth/**",
-                "/api/v1/listings/**",
-                "/v1/api-docs/**",
-                "/swagger-ui/**",
-                "/swagger-ui.html",
-                "/actuator/**",
-                "/actuator/health/**",
-                "/oauth2/**",
-                "/login/oauth2/**",
-                "/ws/**",
-                "api/test/**",
-                "/api/v1/test/**",
-                "/api/v1/map/**"
-        };
-
-        private PublicEndpoints() {
-            throw new AssertionError("Cannot instantiate constants class");
-        }
+    private Cors() {
+      throw new AssertionError("Cannot instantiate constants class");
     }
+  }
 
-    /**
-     * OAuth2 constants.
-     */
-    public static final class OAuth2 {
-        // Frontend redirect paths
-        public static final String CALLBACK_PATH = "/vi/auth/callback";
-        public static final String ERROR_PATH = "/login";
+  /**
+   * OAuth2 URL paths.
+   */
+  public static final class Url {
+    public static final String LOGIN_GOOGLE = "/api/v1/auth/login-google";
 
-        // Query parameter names
-        public static final String PARAM_ACCESS_TOKEN = "access_token";
-        public static final String PARAM_USER_ID = "user_id";
-        public static final String PARAM_EMAIL = "email";
-        public static final String PARAM_ROLES = "roles";
-        public static final String PARAM_ERROR = "error";
-
-        // Error types
-        public static final String ERROR_NO_EMAIL = "no_email";
-        public static final String ERROR_AUTH_FAILED = "auth_failed";
-
-        private OAuth2() {
-            throw new AssertionError("Cannot instantiate constants class");
-        }
+    private Url() {
+      throw new AssertionError("Cannot instantiate constants class");
     }
-
-    /**
-     * Cache names.
-     */
-    public static final class Cache {
-        public static final String USERS = "users";
-        public static final String USER_DETAILS = "userDetails";
-        public static final String RECOMMENDATIONS = "recommendations";
-        public static final int DEFAULT_TTL_MINUTES = 60;
-
-        private Cache() {
-            throw new AssertionError("Cannot instantiate constants class");
-        }
-    }
-
-    /**
-     * CORS configuration.
-     * Allowed origins can be extended via the CORS_ALLOWED_ORIGINS environment variable
-     * (comma-separated list, e.g. "http://localhost:3000,http://152.42.235.208:8080").
-     */
-    public static final class Cors {
-        public static final List<String> DEFAULT_ORIGINS = List.of("http://localhost:3000");
-        public static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS");
-        public static final List<String> ALLOWED_HEADERS = List.of("Authorization", "Content-Type", "Accept", "Origin");
-        public static final List<String> EXPOSED_HEADERS = List.of("Authorization", "Content-Disposition");
-        public static final long MAX_AGE_SECONDS = 3600L;
-
-        /**
-         * Builds the allowed origins list from DEFAULT_ORIGINS + CORS_ALLOWED_ORIGINS env var.
-         */
-        public static List<String> getAllowedOrigins() {
-            String extra = System.getenv("CORS_ALLOWED_ORIGINS");
-            if (extra == null || extra.isBlank()) {
-                return DEFAULT_ORIGINS;
-            }
-            List<String> origins = new java.util.ArrayList<>(DEFAULT_ORIGINS);
-            for (String origin : extra.split(",")) {
-                String trimmed = origin.trim();
-                if (!trimmed.isEmpty() && !origins.contains(trimmed)) {
-                    origins.add(trimmed);
-                }
-            }
-            return List.copyOf(origins);
-        }
-
-        private Cors() {
-            throw new AssertionError("Cannot instantiate constants class");
-        }
-    }
-
-    /**
-     * OAuth2 URL paths.
-     */
-    public static final class Url {
-        public static final String LOGIN_GOOGLE = "/api/v1/auth/login-google";
-
-        private Url() {
-            throw new AssertionError("Cannot instantiate constants class");
-        }
-    }
+  }
 }

@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -27,8 +28,12 @@ public class MediaDTO {
     private String thumbnailUrl;
     @JsonProperty("is_primary")
     private Boolean isPrimary;
+    @JsonProperty("is_property_standard")
+    private Boolean isPropertyStandard;
     @JsonProperty("display_order")
     private Integer displayOrder;
+    @JsonProperty("metadata")
+    private Map<String, Object> metadata;
 
     // Helper methods for UI
     public boolean isImage() {

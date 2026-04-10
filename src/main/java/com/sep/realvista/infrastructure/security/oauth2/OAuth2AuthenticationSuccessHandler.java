@@ -1,12 +1,9 @@
 package com.sep.realvista.infrastructure.security.oauth2;
 
 import com.sep.realvista.application.auth.service.TokenService;
-import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.user.User;
-import com.sep.realvista.domain.user.UserRepository;
-import com.sep.realvista.domain.user.UserStatus;
+import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.infrastructure.constants.SecurityConstants;
-import com.sep.realvista.infrastructure.security.util.PasswordUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -32,20 +29,17 @@ import java.util.UUID;
 @Slf4j
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private final UserRepository userRepository;
+    private final UserApplicationService userApplicationService;
     private final TokenService tokenService;
-    private final PasswordUtil passwordUtil;
     private final String frontendUrl;
 
     public OAuth2AuthenticationSuccessHandler(
-            UserRepository userRepository,
+            UserApplicationService userApplicationService,
             TokenService tokenService,
-            PasswordUtil passwordUtil,
             @Value("${spring.application.frontend.url}") String frontendUrl
     ) {
-        this.userRepository = userRepository;
+        this.userApplicationService = userApplicationService;
         this.tokenService = tokenService;
-        this.passwordUtil = passwordUtil;
         this.frontendUrl = frontendUrl;
     }
 
@@ -73,8 +67,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 return;
             }
 
-            // Find or create user
-            User user = findOrCreateUser(email, firstName, lastName, avatarUrl);
+            // Find or create user and ensure roles are initialized
+            User user = userApplicationService.processOAuth2User(email, firstName, lastName, avatarUrl);
 
             // Extract roles from user
             List<String> roles = user.getUserRoles().stream()
@@ -106,37 +100,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         }
     }
 
-    private User findOrCreateUser(String email, String firstName, String lastName, String avatarUrl) {
-        return userRepository.findByEmailValue(email)
-                .orElseGet(() -> createNewOAuth2User(email, firstName, lastName, avatarUrl));
-    }
 
-    private User createNewOAuth2User(String email, String firstName, String lastName, String avatarUrl) {
-        log.info("Creating new user from OAuth2 login: {}", email);
-
-        // Generate a random hashed password for OAuth2 users (they won't use it)
-        String hashedPassword = passwordUtil.generateRandomHashedPassword();
-
-        // Generate business name from user's name or email
-        String businessName = (firstName != null && lastName != null)
-                ? firstName + " " + lastName
-                : email.split("@")[0];
-
-        User newUser = User.builder()
-                .email(Email.of(email))
-                .passwordHash(hashedPassword)
-                .firstName(firstName)
-                .lastName(lastName)
-                .businessName(businessName)
-                .avatarUrl(avatarUrl)
-                .status(UserStatus.ACTIVE) // OAuth2 users are automatically active
-                .build();
-
-        User savedUser = userRepository.save(newUser);
-        log.info("New OAuth2 user created with ID: {}", savedUser.getUserId());
-
-        return savedUser;
-    }
 
     private String buildSuccessRedirectUrl(String jwtToken, UUID userId, String email) {
         return UriComponentsBuilder
