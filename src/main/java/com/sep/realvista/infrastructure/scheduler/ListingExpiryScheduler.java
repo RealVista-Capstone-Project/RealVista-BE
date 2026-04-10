@@ -1,5 +1,10 @@
 package com.sep.realvista.infrastructure.scheduler;
 
+import com.sep.realvista.domain.billing.boost.BoostType;
+import com.sep.realvista.domain.billing.boost.ListingBoost;
+import com.sep.realvista.domain.billing.boost.UserListingBoostPackage;
+import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
+import com.sep.realvista.domain.billing.boost.repository.UserListingBoostPackageRepository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +23,7 @@ import com.sep.realvista.domain.user.notification.EventType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -25,12 +31,14 @@ import java.util.Map;
 public class ListingExpiryScheduler {
 
     private final ListingRepository listingRepository;
+    private final ListingBoostRepository listingBoostRepository;
+    private final UserListingBoostPackageRepository userBoostPackageRepository;
     private final NotificationApplicationService notificationApplicationService;
     private final UserRepository userRepository;
 
     @Value("${realvista.listing.max-lifetime-days:14}")
     private long maxLifetimeDays;
-    
+
     @Value("${realvista.listing.expiry-warning-days:3}")
     private long expiryWarningDays;
 
@@ -38,7 +46,7 @@ public class ListingExpiryScheduler {
     @Transactional
     public void expireStaleListings() {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(maxLifetimeDays);
-        log.info("Running listing expiry scheduler – cutoff: {}, maxLifetimeDays: {}", cutoff, maxLifetimeDays);
+        log.info("Running listing expiry scheduler - cutoff: {}, maxLifetimeDays: {}", cutoff, maxLifetimeDays);
 
         List<Listing> expiredListings = listingRepository.findPublishedListingsPublishedBefore(cutoff);
 
@@ -49,8 +57,17 @@ public class ListingExpiryScheduler {
 
         log.info("Found {} listing(s) to expire.", expiredListings.size());
 
+        // Get listing IDs for boost lookup
+        List<UUID> listingIds = expiredListings.stream().map(Listing::getListingId).toList();
+
+        // Find all active boosts for these listings
+        List<ListingBoost> activeBoosts = listingBoostRepository.findActiveByListingIds(listingIds);
+        log.info("Found {} active boost(s) to expire for these listings.", activeBoosts.size());
+
         int successCount = 0;
         int errorCount = 0;
+        int boostsExpiredCount = 0;
+        int quotasReturnedCount = 0;
 
         for (Listing listing : expiredListings) {
             try {
@@ -58,14 +75,54 @@ public class ListingExpiryScheduler {
                 listing.unpublish();
                 listingRepository.save(listing);
                 successCount++;
+
+                // Expire any active boosts for this listing
+                List<ListingBoost> listingBoosts = activeBoosts.stream()
+                        .filter(b -> b.getListingId().equals(listing.getListingId()))
+                        .toList();
+
+                for (ListingBoost boost : listingBoosts) {
+                    try {
+                        boost.expire();
+                        listingBoostRepository.save(boost);
+                        boostsExpiredCount++;
+
+                        // Return quota if user's package is still valid
+                        UUID userId = boost.getUserId();
+                        UUID boostPackageId = boost.getBoostPackageId();
+                        List<UserListingBoostPackage> userPackages = userBoostPackageRepository
+                                .findAllActiveByUserId(userId);
+
+                        for (UserListingBoostPackage userPackage : userPackages) {
+                            if (userPackage.getBoostPackageId().equals(boostPackageId)
+                                    && userPackage.isUsable()) {
+                                if (boost.getBoostType() == BoostType.FEATURED) {
+                                    userPackage.incrementFeaturedQuota();
+                                } else {
+                                    userPackage.incrementHotBadgeQuota();
+                                }
+                                userBoostPackageRepository.save(userPackage);
+                                quotasReturnedCount++;
+                                log.info("Returned {} quota to user [id={}] for package [id={}]",
+                                        boost.getBoostType(), userId, boostPackageId);
+                                break;
+                            }
+                        }
+                    } catch (Exception ex) {
+                        log.error("Failed to expire boost [id={}] for listing [id={}]: {}",
+                                boost.getListingBoostId(), listing.getListingId(), ex.getMessage(), ex);
+                    }
+                }
             } catch (Exception ex) {
-                // Catch per-listing errors so a single bad record doesn't abort the whole batch.
+                // Catch per-listing errors so a single bad record doesn't abort the whole
+                // batch.
                 log.error("Failed to expire listing [id={}]: {}", listing.getListingId(), ex.getMessage(), ex);
                 errorCount++;
             }
         }
 
-        log.info("Listing expiry complete – expired: {}, errors: {}", successCount, errorCount);
+        log.info("Listing expiry complete - expired: {}, errors: {}, boostsExpired: {}, quotasReturned: {}",
+                successCount, errorCount, boostsExpiredCount, quotasReturnedCount);
     }
 
     @Scheduled(cron = "${realvista.listing.expiry-warning-cron:0 0 8 * * *}")
@@ -76,7 +133,7 @@ public class ListingExpiryScheduler {
         LocalDateTime windowEnd = LocalDateTime.now().minusDays(daysOldTarget);
         LocalDateTime windowStart = windowEnd.minusDays(1);
 
-        log.info("Running listing expiry warning scheduler – windowStart: {}, windowEnd: {}, warningDays: {}",
+        log.info("Running listing expiry warning scheduler - windowStart: {}, windowEnd: {}, warningDays: {}",
                 windowStart, windowEnd, expiryWarningDays);
 
         List<Listing> expiringListings = listingRepository
@@ -98,14 +155,14 @@ public class ListingExpiryScheduler {
                     SendNotificationRequest request = SendNotificationRequest.builder()
                             .userId(user.getUserId())
                             .userEmail(user.getEmail() != null ? user.getEmail().getValue() : null)
-                            .title("Tin đăng sắp hết hạn")
-                            .message(String.format("Tin đăng '%s' của bạn sẽ hết hạn trong %d ngày tới.",
+                            .title("Tin dang sap het han")
+                            .message(String.format("Tin dang '%s' cua ban se het han trong %d ngay toi.",
                                     listing.getName(), expiryWarningDays))
                             .eventType(EventType.LISTING_EXPIRING_SOON)
                             .entityType(EntityType.LISTING)
                             .entityId(listing.getListingId())
                             .metadata(Map.of("listingId", listing.getListingId().toString(),
-                                             "slug", listing.getSlug()))
+                                    "slug", listing.getSlug()))
                             .build();
 
                     notificationApplicationService.sendNotification(request);
@@ -120,6 +177,6 @@ public class ListingExpiryScheduler {
             }
         }
 
-        log.info("Listing expiry warning complete – notified: {}, errors: {}", successCount, errorCount);
+        log.info("Listing expiry warning complete - notified: {}, errors: {}", successCount, errorCount);
     }
 }

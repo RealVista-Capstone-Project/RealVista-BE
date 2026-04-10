@@ -39,6 +39,11 @@ public interface AgentProposalRepository {
     boolean existsByUserIdAndTitle(UUID userId, String title);
 
     /**
+     * Same as {@link #existsByUserIdAndTitle} but ignores the proposal with {@code excludeId}.
+     */
+    boolean existsByUserIdAndTitleExcludingId(UUID userId, String title, UUID excludeId);
+
+    /**
      * Deletes a proposal by ID.
      */
     void deleteById(UUID id);

@@ -18,6 +18,11 @@ import java.util.UUID;
  * Provides data access methods for hired agent engagement queries.
  */
 public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID> {
+    Optional<Engagement> findTopByInitiatorIdAndReceiverIdAndEngagementTypeAndDeletedFalseOrderByUpdatedAtDesc(
+            UUID initiatorId,
+            UUID receiverId,
+            com.sep.realvista.domain.engagement.EngagementType engagementType
+    );
 
   /**
    * Finds hired agent engagements filtered by a specific status,

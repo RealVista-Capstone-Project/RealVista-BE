@@ -5,6 +5,8 @@ import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +35,13 @@ public class PropertyTypeRepositoryImpl implements PropertyTypeRepository {
     @Override
     public List<PropertyType> findAllActive() {
         return jpaRepository.findAllActive();
+    }
+  
+    public List<PropertyType> findAllByIdIn(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return jpaRepository.findAllById(ids);
     }
 
     @Override
