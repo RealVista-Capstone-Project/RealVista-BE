@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +33,10 @@ public class EngagementController {
     @Operation(summary = "Get my engagements", description = "Retrieve all engagements initiated by the current user")
     public ResponseEntity<ApiResponse<List<EngagementDto>>> getMyEngagements(
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentication required"));
+        }
         return ResponseEntity.ok(ApiResponse.success(
                 engagementService.getMyEngagements(userDetails.getUserId())
         ));
@@ -44,6 +49,10 @@ public class EngagementController {
     public ResponseEntity<ApiResponse<EngagementDto>> cancelEngagement(
             @PathVariable UUID id,
             @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentication required"));
+        }
         return ResponseEntity.ok(ApiResponse.success(
                 engagementService.cancelEngagement(id, userDetails.getUserId())
         ));

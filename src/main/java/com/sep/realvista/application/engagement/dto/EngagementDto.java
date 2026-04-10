@@ -1,6 +1,5 @@
 package com.sep.realvista.application.engagement.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.sep.realvista.domain.engagement.EngagementStatus;
 import com.sep.realvista.domain.engagement.EngagementType;
 import lombok.Builder;
@@ -26,8 +25,7 @@ public class EngagementDto {
     private String propertyAddress;
     private String propertyImageUrl;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    /** ISO-8601; avoid fixed pattern without fractional seconds (DB timestamps often have nanos). */
     private LocalDateTime createdAt;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
 }

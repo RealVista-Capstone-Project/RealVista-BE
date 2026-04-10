@@ -4,10 +4,14 @@ import com.sep.realvista.application.engagement.dto.EngagementDto;
 import com.sep.realvista.domain.engagement.Engagement;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class EngagementMapper {
 
     private final ListingRepository listingRepository;
@@ -22,13 +26,24 @@ public class EngagementMapper {
         String propertyImageUrl = "";
 
         if (engagement.getListingId() != null) {
-            var listing = listingRepository.findById(engagement.getListingId()).orElse(null);
-            if (listing != null) {
-                listingTitle = listing.getName();
-                if (listing.getProperty() != null) {
-                    propertyAddress = listing.getProperty().getStreetAddress();
+            try {
+                var listing = listingRepository.findById(engagement.getListingId()).orElse(null);
+                if (listing != null) {
+                    listingTitle = Optional.ofNullable(listing.getName()).orElse("");
+                    if (listing.getProperty() != null) {
+                        propertyAddress = Optional.ofNullable(listing.getProperty().getStreetAddress())
+                                .orElse("");
+                    }
+                    propertyImageUrl = listingRepository
+                            .findThumbnailByListingId(listing.getListingId())
+                            .orElse("");
                 }
-                propertyImageUrl = listingRepository.findThumbnailByListingId(listing.getListingId()).orElse("");
+            } catch (Exception ex) {
+                log.warn(
+                        "Failed to enrich engagement {} with listing {}: {}",
+                        engagement.getEngagementId(),
+                        engagement.getListingId(),
+                        ex.toString());
             }
         }
 
