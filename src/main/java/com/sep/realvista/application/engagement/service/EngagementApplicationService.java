@@ -286,6 +286,8 @@ public class EngagementApplicationService {
         contentMap.put("commissionRate", proposalTemplate.getCommissionRate());
         contentMap.put("experienceYears", proposalTemplate.getExperienceYears());
         contentMap.put("pitchContent", proposalTemplate.getPitchContent());
+        contentMap.put("specialty", proposalTemplate.getSpecialty());
+        contentMap.put("priceRange", proposalTemplate.getPriceRange());
         contentMap.put("message", request.getMessage() != null ? request.getMessage() : "");
 
         // 4. Create the engagement
