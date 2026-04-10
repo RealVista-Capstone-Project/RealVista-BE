@@ -454,6 +454,24 @@ public class PropertyApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public List<com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO> getPropertyTypes() {
+        log.info("Getting all active property types");
+        return propertyTypeRepository.findAllActive().stream()
+                .map(pt -> {
+                    var cat = pt.getPropertyCategory();
+                    return com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO.builder()
+                            .propertyTypeId(pt.getPropertyTypeId())
+                            .propertyTypeName(pt.getName())
+                            .propertyTypeCode(pt.getCode())
+                            .propertyCategoryId(cat != null ? cat.getPropertyCategoryId() : null)
+                            .propertyCategoryName(cat != null ? cat.getName() : null)
+                            .propertyCategoryCode(cat != null ? cat.getCode() : null)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<com.sep.realvista.application.listing.dto.AmenityDTO> getAmenities() {
         log.info("Getting all amenities");
         return amenityJpaRepository.findAll().stream()
