@@ -46,7 +46,7 @@ public class EngagementService {
             );
         }
 
-        engagement.cancel();
+        engagement.cancel("Cancelled by user");
         Engagement saved = engagementRepository.save(engagement);
         return engagementMapper.toDto(saved);
     }
