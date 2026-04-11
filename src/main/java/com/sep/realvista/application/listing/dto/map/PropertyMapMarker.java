@@ -1,6 +1,7 @@
 package com.sep.realvista.application.listing.dto.map;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.shared.util.AddressFormatter;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class PropertyMapMarker {
 
     /**
@@ -41,19 +43,14 @@ public class PropertyMapMarker {
     /**
      * Street address of the property.
      */
-    @JsonProperty("street_address")
     private String streetAddress;
 
-    @JsonProperty("ward_name")
     private String wardName;
 
-    @JsonProperty("district_name")
     private String districtName;
 
-    @JsonProperty("city_name")
     private String cityName;
 
-    @JsonProperty("full_address")
     public String getFullAddress() {
         return AddressFormatter.formatFullAddress(streetAddress, wardName, districtName, cityName);
     }
@@ -94,10 +91,8 @@ public class PropertyMapMarker {
     /**
      * Boost information for markers.
      */
-    @JsonProperty("is_boosted")
     private Boolean isBoosted;
 
-    @JsonProperty("boost_packages")
     private List<String> boostPackages;
 
     /**
@@ -112,6 +107,7 @@ public class PropertyMapMarker {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class CoordinatesDTO {
         private BigDecimal latitude;
         private BigDecimal longitude;

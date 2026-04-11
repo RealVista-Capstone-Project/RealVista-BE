@@ -204,7 +204,9 @@ class ListingSearchServiceIntegrationTest {
     private void createAttributeValue(Property property, PropertyAttribute attribute, int value) {
         PropertyAttributeValue pav = PropertyAttributeValue.builder()
                 .propertyId(property.getPropertyId())
+                .property(property)
                 .propertyAttributeId(attribute.getPropertyAttributeId())
+                .propertyAttribute(attribute)
                 .valueNumber(BigDecimal.valueOf(value))
                 .build();
         entityManager.persist(pav);

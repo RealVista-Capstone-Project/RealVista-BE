@@ -1,5 +1,6 @@
 package com.sep.realvista.application.listing.service;
 
+import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.application.listing.dto.map.MapSearchRequest;
 import com.sep.realvista.application.listing.dto.map.MapSearchResponse;
 import com.sep.realvista.application.listing.dto.map.PropertyMapMarker;
@@ -7,13 +8,10 @@ import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.billing.boost.ListingBoost;
 import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
 import com.sep.realvista.domain.listing.Listing;
-import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
-import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.search.MapBounds;
 import com.sep.realvista.domain.listing.search.MapSearchCriteria;
-import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.location.Location;
@@ -46,7 +44,6 @@ public class MapSearchApplicationService {
 
     private final ListingRepository listingRepository;
     private final PropertyRepository propertyRepository;
-    private final ListingMediaRepository listingMediaRepository;
     private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
     private final BookmarkRepository bookmarkRepository;
     private final ListingBoostRepository listingBoostRepository;
@@ -67,6 +64,12 @@ public class MapSearchApplicationService {
                 request.getListingType(), request.getPage(), request.getSize());
 
         MapBounds bounds = determineBounds(request);
+        if (bounds == null) {
+            log.warn("Map search request with missing bounds - returning empty");
+            return buildEmptyResponse(request,
+                    MapBounds.of(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+        }
+
         MapSearchCriteria criteria = buildCriteria(request, bounds);
 
         Long totalCount = listingRepository.countPublishedWithinBounds(criteria);
@@ -79,32 +82,85 @@ public class MapSearchApplicationService {
         Set<UUID> bookmarkedIds = fetchBookmarkedIds(listings, userId);
         Map<UUID, List<ListingBoost>> activeBoostsByListingId = fetchActiveBoosts(listings);
 
-        List<PropertyMapMarker> markers = listings.stream()
-                .map(l -> convertToMapMarker(l,
-                        attributesByPropertyId.getOrDefault(l.getPropertyId(), List.of()),
-                        bookmarkedIds.contains(l.getListingId()),
-                        activeBoostsByListingId.getOrDefault(l.getListingId(), List.of())))
-                .filter(Objects::nonNull)
-                .toList();
+        List<ListingSearchResponse> content = listings.stream()
+                .map(l -> {
+                    ListingSearchResponse response = listingMapper.toSearchResponse(l);
 
-        return buildSearchResponse(request, markers, totalCount, criteria.getPage(), criteria.getSize());
+                    // Populate address fields and coordinates
+                    if (l.getProperty() != null) {
+                        response.setStreetAddress(l.getProperty().getStreetAddress());
+                        Location loc = l.getProperty().getLocation();
+                        while (loc != null) {
+                            switch (loc.getType()) {
+                                case CITY -> response.setCityName(loc.getName());
+                                case DISTRICT -> response.setDistrictName(loc.getName());
+                                case WARD -> response.setWardName(loc.getName());
+                                default -> { }
+                            }
+                            loc = loc.getParent();
+                        }
+
+                        if (l.getProperty().getLatitude() != null && l.getProperty().getLongitude() != null) {
+                            response.setCoordinates(PropertyMapMarker.CoordinatesDTO.builder()
+                                    .latitude(l.getProperty().getLatitude())
+                                    .longitude(l.getProperty().getLongitude())
+                                    .build());
+                        }
+                    }
+
+                    // Populate thumbnail
+                    listingRepository.findThumbnailByListingId(l.getListingId())
+                            .ifPresent(response::setThumbnail);
+
+                    // Populate favorite status
+                    response.setIsFavorite(bookmarkedIds.contains(l.getListingId()));
+
+                    // Populate boost information
+                    List<ListingBoost> boosts = activeBoostsByListingId.getOrDefault(l.getListingId(), List.of());
+                    if (!boosts.isEmpty()) {
+                        response.setIsBoosted(true);
+                        response.setBoostPackages(boosts.stream()
+                                .map(b -> b.getBoostType().name())
+                                .collect(Collectors.toList()));
+                    } else {
+                        response.setIsBoosted(false);
+                        response.setBoostPackages(List.of());
+                    }
+
+                    // Populate attributes and extract bedrooms/bathrooms
+                    UUID propertyId = l.getPropertyId();
+                    List<PropertyAttributeValue> attrs = attributesByPropertyId.getOrDefault(propertyId, List.of());
+                    response.setAttributes(listingMapper.toAttributeList(attrs));
+
+                    // extract stats
+                    attrs.forEach(attr -> {
+                        if (attr.getPropertyAttribute() != null && attr.getPropertyAttribute().getCode() != null) {
+                            String code = attr.getPropertyAttribute().getCode().toLowerCase();
+                            if ("phong-ngu".equals(code) || "bedrooms".equals(code)) {
+                                response.setBedrooms(attr.getValueNumber() != null
+                                        ? attr.getValueNumber().intValue() : null);
+                            } else if ("phong-tam".equals(code) || "bathrooms".equals(code)) {
+                                response.setBathrooms(attr.getValueNumber() != null
+                                        ? attr.getValueNumber().intValue() : null);
+                            }
+                        }
+                    });
+
+                    return response;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return buildSearchResponse(request, content, totalCount, criteria.getPage(), criteria.getSize());
     }
 
     private MapBounds determineBounds(MapSearchRequest request) {
-        boolean hasSearchText = request.getSearchText() != null && !request.getSearchText().isEmpty();
-        boolean hasRequestBounds = request.getNorthLat() != null && request.getSouthLat() != null
-                && request.getEastLng() != null && request.getWestLng() != null;
-
-        if (hasSearchText) {
-            return MapBounds.of(new BigDecimal("90"), new BigDecimal("-90"),
-                    new BigDecimal("180"), new BigDecimal("-180"));
-        } else if (hasRequestBounds) {
+        if (request.getNorthLat() != null && request.getSouthLat() != null
+                && request.getEastLng() != null && request.getWestLng() != null) {
             return MapBounds.of(request.getNorthLat(), request.getSouthLat(),
                     request.getEastLng(), request.getWestLng());
-        } else {
-            return MapBounds.of(new BigDecimal("90"), new BigDecimal("-90"),
-                    new BigDecimal("180"), new BigDecimal("-180"));
         }
+        return null; // Signals invalid bounds
     }
 
     private MapSearchCriteria buildCriteria(MapSearchRequest request, MapBounds bounds) {
@@ -185,7 +241,7 @@ public class MapSearchApplicationService {
                 .build();
     }
 
-    private MapSearchResponse buildSearchResponse(MapSearchRequest request, List<PropertyMapMarker> markers,
+    private MapSearchResponse buildSearchResponse(MapSearchRequest request, List<ListingSearchResponse> markers,
             Long totalCount, int pageNumber, int pageSize) {
         int totalPages = (int) Math.ceil((double) totalCount / pageSize);
 
@@ -254,60 +310,4 @@ public class MapSearchApplicationService {
                 .build();
     }
 
-    /**
-     * Convert listing to map marker using pre-fetched attribute values.
-     */
-    private PropertyMapMarker convertToMapMarker(Listing listing,
-            List<PropertyAttributeValue> attrValues, boolean isFavorite, List<ListingBoost> boosts) {
-        // Fetch property
-        Property property = propertyRepository.findById(listing.getPropertyId()).orElse(null);
-        if (property == null) {
-            log.warn("Property not found for listing {}", listing.getListingId());
-            return null;
-        }
-
-        // Fetch thumbnail
-        String thumbnailUrl = null;
-        List<ListingMedia> medias = listingMediaRepository
-                .findByListingIdOrderByDisplayOrderAsc(listing.getListingId());
-        if (!medias.isEmpty() && medias.getFirst().getPropertyMedia() != null) {
-            thumbnailUrl = medias.getFirst().getPropertyMedia().getMediaUrl();
-        }
-
-        return PropertyMapMarker.builder()
-                .listingId(listing.getListingId())
-                .slug(listing.getSlug())
-                .coordinates(PropertyMapMarker.CoordinatesDTO.builder()
-                        .latitude(property.getLatitude())
-                        .longitude(property.getLongitude())
-                        .build())
-                .streetAddress(property.getStreetAddress())
-                .wardName(extractLocationName(property.getLocation(), "WARD"))
-                .districtName(extractLocationName(property.getLocation(), "DISTRICT"))
-                .cityName(extractLocationName(property.getLocation(), "CITY"))
-                .price(listing.getPrice())
-                .listingType(listing.getListingType())
-                .name(listing.getName())
-                .thumbnailUrl(thumbnailUrl)
-                .sizeM2(property.getUsableSizeM2() != null ? property.getUsableSizeM2() : property.getLandSizeM2())
-                .propertyType(property.getPropertyType() != null ? property.getPropertyType().getName() : null)
-                .isFavorite(isFavorite)
-                .isBoosted(!boosts.isEmpty())
-                .boostPackages(boosts.stream()
-                        .map(b -> b.getBoostType().name())
-                        .collect(Collectors.toList()))
-                .attributes(listingMapper.toAttributeList(attrValues))
-                .build();
-    }
-
-    private String extractLocationName(Location location, String type) {
-        Location current = location;
-        while (current != null) {
-            if (current.getType().name().equals(type)) {
-                return current.getName();
-            }
-            current = current.getParent();
-        }
-        return null;
-    }
 }

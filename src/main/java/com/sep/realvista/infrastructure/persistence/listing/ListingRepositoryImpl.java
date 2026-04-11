@@ -118,7 +118,9 @@ public class ListingRepositoryImpl implements ListingRepository {
         if ("price".equalsIgnoreCase(criteria.getSortBy())) {
             if ("asc".equalsIgnoreCase(criteria.getSortDirection())) {
                 return jpaRepository.findPublishedWithinBoundsSortByPriceAsc(
-                        criteria.getBounds(), typeStr,
+                        criteria.getBounds().northLat(), criteria.getBounds().southLat(),
+                        criteria.getBounds().eastLng(), criteria.getBounds().westLng(),
+                        typeStr,
                         criteria.getMinPrice(), criteria.getMaxPrice(),
                         criteria.getSearchText(), categories, filterByCategory,
                         criteria.getPropertyCategory(), criteria.getPropertyType(),
@@ -126,7 +128,9 @@ public class ListingRepositoryImpl implements ListingRepository {
                         criteria.getArea(), criteria.getSize(), offset);
             }
             return jpaRepository.findPublishedWithinBoundsSortByPriceDesc(
-                    criteria.getBounds(), typeStr,
+                    criteria.getBounds().northLat(), criteria.getBounds().southLat(),
+                    criteria.getBounds().eastLng(), criteria.getBounds().westLng(),
+                    typeStr,
                     criteria.getMinPrice(), criteria.getMaxPrice(),
                     criteria.getSearchText(), categories, filterByCategory,
                     criteria.getPropertyCategory(), criteria.getPropertyType(),
@@ -134,7 +138,9 @@ public class ListingRepositoryImpl implements ListingRepository {
                     criteria.getArea(), criteria.getSize(), offset);
         } else if ("createdAt".equalsIgnoreCase(criteria.getSortBy())) {
             return jpaRepository.findPublishedWithinBoundsSortByCreatedAt(
-                    criteria.getBounds(), typeStr,
+                    criteria.getBounds().northLat(), criteria.getBounds().southLat(),
+                    criteria.getBounds().eastLng(), criteria.getBounds().westLng(),
+                    typeStr,
                     criteria.getMinPrice(), criteria.getMaxPrice(),
                     criteria.getSearchText(), categories, filterByCategory,
                     criteria.getPropertyCategory(), criteria.getPropertyType(),
@@ -144,7 +150,9 @@ public class ListingRepositoryImpl implements ListingRepository {
 
         // Default: sort by publishedAt DESC
         return jpaRepository.findPublishedWithinBoundsSortByPublishedAt(
-                criteria.getBounds(), typeStr,
+                criteria.getBounds().northLat(), criteria.getBounds().southLat(),
+                criteria.getBounds().eastLng(), criteria.getBounds().westLng(),
+                typeStr,
                 criteria.getMinPrice(), criteria.getMaxPrice(),
                 criteria.getSearchText(), categories, filterByCategory,
                 criteria.getPropertyCategory(), criteria.getPropertyType(),
@@ -160,7 +168,9 @@ public class ListingRepositoryImpl implements ListingRepository {
         boolean filterByCategory = !categories.isEmpty();
 
         return jpaRepository.countPublishedWithinBounds(
-                criteria.getBounds(), criteria.getListingTypeStr(),
+                criteria.getBounds().northLat(), criteria.getBounds().southLat(),
+                criteria.getBounds().eastLng(), criteria.getBounds().westLng(),
+                criteria.getListingTypeStr(),
                 criteria.getMinPrice(), criteria.getMaxPrice(),
                 criteria.getSearchText(), categories, filterByCategory,
                 criteria.getPropertyCategory(), criteria.getPropertyType(),

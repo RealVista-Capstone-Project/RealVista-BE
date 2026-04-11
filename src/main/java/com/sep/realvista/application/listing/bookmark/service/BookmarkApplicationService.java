@@ -1,11 +1,12 @@
 package com.sep.realvista.application.listing.bookmark.service;
 
 import com.sep.realvista.application.common.dto.PageResponse;
-import com.sep.realvista.application.listing.bookmark.dto.BookmarkListingCardDTO;
 import com.sep.realvista.application.listing.bookmark.dto.BookmarkResponse;
 import com.sep.realvista.application.listing.bookmark.dto.GetBookmarksRequest;
 import com.sep.realvista.application.listing.bookmark.mapper.BookmarkMapper;
-import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.ListingSearchResponse;
+import com.sep.realvista.application.listing.mapper.ListingMapper;
+import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.bookmark.Bookmark;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
@@ -13,6 +14,7 @@ import com.sep.realvista.domain.listing.exception.ListingNotFoundException;
 import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
@@ -53,6 +55,7 @@ public class BookmarkApplicationService {
     private final PropertyAttributeValueRepository propertyAttributeValueRepository;
     private final ListingBoostRepository listingBoostRepository;
     private final BookmarkMapper bookmarkMapper;
+    private final ListingMapper listingMapper;
 
     /**
      * Toggles bookmark status for a listing.
@@ -111,7 +114,7 @@ public class BookmarkApplicationService {
      * @return paginated response of bookmarked listing cards
      */
     @Transactional(readOnly = true)
-    public PageResponse<BookmarkListingCardDTO> getBookmarks(UUID userId, GetBookmarksRequest request) {
+    public PageResponse<ListingSearchResponse> getBookmarks(UUID userId, GetBookmarksRequest request) {
         log.info("Getting bookmarks for user: {} with filters - listingType: {}, "
                         + "propertyTypes: {}, sort: {}, page: {}, size: {}",
                 userId, request.getListingType(), request.getPropertyTypes(),
@@ -157,31 +160,63 @@ public class BookmarkApplicationService {
         List<ListingBoost> allActiveBoosts = listingBoostRepository.findActiveByListingIds(listingIds);
 
         // Map bookmarks to DTOs
-        List<BookmarkListingCardDTO> content = bookmarksPage.getContent().stream()
+        List<ListingSearchResponse> content = bookmarksPage.getContent().stream()
                 .map(bookmark -> {
-                    UUID listingId = bookmark.getListingId();
-                    UUID propertyId = bookmark.getListing().getPropertyId();
-                    ListingMedia primaryMedia = primaryMediaMap.get(listingId);
-                    List<PropertyAttributeValue> attributes = attributesMap.getOrDefault(propertyId, List.of());
-
-                    BookmarkListingCardDTO dto = bookmarkMapper.toListingCard(
-                            bookmark, primaryMedia, attributes, allActiveBoosts);
-
-                    // Apply display priority numbers after mapping (business rule, not mapping concern)
-                    if (dto != null && dto.getAttributes() != null) {
-                        List<PropertyAttributeDTO> attrs = dto.getAttributes();
-                        for (int i = 0; i < attrs.size(); i++) {
-                            attrs.get(i).setPriority(i + 1);
+                    Listing listing = bookmark.getListing();
+                    ListingSearchResponse response = listingMapper.toSearchResponse(listing);
+                    
+                    // Populate address fields
+                    if (listing.getProperty() != null) {
+                        response.setStreetAddress(listing.getProperty().getStreetAddress());
+                        Location loc = listing.getProperty().getLocation();
+                        while (loc != null) {
+                            switch (loc.getType()) {
+                                case CITY -> response.setCityName(loc.getName());
+                                case DISTRICT -> response.setDistrictName(loc.getName());
+                                case WARD -> response.setWardName(loc.getName());
+                                default -> { }
+                            }
+                            loc = loc.getParent();
                         }
                     }
 
-                    return dto;
+                    // Populate thumbnail
+                    UUID listingId = bookmark.getListingId();
+                    ListingMedia primaryMedia = primaryMediaMap.get(listingId);
+                    if (primaryMedia != null && primaryMedia.getPropertyMedia() != null) {
+                        response.setThumbnail(primaryMedia.getPropertyMedia().getMediaUrl());
+                    }
+
+                    // Populate favorite status
+                    response.setIsFavorite(true);
+                    response.setBookmarkedAt(bookmark.getCreatedAt());
+
+                    // Populate boost information
+                    List<ListingBoost> boosts = allActiveBoosts.stream()
+                            .filter(b -> b.getListingId().equals(listingId))
+                            .toList();
+                    if (!boosts.isEmpty()) {
+                        response.setIsBoosted(true);
+                        response.setBoostPackages(boosts.stream()
+                                .map(b -> b.getBoostType().name())
+                                .collect(Collectors.toList()));
+                    } else {
+                        response.setIsBoosted(false);
+                        response.setBoostPackages(List.of());
+                    }
+
+                    // Populate attributes
+                    UUID propertyId = listing.getPropertyId();
+                    List<PropertyAttributeValue> attrs = attributesMap.getOrDefault(propertyId, List.of());
+                    response.setAttributes(listingMapper.toAttributeList(attrs));
+
+                    return response;
                 })
                 .collect(Collectors.toList());
 
         log.info("Retrieved {} bookmarks for user: {}", content.size(), userId);
 
-        return PageResponse.<BookmarkListingCardDTO>builder()
+        return PageResponse.<ListingSearchResponse>builder()
                 .content(content)
                 .page(bookmarksPage.getNumber())
                 .size(bookmarksPage.getSize())

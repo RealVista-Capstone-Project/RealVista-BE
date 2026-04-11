@@ -201,6 +201,20 @@ public class ListingSearchService {
                     : List.of();
             response.setAttributes(listingMapper.toAttributeList(attrs));
 
+            // Extract stats (bedrooms, bathrooms)
+            attrs.forEach(attr -> {
+                if (attr.getPropertyAttribute() != null && attr.getPropertyAttribute().getCode() != null) {
+                    String code = attr.getPropertyAttribute().getCode().toLowerCase();
+                    if ("phong-ngu".equals(code) || "bedrooms".equals(code)) {
+                        response.setBedrooms(attr.getValueNumber() != null
+                                ? attr.getValueNumber().intValue() : null);
+                    } else if ("phong-tam".equals(code) || "bathrooms".equals(code)) {
+                        response.setBathrooms(attr.getValueNumber() != null
+                                ? attr.getValueNumber().intValue() : null);
+                    }
+                }
+            });
+
             return response;
         });
     }
