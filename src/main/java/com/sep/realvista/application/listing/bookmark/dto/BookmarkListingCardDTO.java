@@ -78,4 +78,13 @@ public class BookmarkListingCardDTO {
     private BigDecimal usableSizeM2;
 
     private ListingStatus status;
+
+    @JsonProperty("is_boosted")
+    private Boolean isBoosted;
+
+    @JsonProperty("boost_package")
+    private String boostPackage;
+
+    @JsonProperty("user_type")
+    private String userType;
 }

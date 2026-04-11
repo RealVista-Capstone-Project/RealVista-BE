@@ -16,6 +16,8 @@ import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.billing.boost.ListingBoost;
+import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -49,6 +51,7 @@ public class BookmarkApplicationService {
     private final ListingRepository listingRepository;
     private final ListingMediaRepository listingMediaRepository;
     private final PropertyAttributeValueRepository propertyAttributeValueRepository;
+    private final ListingBoostRepository listingBoostRepository;
     private final BookmarkMapper bookmarkMapper;
 
     /**
@@ -150,6 +153,9 @@ public class BookmarkApplicationService {
         Map<UUID, List<PropertyAttributeValue>> attributesMap = allAttributes.stream()
                 .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId));
 
+        // Batch fetch active boosts for all listings
+        List<ListingBoost> allActiveBoosts = listingBoostRepository.findActiveByListingIds(listingIds);
+
         // Map bookmarks to DTOs
         List<BookmarkListingCardDTO> content = bookmarksPage.getContent().stream()
                 .map(bookmark -> {
@@ -158,7 +164,8 @@ public class BookmarkApplicationService {
                     ListingMedia primaryMedia = primaryMediaMap.get(listingId);
                     List<PropertyAttributeValue> attributes = attributesMap.getOrDefault(propertyId, List.of());
 
-                    BookmarkListingCardDTO dto = bookmarkMapper.toListingCard(bookmark, primaryMedia, attributes);
+                    BookmarkListingCardDTO dto = bookmarkMapper.toListingCard(
+                            bookmark, primaryMedia, attributes, allActiveBoosts);
 
                     // Apply display priority numbers after mapping (business rule, not mapping concern)
                     if (dto != null && dto.getAttributes() != null) {
