@@ -4,6 +4,7 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
 import com.sep.realvista.application.property.dto.PropertyFeedCriteria;
@@ -114,6 +115,16 @@ public class PropertyController {
                 log.info("REST request to get searchable attributes with ranges");
                 List<PropertyAttributeDTO> response = propertyApplicationService.getAttributesWithRanges();
                 return ResponseEntity.ok(ApiResponse.success("Attributes retrieved successfully", response));
+        }
+
+        @GetMapping("/types")
+        @Operation(summary = "Get all active property types",
+                        description = "Retrieves the full list of active property types with their category info."
+                                        + " Useful for populating filter dropdowns on the client.")
+        public ResponseEntity<ApiResponse<List<PropertyTypeInfoDTO>>> getPropertyTypes() {
+                log.info("REST request to get all active property types");
+                List<PropertyTypeInfoDTO> response = propertyApplicationService.getPropertyTypes();
+                return ResponseEntity.ok(ApiResponse.success("Property types retrieved successfully", response));
         }
 
         @PostMapping("/{propertyId}/verify-agent")
