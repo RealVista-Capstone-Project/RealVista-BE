@@ -2,10 +2,10 @@ package com.sep.realvista.presentation.rest.listing.bookmark;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
-import com.sep.realvista.application.listing.bookmark.dto.BookmarkListingCardDTO;
 import com.sep.realvista.application.listing.bookmark.dto.BookmarkResponse;
 import com.sep.realvista.application.listing.bookmark.dto.GetBookmarksRequest;
 import com.sep.realvista.application.listing.bookmark.service.BookmarkApplicationService;
+import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,7 +61,7 @@ public class BookmarkController {
             description = "Retrieves all bookmarked listings for the authenticated user with optional filters. "
                     + "Supports filtering by property type and listing type, with pagination and sorting."
     )
-    public ResponseEntity<ApiResponse<PageResponse<BookmarkListingCardDTO>>> getBookmarks(
+    public ResponseEntity<ApiResponse<PageResponse<ListingSearchResponse>>> getBookmarks(
             @AuthenticationPrincipal SecurityUserDetails userDetails,
 
             @Parameter(description = "Property type codes to filter by (e.g. APARTMENT, VILLA)")
@@ -96,7 +96,7 @@ public class BookmarkController {
                 .size(size)
                 .build();
 
-        PageResponse<BookmarkListingCardDTO> response = bookmarkApplicationService.getBookmarks(userId, request);
+        PageResponse<ListingSearchResponse> response = bookmarkApplicationService.getBookmarks(userId, request);
 
         return ResponseEntity.ok(ApiResponse.success("Bookmarks retrieved successfully", response));
     }

@@ -7,7 +7,9 @@ import com.sep.realvista.domain.listing.bookmark.Bookmark;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.billing.boost.ListingBoost;
 import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.role.RoleCode;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -44,7 +46,8 @@ public interface BookmarkMapper {
     default BookmarkListingCardDTO toListingCard(
             Bookmark bookmark,
             ListingMedia primaryMedia,
-            List<PropertyAttributeValue> attributes
+            List<PropertyAttributeValue> attributes,
+            List<ListingBoost> activeBoosts
     ) {
         if (bookmark == null || bookmark.getListing() == null) {
             return null;
@@ -64,6 +67,30 @@ public interface BookmarkMapper {
                 .isNegotiable(listing.getIsNegotiable())
                 .status(listing.getStatus())
                 .bookmarkedAt(bookmark.getCreatedAt());
+
+        // Set user type (Agent/Owner)
+        if (listing.getUser() != null && listing.getUser().getUserRoles() != null) {
+            boolean isAgent = listing.getUser().getUserRoles().stream()
+                    .anyMatch(ur -> ur.getRole() != null && ur.getRole().getRoleCode() == RoleCode.AGENT);
+            builder.userType(isAgent ? RoleCode.AGENT.name() : RoleCode.OWNER.name());
+        }
+
+        // Set boost information if any active boost exists
+        if (activeBoosts != null && !activeBoosts.isEmpty()) {
+            List<String> packages = activeBoosts.stream()
+                    .filter(b -> b.getListingId().equals(listing.getListingId()))
+                    .filter(b -> b.getBoostType() != null)
+                    .map(b -> b.getBoostType().name())
+                    .toList();
+            
+            if (!packages.isEmpty()) {
+                builder.isBoosted(true);
+                builder.boostPackages(packages);
+            }
+        }
+        if (builder.build().getIsBoosted() == null) {
+            builder.isBoosted(false);
+        }
 
         // Set primary image URL
         if (primaryMedia != null && primaryMedia.getPropertyMedia() != null) {

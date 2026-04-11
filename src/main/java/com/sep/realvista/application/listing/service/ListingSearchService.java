@@ -26,7 +26,12 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 
-import java.math.BigDecimal;
+import com.sep.realvista.domain.billing.boost.BoostType;
+import com.sep.realvista.domain.billing.boost.ListingBoost;
+import com.sep.realvista.domain.billing.boost.ListingBoostStatus;
+import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
+import com.sep.realvista.domain.user.role.RoleCode;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,6 +51,7 @@ public class ListingSearchService {
     private final BookmarkRepository bookmarkRepository;
     private final PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
     private final LocationRepository locationRepository;
+    private final ListingBoostRepository listingBoostRepository;
 
     private static final class ListingFields {
         static final String STATUS = "status";
@@ -95,7 +101,8 @@ public class ListingSearchService {
 
         // Handle custom sorting if requested
         Pageable effectivePageable = pageable;
-        if (criteria.getSortBy() != null && !criteria.getSortBy().isBlank()) {
+        boolean usePrioritySort = "PRIORITY".equalsIgnoreCase(criteria.getSortBy());
+        if (criteria.getSortBy() != null && !criteria.getSortBy().isBlank() && !usePrioritySort) {
             effectivePageable = applySorting(criteria.getSortBy(), pageable);
         }
 
@@ -129,6 +136,15 @@ public class ListingSearchService {
             attributesByPropertyId = Collections.emptyMap();
         }
 
+        // Bulk fetch active boosts for this page
+        List<UUID> listingIds = listings.stream()
+                .map(Listing::getListingId)
+                .collect(Collectors.toList());
+        Map<UUID, List<ListingBoost>> activeBoostsByListingId = listingBoostRepository
+                .findAllActiveByListingIds(listingIds, LocalDate.now())
+                .stream()
+                .collect(Collectors.groupingBy(ListingBoost::getListingId));
+
         // Final reference for use inside lambda
         final Set<UUID> finalBookmarkedIds = bookmarkedIds;
 
@@ -160,11 +176,44 @@ public class ListingSearchService {
 
             response.setIsFavorite(finalBookmarkedIds.contains(listing.getListingId()));
 
+            // Populate boost info
+            List<ListingBoost> boosts = activeBoostsByListingId.getOrDefault(listing.getListingId(), List.of());
+            if (!boosts.isEmpty()) {
+                response.setIsBoosted(true);
+                response.setBoostPackages(boosts.stream()
+                        .map(b -> b.getBoostType().name())
+                        .collect(Collectors.toList()));
+            } else {
+                response.setIsBoosted(false);
+                response.setBoostPackages(List.of());
+            }
+
+            // Populate user type (Agent/Owner)
+            if (listing.getUser() != null && listing.getUser().getUserRoles() != null) {
+                boolean isAgent = listing.getUser().getUserRoles().stream()
+                        .anyMatch(ur -> ur.getRole() != null && ur.getRole().getRoleCode() == RoleCode.AGENT);
+                response.setUserType(isAgent ? RoleCode.AGENT.name() : RoleCode.OWNER.name());
+            }
+
             UUID propertyId = listing.getProperty() != null ? listing.getProperty().getPropertyId() : null;
             List<PropertyAttributeValue> attrs = propertyId != null
                     ? attributesByPropertyId.getOrDefault(propertyId, List.of())
                     : List.of();
             response.setAttributes(listingMapper.toAttributeList(attrs));
+
+            // Extract stats (bedrooms, bathrooms)
+            attrs.forEach(attr -> {
+                if (attr.getPropertyAttribute() != null && attr.getPropertyAttribute().getCode() != null) {
+                    String code = attr.getPropertyAttribute().getCode().toLowerCase();
+                    if ("phong-ngu".equals(code) || "bedrooms".equals(code)) {
+                        response.setBedrooms(attr.getValueNumber() != null
+                                ? attr.getValueNumber().intValue() : null);
+                    } else if ("phong-tam".equals(code) || "bathrooms".equals(code)) {
+                        response.setBathrooms(attr.getValueNumber() != null
+                                ? attr.getValueNumber().intValue() : null);
+                    }
+                }
+            });
 
             return response;
         });
@@ -176,6 +225,7 @@ public class ListingSearchService {
         return result.orElse(null);
     }
 
+    @SuppressWarnings("checkstyle:OperatorWrap")
     private Pageable applySorting(String sortBy, Pageable pageable) {
         Sort sort = Sort.unsorted();
         switch (sortBy) {
@@ -190,153 +240,195 @@ public class ListingSearchService {
                 break;
             case "PRIORITY":
             default:
-                // Priority sorting is complex (Boost > Agent > Owner > Date)
-                // For now, implementing basic Date DESC as fallback or simple multi-column sort
-                sort = Sort.by(Sort.Direction.DESC, ListingFields.PUBLISHED_AT);
+                // Priority sorting is handled via CriteriaBuilder in buildSpecification
+                // as it requires complex joins not supported by standard Pageable Sort
+                sort = Sort.unsorted();
                 break;
         }
         return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
     }
 
     private Specification<Listing> buildSpecification(ListingSearchCriteria criteria) {
-
         return (root, query, cb) -> {
-            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
 
-            // Only search published listings
-            predicates.add(cb.equal(root.get(ListingFields.STATUS), ListingStatus.PUBLISHED));
-            log.debug("Added PUBLISHED filter");
+            // Handle Priority-based sorting (Featured > Hot > Agent > Date)
+            applyPrioritySorting(criteria, root, query, cb);
 
-            Join<Object, Object> propertyJoin = root.join(ListingFields.PROPERTY);
+            // Add standard filters
+            addStandardFilters(criteria, root, cb, predicates);
 
-            // Listing Type
-            if (criteria.getListingType() != null && !criteria.getListingType().isBlank()) {
-                try {
-                    ListingType type = ListingType.valueOf(criteria.getListingType().toUpperCase());
-                    predicates.add(cb.equal(root.get(ListingFields.LISTING_TYPE), type));
-                    log.debug("Added listingType filter: {}", type);
-                } catch (IllegalArgumentException e) {
-                    log.warn("Invalid listing type: {}", criteria.getListingType());
-                }
-            }
-
-            // Property Type
-            if (criteria.getPropertyType() != null && !criteria.getPropertyType().isBlank()) {
-                log.debug("Property type filter: {}", criteria.getPropertyType());
-                predicates.add(cb.equal(
-                    propertyJoin.get(PropertyFields.TYPE).get(PropertyTypeFields.CODE),
-                    criteria.getPropertyType()
-                ));
-            }
-
-            // Property Category
-            if (criteria.getPropertyCategory() != null && !criteria.getPropertyCategory().isBlank()) {
-                predicates.add(cb.equal(
-                    propertyJoin.get(PropertyFields.TYPE)
-                        .get(PropertyTypeFields.CATEGORY)
-                        .get(CategoryFields.CODE),
-                    criteria.getPropertyCategory()
-                ));
-                log.debug("Added propertyCategory filter: {}", criteria.getPropertyCategory());
-            }
-
-            // Location (LIKE search on name - used by public API)
-            if (criteria.getLocation() != null && !criteria.getLocation().isBlank()) {
-                predicates.add(cb.like(cb.lower(
-                    propertyJoin.join(PropertyFields.LOCATION).get(LocationFields.NAME)),
-                    "%" + criteria.getLocation().toLowerCase() + "%"
-                ));
-                log.debug("Added location LIKE filter: {}", criteria.getLocation());
-            }
-
-            // Location ID (hierarchical - used by internal AI API)
-            // Resolves city/district/ward UUID to all matching ward IDs,
-            // then filters properties whose locationId is in that set.
-            if (criteria.getLocationId() != null) {
-                List<UUID> wardIds = locationRepository.findDescendantWardIds(criteria.getLocationId());
-                if (!wardIds.isEmpty()) {
-                    predicates.add(propertyJoin.get(PropertyFields.LOCATION_ID).in(wardIds));
-                    log.debug("Added locationId filter: {} resolved to {} ward(s)",
-                            criteria.getLocationId(), wardIds.size());
-                } else {
-                    // No matching wards found — return no results
-                    predicates.add(cb.disjunction());
-                    log.debug("LocationId {} resolved to 0 wards, returning empty",
-                            criteria.getLocationId());
-                }
-            }
-
-            // Price Range
-            if (criteria.getMinPrice() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get(ListingFields.PRICE), criteria.getMinPrice()));
-            }
-            if (criteria.getMaxPrice() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get(ListingFields.PRICE), criteria.getMaxPrice()));
-            }
-
-            // Area Range
-            if (criteria.getMinArea() != null) {
-                predicates.add(
-                        cb.greaterThanOrEqualTo(
-                                propertyJoin.get(PropertyFields.USABLE_SIZE_M2),
-                                criteria.getMinArea()
-                        )
-                );
-            }
-            if (criteria.getMaxArea() != null) {
-                predicates.add(
-                        cb.lessThanOrEqualTo(
-                                propertyJoin.get(PropertyFields.USABLE_SIZE_M2),
-                                criteria.getMaxArea()
-                        )
-                );
-            }
-
-            // Dynamic Attributes
-            // - Numeric-min codes (BEDROOMS, BATHROOMS): use subquery with >= on property_attribute_values.value_number
-            //   so {"BEDROOMS": "2"} means "at least 2 bedrooms"
-            // - All other codes: use jsonb_extract_path_text for exact match on extra_attributes JSONB column
-            if (criteria.getDynamicAttributes() != null && !criteria.getDynamicAttributes().isEmpty()) {
-                criteria.getDynamicAttributes().forEach((attributeCode, value) -> {
-                    if (value == null || value.isBlank()) {
-                        return;
-                    }
-
-                    if (NUMERIC_MIN_ATTRIBUTE_CODES.contains(attributeCode.toUpperCase())) {
-                        // Use >= subquery on property_attribute_values table
-                        try {
-                            BigDecimal minValue = new BigDecimal(value);
-                            Subquery<UUID> subquery = query.subquery(UUID.class);
-                            Root<PropertyAttributeValue> pavRoot = subquery.from(PropertyAttributeValue.class);
-                            Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
-                            subquery.select(pavRoot.get("propertyId"))
-                                .where(
-                                    cb.equal(paJoin.get("code"), attributeCode.toUpperCase()),
-                                    cb.greaterThanOrEqualTo(
-                                        pavRoot.get("valueNumber"),
-                                        minValue
-                                    )
-                                );
-                            predicates.add(propertyJoin.get(PropertyFields.PROPERTY_ID).in(subquery));
-                            log.debug("Added numeric-min attribute filter: {} >= {}", attributeCode, minValue);
-                        } catch (NumberFormatException e) {
-                            log.warn("Invalid numeric value for attribute {}: {}", attributeCode, value);
-                        }
-                    } else {
-                        // Use JSONB exact match on extra_attributes column
-                        predicates.add(cb.equal(
-                            cb.function(JSONB_EXTRACT_FUNCTION, String.class,
-                                propertyJoin.get(PropertyFields.EXTRA_ATTRIBUTES),
-                                cb.literal(attributeCode)),
-                            value
-                        ));
-                        log.debug("Added dynamic attribute filter: {}={}", attributeCode, value);
-                    }
-                });
-            }
+            // Add dynamic attributes
+            addDynamicAttributeFilters(criteria, root, query, cb, predicates);
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private void applyPrioritySorting(ListingSearchCriteria criteria, Root<Listing> root,
+                                      jakarta.persistence.criteria.CriteriaQuery<?> query,
+                                      jakarta.persistence.criteria.CriteriaBuilder cb) {
+        if (!"PRIORITY".equalsIgnoreCase(criteria.getSortBy())) {
+            return;
+        }
+
+        // Subquery for FEATURED boost
+        Subquery<Long> featuredSub = query.subquery(Long.class);
+        Root<ListingBoost> lbFeatured = featuredSub.from(ListingBoost.class);
+        featuredSub.select(cb.count(lbFeatured))
+            .where(cb.and(
+                cb.equal(lbFeatured.get("listingId"), root.get("listingId")),
+                cb.equal(lbFeatured.get("boostType"), BoostType.FEATURED),
+                cb.equal(lbFeatured.get("status"), ListingBoostStatus.ACTIVE),
+                cb.lessThanOrEqualTo(lbFeatured.get("startDate"), cb.currentDate()),
+                cb.greaterThanOrEqualTo(lbFeatured.get("endDate"), cb.currentDate()),
+                cb.equal(lbFeatured.get("deleted"), false)
+            ));
+
+        // Subquery for HOT_BADGE boost
+        Subquery<Long> hotSub = query.subquery(Long.class);
+        Root<ListingBoost> lbHot = hotSub.from(ListingBoost.class);
+        hotSub.select(cb.count(lbHot))
+            .where(cb.and(
+                cb.equal(lbHot.get("listingId"), root.get("listingId")),
+                cb.equal(lbHot.get("boostType"), BoostType.HOT_BADGE),
+                cb.equal(lbHot.get("status"), ListingBoostStatus.ACTIVE),
+                cb.lessThanOrEqualTo(lbHot.get("startDate"), cb.currentDate()),
+                cb.greaterThanOrEqualTo(lbHot.get("endDate"), cb.currentDate()),
+                cb.equal(lbHot.get("deleted"), false)
+            ));
+
+        // Subquery for AGENT role
+        Subquery<Long> agentSub = query.subquery(Long.class);
+        Root<com.sep.realvista.domain.user.User> u = agentSub.from(com.sep.realvista.domain.user.User.class);
+        var ur = u.join("userRoles");
+        var r = ur.join("role");
+        agentSub.select(cb.count(u))
+            .where(cb.and(
+                cb.equal(u.get("userId"), root.get("user").get("userId")),
+                cb.equal(r.get("roleCode"), RoleCode.AGENT)
+            ));
+
+        var priorityScore = cb.selectCase()
+            .when(cb.greaterThan(featuredSub, 0L), 40)
+            .when(cb.greaterThan(hotSub, 0L), 30)
+            .when(cb.greaterThan(agentSub, 0L), 20)
+            .otherwise(10);
+
+        query.orderBy(
+            cb.desc(priorityScore),
+            cb.desc(root.get(ListingFields.PUBLISHED_AT))
+        );
+    }
+
+    private void addStandardFilters(ListingSearchCriteria criteria, Root<Listing> root,
+                                    jakarta.persistence.criteria.CriteriaBuilder cb,
+                                    List<Predicate> predicates) {
+        // Only search published listings
+        predicates.add(cb.equal(root.get(ListingFields.STATUS), ListingStatus.PUBLISHED));
+
+        Join<Object, Object> propertyJoin = root.join(ListingFields.PROPERTY);
+
+        // Listing Type
+        if (criteria.getListingType() != null && !criteria.getListingType().isBlank()) {
+            try {
+                ListingType type = ListingType.valueOf(criteria.getListingType().toUpperCase());
+                predicates.add(cb.equal(root.get(ListingFields.LISTING_TYPE), type));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid listing type: {}", criteria.getListingType());
+            }
+        }
+
+        // Property Type
+        if (criteria.getPropertyType() != null && !criteria.getPropertyType().isBlank()) {
+            predicates.add(cb.equal(
+                propertyJoin.get(PropertyFields.TYPE).get(PropertyTypeFields.CODE),
+                criteria.getPropertyType()
+            ));
+        }
+
+        // Property Category
+        if (criteria.getPropertyCategory() != null && !criteria.getPropertyCategory().isBlank()) {
+            predicates.add(cb.equal(
+                propertyJoin.get(PropertyFields.TYPE)
+                    .get(PropertyTypeFields.CATEGORY)
+                    .get(CategoryFields.CODE),
+                criteria.getPropertyCategory()
+            ));
+        }
+
+        // Location LIKE search
+        if (criteria.getLocation() != null && !criteria.getLocation().isBlank()) {
+            predicates.add(cb.like(cb.lower(
+                propertyJoin.join(PropertyFields.LOCATION).get(LocationFields.NAME)),
+                "%" + criteria.getLocation().toLowerCase() + "%"
+            ));
+        }
+
+        // Location ID hierarchical
+        if (criteria.getLocationId() != null) {
+            List<UUID> wardIds = locationRepository.findDescendantWardIds(criteria.getLocationId());
+            if (!wardIds.isEmpty()) {
+                predicates.add(propertyJoin.get(PropertyFields.LOCATION_ID).in(wardIds));
+            } else {
+                predicates.add(cb.disjunction());
+            }
+        }
+
+        // Price and Area
+        if (criteria.getMinPrice() != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get(ListingFields.PRICE), criteria.getMinPrice()));
+        }
+        if (criteria.getMaxPrice() != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get(ListingFields.PRICE), criteria.getMaxPrice()));
+        }
+        if (criteria.getMinArea() != null) {
+            predicates.add(cb.greaterThanOrEqualTo(propertyJoin.get(PropertyFields.USABLE_SIZE_M2),
+                    criteria.getMinArea()));
+        }
+        if (criteria.getMaxArea() != null) {
+            predicates.add(cb.lessThanOrEqualTo(propertyJoin.get(PropertyFields.USABLE_SIZE_M2),
+                    criteria.getMaxArea()));
+        }
+    }
+
+    private void addDynamicAttributeFilters(ListingSearchCriteria criteria, Root<Listing> root,
+                                            jakarta.persistence.criteria.CriteriaQuery<?> query,
+                                            jakarta.persistence.criteria.CriteriaBuilder cb,
+                                            List<Predicate> predicates) {
+        if (criteria.getDynamicAttributes() == null || criteria.getDynamicAttributes().isEmpty()) {
+            return;
+        }
+
+        Join<Object, Object> propertyJoin = root.join(ListingFields.PROPERTY);
+
+        criteria.getDynamicAttributes().forEach((code, value) -> {
+            if (value == null || value.isBlank()) {
+                return;
+            }
+
+            if (NUMERIC_MIN_ATTRIBUTE_CODES.contains(code.toUpperCase())) {
+                try {
+                    java.math.BigDecimal minValue = new java.math.BigDecimal(value);
+                    Subquery<UUID> subquery = query.subquery(UUID.class);
+                    Root<PropertyAttributeValue> pavRoot = subquery.from(PropertyAttributeValue.class);
+                    Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
+                    subquery.select(pavRoot.get("propertyId"))
+                        .where(
+                            cb.equal(paJoin.get("code"), code.toUpperCase()),
+                            cb.greaterThanOrEqualTo(pavRoot.get("valueNumber"), minValue)
+                        );
+                    predicates.add(propertyJoin.get(PropertyFields.PROPERTY_ID).in(subquery));
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid numeric value for attribute {}: {}", code, value);
+                }
+            } else {
+                predicates.add(cb.equal(
+                    cb.function(JSONB_EXTRACT_FUNCTION, String.class,
+                        propertyJoin.get(PropertyFields.EXTRA_ATTRIBUTES), cb.literal(code)),
+                    value
+                ));
+            }
+        });
     }
 }
