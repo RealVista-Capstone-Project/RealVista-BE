@@ -3,7 +3,9 @@ package com.sep.realvista.infrastructure.persistence.billing;
 import com.sep.realvista.domain.billing.subscription.FeatureType;
 import com.sep.realvista.domain.billing.subscription.UserFeatureSubscription;
 import com.sep.realvista.domain.billing.subscription.UserFeatureSubscriptionStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,6 +32,20 @@ public interface UserFeatureSubscriptionJpaRepository extends JpaRepository<User
             @Param("userId") UUID userId, 
             @Param("featureType") FeatureType featureType);
     
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT ufs FROM UserFeatureSubscription ufs
+        JOIN FETCH ufs.featurePackage fp
+        WHERE ufs.userId = :userId
+        AND ufs.status = 'ACTIVE'
+        AND ufs.deleted = false
+        AND fp.featureType = :featureType
+        AND (ufs.endDate IS NULL OR ufs.endDate >= CURRENT_DATE)
+        """)
+    List<UserFeatureSubscription> findActiveByUserIdAndFeatureTypeForUpdate(
+            @Param("userId") UUID userId,
+            @Param("featureType") FeatureType featureType);
+
     @Query("""
         SELECT ufs FROM UserFeatureSubscription ufs
         JOIN FETCH ufs.featurePackage fp
