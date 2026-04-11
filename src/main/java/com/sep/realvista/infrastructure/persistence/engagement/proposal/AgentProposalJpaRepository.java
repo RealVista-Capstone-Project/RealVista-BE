@@ -19,4 +19,6 @@ public interface AgentProposalJpaRepository extends JpaRepository<AgentProposal,
     Page<AgentProposal> findByUserId(@Param("userId") UUID userId, Pageable pageable);
 
     boolean existsByUserIdAndTitle(UUID userId, String title);
+
+    boolean existsByUserIdAndTitleAndAgentProposalIdNot(UUID userId, String title, UUID agentProposalId);
 }

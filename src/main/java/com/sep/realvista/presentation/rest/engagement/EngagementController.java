@@ -6,6 +6,7 @@ import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
 import com.sep.realvista.application.engagement.dto.CreateReviewRequest;
 import com.sep.realvista.application.engagement.dto.EngagementSummaryResponse;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
+import com.sep.realvista.application.engagement.dto.AgentProposalApplyStateResponse;
 import com.sep.realvista.application.engagement.dto.ReviewResponse;
 import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
 import com.sep.realvista.application.engagement.service.AgentReviewApplicationService;
@@ -38,7 +39,6 @@ import java.util.UUID;
 
 /**
  * REST Controller for managing engagements between property owners and agents.
- *
  * Provides endpoints for viewing hired agents, finishing/cancelling contracts,
  * and submitting agent reviews.
  */
@@ -92,7 +92,6 @@ public class EngagementController {
 
     /**
      * Get a single engagement by ID, scoped to the authenticated owner.
-     *
      * Returns full agent and property details for the engagement.
      * The caller must be the owner of the engagement (403 otherwise).
      *
@@ -127,7 +126,6 @@ public class EngagementController {
 
     /**
      * Get all hired agents for the authenticated property owner.
-     *
      * Returns a paginated list of agents that have been hired through
      * engagements. Supports optional status filter and search by agent name.
      *
@@ -343,5 +341,36 @@ public class EngagementController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Proposal submitted successfully", Map.of("engagement_id", engagementId)));
+    }
+
+    /**
+     * Check whether an agent can apply proposal to an owner based on
+     * their latest AGENT_PROPOSAL engagement status.
+     *
+     * @param initiatorId agent user ID
+     * @param receiverId owner user ID
+     * @return apply-state payload (can_apply_proposal + engagement_status)
+     */
+    @GetMapping("/agent-proposal/apply-state")
+    @PreAuthorize("hasRole('AGENT')")
+    @Operation(
+            summary = "Check agent proposal apply state",
+            description = "Checks whether an agent can apply proposal to an owner. "
+                    + "The action is blocked when latest engagement status is SUBMITTED or ACCEPTED."
+    )
+    public ResponseEntity<ApiResponse<AgentProposalApplyStateResponse>> getAgentProposalApplyState(
+            @RequestParam(name = "initiator_id") UUID initiatorId,
+            @RequestParam(name = "receiver_id") UUID receiverId
+    ) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        log.info("Get proposal apply state request - traceId: {}, initiatorId: {}, receiverId: {}",
+                traceId, initiatorId, receiverId);
+
+        AgentProposalApplyStateResponse response =
+                engagementApplicationService.getAgentProposalApplyState(initiatorId, receiverId);
+
+        return ResponseEntity.ok(ApiResponse.success("Proposal apply state retrieved successfully", response));
     }
 }

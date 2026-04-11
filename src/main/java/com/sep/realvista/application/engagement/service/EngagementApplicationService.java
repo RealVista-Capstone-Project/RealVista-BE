@@ -5,6 +5,7 @@ import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
 import com.sep.realvista.application.engagement.dto.EngagementSummaryResponse;
+import com.sep.realvista.application.engagement.dto.AgentProposalApplyStateResponse;
 import com.sep.realvista.application.engagement.mapper.EngagementMapper;
 import com.sep.realvista.domain.agent.AgentProfile;
 import com.sep.realvista.domain.agent.AgentProfileRepository;
@@ -47,7 +48,6 @@ import java.util.stream.Collectors;
 
 /**
  * Application service for engagement operations.
- *
  * Orchestrates business logic for managing engagements
  * between property owners and agents.
  */
@@ -56,6 +56,10 @@ import java.util.stream.Collectors;
 @Transactional
 @Slf4j
 public class EngagementApplicationService {
+    private static final Set<EngagementStatus> PROPOSAL_BLOCKING_STATUSES = Set.of(
+            EngagementStatus.SUBMITTED,
+            EngagementStatus.ACCEPTED
+    );
 
     private final EngagementRepository engagementRepository;
     private final AgentProfileRepository agentProfileRepository;
@@ -287,6 +291,8 @@ public class EngagementApplicationService {
         contentMap.put("commissionRate", proposalTemplate.getCommissionRate());
         contentMap.put("experienceYears", proposalTemplate.getExperienceYears());
         contentMap.put("pitchContent", proposalTemplate.getPitchContent());
+        contentMap.put("specialty", proposalTemplate.getSpecialty());
+        contentMap.put("priceRange", proposalTemplate.getPriceRange());
         contentMap.put("message", request.getMessage() != null ? request.getMessage() : "");
 
         // 4. Create the engagement
@@ -412,6 +418,31 @@ public class EngagementApplicationService {
         engagementRepository.save(engagement);
 
         log.info("Engagement {} rejected successfully", engagementId);
+    }
+
+    /**
+     * Checks whether an agent can apply proposal to an owner based on
+     * the latest AGENT_PROPOSAL engagement status.
+     *
+     * @param initiatorId the agent user ID
+     * @param receiverId the owner user ID
+     * @return proposal apply state (allowed or blocked) and latest status
+     */
+    @Transactional(readOnly = true)
+    public AgentProposalApplyStateResponse getAgentProposalApplyState(UUID initiatorId, UUID receiverId) {
+        log.info("Checking proposal apply state for initiator: {} and receiver: {}", initiatorId, receiverId);
+
+        Engagement latestEngagement = engagementRepository
+                .findLatestAgentProposalEngagement(initiatorId, receiverId)
+                .orElse(null);
+
+        EngagementStatus latestStatus = latestEngagement != null ? latestEngagement.getStatus() : null;
+        boolean canApplyProposal = latestStatus == null || !PROPOSAL_BLOCKING_STATUSES.contains(latestStatus);
+
+        return AgentProposalApplyStateResponse.builder()
+                .canApplyProposal(canApplyProposal)
+                .engagementStatus(latestStatus != null ? latestStatus.name() : null)
+                .build();
     }
 
     /**

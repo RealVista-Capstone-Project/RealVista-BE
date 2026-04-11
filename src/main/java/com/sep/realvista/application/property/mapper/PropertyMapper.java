@@ -163,6 +163,7 @@ public class PropertyMapper {
                 .lengthM(property.getLengthM())
                 .status(property.getStatus())
                 .descriptions(property.getDescriptions())
+                .priceRange(property.getPriceRange())
                 .propertyTypeInfo(mapPropertyType(property))
                 .locationInfo(mapLocation(property))
                 .media(media != null ? media.stream()

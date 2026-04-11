@@ -9,7 +9,6 @@ import java.util.UUID;
 
 /**
  * Repository interface for Engagement aggregate.
- *
  * Defines contract for engagement data access operations.
  * Implementation will be provided in infrastructure layer.
  */
@@ -81,4 +80,14 @@ public interface EngagementRepository {
      * @return list of engagements
      */
     List<Engagement> findByInitiatorId(UUID userId);
+
+    /**
+     * Finds the most recently updated AGENT_PROPOSAL engagement between
+     * an initiator (agent) and receiver (owner).
+     *
+     * @param initiatorId initiator user ID
+     * @param receiverId receiver user ID
+     * @return latest engagement if exists
+     */
+    Optional<Engagement> findLatestAgentProposalEngagement(UUID initiatorId, UUID receiverId);
 }

@@ -63,7 +63,7 @@ public class PropertySummaryResponse {
     private String thumbnailUrl;
 
     private List<AmenityDTO> amenities;
-    
+
     @JsonProperty("owner_name")
     private String ownerName;
 

@@ -44,6 +44,11 @@ public class AgentProposalRepositoryImpl implements AgentProposalRepository {
     }
 
     @Override
+    public boolean existsByUserIdAndTitleExcludingId(UUID userId, String title, UUID excludeId) {
+        return jpaRepository.existsByUserIdAndTitleAndAgentProposalIdNot(userId, title, excludeId);
+    }
+
+    @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }

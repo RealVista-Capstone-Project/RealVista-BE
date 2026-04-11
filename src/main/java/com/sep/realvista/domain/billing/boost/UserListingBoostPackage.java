@@ -90,4 +90,34 @@ public class UserListingBoostPackage extends BaseEntity {
     public void expire() {
         this.status = UserListingBoostPackageStatus.EXPIRED;
     }
+
+    public void decrementFeaturedQuota() {
+        if (this.remainingFeaturedQuota == null || this.remainingFeaturedQuota <= 0) {
+            throw new IllegalStateException("No remaining featured quota");
+        }
+        this.remainingFeaturedQuota--;
+    }
+
+    public void incrementFeaturedQuota() {
+        if (this.remainingFeaturedQuota == null) {
+            this.remainingFeaturedQuota = 1;
+        } else {
+            this.remainingFeaturedQuota++;
+        }
+    }
+
+    public void decrementHotBadgeQuota() {
+        if (this.remainingHotBadgeQuota == null || this.remainingHotBadgeQuota <= 0) {
+            throw new IllegalStateException("No remaining hot badge quota");
+        }
+        this.remainingHotBadgeQuota--;
+    }
+
+    public void incrementHotBadgeQuota() {
+        if (this.remainingHotBadgeQuota == null) {
+            this.remainingHotBadgeQuota = 1;
+        } else {
+            this.remainingHotBadgeQuota++;
+        }
+    }
 }

@@ -94,6 +94,7 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
      * to avoid N+1 queries when building the feed response.
      *
      * <p>Excludes properties where the agent already has an active PropertyAgent link.
+     * Note: Price filtering is handled in service layer due to JPQL limitations.
      */
     @Query(value = "SELECT DISTINCT p FROM Property p "
             + "LEFT JOIN FETCH p.propertyType pt "

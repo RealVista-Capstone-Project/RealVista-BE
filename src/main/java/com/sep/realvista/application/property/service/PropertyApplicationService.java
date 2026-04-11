@@ -370,26 +370,34 @@ public class PropertyApplicationService {
         // Batch-fetch property IDs where this agent already has an active proposal
         java.util.Set<UUID> proposalPropertyIds = agentProposalRepository.findActiveProposalPropertyIds(agentId);
 
-        List<PropertyFeedItemResponse> content = page.getContent().stream().map(property -> {
-            UUID propId = property.getPropertyId();
+        // Get price filter criteria
+        java.math.BigDecimal minRentPrice = criteria != null ? criteria.getMinRentPrice() : null;
+        java.math.BigDecimal maxRentPrice = criteria != null ? criteria.getMaxRentPrice() : null;
+        java.math.BigDecimal minBuyPrice = criteria != null ? criteria.getMinBuyPrice() : null;
+        java.math.BigDecimal maxBuyPrice = criteria != null ? criteria.getMaxBuyPrice() : null;
 
-            List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propId);
-            List<PropertyAttributeValue> attributes =
-                    propertyAttributeValueRepository.findByPropertyIdWithAttribute(propId);
-            List<PropertyAmenity> amenities =
-                    propertyAmenityRepository.findByPropertyIdWithAmenity(propId);
+        List<PropertyFeedItemResponse> content = page.getContent().stream()
+                .filter(property -> filterByPrice(property, minRentPrice, maxRentPrice, minBuyPrice, maxBuyPrice))
+                .map(property -> {
+                    UUID propId = property.getPropertyId();
 
-            boolean hasActiveProposal = proposalPropertyIds.contains(propId);
+                    List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propId);
+                    List<PropertyAttributeValue> attributes =
+                            propertyAttributeValueRepository.findByPropertyIdWithAttribute(propId);
+                    List<PropertyAmenity> amenities =
+                            propertyAmenityRepository.findByPropertyIdWithAmenity(propId);
 
-            PropertyFeedItemResponse item = propertyMapper.toFeedItemResponse(
-                    property, media, attributes, amenities, hasActiveProposal);
+                    boolean hasActiveProposal = proposalPropertyIds.contains(propId);
 
-            // Resolve owner name
-            userRepository.findById(property.getOwnerId()).ifPresent(owner ->
-                    item.setOwnerName(owner.getFullName()));
+                    PropertyFeedItemResponse item = propertyMapper.toFeedItemResponse(
+                            property, media, attributes, amenities, hasActiveProposal);
 
-            return item;
-        }).collect(Collectors.toList());
+                    // Resolve owner name
+                    userRepository.findById(property.getOwnerId()).ifPresent(owner ->
+                            item.setOwnerName(owner.getFullName()));
+
+                    return item;
+                }).collect(Collectors.toList());
 
         log.info("Property feed retrieved: {} items for agent: {}", content.size(), agentId);
 
@@ -402,6 +410,65 @@ public class PropertyApplicationService {
                 .first(page.isFirst())
                 .last(page.isLast())
                 .build();
+    }
+
+    private boolean filterByPrice(Property property,
+                                   java.math.BigDecimal minRentPrice, java.math.BigDecimal maxRentPrice,
+                                   java.math.BigDecimal minBuyPrice, java.math.BigDecimal maxBuyPrice) {
+        if (minRentPrice == null && maxRentPrice == null && minBuyPrice == null && maxBuyPrice == null) {
+            return true; // No price filter, include all
+        }
+
+        var priceRange = property.getPriceRange();
+        if (priceRange == null) {
+            return true; // No price range set, include
+        }
+
+        // Check rent price
+        if (minRentPrice != null || maxRentPrice != null) {
+            var rent = priceRange.getRent();
+            if (rent != null && rent.getMin() != null) {
+                if (minRentPrice != null && rent.getMin().compareTo(minRentPrice) < 0) {
+                    return false;
+                }
+                if (maxRentPrice != null && rent.getMax() != null && rent.getMax().compareTo(maxRentPrice) > 0) {
+                    return false;
+                }
+            }
+        }
+
+        // Check buy price
+        if (minBuyPrice != null || maxBuyPrice != null) {
+            var buy = priceRange.getBuy();
+            if (buy != null && buy.getMin() != null) {
+                if (minBuyPrice != null && buy.getMin().compareTo(minBuyPrice) < 0) {
+                    return false;
+                }
+                if (maxBuyPrice != null && buy.getMax() != null && buy.getMax().compareTo(maxBuyPrice) > 0) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    @Transactional(readOnly = true)
+    public List<com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO> getPropertyTypes() {
+        log.info("Getting all active property types");
+        return propertyTypeRepository.findAllActive().stream()
+                .map(pt -> {
+                    var cat = pt.getPropertyCategory();
+                    return com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO.builder()
+                            .propertyTypeId(pt.getPropertyTypeId())
+                            .propertyTypeName(pt.getName())
+                            .propertyTypeCode(pt.getCode())
+                            .propertyCategoryId(cat != null ? cat.getPropertyCategoryId() : null)
+                            .propertyCategoryName(cat != null ? cat.getName() : null)
+                            .propertyCategoryCode(cat != null ? cat.getCode() : null)
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
