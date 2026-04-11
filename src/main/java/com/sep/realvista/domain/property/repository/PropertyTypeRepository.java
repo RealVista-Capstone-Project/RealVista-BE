@@ -13,6 +13,7 @@ public interface PropertyTypeRepository {
     Optional<PropertyType> findById(UUID id);
 
     Optional<PropertyType> findByCode(String code);
+    List<PropertyType> findAllActive();
 
     /**
      * Batch load by id (empty collection returns empty list).
