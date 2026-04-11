@@ -4,6 +4,8 @@ import com.sep.realvista.application.listing.dto.map.MapSearchRequest;
 import com.sep.realvista.application.listing.dto.map.MapSearchResponse;
 import com.sep.realvista.application.listing.dto.map.PropertyMapMarker;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
+import com.sep.realvista.domain.billing.boost.ListingBoost;
+import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
@@ -47,6 +49,7 @@ public class MapSearchApplicationService {
     private final ListingMediaRepository listingMediaRepository;
     private final PropertyAttributeValueJpaRepository propertyAttributeValueJpaRepository;
     private final BookmarkRepository bookmarkRepository;
+    private final ListingBoostRepository listingBoostRepository;
     private final ListingMapper listingMapper;
 
     /**
@@ -63,38 +66,49 @@ public class MapSearchApplicationService {
                 request.getNorthLat(), request.getEastLng(),
                 request.getListingType(), request.getPage(), request.getSize());
 
-        // Determine effective bounds
-        // Priority 1: Search Text (Global Search)
-        // Priority 2: Request Bounds (Map Search)
-        // Priority 3: Fallback (Global Search if no bounds provided)
-        MapBounds bounds;
+        MapBounds bounds = determineBounds(request);
+        MapSearchCriteria criteria = buildCriteria(request, bounds);
 
+        Long totalCount = listingRepository.countPublishedWithinBounds(criteria);
+        if (totalCount == 0) {
+            return buildEmptyResponse(request, bounds);
+        }
+
+        List<Listing> listings = listingRepository.findPublishedWithinBounds(criteria);
+        Map<UUID, List<PropertyAttributeValue>> attributesByPropertyId = fetchBulkAttributes(listings);
+        Set<UUID> bookmarkedIds = fetchBookmarkedIds(listings, userId);
+        Map<UUID, List<ListingBoost>> activeBoostsByListingId = fetchActiveBoosts(listings);
+
+        List<PropertyMapMarker> markers = listings.stream()
+                .map(l -> convertToMapMarker(l,
+                        attributesByPropertyId.getOrDefault(l.getPropertyId(), List.of()),
+                        bookmarkedIds.contains(l.getListingId()),
+                        activeBoostsByListingId.getOrDefault(l.getListingId(), List.of())))
+                .filter(Objects::nonNull)
+                .toList();
+
+        return buildSearchResponse(request, markers, totalCount, criteria.getPage(), criteria.getSize());
+    }
+
+    private MapBounds determineBounds(MapSearchRequest request) {
         boolean hasSearchText = request.getSearchText() != null && !request.getSearchText().isEmpty();
         boolean hasRequestBounds = request.getNorthLat() != null && request.getSouthLat() != null
                 && request.getEastLng() != null && request.getWestLng() != null;
 
         if (hasSearchText) {
-            log.debug("Search text present ('{}'), using global bounds", request.getSearchText());
-            bounds = MapBounds.of(
-                    new BigDecimal("90"),
-                    new BigDecimal("-90"),
-                    new BigDecimal("180"),
-                    new BigDecimal("-180"));
+            return MapBounds.of(new BigDecimal("90"), new BigDecimal("-90"),
+                    new BigDecimal("180"), new BigDecimal("-180"));
         } else if (hasRequestBounds) {
-            bounds = MapBounds.of(
-                    request.getNorthLat(),
-                    request.getSouthLat(),
-                    request.getEastLng(),
-                    request.getWestLng());
+            return MapBounds.of(request.getNorthLat(), request.getSouthLat(),
+                    request.getEastLng(), request.getWestLng());
         } else {
-            log.debug("No search text and no map bounds, defaulting to global bounds");
-            bounds = MapBounds.of(
-                    new BigDecimal("90"),
-                    new BigDecimal("-90"),
-                    new BigDecimal("180"),
-                    new BigDecimal("-180"));
-        } // Build search criteria
-        MapSearchCriteria criteria = MapSearchCriteria.builder()
+            return MapBounds.of(new BigDecimal("90"), new BigDecimal("-90"),
+                    new BigDecimal("180"), new BigDecimal("-180"));
+        }
+    }
+
+    private MapSearchCriteria buildCriteria(MapSearchRequest request, MapBounds bounds) {
+        return MapSearchCriteria.builder()
                 .bounds(bounds)
                 .listingType(request.getListingType())
                 .minPrice(request.getMinPrice())
@@ -113,80 +127,67 @@ public class MapSearchApplicationService {
                 .page(request.getPage() < 1 ? 1 : request.getPage())
                 .size(request.getSize())
                 .build();
+    }
 
-        // Get total count first (with all filters)
-        Long totalCount = listingRepository.countPublishedWithinBounds(criteria);
-
-        if (totalCount == 0) {
-            return MapSearchResponse.builder()
-                    .content(List.of())
-                    .page(request.getPage())
-                    .size(request.getSize())
-                    .totalElements(0L)
-                    .totalPages(0)
-                    .first(true)
-                    .last(true)
-                    .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                            .northLat(bounds.northLat())
-                            .southLat(bounds.southLat())
-                            .eastLng(bounds.eastLng())
-                            .westLng(bounds.westLng())
-                            .build())
-                    .filterMetadata(buildFilterMetadata(request))
-                    .build();
-        }
-
-        // Fetch paginated listings
-        int pageNumber = criteria.getPage();
-        int pageSize = criteria.getSize();
-
-        List<Listing> listings = listingRepository.findPublishedWithinBounds(criteria);
-
-        // Bulk fetch all attributes for this page's properties (avoids N+1)
+    private Map<UUID, List<PropertyAttributeValue>> fetchBulkAttributes(List<Listing> listings) {
         List<UUID> propertyIds = listings.stream()
                 .map(Listing::getPropertyId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
 
-        final Map<UUID, List<PropertyAttributeValue>> attributesByPropertyId;
-        if (!propertyIds.isEmpty()) {
-            attributesByPropertyId = propertyAttributeValueJpaRepository
-                    .findAllAttributesByPropertyIds(propertyIds)
-                    .stream()
-                    .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId));
-        } else {
-            attributesByPropertyId = Collections.emptyMap();
+        if (propertyIds.isEmpty()) {
+            return Collections.emptyMap();
         }
+        return propertyAttributeValueJpaRepository.findAllAttributesByPropertyIds(propertyIds)
+                .stream()
+                .collect(Collectors.groupingBy(PropertyAttributeValue::getPropertyId));
+    }
 
-        // Bulk fetch bookmarked listing IDs for this page (avoids N+1)
-        final Set<UUID> bookmarkedIds;
-        if (userId != null && !listings.isEmpty()) {
-            List<UUID> pageListingIds = listings.stream()
-                    .map(Listing::getListingId)
-                    .collect(Collectors.toList());
-            bookmarkedIds = bookmarkRepository.findBookmarkedListingIds(userId, pageListingIds);
-        } else {
-            bookmarkedIds = Collections.emptySet();
+    private Set<UUID> fetchBookmarkedIds(List<Listing> listings, UUID userId) {
+        if (userId == null || listings.isEmpty()) {
+            return Collections.emptySet();
         }
+        List<UUID> listingIds = listings.stream()
+                .map(Listing::getListingId)
+                .collect(Collectors.toList());
+        return bookmarkRepository.findBookmarkedListingIds(userId, listingIds);
+    }
 
-        // Transform to map markers
-        List<PropertyMapMarker> markers = listings.stream()
-                .map(l -> convertToMapMarker(l,
-                        attributesByPropertyId.getOrDefault(l.getPropertyId(), List.of()),
-                        bookmarkedIds.contains(l.getListingId())))
-                .filter(Objects::nonNull)
-                .toList();
+    private Map<UUID, List<ListingBoost>> fetchActiveBoosts(List<Listing> listings) {
+        if (listings.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<UUID> listingIds = listings.stream()
+                .map(Listing::getListingId)
+                .collect(Collectors.toList());
+        return listingBoostRepository.findAllActiveByListingIds(listingIds, java.time.LocalDate.now())
+                .stream()
+                .collect(Collectors.groupingBy(ListingBoost::getListingId));
+    }
 
-        log.info("Returning {} markers for page {} (filtered from {} total)", markers.size(), pageNumber, totalCount);
+    private MapSearchResponse buildEmptyResponse(MapSearchRequest request, MapBounds bounds) {
+        return MapSearchResponse.builder()
+                .content(List.of())
+                .page(request.getPage())
+                .size(request.getSize())
+                .totalElements(0L)
+                .totalPages(0)
+                .first(true)
+                .last(true)
+                .bounds(MapSearchResponse.MapBoundsDTO.builder()
+                        .northLat(bounds.northLat())
+                        .southLat(bounds.southLat())
+                        .eastLng(bounds.eastLng())
+                        .westLng(bounds.westLng())
+                        .build())
+                .filterMetadata(buildFilterMetadata(request))
+                .build();
+    }
 
-        // Calculate pagination metadata
+    private MapSearchResponse buildSearchResponse(MapSearchRequest request, List<PropertyMapMarker> markers,
+            Long totalCount, int pageNumber, int pageSize) {
         int totalPages = (int) Math.ceil((double) totalCount / pageSize);
-        boolean isFirst = pageNumber == 1;
-        boolean isLast = pageNumber >= totalPages;
-
-        // Build filter metadata
-        MapSearchResponse.FilterMetadataDTO filterMetadata = buildFilterMetadata(request);
 
         return MapSearchResponse.builder()
                 .content(markers)
@@ -194,15 +195,15 @@ public class MapSearchApplicationService {
                 .size(pageSize)
                 .totalElements(totalCount)
                 .totalPages(totalPages)
-                .first(isFirst)
-                .last(isLast)
+                .first(pageNumber == 1)
+                .last(pageNumber >= totalPages)
                 .bounds(MapSearchResponse.MapBoundsDTO.builder()
                         .northLat(request.getNorthLat())
                         .southLat(request.getSouthLat())
                         .eastLng(request.getEastLng())
                         .westLng(request.getWestLng())
                         .build())
-                .filterMetadata(filterMetadata)
+                .filterMetadata(buildFilterMetadata(request))
                 .build();
     }
 
@@ -257,7 +258,7 @@ public class MapSearchApplicationService {
      * Convert listing to map marker using pre-fetched attribute values.
      */
     private PropertyMapMarker convertToMapMarker(Listing listing,
-            List<PropertyAttributeValue> attrValues, boolean isFavorite) {
+            List<PropertyAttributeValue> attrValues, boolean isFavorite, List<ListingBoost> boosts) {
         // Fetch property
         Property property = propertyRepository.findById(listing.getPropertyId()).orElse(null);
         if (property == null) {
@@ -291,6 +292,10 @@ public class MapSearchApplicationService {
                 .sizeM2(property.getUsableSizeM2() != null ? property.getUsableSizeM2() : property.getLandSizeM2())
                 .propertyType(property.getPropertyType() != null ? property.getPropertyType().getName() : null)
                 .isFavorite(isFavorite)
+                .isBoosted(!boosts.isEmpty())
+                .boostPackages(boosts.stream()
+                        .map(b -> b.getBoostType().name())
+                        .collect(Collectors.toList()))
                 .attributes(listingMapper.toAttributeList(attrValues))
                 .build();
     }

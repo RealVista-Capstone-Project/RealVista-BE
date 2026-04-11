@@ -46,8 +46,8 @@ public class ListingSearchResponse {
     // Boost info
     @JsonProperty("is_boosted")
     private Boolean isBoosted;
-    @JsonProperty("boost_package")
-    private String boostPackage; // e.g., "FEATURED", "HOT_BADGE"
+    @JsonProperty("boost_packages")
+    private List<String> boostPackages;
     // User info (for display/sorting context)
     private String userType; // AGENT or USER
     // Bookmark status for the requesting user (false for anonymous)

@@ -92,6 +92,15 @@ public class PropertyMapMarker {
     private Boolean isFavorite;
 
     /**
+     * Boost information for markers.
+     */
+    @JsonProperty("is_boosted")
+    private Boolean isBoosted;
+
+    @JsonProperty("boost_packages")
+    private List<String> boostPackages;
+
+    /**
      * Dynamic property attributes for card display.
      */
     private List<PropertyAttributeDTO> attributes;

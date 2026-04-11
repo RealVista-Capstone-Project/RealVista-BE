@@ -77,14 +77,16 @@ public interface BookmarkMapper {
 
         // Set boost information if any active boost exists
         if (activeBoosts != null && !activeBoosts.isEmpty()) {
-            activeBoosts.stream()
+            List<String> packages = activeBoosts.stream()
                     .filter(b -> b.getListingId().equals(listing.getListingId()))
                     .filter(b -> b.getBoostType() != null)
-                    .findFirst()
-                    .ifPresent(boost -> {
-                        builder.isBoosted(true);
-                        builder.boostPackage(boost.getBoostType().name());
-                    });
+                    .map(b -> b.getBoostType().name())
+                    .toList();
+            
+            if (!packages.isEmpty()) {
+                builder.isBoosted(true);
+                builder.boostPackages(packages);
+            }
         }
         if (builder.build().getIsBoosted() == null) {
             builder.isBoosted(false);

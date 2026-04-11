@@ -140,10 +140,10 @@ public class ListingSearchService {
         List<UUID> listingIds = listings.stream()
                 .map(Listing::getListingId)
                 .collect(Collectors.toList());
-        Map<UUID, ListingBoost> activeBoostsByListingId = listingBoostRepository
+        Map<UUID, List<ListingBoost>> activeBoostsByListingId = listingBoostRepository
                 .findAllActiveByListingIds(listingIds, LocalDate.now())
                 .stream()
-                .collect(Collectors.toMap(ListingBoost::getListingId, b -> b, (b1, b2) -> b1));
+                .collect(Collectors.groupingBy(ListingBoost::getListingId));
 
         // Final reference for use inside lambda
         final Set<UUID> finalBookmarkedIds = bookmarkedIds;
@@ -177,12 +177,15 @@ public class ListingSearchService {
             response.setIsFavorite(finalBookmarkedIds.contains(listing.getListingId()));
 
             // Populate boost info
-            ListingBoost boost = activeBoostsByListingId.get(listing.getListingId());
-            if (boost != null) {
+            List<ListingBoost> boosts = activeBoostsByListingId.getOrDefault(listing.getListingId(), List.of());
+            if (!boosts.isEmpty()) {
                 response.setIsBoosted(true);
-                response.setBoostPackage(boost.getBoostType().name());
+                response.setBoostPackages(boosts.stream()
+                        .map(b -> b.getBoostType().name())
+                        .collect(Collectors.toList()));
             } else {
                 response.setIsBoosted(false);
+                response.setBoostPackages(List.of());
             }
 
             // Populate user type (Agent/Owner)

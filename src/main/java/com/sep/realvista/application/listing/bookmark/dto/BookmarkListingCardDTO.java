@@ -82,8 +82,8 @@ public class BookmarkListingCardDTO {
     @JsonProperty("is_boosted")
     private Boolean isBoosted;
 
-    @JsonProperty("boost_package")
-    private String boostPackage;
+    @JsonProperty("boost_packages")
+    private List<String> boostPackages;
 
     @JsonProperty("user_type")
     private String userType;
