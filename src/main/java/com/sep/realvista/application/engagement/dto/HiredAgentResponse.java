@@ -51,4 +51,11 @@ public class HiredAgentResponse {
     private boolean hasReview;
     private String cancellationReason;
     private com.fasterxml.jackson.databind.JsonNode content;
+
+    // --- Initiator / Receiver for list views ---
+    private UUID initiatorId;
+    private String initiatorName;
+    private UUID receiverId;
+    private String receiverName;
+    private String receiverAvatarUrl;
 }

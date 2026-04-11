@@ -56,7 +56,7 @@ public class CreatePropertyRequest {
     
     @JsonProperty("extra_attributes")
     private Map<String, Object> extraAttributes;
-    
+
     @JsonProperty("amenity_ids")
     private List<UUID> amenityIds;
 

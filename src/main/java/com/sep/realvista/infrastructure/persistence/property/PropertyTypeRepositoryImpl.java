@@ -33,6 +33,10 @@ public class PropertyTypeRepositoryImpl implements PropertyTypeRepository {
     }
 
     @Override
+    public List<PropertyType> findAllActive() {
+        return jpaRepository.findAllActive();
+    }
+  
     public List<PropertyType> findAllByIdIn(Collection<UUID> ids) {
         if (ids == null || ids.isEmpty()) {
             return Collections.emptyList();

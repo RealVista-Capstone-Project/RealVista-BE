@@ -1,6 +1,7 @@
 package com.sep.realvista.domain.property;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
+import com.sep.realvista.domain.common.value.PriceRangeVO;
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.user.User;
 import jakarta.persistence.Column;
@@ -103,6 +104,10 @@ public class Property extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "extra_attributes", columnDefinition = "jsonb")
     private Map<String, Object> extraAttributes;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "price_range", columnDefinition = "jsonb")
+    private PriceRangeVO priceRange;
 
     public void publish() {
         if (this.status != PropertyStatus.DRAFT && this.status != PropertyStatus.VERIFIED) {
@@ -284,6 +289,12 @@ public class Property extends BaseEntity {
     public void updateExtraAttributes(Map<String, Object> extraAttributes) {
         if (extraAttributes != null) {
             this.extraAttributes = extraAttributes;
+        }
+    }
+
+    public void updatePriceRange(PriceRangeVO priceRange) {
+        if (priceRange != null) {
+            this.priceRange = priceRange;
         }
     }
 }

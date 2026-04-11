@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
+import com.sep.realvista.application.engagement.dto.EngagementSummaryResponse;
+import com.sep.realvista.application.engagement.dto.AgentProposalApplyStateResponse;
 import com.sep.realvista.application.engagement.mapper.EngagementMapper;
 import com.sep.realvista.domain.agent.AgentProfile;
 import com.sep.realvista.domain.agent.AgentProfileRepository;
@@ -21,6 +23,9 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.property.MediaType;
+import com.sep.realvista.domain.property.PropertyMedia;
+import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +48,6 @@ import java.util.stream.Collectors;
 
 /**
  * Application service for engagement operations.
- *
  * Orchestrates business logic for managing engagements
  * between property owners and agents.
  */
@@ -52,6 +56,10 @@ import java.util.stream.Collectors;
 @Transactional
 @Slf4j
 public class EngagementApplicationService {
+    private static final Set<EngagementStatus> PROPOSAL_BLOCKING_STATUSES = Set.of(
+            EngagementStatus.SUBMITTED,
+            EngagementStatus.ACCEPTED
+    );
 
     private final EngagementRepository engagementRepository;
     private final AgentProfileRepository agentProfileRepository;
@@ -60,6 +68,7 @@ public class EngagementApplicationService {
     private final ListingRepository listingRepository;
     private final PropertyAttributeValueRepository propertyAttributeValueRepository;
     private final PropertyRepository propertyRepository;
+    private final PropertyMediaRepository propertyMediaRepository;
     private final AgentProposalRepository agentProposalRepository;
     private final ObjectMapper objectMapper;
 
@@ -202,11 +211,11 @@ public class EngagementApplicationService {
             @CacheEvict(value = "hiredAgents", allEntries = true),
             @CacheEvict(value = "engagement", allEntries = true)
     })
-    public void finishEngagement(UUID engagementId, UUID ownerId) {
-        log.info("Finishing engagement: {} by owner: {}", engagementId, ownerId);
+    public void finishEngagement(UUID engagementId, UUID userId) {
+        log.info("Finishing engagement: {} by user: {}", engagementId, userId);
 
         Engagement engagement = findEngagementOrThrow(engagementId);
-        validateOwnership(engagement, ownerId);
+        validateParticipant(engagement, userId);
 
         engagement.finish();
         engagementRepository.save(engagement);
@@ -227,11 +236,11 @@ public class EngagementApplicationService {
             @CacheEvict(value = "hiredAgents", allEntries = true),
             @CacheEvict(value = "engagement", allEntries = true)
     })
-    public void cancelEngagement(UUID engagementId, UUID ownerId, CancelEngagementRequest request) {
-        log.info("Cancelling engagement: {} by owner: {}", engagementId, ownerId);
+    public void cancelEngagement(UUID engagementId, UUID userId, CancelEngagementRequest request) {
+        log.info("Cancelling engagement: {} by user: {}", engagementId, userId);
 
         Engagement engagement = findEngagementOrThrow(engagementId);
-        validateOwnership(engagement, ownerId);
+        validateParticipant(engagement, userId);
 
         engagement.cancel(request != null ? request.getReason() : null);
         engagementRepository.save(engagement);
@@ -282,6 +291,8 @@ public class EngagementApplicationService {
         contentMap.put("commissionRate", proposalTemplate.getCommissionRate());
         contentMap.put("experienceYears", proposalTemplate.getExperienceYears());
         contentMap.put("pitchContent", proposalTemplate.getPitchContent());
+        contentMap.put("specialty", proposalTemplate.getSpecialty());
+        contentMap.put("priceRange", proposalTemplate.getPriceRange());
         contentMap.put("message", request.getMessage() != null ? request.getMessage() : "");
 
         // 4. Create the engagement
@@ -299,6 +310,139 @@ public class EngagementApplicationService {
         log.info("Agent proposal submitted successfully. New engagement ID: {}", saved.getEngagementId());
 
         return saved.getEngagementId();
+    }
+
+    /**
+     * Gets all engagements for the authenticated user (as initiator or receiver),
+     * with optional search.
+     *
+     * @param userId the authenticated user's ID
+     * @param search optional search query for agent name
+     * @return list of engagements
+     */
+    @Transactional(readOnly = true)
+    public List<EngagementSummaryResponse> getMyEngagements(UUID userId, String search) {
+        log.info("Getting engagements for user: {}, search: {}", userId, search);
+
+        String normalizedSearch = (search != null && !search.isBlank()) ? search.trim() : null;
+        List<Engagement> engagements = engagementRepository.findByParticipantWithFetches(userId, normalizedSearch);
+
+        return engagements.stream()
+                .map(engagement -> {
+                    User agentUser = resolveAgentUser(engagement);
+                    String thumbnailUrl = null;
+                    List<String> imageUrls = List.of();
+
+                    if (engagement.getListingId() != null) {
+                        thumbnailUrl = listingRepository
+                                .findThumbnailByListingId(engagement.getListingId())
+                                .orElse(null);
+                    }
+
+                    // Get property image media (filter IMAGE only, skip video/3D)
+                    if (engagement.getPropertyId() != null) {
+                        List<PropertyMedia> propertyMediaList =
+                                propertyMediaRepository.findByPropertyId(engagement.getPropertyId());
+                        List<PropertyMedia> images = propertyMediaList.stream()
+                                .filter(pm -> pm.getMediaType() == MediaType.IMAGE)
+                                .collect(Collectors.toList());
+                        imageUrls = images.stream()
+                                .map(PropertyMedia::getMediaUrl)
+                                .collect(Collectors.toList());
+                        // Fallback thumbnail from first image
+                        if (thumbnailUrl == null && !images.isEmpty()) {
+                            PropertyMedia primary = images.get(0);
+                            thumbnailUrl = primary.getThumbnailUrl() != null
+                                    ? primary.getThumbnailUrl()
+                                    : primary.getMediaUrl();
+                        }
+                    }
+
+                    return engagementMapper.toSummaryResponse(
+                            engagement, agentUser, thumbnailUrl, imageUrls);
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Accepts a SUBMITTED engagement.
+     * Only the receiving party can accept.
+     *
+     * @param engagementId the engagement ID
+     * @param userId the authenticated user's ID
+     */
+    @Caching(evict = {
+            @CacheEvict(value = "hiredAgents", allEntries = true),
+            @CacheEvict(value = "engagement", allEntries = true)
+    })
+    public void acceptEngagement(UUID engagementId, UUID userId) {
+        log.info("Accepting engagement: {} by user: {}", engagementId, userId);
+
+        Engagement engagement = findEngagementOrThrow(engagementId);
+
+        if (!engagement.getReceiverId().equals(userId)) {
+            throw new BusinessConflictException(
+                    "You are not authorized to accept this engagement",
+                    "ENGAGEMENT_NOT_AUTHORIZED");
+        }
+
+        engagement.accept();
+        engagementRepository.save(engagement);
+
+        log.info("Engagement {} accepted successfully", engagementId);
+    }
+
+    /**
+     * Rejects a SUBMITTED engagement.
+     * Only the receiving party can reject.
+     *
+     * @param engagementId the engagement ID
+     * @param userId the authenticated user's ID
+     */
+    @Caching(evict = {
+            @CacheEvict(value = "hiredAgents", allEntries = true),
+            @CacheEvict(value = "engagement", allEntries = true)
+    })
+    public void rejectEngagement(UUID engagementId, UUID userId) {
+        log.info("Rejecting engagement: {} by user: {}", engagementId, userId);
+
+        Engagement engagement = findEngagementOrThrow(engagementId);
+
+        if (!engagement.getReceiverId().equals(userId)) {
+            throw new BusinessConflictException(
+                    "You are not authorized to reject this engagement",
+                    "ENGAGEMENT_NOT_AUTHORIZED");
+        }
+
+        engagement.reject();
+        engagementRepository.save(engagement);
+
+        log.info("Engagement {} rejected successfully", engagementId);
+    }
+
+    /**
+     * Checks whether an agent can apply proposal to an owner based on
+     * the latest AGENT_PROPOSAL engagement status.
+     *
+     * @param initiatorId the agent user ID
+     * @param receiverId the owner user ID
+     * @return proposal apply state (allowed or blocked) and latest status
+     */
+    @Transactional(readOnly = true)
+    public AgentProposalApplyStateResponse getAgentProposalApplyState(UUID initiatorId, UUID receiverId) {
+        log.info("Checking proposal apply state for initiator: {} and receiver: {}", initiatorId, receiverId);
+
+        Engagement latestEngagement = engagementRepository
+                .findLatestAgentProposalEngagement(initiatorId, receiverId)
+                .orElse(null);
+
+        EngagementStatus latestStatus = latestEngagement != null ? latestEngagement.getStatus() : null;
+        boolean canApplyProposal = latestStatus == null || !PROPOSAL_BLOCKING_STATUSES.contains(latestStatus);
+
+        return AgentProposalApplyStateResponse.builder()
+                .canApplyProposal(canApplyProposal)
+                .engagementStatus(latestStatus != null ? latestStatus.name() : null)
+                .build();
     }
 
     /**
@@ -326,6 +470,19 @@ public class EngagementApplicationService {
             throw new BusinessConflictException(
                     "You are not authorized to manage this engagement",
                     "ENGAGEMENT_NOT_OWNED");
+        }
+    }
+
+    /**
+     * Validates that the given user is a participant (initiator or receiver) of the engagement.
+     */
+    private void validateParticipant(Engagement engagement, UUID userId) {
+        boolean isParticipant = engagement.getInitiatorId().equals(userId)
+                || engagement.getReceiverId().equals(userId);
+        if (!isParticipant) {
+            throw new BusinessConflictException(
+                    "You are not authorized to manage this engagement",
+                    "ENGAGEMENT_NOT_AUTHORIZED");
         }
     }
 

@@ -4,7 +4,9 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
 import com.sep.realvista.application.engagement.dto.CreateReviewRequest;
+import com.sep.realvista.application.engagement.dto.EngagementSummaryResponse;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
+import com.sep.realvista.application.engagement.dto.AgentProposalApplyStateResponse;
 import com.sep.realvista.application.engagement.dto.ReviewResponse;
 import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
 import com.sep.realvista.application.engagement.service.AgentReviewApplicationService;
@@ -31,12 +33,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * REST Controller for managing engagements between property owners and agents.
- *
  * Provides endpoints for viewing hired agents, finishing/cancelling contracts,
  * and submitting agent reviews.
  */
@@ -52,8 +54,44 @@ public class EngagementController {
     private final AgentReviewApplicationService agentReviewApplicationService;
 
     /**
-     * Get a single engagement by ID, scoped to the authenticated owner.
+     * Get all engagements for the authenticated user (where they are initiator or receiver).
      *
+     * Returns a list of all engagements sorted by most recently updated first.
+     * Supports optional search by agent name or engagement content.
+     *
+     * @param userDetails the authenticated user
+     * @param search      optional search query for agent name or engagement content
+     * @return list of engagements
+     */
+    @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'AGENT')")
+    @Operation(
+            summary = "Get my engagements",
+            description = "Retrieves all engagements for the authenticated user. "
+                    + "For OWNER role: returns engagements where they are the owner/receiver. "
+                    + "For AGENT role: returns engagements where they are the agent/initiator. "
+                    + "Results are sorted by most recently updated first. "
+                    + "Supports optional search by agent name or engagement content."
+    )
+    public ResponseEntity<ApiResponse<List<EngagementSummaryResponse>>> getMyEngagements(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @Parameter(description = "Search by agent name or engagement content")
+            @RequestParam(required = false) String search
+    ) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        UUID userId = userDetails.getUserId();
+
+        log.info("Get my engagements request - traceId: {}, userId: {}, search: {}", traceId, userId, search);
+
+        List<EngagementSummaryResponse> responses = engagementApplicationService.getMyEngagements(userId, search);
+
+        return ResponseEntity.ok(ApiResponse.success("Engagements retrieved successfully", responses));
+    }
+
+    /**
+     * Get a single engagement by ID, scoped to the authenticated owner.
      * Returns full agent and property details for the engagement.
      * The caller must be the owner of the engagement (403 otherwise).
      *
@@ -88,7 +126,6 @@ public class EngagementController {
 
     /**
      * Get all hired agents for the authenticated property owner.
-     *
      * Returns a paginated list of agents that have been hired through
      * engagements. Supports optional status filter and search by agent name.
      *
@@ -137,6 +174,34 @@ public class EngagementController {
         return ResponseEntity.ok(ApiResponse.success("Hired agents retrieved successfully", response));
     }
 
+    @PutMapping("/{id}/accept")
+    @PreAuthorize("hasAnyRole('OWNER', 'AGENT')")
+    @Operation(summary = "Accept engagement",
+            description = "Accepts a SUBMITTED engagement.")
+    public ResponseEntity<ApiResponse<Void>> acceptEngagement(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @PathVariable UUID id
+    ) {
+        UUID userId = userDetails.getUserId();
+        log.info("Accept engagement request - engagementId: {}, userId: {}", id, userId);
+        engagementApplicationService.acceptEngagement(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Engagement accepted successfully", null));
+    }
+
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('OWNER', 'AGENT')")
+    @Operation(summary = "Reject engagement",
+            description = "Rejects a SUBMITTED engagement.")
+    public ResponseEntity<ApiResponse<Void>> rejectEngagement(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @PathVariable UUID id
+    ) {
+        UUID userId = userDetails.getUserId();
+        log.info("Reject engagement request - engagementId: {}, userId: {}", id, userId);
+        engagementApplicationService.rejectEngagement(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Engagement rejected successfully", null));
+    }
+
     /**
      * Finish an engagement (mark contract as completed).
      * Only ACCEPTED engagements can be finished.
@@ -146,11 +211,11 @@ public class EngagementController {
      * @return success response
      */
     @PutMapping("/{id}/finish")
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'AGENT')")
     @Operation(
             summary = "Finish engagement",
             description = "Marks an accepted engagement as finished (contract completed). "
-                    + "Only the owner of the engagement can perform this action. "
+                    + "Only the owner or agent of the engagement can perform this action. "
                     + "Only engagements with ACCEPTED status can be finished."
     )
     public ResponseEntity<ApiResponse<Void>> finishEngagement(
@@ -160,12 +225,12 @@ public class EngagementController {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
-        UUID ownerId = userDetails.getUserId();
+        UUID userId = userDetails.getUserId();
 
-        log.info("Finish engagement request - traceId: {}, engagementId: {}, ownerId: {}",
-                traceId, id, ownerId);
+        log.info("Finish engagement request - traceId: {}, engagementId: {}, userId: {}",
+                traceId, id, userId);
 
-        engagementApplicationService.finishEngagement(id, ownerId);
+        engagementApplicationService.finishEngagement(id, userId);
 
         return ResponseEntity.ok(ApiResponse.success("Engagement finished successfully", null));
     }
@@ -181,12 +246,12 @@ public class EngagementController {
      * @return success response
      */
     @PutMapping("/{id}/cancel")
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'AGENT')")
     @Operation(
             summary = "Cancel engagement",
             description = "Cancels an engagement. ACCEPTED engagements require a cancellation reason. "
                     + "SUBMITTED engagements can be cancelled without a reason. "
-                    + "Only the owner of the engagement can perform this action."
+                    + "Only a participant of the engagement can perform this action."
     )
     public ResponseEntity<ApiResponse<Void>> cancelEngagement(
             @AuthenticationPrincipal SecurityUserDetails userDetails,
@@ -196,12 +261,12 @@ public class EngagementController {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
-        UUID ownerId = userDetails.getUserId();
+        UUID userId = userDetails.getUserId();
 
-        log.info("Cancel engagement request - traceId: {}, engagementId: {}, ownerId: {}",
-                traceId, id, ownerId);
+        log.info("Cancel engagement request - traceId: {}, engagementId: {}, userId: {}",
+                traceId, id, userId);
 
-        engagementApplicationService.cancelEngagement(id, ownerId, request);
+        engagementApplicationService.cancelEngagement(id, userId, request);
 
         return ResponseEntity.ok(ApiResponse.success("Engagement cancelled successfully", null));
     }
@@ -276,5 +341,36 @@ public class EngagementController {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Proposal submitted successfully", Map.of("engagement_id", engagementId)));
+    }
+
+    /**
+     * Check whether an agent can apply proposal to an owner based on
+     * their latest AGENT_PROPOSAL engagement status.
+     *
+     * @param initiatorId agent user ID
+     * @param receiverId owner user ID
+     * @return apply-state payload (can_apply_proposal + engagement_status)
+     */
+    @GetMapping("/agent-proposal/apply-state")
+    @PreAuthorize("hasRole('AGENT')")
+    @Operation(
+            summary = "Check agent proposal apply state",
+            description = "Checks whether an agent can apply proposal to an owner. "
+                    + "The action is blocked when latest engagement status is SUBMITTED or ACCEPTED."
+    )
+    public ResponseEntity<ApiResponse<AgentProposalApplyStateResponse>> getAgentProposalApplyState(
+            @RequestParam(name = "initiator_id") UUID initiatorId,
+            @RequestParam(name = "receiver_id") UUID receiverId
+    ) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        log.info("Get proposal apply state request - traceId: {}, initiatorId: {}, receiverId: {}",
+                traceId, initiatorId, receiverId);
+
+        AgentProposalApplyStateResponse response =
+                engagementApplicationService.getAgentProposalApplyState(initiatorId, receiverId);
+
+        return ResponseEntity.ok(ApiResponse.success("Proposal apply state retrieved successfully", response));
     }
 }

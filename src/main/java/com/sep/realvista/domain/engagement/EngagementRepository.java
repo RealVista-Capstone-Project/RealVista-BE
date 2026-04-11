@@ -3,12 +3,12 @@ package com.sep.realvista.domain.engagement;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Repository interface for Engagement aggregate.
- *
  * Defines contract for engagement data access operations.
  * Implementation will be provided in infrastructure layer.
  */
@@ -63,4 +63,31 @@ public interface EngagementRepository {
      * @return page of engagements
      */
     Page<Engagement> findAllHiredAgentEngagements(UUID ownerId, String search, Pageable pageable);
+
+    /**
+     * Finds all engagements where the user is a participant (initiator or receiver).
+     *
+     * @param userId the user ID
+     * @param search optional search query
+     * @return list of engagements
+     */
+    List<Engagement> findByParticipantWithFetches(UUID userId, String search);
+
+    /**
+     * Finds engagements where the user is the initiator.
+     *
+     * @param userId the user ID
+     * @return list of engagements
+     */
+    List<Engagement> findByInitiatorId(UUID userId);
+
+    /**
+     * Finds the most recently updated AGENT_PROPOSAL engagement between
+     * an initiator (agent) and receiver (owner).
+     *
+     * @param initiatorId initiator user ID
+     * @param receiverId receiver user ID
+     * @return latest engagement if exists
+     */
+    Optional<Engagement> findLatestAgentProposalEngagement(UUID initiatorId, UUID receiverId);
 }
