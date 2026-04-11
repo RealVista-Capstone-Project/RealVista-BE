@@ -1,4 +1,4 @@
--- V81__Seed_price_range_for_properties.sql
+-- V84__Seed_price_range_for_properties.sql
 -- Seed price_range JSONB data for all existing properties that have no price yet.
 -- Prices are in full VND (e.g. 10000000 = 10 triệu VND), realistic for Ho Chi Minh City market.
 -- Format: {"rent": {"min": <number>, "max": <number>}, "buy": {"min": <number>, "max": <number>}}
