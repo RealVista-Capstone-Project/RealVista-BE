@@ -1,61 +1,79 @@
 package com.sep.realvista.application.engagement.mapper;
 
 import com.sep.realvista.application.engagement.dto.EngagementDto;
+import com.sep.realvista.application.engagement.dto.EngagementSummaryResponse;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
 import com.sep.realvista.application.engagement.dto.SoldListingInfo;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.domain.agent.AgentProfile;
-import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.engagement.Engagement;
-import com.sep.realvista.domain.engagement.EngagementType;
-import com.sep.realvista.domain.listing.Listing;
-import com.sep.realvista.domain.property.attribute.PropertyAttribute;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.user.User;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * MapStruct mapper for Engagement-related DTOs.
- */
-@Mapper(componentModel = "spring")
-public interface EngagementMapper {
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class EngagementMapper {
 
-    /**
-     * Simple mapping from Engagement entity to EngagementDto.
-     */
-    @Mapping(target = "content", source = "content", qualifiedByName = "jsonNodeToString")
-    @Mapping(target = "listingTitle", ignore = true)
-    @Mapping(target = "propertyAddress", ignore = true)
-    @Mapping(target = "propertyImageUrl", ignore = true)
-    EngagementDto toDto(Engagement engagement);
+    private final ListingRepository listingRepository;
 
-    @Named("jsonNodeToString")
-    default String jsonNodeToString(com.fasterxml.jackson.databind.JsonNode node) {
-        if (node == null) {
+    public EngagementDto toDto(Engagement engagement) {
+        if (engagement == null) {
             return null;
         }
-        return node.toString();
+
+        String listingTitle = "";
+        String propertyAddress = "";
+        String propertyImageUrl = "";
+
+        if (engagement.getListingId() != null) {
+            try {
+                var listing = listingRepository.findById(engagement.getListingId()).orElse(null);
+                if (listing != null) {
+                    listingTitle = Optional.ofNullable(listing.getName()).orElse("");
+                    if (listing.getProperty() != null) {
+                        propertyAddress = Optional.ofNullable(listing.getProperty().getStreetAddress())
+                                .orElse("");
+                    }
+                    propertyImageUrl = listingRepository
+                            .findThumbnailByListingId(listing.getListingId())
+                            .orElse("");
+                }
+            } catch (Exception ex) {
+                log.warn(
+                        "Failed to enrich engagement {} with listing {}: {}",
+                        engagement.getEngagementId(),
+                        engagement.getListingId(),
+                        ex.toString());
+            }
+        }
+
+        return EngagementDto.builder()
+                .engagementId(engagement.getEngagementId())
+                .initiatorId(engagement.getInitiatorId())
+                .receiverId(engagement.getReceiverId())
+                .engagementType(engagement.getEngagementType())
+                .content(engagement.getContent() != null ? engagement.getContent().toString() : null)
+                .listingId(engagement.getListingId())
+                .propertyId(engagement.getPropertyId())
+                .status(engagement.getStatus())
+                .listingTitle(listingTitle)
+                .propertyAddress(propertyAddress)
+                .propertyImageUrl(propertyImageUrl)
+                .createdAt(engagement.getCreatedAt())
+                .updatedAt(engagement.getUpdatedAt())
+                .build();
     }
 
-    /**
-     * Maps an Engagement with its associated agent User, AgentProfile,
-     * review status, listing thumbnail, and property attributes
-     * to a HiredAgentResponse DTO.
-     *
-     * @param engagement           the engagement entity
-     * @param agentUser            the agent's User entity
-     * @param agentProfile         the agent's profile (may be null)
-     * @param hasReview            whether this engagement has been reviewed
-     * @param listingThumbnailUrl  thumbnail URL for the linked listing (may be null)
-     * @param attributeValues      property attribute values (may be empty)
-     * @return the hired agent response DTO
-     */
-    default HiredAgentResponse toHiredAgentResponse(
+    public HiredAgentResponse toHiredAgentResponse(
             Engagement engagement,
             User agentUser,
             AgentProfile agentProfile,
@@ -66,40 +84,51 @@ public interface EngagementMapper {
         if (engagement == null) {
             return null;
         }
-        if (agentUser == null) {
-            throw new ResourceNotFoundException("User", resolveAgentUserId(engagement));
-        }
 
         HiredAgentResponse.HiredAgentResponseBuilder builder = HiredAgentResponse.builder()
-                .agentUserId(agentUser.getUserId())
-                .agentFullName(agentUser.getFullName())
-                .agentAvatarUrl(agentUser.getAvatarUrl())
-                .agentPhone(agentUser.getPhone())
-                .agentEmail(agentUser.getEmail() != null ? agentUser.getEmail().getValue() : null)
                 .engagementId(engagement.getEngagementId())
-                .engagementType(engagement.getEngagementType().name())
-                .status(engagement.getStatus().name())
-                .hiredAt(engagement.getUpdatedAt())
+                .engagementType(engagement.getEngagementType() != null
+                        ? engagement.getEngagementType().name() : null)
+                .status(engagement.getStatus() != null ? engagement.getStatus().name() : null)
+                .hiredAt(engagement.getCreatedAt())
                 .hasReview(hasReview)
                 .cancellationReason(engagement.getCancellationReason())
-                .content(engagement.getContent());
+                .content(engagement.getContent())
+                .propertyId(engagement.getPropertyId());
 
-        // Agent profile info (may be null if profile not yet created)
-        if (agentProfile != null) {
-            builder.agentBio(agentProfile.getBio())
-                   .agentSpecialties(agentProfile.getSpecialties())
-                   .agentServiceAreas(agentProfile.getServiceAreas())
-                   .agentRating(agentProfile.getRating())
-                   .agentYearsOfExperience(agentProfile.getYearsOfExperience())
-                   .agentPropertiesSold(agentProfile.getPropertiesSold());
+        // Initiator / Receiver for list display
+        builder.initiatorId(engagement.getInitiatorId())
+                .receiverId(engagement.getReceiverId());
+        var initiator = engagement.getInitiator();
+        if (initiator != null) {
+            builder.initiatorName(initiator.getFirstName() + " " + initiator.getLastName());
+        }
+        var receiver = engagement.getReceiver();
+        if (receiver != null) {
+            builder.receiverName(receiver.getFirstName() + " " + receiver.getLastName())
+                    .receiverAvatarUrl(receiver.getAvatarUrl());
         }
 
-        // Property info
-        if (engagement.getProperty() != null) {
-            var property = engagement.getProperty();
-            builder.propertyId(property.getPropertyId())
-                   .propertyAddress(property.getStreetAddress());
+        if (agentUser != null) {
+            builder.agentUserId(agentUser.getUserId())
+                    .agentFullName(agentUser.getFirstName() + " " + agentUser.getLastName())
+                    .agentAvatarUrl(agentUser.getAvatarUrl())
+                    .agentPhone(agentUser.getPhone())
+                    .agentEmail(agentUser.getEmail() != null ? agentUser.getEmail().toString() : null);
+        }
 
+        if (agentProfile != null) {
+            builder.agentBio(agentProfile.getBio())
+                    .agentSpecialties(agentProfile.getSpecialties())
+                    .agentServiceAreas(agentProfile.getServiceAreas())
+                    .agentRating(agentProfile.getRating())
+                    .agentYearsOfExperience(agentProfile.getYearsOfExperience())
+                    .agentPropertiesSold(agentProfile.getPropertiesSold());
+        }
+
+        var property = engagement.getProperty();
+        if (property != null) {
+            builder.propertyAddress(property.getStreetAddress());
             if (property.getPropertyType() != null) {
                 builder.propertyTypeName(property.getPropertyType().getName());
             }
@@ -108,69 +137,103 @@ public interface EngagementMapper {
             }
         }
 
-        // Listing info — build nested SoldListingInfo (nullable when no listing linked)
-        Listing listing = engagement.getListing();
+        var listing = engagement.getListing();
         if (listing != null) {
-            String address = engagement.getProperty() != null
-                    ? engagement.getProperty().getStreetAddress()
-                    : null;
+            List<PropertyAttributeDTO> attrDtos = attributeValues.stream()
+                    .map(av -> {
+                        var attr = av.getPropertyAttribute();
+                        return PropertyAttributeDTO.builder()
+                                .attributeId(av.getPropertyAttributeId())
+                                .attributeCode(attr != null ? attr.getCode() : null)
+                                .attributeName(attr != null ? attr.getName() : null)
+                                .dataType(attr != null && attr.getDataType() != null
+                                        ? attr.getDataType().name() : null)
+                                .icon(attr != null ? attr.getIcon() : null)
+                                .unit(attr != null ? attr.getUnit() : null)
+                                .valueNumber(av.getValueNumber())
+                                .valueText(av.getValueText())
+                                .valueBoolean(av.getValueBoolean())
+                                .build();
+                    })
+                    .collect(Collectors.toList());
 
-            List<PropertyAttributeDTO> attributes = attributeValues != null
-                    ? attributeValues.stream()
-                            .map(this::toAttributeDTO)
-                            .collect(Collectors.toList())
-                    : List.of();
-
-            SoldListingInfo soldListing = SoldListingInfo.builder()
+            builder.soldListing(SoldListingInfo.builder()
                     .listingId(listing.getListingId())
                     .title(listing.getName())
                     .price(listing.getPrice())
                     .imageUrl(listingThumbnailUrl)
                     .status(listing.getStatus() != null ? listing.getStatus().name() : null)
-                    .listingType(listing.getListingType() != null ? listing.getListingType().name() : null)
-                    .address(address)
-                    .attributes(attributes)
-                    .build();
-
-            builder.soldListing(soldListing);
+                    .listingType(listing.getListingType() != null
+                            ? listing.getListingType().name() : null)
+                    .address(property != null ? property.getStreetAddress() : null)
+                    .attributes(attrDtos)
+                    .build());
         }
 
         return builder.build();
     }
 
-    /**
-     * Maps a single PropertyAttributeValue to a PropertyAttributeDTO.
-     * Reuses the same structure as GET /listings/:id attributes.
-     */
-    default PropertyAttributeDTO toAttributeDTO(PropertyAttributeValue attributeValue) {
-        PropertyAttribute attribute = attributeValue.getPropertyAttribute();
-        return PropertyAttributeDTO.builder()
-                .attributeId(attribute.getPropertyAttributeId())
-                .attributeCode(attribute.getCode())
-                .attributeName(attribute.getName())
-                .dataType(attribute.getDataType() != null ? attribute.getDataType().name() : null)
-                .icon(attribute.getIcon())
-                .unit(attribute.getUnit())
-                .valueNumber(attributeValue.getValueNumber())
-                .valueText(attributeValue.getValueText())
-                .valueBoolean(attributeValue.getValueBoolean())
-                .build();
-    }
+    public EngagementSummaryResponse toSummaryResponse(
+            Engagement engagement,
+            User agentUser,
+            String listingThumbnailUrl,
+            List<String> propertyMediaUrls) {
 
-    /**
-     * Resolves the agent's user ID from an engagement based on engagement type.
-     * For AGENT_PROPOSAL: agent is the initiator.
-     * For OWNER_INVITATION: agent is the receiver.
-     *
-     * @param engagement the engagement
-     * @return the agent's user ID
-     */
-    @Named("resolveAgentUserId")
-    default java.util.UUID resolveAgentUserId(Engagement engagement) {
-        if (engagement.getEngagementType() == EngagementType.AGENT_PROPOSAL) {
-            return engagement.getInitiatorId();
-        } else {
-            return engagement.getReceiverId();
+        if (engagement == null) {
+            return null;
         }
+
+        EngagementSummaryResponse.EngagementSummaryResponseBuilder builder =
+                EngagementSummaryResponse.builder()
+                        .engagementId(engagement.getEngagementId())
+                        .engagementType(engagement.getEngagementType() != null
+                                ? engagement.getEngagementType().name() : null)
+                        .status(engagement.getStatus() != null ? engagement.getStatus().name() : null)
+                        .content(engagement.getContent())
+                        .propertyId(engagement.getPropertyId())
+                        .createdAt(engagement.getCreatedAt())
+                        .updatedAt(engagement.getUpdatedAt());
+
+        // Initiator / Receiver
+        builder.initiatorId(engagement.getInitiatorId())
+                .receiverId(engagement.getReceiverId());
+        var initiator = engagement.getInitiator();
+        if (initiator != null) {
+            builder.initiatorName(initiator.getFirstName() + " " + initiator.getLastName());
+        }
+        var receiver = engagement.getReceiver();
+        if (receiver != null) {
+            builder.receiverName(receiver.getFirstName() + " " + receiver.getLastName())
+                    .receiverAvatarUrl(receiver.getAvatarUrl());
+        }
+
+        // Agent summary
+        if (agentUser != null) {
+            builder.agentUserId(agentUser.getUserId())
+                    .agentFullName(agentUser.getFirstName() + " " + agentUser.getLastName())
+                    .agentAvatarUrl(agentUser.getAvatarUrl());
+        }
+
+        // Property
+        var property = engagement.getProperty();
+        if (property != null) {
+            builder.propertyAddress(property.getStreetAddress());
+            if (property.getPropertyType() != null) {
+                builder.propertyTypeName(property.getPropertyType().getName());
+            }
+            if (property.getLocation() != null) {
+                builder.propertyLocationName(property.getLocation().getName());
+            }
+        }
+
+        // Listing title + thumbnail + media
+        var listing = engagement.getListing();
+        if (listing != null) {
+            builder.listingTitle(listing.getName());
+        }
+        builder.propertyImageUrl(listingThumbnailUrl);
+        builder.propertyMediaUrls(propertyMediaUrls);
+
+        return builder.build();
     }
 }

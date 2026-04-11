@@ -192,4 +192,34 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
             AND e.propertyId IS NOT NULL
             """)
     List<UUID> findAgentActiveProposalPropertyIds(@Param("agentId") UUID agentId);
+
+    /**
+     * Finds all engagements where the user is a participant (initiator or receiver),
+     * with all associations eagerly fetched.
+     */
+    @Query("""
+            SELECT e FROM Engagement e
+            LEFT JOIN FETCH e.initiator i
+            LEFT JOIN FETCH e.receiver r
+            LEFT JOIN FETCH e.property p
+            LEFT JOIN FETCH p.location
+            LEFT JOIN FETCH p.propertyType
+            WHERE (e.initiatorId = :userId OR e.receiverId = :userId)
+            AND e.deleted = false
+            AND (:search IS NULL OR :search = '' OR
+                LOWER(CONCAT(COALESCE(i.firstName, ''), ' ', COALESCE(i.lastName, '')))
+                    LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(CONCAT(COALESCE(r.firstName, ''), ' ', COALESCE(r.lastName, '')))
+                    LIKE LOWER(CONCAT('%', :search, '%'))
+            )
+            ORDER BY e.updatedAt DESC
+            """)
+    List<Engagement> findByParticipantWithFetches(
+            @Param("userId") UUID userId,
+            @Param("search") String search);
+
+    /**
+     * Finds all engagements initiated by the given user.
+     */
+    List<Engagement> findByInitiatorIdAndDeletedFalse(UUID initiatorId);
 }

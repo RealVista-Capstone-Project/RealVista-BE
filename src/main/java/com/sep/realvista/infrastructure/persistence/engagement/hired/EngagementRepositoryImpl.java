@@ -54,4 +54,14 @@ public class EngagementRepositoryImpl implements EngagementRepository {
     public Page<Engagement> findAllHiredAgentEngagements(UUID ownerId, String search, Pageable pageable) {
         return jpaRepository.findAllHiredAgentEngagements(ownerId, HIRED_STATUSES, search, pageable);
     }
+
+    @Override
+    public List<Engagement> findByParticipantWithFetches(UUID userId, String search) {
+        return jpaRepository.findByParticipantWithFetches(userId, search);
+    }
+
+    @Override
+    public List<Engagement> findByInitiatorId(UUID userId) {
+        return jpaRepository.findByInitiatorIdAndDeletedFalse(userId);
+    }
 }
