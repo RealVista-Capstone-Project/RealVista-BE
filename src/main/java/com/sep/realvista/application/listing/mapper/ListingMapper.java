@@ -396,24 +396,56 @@ public interface ListingMapper {
                 .listingType(listing.getListingType())
                 .status(listing.getStatus())
                 .price(listing.getPrice())
+                .isNegotiable(listing.getIsNegotiable())
                 .content(listing.getContent())
-                .publishedAt(listing.getPublishedAt())
-                .userType(listing.getUser() != null ? "USER" : null); // Default to USER, can be enhanced later
+                .publishedAt(listing.getPublishedAt());
+
+        // Set user type
+        if (listing.getUser() != null && listing.getUser().getUserRoles() != null) {
+            boolean isAgent = listing.getUser().getUserRoles().stream()
+                    .anyMatch(ur -> ur.getRole() != null 
+                            && ur.getRole().getRoleCode() == com.sep.realvista.domain.user.role.RoleCode.AGENT);
+            response.userType(isAgent ? "AGENT" : "OWNER");
+        } else {
+            response.userType("USER");
+        }
 
         // Add property details if available
         if (listing.getProperty() != null) {
-            if (listing.getProperty().getUsableSizeM2() != null) {
-                response.area(listing.getProperty().getUsableSizeM2().doubleValue());
+            Property property = listing.getProperty();
+            if (property.getUsableSizeM2() != null) {
+                response.area(property.getUsableSizeM2().doubleValue());
+                
+                // Calculate area in sqft
+                BigDecimal areaSqft = property.getUsableSizeM2()
+                        .multiply(new BigDecimal("10.764"))
+                        .setScale(2, RoundingMode.HALF_UP);
+                response.areaSqft(areaSqft);
             }
+            
+            // Map coordinates
+            if (property.getLatitude() != null && property.getLongitude() != null) {
+                response.coordinates(
+                        com.sep.realvista.application.listing.dto.map.PropertyMapMarker.CoordinatesDTO.builder()
+                        .latitude(property.getLatitude())
+                        .longitude(property.getLongitude())
+                        .build());
+            }
+
+            // Map property types
+            if (property.getPropertyType() != null) {
+                response.propertyTypeName(property.getPropertyType().getName());
+                if (property.getPropertyType().getPropertyCategory() != null) {
+                    response.propertyCategoryName(property.getPropertyType().getPropertyCategory().getName());
+                }
+            }
+
             // Address fields (streetAddress, wardName, districtName, cityName) are populated
             // by the service layer after this mapper call to ensure lazy-loading works correctly
             // within the @Transactional boundary.
         }
 
-        // Thumbnail will be populated by the service layer
-        // Add boost information
-        // Note: Boost information would need to be fetched separately or joined
-        // For now, setting default values
+        // Boost information and thumbnail will be populated by the service layer
         response.isBoosted(false);
 
         return response.build();

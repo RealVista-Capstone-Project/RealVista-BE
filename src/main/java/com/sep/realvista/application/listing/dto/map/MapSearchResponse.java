@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -23,7 +24,7 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MapSearchResponse extends PageResponse<PropertyMapMarker> {
+public class MapSearchResponse extends PageResponse<ListingSearchResponse> {
 
     /**
      * Echoed map bounds for client validation.
@@ -43,9 +44,7 @@ public class MapSearchResponse extends PageResponse<PropertyMapMarker> {
      */
     private FilterMetadataDTO filterMetadata;
 
-    /**
-     * Nested DTO for map bounds.
-     */
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     @Data
     @Builder
     @NoArgsConstructor

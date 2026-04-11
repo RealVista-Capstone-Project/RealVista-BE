@@ -3,6 +3,7 @@ package com.sep.realvista.component.presentation.rest.map;
 import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.listing.dto.map.MapSearchRequest;
 import com.sep.realvista.application.listing.dto.map.MapSearchResponse;
+import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.application.listing.dto.map.PropertyMapMarker;
 import com.sep.realvista.application.listing.service.MapSearchApplicationService;
 import com.sep.realvista.domain.listing.ListingType;
@@ -63,17 +64,17 @@ class MapControllerComponentTest {
 
         // -- Shared test data --
 
-        private PropertyMapMarker sampleMarker1;
-        private PropertyMapMarker sampleMarker2;
+        private ListingSearchResponse sampleMarker1;
+        private ListingSearchResponse sampleMarker2;
         private MapSearchResponse singleResultResponse;
         private MapSearchResponse multiResultResponse;
         private MapSearchResponse emptyResponse;
 
         @BeforeEach
         void setUp() {
-                sampleMarker1 = PropertyMapMarker.builder()
+                sampleMarker1 = ListingSearchResponse.builder()
                                 .listingId(UUID.randomUUID())
-                                .coordinates(PropertyMapMarker.CoordinatesDTO.builder()
+                                .coordinates(com.sep.realvista.application.listing.dto.map.PropertyMapMarker.CoordinatesDTO.builder()
                                                 .latitude(new BigDecimal("10.776"))
                                                 .longitude(new BigDecimal("106.687"))
                                                 .build())
@@ -81,18 +82,18 @@ class MapControllerComponentTest {
                                 .price(new BigDecimal("1258552"))
                                 .listingType(ListingType.SALE)
                                 .name("2BR Apartment - Ben Nghe Ward")
-                                .thumbnailUrl("https://example.com/thumb1.jpg")
+                                .thumbnail("https://example.com/thumb1.jpg")
                                 .bedrooms(2)
                                 .bathrooms(1)
-                                .sizeM2(new BigDecimal("80.00"))
-                                .propertyType("Apartment")
+                                .area(80.00)
+                                .propertyTypeName("Apartment")
                                 .wardName("Ben Nghe Ward")
                                 .isFavorite(false)
                                 .build();
 
-                sampleMarker2 = PropertyMapMarker.builder()
+                sampleMarker2 = ListingSearchResponse.builder()
                                 .listingId(UUID.randomUUID())
-                                .coordinates(PropertyMapMarker.CoordinatesDTO.builder()
+                                .coordinates(com.sep.realvista.application.listing.dto.map.PropertyMapMarker.CoordinatesDTO.builder()
                                                 .latitude(new BigDecimal("10.800"))
                                                 .longitude(new BigDecimal("106.700"))
                                                 .build())
@@ -100,11 +101,11 @@ class MapControllerComponentTest {
                                 .price(new BigDecimal("3500000"))
                                 .listingType(ListingType.RENT)
                                 .name("Studio near Nguyen Hue Walking Street")
-                                .thumbnailUrl("https://example.com/thumb2.jpg")
+                                .thumbnail("https://example.com/thumb2.jpg")
                                 .bedrooms(0)
                                 .bathrooms(1)
-                                .sizeM2(new BigDecimal("35.00"))
-                                .propertyType("Studio")
+                                .area(35.00)
+                                .propertyTypeName("Studio")
                                 .wardName("Ben Nghe Ward")
                                 .isFavorite(true)
                                 .build();
@@ -807,15 +808,15 @@ class MapControllerComponentTest {
                                                         .value("SALE"))
                                         .andExpect(jsonPath("$.data.content[0].name")
                                                         .value("2BR Apartment - Ben Nghe Ward"))
-                                        .andExpect(jsonPath("$.data.content[0].thumbnail_url")
+                                        .andExpect(jsonPath("$.data.content[0].thumbnail")
                                                         .value("https://example.com/thumb1.jpg"))
                                         .andExpect(jsonPath("$.data.content[0].bedrooms")
                                                         .value(2))
                                         .andExpect(jsonPath("$.data.content[0].bathrooms")
                                                         .value(1))
-                                        .andExpect(jsonPath("$.data.content[0].size_m2")
+                                        .andExpect(jsonPath("$.data.content[0].area")
                                                         .value(80.00))
-                                        .andExpect(jsonPath("$.data.content[0].property_type")
+                                        .andExpect(jsonPath("$.data.content[0].property_type_name")
                                                         .value("Apartment"))
                                         .andExpect(jsonPath("$.data.content[0].ward_name")
                                                         .value("Ben Nghe Ward"))

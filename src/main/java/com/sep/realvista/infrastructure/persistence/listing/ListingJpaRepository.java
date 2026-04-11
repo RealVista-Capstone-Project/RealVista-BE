@@ -93,6 +93,16 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             LEFT JOIN locations loc ON p.location_id = loc.location_id
             LEFT JOIN property_types pt ON p.property_type_id = pt.property_type_id
             LEFT JOIN property_categories pc ON pt.property_category_id = pc.property_category_id
+            LEFT JOIN (
+                SELECT listing_id, MAX(CASE WHEN boost_type = 'FEATURED' THEN 3 
+                    WHEN boost_type = 'HOT_BADGE' THEN 2 ELSE 1 END) as priority
+                FROM listing_boosts
+                WHERE status = 'ACTIVE'
+                  AND start_date <= CURRENT_DATE
+                  AND end_date >= CURRENT_DATE
+                  AND deleted = false
+                GROUP BY listing_id
+            ) lb ON l.listing_id = lb.listing_id
             LEFT JOIN property_attribute_values pav_bed
                 ON p.property_id = pav_bed.property_id
                 AND pav_bed.property_attribute_id IN (
@@ -108,10 +118,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             WHERE l.status = 'PUBLISHED'
               AND l.deleted = false
               AND p.deleted = false
-              AND p.latitude >= :#{#bounds.southLat}
-              AND p.latitude <= :#{#bounds.northLat}
-              AND p.longitude >= :#{#bounds.westLng}
-              AND p.longitude <= :#{#bounds.eastLng}
+              AND p.latitude >= :southLat
+              AND p.latitude <= :northLat
+              AND p.longitude >= :westLng
+              AND p.longitude <= :eastLng
               AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
               AND (:minPrice IS NULL OR l.price >= :minPrice)
               AND (:maxPrice IS NULL OR l.price <= :maxPrice)
@@ -127,12 +137,15 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
               AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
               AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
               AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
-            ORDER BY l.published_at DESC
+            ORDER BY COALESCE(lb.priority, 0) DESC, l.published_at DESC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     @SuppressWarnings("checkstyle:ParameterNumber")
     List<Listing> findPublishedWithinBoundsSortByPublishedAt(
-            @Param("bounds") com.sep.realvista.domain.listing.search.MapBounds bounds,
+            @Param("northLat") BigDecimal northLat,
+            @Param("southLat") BigDecimal southLat,
+            @Param("eastLng") BigDecimal eastLng,
+            @Param("westLng") BigDecimal westLng,
             @Param("listingType") String listingType,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
@@ -156,6 +169,16 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             LEFT JOIN locations loc ON p.location_id = loc.location_id
             LEFT JOIN property_types pt ON p.property_type_id = pt.property_type_id
             LEFT JOIN property_categories pc ON pt.property_category_id = pc.property_category_id
+            LEFT JOIN (
+                SELECT listing_id, MAX(CASE WHEN boost_type = 'FEATURED' THEN 3 
+                    WHEN boost_type = 'HOT_BADGE' THEN 2 ELSE 1 END) as priority
+                FROM listing_boosts
+                WHERE status = 'ACTIVE'
+                  AND start_date <= CURRENT_DATE
+                  AND end_date >= CURRENT_DATE
+                  AND deleted = false
+                GROUP BY listing_id
+            ) lb ON l.listing_id = lb.listing_id
             LEFT JOIN property_attribute_values pav_bed
                 ON p.property_id = pav_bed.property_id
                 AND pav_bed.property_attribute_id IN (
@@ -171,10 +194,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             WHERE l.status = 'PUBLISHED'
               AND l.deleted = false
               AND p.deleted = false
-              AND p.latitude >= :#{#bounds.southLat}
-              AND p.latitude <= :#{#bounds.northLat}
-              AND p.longitude >= :#{#bounds.westLng}
-              AND p.longitude <= :#{#bounds.eastLng}
+              AND p.latitude >= :southLat
+              AND p.latitude <= :northLat
+              AND p.longitude >= :westLng
+              AND p.longitude <= :eastLng
               AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
               AND (:minPrice IS NULL OR l.price >= :minPrice)
               AND (:maxPrice IS NULL OR l.price <= :maxPrice)
@@ -190,12 +213,15 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
               AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
               AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
               AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
-            ORDER BY l.price ASC
+            ORDER BY COALESCE(lb.priority, 0) DESC, l.price ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     @SuppressWarnings("checkstyle:ParameterNumber")
     List<Listing> findPublishedWithinBoundsSortByPriceAsc(
-            @Param("bounds") com.sep.realvista.domain.listing.search.MapBounds bounds,
+            @Param("northLat") BigDecimal northLat,
+            @Param("southLat") BigDecimal southLat,
+            @Param("eastLng") BigDecimal eastLng,
+            @Param("westLng") BigDecimal westLng,
             @Param("listingType") String listingType,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
@@ -219,6 +245,16 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             LEFT JOIN locations loc ON p.location_id = loc.location_id
             LEFT JOIN property_types pt ON p.property_type_id = pt.property_type_id
             LEFT JOIN property_categories pc ON pt.property_category_id = pc.property_category_id
+            LEFT JOIN (
+                SELECT listing_id, MAX(CASE WHEN boost_type = 'FEATURED' THEN 3 
+                    WHEN boost_type = 'HOT_BADGE' THEN 2 ELSE 1 END) as priority
+                FROM listing_boosts
+                WHERE status = 'ACTIVE'
+                  AND start_date <= CURRENT_DATE
+                  AND end_date >= CURRENT_DATE
+                  AND deleted = false
+                GROUP BY listing_id
+            ) lb ON l.listing_id = lb.listing_id
             LEFT JOIN property_attribute_values pav_bed
                 ON p.property_id = pav_bed.property_id
                 AND pav_bed.property_attribute_id IN (
@@ -234,10 +270,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             WHERE l.status = 'PUBLISHED'
               AND l.deleted = false
               AND p.deleted = false
-              AND p.latitude >= :#{#bounds.southLat}
-              AND p.latitude <= :#{#bounds.northLat}
-              AND p.longitude >= :#{#bounds.westLng}
-              AND p.longitude <= :#{#bounds.eastLng}
+              AND p.latitude >= :southLat
+              AND p.latitude <= :northLat
+              AND p.longitude >= :westLng
+              AND p.longitude <= :eastLng
               AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
               AND (:minPrice IS NULL OR l.price >= :minPrice)
               AND (:maxPrice IS NULL OR l.price <= :maxPrice)
@@ -253,12 +289,15 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
               AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
               AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
               AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
-            ORDER BY l.price DESC
+            ORDER BY COALESCE(lb.priority, 0) DESC, l.price DESC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     @SuppressWarnings("checkstyle:ParameterNumber")
     List<Listing> findPublishedWithinBoundsSortByPriceDesc(
-            @Param("bounds") com.sep.realvista.domain.listing.search.MapBounds bounds,
+            @Param("northLat") BigDecimal northLat,
+            @Param("southLat") BigDecimal southLat,
+            @Param("eastLng") BigDecimal eastLng,
+            @Param("westLng") BigDecimal westLng,
             @Param("listingType") String listingType,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
@@ -282,6 +321,16 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             LEFT JOIN locations loc ON p.location_id = loc.location_id
             LEFT JOIN property_types pt ON p.property_type_id = pt.property_type_id
             LEFT JOIN property_categories pc ON pt.property_category_id = pc.property_category_id
+            LEFT JOIN (
+                SELECT listing_id, MAX(CASE WHEN boost_type = 'FEATURED' THEN 3 
+                    WHEN boost_type = 'HOT_BADGE' THEN 2 ELSE 1 END) as priority
+                FROM listing_boosts
+                WHERE status = 'ACTIVE'
+                  AND start_date <= CURRENT_DATE
+                  AND end_date >= CURRENT_DATE
+                  AND deleted = false
+                GROUP BY listing_id
+            ) lb ON l.listing_id = lb.listing_id
             LEFT JOIN property_attribute_values pav_bed
                 ON p.property_id = pav_bed.property_id
                 AND pav_bed.property_attribute_id IN (
@@ -297,10 +346,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             WHERE l.status = 'PUBLISHED'
               AND l.deleted = false
               AND p.deleted = false
-              AND p.latitude >= :#{#bounds.southLat}
-              AND p.latitude <= :#{#bounds.northLat}
-              AND p.longitude >= :#{#bounds.westLng}
-              AND p.longitude <= :#{#bounds.eastLng}
+              AND p.latitude >= :southLat
+              AND p.latitude <= :northLat
+              AND p.longitude >= :westLng
+              AND p.longitude <= :eastLng
               AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
               AND (:minPrice IS NULL OR l.price >= :minPrice)
               AND (:maxPrice IS NULL OR l.price <= :maxPrice)
@@ -316,12 +365,15 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
               AND (:bedrooms IS NULL OR pav_bed.value_number >= CAST(:bedrooms AS NUMERIC))
               AND (:bathrooms IS NULL OR pav_bath.value_number >= CAST(:bathrooms AS NUMERIC))
               AND (:area IS NULL OR COALESCE(p.usable_size_m2, p.land_size_m2) >= :area)
-            ORDER BY l.created_at DESC
+            ORDER BY COALESCE(lb.priority, 0) DESC, l.created_at DESC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     @SuppressWarnings("checkstyle:ParameterNumber")
     List<Listing> findPublishedWithinBoundsSortByCreatedAt(
-            @Param("bounds") com.sep.realvista.domain.listing.search.MapBounds bounds,
+            @Param("northLat") BigDecimal northLat,
+            @Param("southLat") BigDecimal southLat,
+            @Param("eastLng") BigDecimal eastLng,
+            @Param("westLng") BigDecimal westLng,
             @Param("listingType") String listingType,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
@@ -360,10 +412,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             WHERE l.status = 'PUBLISHED'
               AND l.deleted = false
               AND p.deleted = false
-              AND p.latitude >= :#{#bounds.southLat}
-              AND p.latitude <= :#{#bounds.northLat}
-              AND p.longitude >= :#{#bounds.westLng}
-              AND p.longitude <= :#{#bounds.eastLng}
+              AND p.latitude >= :southLat
+              AND p.latitude <= :northLat
+              AND p.longitude >= :westLng
+              AND p.longitude <= :eastLng
               AND (:listingType IS NULL OR l.listing_type = CAST(:listingType AS VARCHAR))
               AND (:minPrice IS NULL OR l.price >= :minPrice)
               AND (:maxPrice IS NULL OR l.price <= :maxPrice)
@@ -382,7 +434,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
             """, nativeQuery = true)
     @SuppressWarnings("checkstyle:ParameterNumber")
     Long countPublishedWithinBounds(
-            @Param("bounds") com.sep.realvista.domain.listing.search.MapBounds bounds,
+            @Param("northLat") BigDecimal northLat,
+            @Param("southLat") BigDecimal southLat,
+            @Param("eastLng") BigDecimal eastLng,
+            @Param("westLng") BigDecimal westLng,
             @Param("listingType") String listingType,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
