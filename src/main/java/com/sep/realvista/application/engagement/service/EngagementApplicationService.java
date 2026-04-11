@@ -308,19 +308,23 @@ public class EngagementApplicationService {
     }
 
     /**
-     * Checks whether an agent can apply proposal to an owner based on
-     * the latest AGENT_PROPOSAL engagement status.
+     * Checks whether an agent can apply proposal for a property based on
+     * the latest AGENT_PROPOSAL engagement status for that initiator, receiver, and property.
      *
      * @param initiatorId the agent user ID
      * @param receiverId the owner user ID
+     * @param propertyId the property ID
      * @return proposal apply state (allowed or blocked) and latest status
      */
     @Transactional(readOnly = true)
-    public AgentProposalApplyStateResponse getAgentProposalApplyState(UUID initiatorId, UUID receiverId) {
-        log.info("Checking proposal apply state for initiator: {} and receiver: {}", initiatorId, receiverId);
+    public AgentProposalApplyStateResponse getAgentProposalApplyState(
+            UUID initiatorId, UUID receiverId, UUID propertyId) {
+        log.info(
+                "Checking proposal apply state for initiator: {}, receiver: {}, property: {}",
+                initiatorId, receiverId, propertyId);
 
         Engagement latestEngagement = engagementRepository
-                .findLatestAgentProposalEngagement(initiatorId, receiverId)
+                .findLatestAgentProposalEngagement(initiatorId, receiverId, propertyId)
                 .orElse(null);
 
         EngagementStatus latestStatus = latestEngagement != null ? latestEngagement.getStatus() : null;

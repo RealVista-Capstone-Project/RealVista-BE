@@ -56,10 +56,12 @@ public class EngagementRepositoryImpl implements EngagementRepository {
     }
 
     @Override
-    public Optional<Engagement> findLatestAgentProposalEngagement(UUID initiatorId, UUID receiverId) {
-        return jpaRepository.findTopByInitiatorIdAndReceiverIdAndEngagementTypeAndDeletedFalseOrderByUpdatedAtDesc(
+    public Optional<Engagement> findLatestAgentProposalEngagement(
+            UUID initiatorId, UUID receiverId, UUID propertyId) {
+        return jpaRepository.findTopByInitiatorIdAndReceiverIdAndPropertyIdAndEngagementTypeAndDeletedFalseOrderByUpdatedAtDesc(
                 initiatorId,
                 receiverId,
+                propertyId,
                 EngagementType.AGENT_PROPOSAL
         );
     }

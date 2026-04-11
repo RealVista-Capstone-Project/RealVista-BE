@@ -277,32 +277,35 @@ public class EngagementController {
     }
 
     /**
-     * Check whether an agent can apply proposal to an owner based on
-     * their latest AGENT_PROPOSAL engagement status.
+     * Check whether an agent can apply proposal for a property based on
+     * their latest AGENT_PROPOSAL engagement for that initiator, receiver, and property.
      *
      * @param initiatorId agent user ID
      * @param receiverId owner user ID
+     * @param propertyId property ID
      * @return apply-state payload (can_apply_proposal + engagement_status)
      */
     @GetMapping("/agent-proposal/apply-state")
     @PreAuthorize("hasRole('AGENT')")
     @Operation(
             summary = "Check agent proposal apply state",
-            description = "Checks whether an agent can apply proposal to an owner. "
-                    + "The action is blocked when latest engagement status is SUBMITTED or ACCEPTED."
+            description = "Checks whether an agent can apply proposal for a property. "
+                    + "Uses the latest AGENT_PROPOSAL engagement matching initiator, receiver, and property. "
+                    + "The action is blocked when that engagement status is SUBMITTED or ACCEPTED."
     )
     public ResponseEntity<ApiResponse<AgentProposalApplyStateResponse>> getAgentProposalApplyState(
             @RequestParam(name = "initiator_id") UUID initiatorId,
-            @RequestParam(name = "receiver_id") UUID receiverId
+            @RequestParam(name = "receiver_id") UUID receiverId,
+            @RequestParam(name = "property_id") UUID propertyId
     ) {
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
 
-        log.info("Get proposal apply state request - traceId: {}, initiatorId: {}, receiverId: {}",
-                traceId, initiatorId, receiverId);
+        log.info("Get proposal apply state request - traceId: {}, initiatorId: {}, receiverId: {}, propertyId: {}",
+                traceId, initiatorId, receiverId, propertyId);
 
         AgentProposalApplyStateResponse response =
-                engagementApplicationService.getAgentProposalApplyState(initiatorId, receiverId);
+                engagementApplicationService.getAgentProposalApplyState(initiatorId, receiverId, propertyId);
 
         return ResponseEntity.ok(ApiResponse.success("Proposal apply state retrieved successfully", response));
     }
