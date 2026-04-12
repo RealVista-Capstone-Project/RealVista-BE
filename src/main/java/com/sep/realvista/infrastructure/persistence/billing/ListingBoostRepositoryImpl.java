@@ -7,6 +7,7 @@ import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,5 +47,13 @@ public class ListingBoostRepositoryImpl implements ListingBoostRepository {
     @Override
     public List<ListingBoost> findActiveByListingIds(List<UUID> listingIds) {
         return jpa.findByListingIdInAndStatusAndDeletedFalse(listingIds, ListingBoostStatus.ACTIVE);
+    }
+
+    @Override
+    public List<ListingBoost> findAllActiveByListingIds(List<UUID> listingIds, LocalDate now) {
+        if (listingIds == null || listingIds.isEmpty()) {
+            return List.of();
+        }
+        return jpa.findAllActiveByListingIds(listingIds, ListingBoostStatus.ACTIVE, now);
     }
 }

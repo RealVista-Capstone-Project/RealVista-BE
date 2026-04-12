@@ -13,6 +13,8 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
+import com.sep.realvista.application.listing.mapper.ListingMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -68,7 +70,13 @@ class BookmarkApplicationServiceTest {
     private PropertyAttributeValueRepository propertyAttributeValueRepository;
 
     @Mock
+    private ListingBoostRepository listingBoostRepository;
+
+    @Mock
     private BookmarkMapper bookmarkMapper;
+
+    @Mock
+    private ListingMapper listingMapper;
 
     private static final UUID TEST_USER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
     private static final UUID TEST_LISTING_ID = UUID.fromString("650e8400-e29b-41d4-a716-446655440002");
@@ -81,7 +89,9 @@ class BookmarkApplicationServiceTest {
                 listingRepository,
                 listingMediaRepository,
                 propertyAttributeValueRepository,
-                bookmarkMapper
+                listingBoostRepository,
+                bookmarkMapper,
+                listingMapper
         );
     }
 
