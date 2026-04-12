@@ -14,11 +14,12 @@ import java.util.UUID;
 
 /**
  * Spring Data JPA repository for Engagement entity.
- *
+ * <p>
  * Provides data access methods for hired agent engagement queries.
  */
 public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID> {
-    Optional<Engagement> findTopByInitiatorIdAndReceiverIdAndPropertyIdAndEngagementTypeAndDeletedFalseOrderByUpdatedAtDesc(
+    Optional<Engagement>
+    findTopByInitiatorIdAndReceiverIdAndPropertyIdAndEngagementTypeAndDeletedFalseOrderByUpdatedAtDesc(
             UUID initiatorId,
             UUID receiverId,
             UUID propertyId,

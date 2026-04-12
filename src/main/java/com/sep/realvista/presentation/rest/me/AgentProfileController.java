@@ -44,7 +44,8 @@ public class AgentProfileController {
 
     @PatchMapping
     @PreAuthorize("hasRole('AGENT')")
-    @Operation(summary = "Update my agent profile", description = "Updates bio, specialties, service areas, and years of experience")
+    @Operation(summary = "Update my agent profile",
+            description = "Updates bio, specialties, service areas, and years of experience")
     public ResponseEntity<ApiResponse<AgentProfileResponse>> updateMine(
             Authentication authentication,
             @Valid @RequestBody UpdateAgentProfileRequest request
