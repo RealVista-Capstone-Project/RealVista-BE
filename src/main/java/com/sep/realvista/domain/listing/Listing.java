@@ -1,5 +1,6 @@
 package com.sep.realvista.domain.listing;
 
+import com.sep.realvista.domain.billing.boost.ListingBoost;
 import com.sep.realvista.domain.common.entity.BaseEntity;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
@@ -28,6 +29,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -124,6 +126,9 @@ public class Listing extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    @jakarta.persistence.OneToMany(fetch = FetchType.LAZY, mappedBy = "listing")
+    private List<ListingBoost> boosts;
 
     public void submitForReview() {
         if (this.status != ListingStatus.DRAFT) {

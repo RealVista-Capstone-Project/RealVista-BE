@@ -56,6 +56,16 @@ public class EngagementRepositoryImpl implements EngagementRepository {
     }
 
     @Override
+    public List<Engagement> findByParticipantWithFetches(UUID userId, String search) {
+        return jpaRepository.findByParticipantWithFetches(userId, search);
+    }
+
+    @Override
+    public List<Engagement> findByInitiatorId(UUID userId) {
+        return jpaRepository.findByInitiatorIdAndDeletedFalse(userId);
+    }
+
+    @Override
     public Optional<Engagement> findLatestAgentProposalEngagement(UUID initiatorId, UUID receiverId) {
         return jpaRepository.findTopByInitiatorIdAndReceiverIdAndEngagementTypeAndDeletedFalseOrderByUpdatedAtDesc(
                 initiatorId,
