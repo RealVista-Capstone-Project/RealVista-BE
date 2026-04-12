@@ -897,4 +897,187 @@ class EngagementApplicationServiceTest {
             verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
     }
+
+    @Nested
+    @DisplayName("Agent proposal accept/reject notifications")
+    class AgentProposalDecisionNotifications {
+
+        private final ObjectMapper jsonMapper = new ObjectMapper();
+
+        @Test
+        @DisplayName("acceptEngagement on AGENT_PROPOSAL notifies agent")
+        void acceptAgentProposalNotifiesAgent() throws Exception {
+            UUID eid = UUID.randomUUID();
+            UUID owner = UUID.randomUUID();
+            UUID agentId = UUID.randomUUID();
+            UUID propId = UUID.randomUUID();
+
+            Engagement eng = Engagement.builder()
+                    .engagementId(eid)
+                    .initiatorId(agentId)
+                    .receiverId(owner)
+                    .engagementType(EngagementType.AGENT_PROPOSAL)
+                    .propertyId(propId)
+                    .status(EngagementStatus.SUBMITTED)
+                    .content(jsonMapper.readTree("{\"title\":\"Pitch X\"}"))
+                    .build();
+
+            when(engagementRepository.findById(eid)).thenReturn(Optional.of(eng));
+            when(engagementRepository.save(any(Engagement.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            User agentUser = User.builder()
+                    .userId(agentId)
+                    .email(Email.of("agent@test.com"))
+                    .businessName("Agent Co")
+                    .passwordHash("x")
+                    .build();
+            User ownerUser = User.builder()
+                    .userId(owner)
+                    .firstName("O")
+                    .lastName("Owner")
+                    .businessName("Owner Biz")
+                    .passwordHash("x")
+                    .build();
+            Property prop = Property.builder()
+                    .propertyId(propId)
+                    .ownerId(owner)
+                    .streetAddress("1 Road")
+                    .latitude(BigDecimal.ONE)
+                    .longitude(BigDecimal.ONE)
+                    .build();
+
+            when(userRepository.findById(agentId)).thenReturn(Optional.of(agentUser));
+            when(userRepository.findById(owner)).thenReturn(Optional.of(ownerUser));
+            when(propertyRepository.findById(propId)).thenReturn(Optional.of(prop));
+
+            engagementApplicationService.acceptEngagement(eid, owner);
+
+            ArgumentCaptor<SendNotificationRequest> cap = ArgumentCaptor.forClass(SendNotificationRequest.class);
+            verify(notificationApplicationService).sendNotification(cap.capture());
+            assertThat(cap.getValue().getUserId()).isEqualTo(agentId);
+            assertThat(cap.getValue().getEventType()).isEqualTo(EventType.AGENT_PROPOSAL_ACCEPTED);
+            assertThat(cap.getValue().getEntityType()).isEqualTo(EntityType.PROPERTY);
+            assertThat(cap.getValue().getEntityId()).isEqualTo(propId);
+            assertThat(cap.getValue().getMetadata().get("decision")).isEqualTo("ACCEPTED");
+            assertThat(cap.getValue().getMetadata().get("engagementId")).isEqualTo(eid.toString());
+
+            verify(emailService).sendTemplateMessageAsync(
+                    eq("agent@test.com"),
+                    anyString(),
+                    eq("agent-proposal-decision-notification"),
+                    anyMap());
+        }
+
+        @Test
+        @DisplayName("rejectEngagement on AGENT_PROPOSAL notifies agent")
+        void rejectAgentProposalNotifiesAgent() throws Exception {
+            UUID eid = UUID.randomUUID();
+            UUID owner = UUID.randomUUID();
+            UUID agentId = UUID.randomUUID();
+            UUID propId = UUID.randomUUID();
+
+            Engagement eng = Engagement.builder()
+                    .engagementId(eid)
+                    .initiatorId(agentId)
+                    .receiverId(owner)
+                    .engagementType(EngagementType.AGENT_PROPOSAL)
+                    .propertyId(propId)
+                    .status(EngagementStatus.SUBMITTED)
+                    .content(jsonMapper.readTree("{\"title\":\"Pitch Y\"}"))
+                    .build();
+
+            when(engagementRepository.findById(eid)).thenReturn(Optional.of(eng));
+            when(engagementRepository.save(any(Engagement.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            User agentUser = User.builder()
+                    .userId(agentId)
+                    .email(Email.of("agent2@test.com"))
+                    .businessName("Agent Two")
+                    .passwordHash("x")
+                    .build();
+            User ownerUser = User.builder()
+                    .userId(owner)
+                    .businessName("Owner Two")
+                    .passwordHash("x")
+                    .build();
+            Property prop = Property.builder()
+                    .propertyId(propId)
+                    .ownerId(owner)
+                    .streetAddress("2 Road")
+                    .latitude(BigDecimal.ONE)
+                    .longitude(BigDecimal.ONE)
+                    .build();
+
+            when(userRepository.findById(agentId)).thenReturn(Optional.of(agentUser));
+            when(userRepository.findById(owner)).thenReturn(Optional.of(ownerUser));
+            when(propertyRepository.findById(propId)).thenReturn(Optional.of(prop));
+
+            engagementApplicationService.rejectEngagement(eid, owner);
+
+            ArgumentCaptor<SendNotificationRequest> cap = ArgumentCaptor.forClass(SendNotificationRequest.class);
+            verify(notificationApplicationService).sendNotification(cap.capture());
+            assertThat(cap.getValue().getEventType()).isEqualTo(EventType.AGENT_PROPOSAL_REJECTED);
+            assertThat(cap.getValue().getMetadata().get("decision")).isEqualTo("REJECTED");
+
+            verify(emailService).sendTemplateMessageAsync(
+                    eq("agent2@test.com"),
+                    anyString(),
+                    eq("agent-proposal-decision-notification"),
+                    anyMap());
+        }
+
+        @Test
+        @DisplayName("acceptEngagement on non-AGENT_PROPOSAL does not notify")
+        void acceptNonAgentProposalDoesNotNotify() throws Exception {
+            UUID eid = UUID.randomUUID();
+            UUID owner = UUID.randomUUID();
+            UUID tenantId = UUID.randomUUID();
+
+            Engagement eng = Engagement.builder()
+                    .engagementId(eid)
+                    .initiatorId(tenantId)
+                    .receiverId(owner)
+                    .engagementType(EngagementType.TENANT_APPLICATION)
+                    .status(EngagementStatus.SUBMITTED)
+                    .content(jsonMapper.readTree("{}"))
+                    .build();
+
+            when(engagementRepository.findById(eid)).thenReturn(Optional.of(eng));
+            when(engagementRepository.save(any(Engagement.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            engagementApplicationService.acceptEngagement(eid, owner);
+
+            verify(notificationApplicationService, never()).sendNotification(any());
+            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
+        }
+
+        @Test
+        @DisplayName("acceptEngagement when not receiver does not notify")
+        void acceptWhenNotReceiverDoesNotNotify() throws Exception {
+            UUID eid = UUID.randomUUID();
+            UUID owner = UUID.randomUUID();
+            UUID agentId = UUID.randomUUID();
+            UUID wrongUser = UUID.randomUUID();
+
+            Engagement eng = Engagement.builder()
+                    .engagementId(eid)
+                    .initiatorId(agentId)
+                    .receiverId(owner)
+                    .engagementType(EngagementType.AGENT_PROPOSAL)
+                    .propertyId(UUID.randomUUID())
+                    .status(EngagementStatus.SUBMITTED)
+                    .content(jsonMapper.readTree("{}"))
+                    .build();
+
+            when(engagementRepository.findById(eid)).thenReturn(Optional.of(eng));
+
+            assertThatThrownBy(() -> engagementApplicationService.acceptEngagement(eid, wrongUser))
+                    .isInstanceOf(BusinessConflictException.class)
+                    .hasMessageContaining("not authorized to accept");
+
+            verify(engagementRepository, never()).save(any(Engagement.class));
+            verify(notificationApplicationService, never()).sendNotification(any());
+            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
+        }
+    }
 }
