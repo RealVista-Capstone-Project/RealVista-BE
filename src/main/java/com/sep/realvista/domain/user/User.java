@@ -181,8 +181,11 @@ public class User extends BaseEntity {
     }
 
     public String getFullName() {
+        if (businessName != null && !businessName.isBlank()) {
+            return businessName.trim();
+        }
         if (firstName == null && lastName == null) {
-            return businessName != null ? businessName : (email != null ? email.getValue() : "");
+            return email != null ? email.getValue() : "";
         }
         return String.format("%s %s", firstName != null ? firstName : "",
                 lastName != null ? lastName : "").trim();
