@@ -1,5 +1,6 @@
 package com.sep.realvista.application.agent.dto;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -20,5 +21,6 @@ public class UpdateAgentProfileRequest {
     private String serviceAreas;
 
     @Min(0)
+    @Max(60)
     private Integer yearsOfExperience;
 }
