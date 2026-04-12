@@ -7,6 +7,8 @@ import com.sep.realvista.domain.user.role.RoleCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,6 +29,14 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Optional<User> findById(UUID id) {
         return jpaRepository.findById(id);
+    }
+
+    @Override
+    public List<User> findAllByIdIn(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return jpaRepository.findAllById(ids);
     }
 
     @Override

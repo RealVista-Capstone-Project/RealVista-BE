@@ -1,5 +1,6 @@
 package com.sep.realvista.application.engagement.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.engagement.dto.CancelEngagementRequest;
@@ -13,6 +14,9 @@ import com.sep.realvista.domain.agent.AgentReviewRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
+import com.sep.realvista.application.service.EmailService;
 import com.sep.realvista.domain.engagement.Engagement;
 import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.EngagementStatus;
@@ -28,6 +32,9 @@ import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.notification.EntityType;
+import com.sep.realvista.domain.user.notification.EventType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -36,9 +43,11 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,6 +80,12 @@ public class EngagementApplicationService {
     private final PropertyMediaRepository propertyMediaRepository;
     private final AgentProposalRepository agentProposalRepository;
     private final ObjectMapper objectMapper;
+    private final NotificationApplicationService notificationApplicationService;
+    private final EmailService emailService;
+    private final UserRepository userRepository;
+
+    @Value("${spring.application.frontend.url}")
+    private String frontendUrl;
 
     /**
      * Gets hired agents for a property owner with pagination, optional status filter, and search.
@@ -205,7 +220,7 @@ public class EngagementApplicationService {
      * Only ACCEPTED engagements can be finished.
      *
      * @param engagementId the engagement ID
-     * @param ownerId the authenticated owner's user ID
+     * @param userId the authenticated owner's user ID
      */
     @Caching(evict = {
             @CacheEvict(value = "hiredAgents", allEntries = true),
@@ -229,7 +244,7 @@ public class EngagementApplicationService {
      * SUBMITTED engagements can be cancelled without a reason.
      *
      * @param engagementId the engagement ID
-     * @param ownerId the authenticated owner's user ID
+     * @param userId the authenticated owner's user ID
      * @param request the cancellation request containing the reason
      */
     @Caching(evict = {
@@ -286,7 +301,7 @@ public class EngagementApplicationService {
                     "CANNOT_PROPOSE_TO_SELF");
         }
 
-        Map<String, Object> contentMap = new java.util.HashMap<>();
+        Map<String, Object> contentMap = new HashMap<>();
         contentMap.put("title", proposalTemplate.getTitle());
         contentMap.put("commissionRate", proposalTemplate.getCommissionRate());
         contentMap.put("experienceYears", proposalTemplate.getExperienceYears());
@@ -309,7 +324,89 @@ public class EngagementApplicationService {
 
         log.info("Agent proposal submitted successfully. New engagement ID: {}", saved.getEngagementId());
 
+        notifyOwnerOfAgentProposal(saved, property, proposalTemplate, agentUserId);
+
         return saved.getEngagementId();
+    }
+
+    private void notifyOwnerOfAgentProposal(
+            Engagement saved,
+            Property property,
+            AgentProposal proposalTemplate,
+            UUID agentUserId) {
+        UUID ownerId = property.getOwnerId();
+        var ownerOpt = userRepository.findById(ownerId);
+        if (ownerOpt.isEmpty()) {
+            log.warn("Owner {} not found; skipping proposal notification for engagement {}", ownerId,
+                    saved.getEngagementId());
+            return;
+        }
+        User owner = ownerOpt.get();
+        if (owner.getEmail() == null || owner.getEmail().getValue() == null
+                || owner.getEmail().getValue().isBlank()) {
+            log.warn("Owner {} has no email; skipping proposal notification for engagement {}", ownerId,
+                    saved.getEngagementId());
+            return;
+        }
+
+        String agentName = userRepository.findById(agentUserId)
+                .map(User::getFullName)
+                .filter(n -> n != null && !n.isBlank())
+                .orElse("Môi giới");
+
+        String proposalTitle = proposalTemplate.getTitle() != null ? proposalTemplate.getTitle() : "";
+        String propertyAddress = property.getStreetAddress() != null ? property.getStreetAddress() : "";
+
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("engagementId", saved.getEngagementId().toString());
+        metadata.put("propertyId", property.getPropertyId().toString());
+        metadata.put("agentUserId", agentUserId.toString());
+
+        String notifyTitle = "Đề xuất môi giới mới";
+        String notifyMessage = String.format(
+                "%s đã gửi đề xuất \"%s\" cho bất động sản của bạn tại %s.",
+                agentName,
+                proposalTitle.isBlank() ? "một đề xuất" : proposalTitle,
+                propertyAddress.isBlank() ? "địa chỉ đã lưu" : propertyAddress);
+
+        try {
+            notificationApplicationService.sendNotification(
+                    SendNotificationRequest.builder()
+                            .userId(owner.getUserId())
+                            .userEmail(owner.getEmail().getValue())
+                            .title(notifyTitle)
+                            .message(notifyMessage)
+                            .eventType(EventType.NEW_AGENT_PROPOSAL)
+                            .entityType(EntityType.PROPERTY)
+                            .entityId(property.getPropertyId())
+                            .metadata(metadata)
+                            .build());
+        } catch (Exception e) {
+            log.error("Failed to send in-app/push notification to owner {} for engagement {}: {}",
+                    owner.getUserId(), saved.getEngagementId(), e.getMessage(), e);
+        }
+
+        String engagementsUrl = frontendUrl != null ? frontendUrl.replaceAll("/$", "") + "/vi/dashboard/my-engagements"
+                : "/vi/dashboard/my-engagements";
+
+        try {
+            Map<String, Object> emailVars = new HashMap<>();
+            emailVars.put("ownerName", owner.getFullName());
+            emailVars.put("agentName", agentName);
+            emailVars.put("proposalTitle", proposalTitle.isBlank() ? "Đề xuất môi giới" : proposalTitle);
+            emailVars.put("propertyAddress", propertyAddress.isBlank() ? "—" : propertyAddress);
+            emailVars.put("viewEngagementsUrl", engagementsUrl);
+
+            emailService.sendTemplateMessageAsync(
+                    owner.getEmail().getValue(),
+                    "Đề xuất môi giới mới trên RealVista",
+                    "agent-proposal-notification",
+                    emailVars);
+            log.info("Queued agent proposal notification email to owner {}", owner.getEmail().getValue());
+        } catch (Exception e) {
+            log.error("Failed to queue agent proposal email to owner {}: {}",
+                    owner.getEmail().getValue(), e.getMessage(), e);
+        }
     }
 
     /**
@@ -345,13 +442,13 @@ public class EngagementApplicationService {
                                 propertyMediaRepository.findByPropertyId(engagement.getPropertyId());
                         List<PropertyMedia> images = propertyMediaList.stream()
                                 .filter(pm -> pm.getMediaType() == MediaType.IMAGE)
-                                .collect(Collectors.toList());
+                                .toList();
                         imageUrls = images.stream()
                                 .map(PropertyMedia::getMediaUrl)
                                 .collect(Collectors.toList());
                         // Fallback thumbnail from first image
                         if (thumbnailUrl == null && !images.isEmpty()) {
-                            PropertyMedia primary = images.get(0);
+                            PropertyMedia primary = images.getFirst();
                             thumbnailUrl = primary.getThumbnailUrl() != null
                                     ? primary.getThumbnailUrl()
                                     : primary.getMediaUrl();
@@ -390,6 +487,10 @@ public class EngagementApplicationService {
         engagementRepository.save(engagement);
 
         log.info("Engagement {} accepted successfully", engagementId);
+
+        if (engagement.getEngagementType() == EngagementType.AGENT_PROPOSAL) {
+            notifyAgentOfAgentProposalDecision(engagement, true, userId);
+        }
     }
 
     /**
@@ -418,22 +519,145 @@ public class EngagementApplicationService {
         engagementRepository.save(engagement);
 
         log.info("Engagement {} rejected successfully", engagementId);
+
+        if (engagement.getEngagementType() == EngagementType.AGENT_PROPOSAL) {
+            notifyAgentOfAgentProposalDecision(engagement, false, userId);
+        }
+    }
+
+    private void notifyAgentOfAgentProposalDecision(
+            Engagement engagement, boolean accepted, UUID ownerUserId) {
+        UUID agentUserId = engagement.getInitiatorId();
+        var agentOpt = userRepository.findById(agentUserId);
+        if (agentOpt.isEmpty()) {
+            log.warn("Agent {} not found; skipping proposal decision notification for engagement {}",
+                    agentUserId, engagement.getEngagementId());
+            return;
+        }
+        User agent = agentOpt.get();
+        if (agent.getEmail() == null || agent.getEmail().getValue() == null
+                || agent.getEmail().getValue().isBlank()) {
+            log.warn("Agent {} has no email; skipping proposal decision notification for engagement {}",
+                    agentUserId, engagement.getEngagementId());
+            return;
+        }
+
+        String ownerName = userRepository.findById(ownerUserId)
+                .map(User::getFullName)
+                .filter(n -> n != null && !n.isBlank())
+                .orElse("Chủ nhà");
+
+        String proposalTitle = proposalTitleFromEngagementContent(engagement);
+        String displayTitle = proposalTitle.isBlank() ? "Đề xuất môi giới" : proposalTitle;
+
+        String propertyAddress = "—";
+        UUID propertyId = engagement.getPropertyId();
+        if (propertyId != null) {
+            propertyAddress = propertyRepository.findById(propertyId)
+                    .map(p -> p.getStreetAddress() != null && !p.getStreetAddress().isBlank()
+                            ? p.getStreetAddress()
+                            : "—")
+                    .orElse("—");
+        }
+
+        EventType eventType = accepted ? EventType.AGENT_PROPOSAL_ACCEPTED : EventType.AGENT_PROPOSAL_REJECTED;
+        String notifyTitle = accepted ? "Đề xuất được chấp nhận" : "Đề xuất bị từ chối";
+        String notifyMessage = accepted
+                ? String.format("%s đã chấp nhận đề xuất \"%s\" cho bất động sản tại %s.",
+                ownerName, displayTitle, propertyAddress)
+                : String.format("%s đã từ chối đề xuất \"%s\" cho bất động sản tại %s.",
+                ownerName, displayTitle, propertyAddress);
+
+        Map<String, String> metadata = new HashMap<>();
+        metadata.put("engagementId", engagement.getEngagementId().toString());
+        metadata.put("ownerUserId", ownerUserId.toString());
+        metadata.put("decision", accepted ? "ACCEPTED" : "REJECTED");
+        if (propertyId != null) {
+            metadata.put("propertyId", propertyId.toString());
+        }
+
+        EntityType entityType;
+        UUID entityId;
+        if (propertyId != null) {
+            entityType = EntityType.PROPERTY;
+            entityId = propertyId;
+        } else {
+            entityType = EntityType.USER;
+            entityId = agent.getUserId();
+        }
+
+        try {
+            notificationApplicationService.sendNotification(
+                    SendNotificationRequest.builder()
+                            .userId(agent.getUserId())
+                            .userEmail(agent.getEmail().getValue())
+                            .title(notifyTitle)
+                            .message(notifyMessage)
+                            .eventType(eventType)
+                            .entityType(entityType)
+                            .entityId(entityId)
+                            .metadata(metadata)
+                            .build());
+        } catch (Exception e) {
+            log.error("Failed to send proposal decision notification to agent {} for engagement {}: {}",
+                    agent.getUserId(), engagement.getEngagementId(), e.getMessage(), e);
+        }
+
+        String engagementsUrl = frontendUrl != null ? frontendUrl.replaceAll("/$", "") + "/vi/dashboard/my-engagements"
+                : "/vi/dashboard/my-engagements";
+
+        try {
+            Map<String, Object> emailVars = new HashMap<>();
+            emailVars.put("agentName", agent.getFullName());
+            emailVars.put("ownerName", ownerName);
+            emailVars.put("proposalTitle", displayTitle);
+            emailVars.put("propertyAddress", propertyAddress);
+            emailVars.put("accepted", accepted);
+            emailVars.put("viewEngagementsUrl", engagementsUrl);
+
+            String emailSubject = accepted
+                    ? "Đề xuất của bạn đã được chấp nhận - RealVista"
+                    : "Đề xuất của bạn đã bị từ chối - RealVista";
+
+            emailService.sendTemplateMessageAsync(
+                    agent.getEmail().getValue(),
+                    emailSubject,
+                    "agent-proposal-decision-notification",
+                    emailVars);
+            log.info("Queued agent proposal decision email to agent {}", agent.getEmail().getValue());
+        } catch (Exception e) {
+            log.error("Failed to queue proposal decision email to agent {}: {}",
+                    agent.getEmail().getValue(), e.getMessage(), e);
+        }
+    }
+
+    private static String proposalTitleFromEngagementContent(Engagement engagement) {
+        JsonNode content = engagement.getContent();
+        if (content == null || !content.hasNonNull("title")) {
+            return "";
+        }
+        String t = content.get("title").asText();
+        return t != null ? t.trim() : "";
     }
 
     /**
-     * Checks whether an agent can apply proposal to an owner based on
-     * the latest AGENT_PROPOSAL engagement status.
+     * Checks whether an agent can apply proposal for a property based on
+     * the latest AGENT_PROPOSAL engagement status for that initiator, receiver, and property.
      *
      * @param initiatorId the agent user ID
      * @param receiverId the owner user ID
+     * @param propertyId the property ID
      * @return proposal apply state (allowed or blocked) and latest status
      */
     @Transactional(readOnly = true)
-    public AgentProposalApplyStateResponse getAgentProposalApplyState(UUID initiatorId, UUID receiverId) {
-        log.info("Checking proposal apply state for initiator: {} and receiver: {}", initiatorId, receiverId);
+    public AgentProposalApplyStateResponse getAgentProposalApplyState(
+            UUID initiatorId, UUID receiverId, UUID propertyId) {
+        log.info(
+                "Checking proposal apply state for initiator: {}, receiver: {}, property: {}",
+                initiatorId, receiverId, propertyId);
 
         Engagement latestEngagement = engagementRepository
-                .findLatestAgentProposalEngagement(initiatorId, receiverId)
+                .findLatestAgentProposalEngagement(initiatorId, receiverId, propertyId)
                 .orElse(null);
 
         EngagementStatus latestStatus = latestEngagement != null ? latestEngagement.getStatus() : null;

@@ -1,9 +1,9 @@
 package com.sep.realvista.infrastructure.persistence.engagement.hired;
 
 import com.sep.realvista.domain.engagement.Engagement;
-import com.sep.realvista.domain.engagement.EngagementType;
 import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.EngagementStatus;
+import com.sep.realvista.domain.engagement.EngagementType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -66,11 +66,14 @@ public class EngagementRepositoryImpl implements EngagementRepository {
     }
 
     @Override
-    public Optional<Engagement> findLatestAgentProposalEngagement(UUID initiatorId, UUID receiverId) {
-        return jpaRepository.findTopByInitiatorIdAndReceiverIdAndEngagementTypeAndDeletedFalseOrderByUpdatedAtDesc(
-                initiatorId,
-                receiverId,
-                EngagementType.AGENT_PROPOSAL
-        );
+    public Optional<Engagement> findLatestAgentProposalEngagement(
+            UUID initiatorId, UUID receiverId, UUID propertyId) {
+        return jpaRepository
+                .findTopByInitiatorIdAndReceiverIdAndPropertyIdAndEngagementTypeAndDeletedFalseOrderByUpdatedAtDesc(
+                        initiatorId,
+                        receiverId,
+                        propertyId,
+                        EngagementType.AGENT_PROPOSAL
+                );
     }
 }
