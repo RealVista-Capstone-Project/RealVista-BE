@@ -22,13 +22,21 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
+import com.sep.realvista.application.service.EmailService;
+import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.notification.EntityType;
+import com.sep.realvista.domain.user.notification.EventType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -46,6 +54,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
@@ -82,6 +92,15 @@ class EngagementApplicationServiceTest {
 
     @Mock
     private ObjectMapper objectMapper;
+
+    @Mock
+    private NotificationApplicationService notificationApplicationService;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private EngagementApplicationService engagementApplicationService;
@@ -742,12 +761,14 @@ class EngagementApplicationServiceTest {
             agentProposal = AgentProposal.builder()
                     .agentProposalId(request.getAgentProposalId())
                     .userId(agentUserId)
+                    .title("Expert listing package")
                     .pitchContent("My expert pitch")
                     .build();
 
             property = Property.builder()
                     .propertyId(request.getPropertyId())
                     .ownerId(ownerId)
+                    .streetAddress("10 Nguyen Hue, Q1")
                     .build();
         }
 
@@ -756,6 +777,19 @@ class EngagementApplicationServiceTest {
         void shouldSubmitSuccessfully() {
             // Arrange
             UUID expectedEngagementId = UUID.randomUUID();
+            User ownerUser = User.builder()
+                    .userId(ownerId)
+                    .email(Email.of("owner@test.com"))
+                    .businessName("Owner Business")
+                    .passwordHash("hash")
+                    .build();
+            User notifyingAgent = User.builder()
+                    .userId(agentUserId)
+                    .firstName("Jane")
+                    .lastName("Agent")
+                    .businessName("Jane Agent")
+                    .passwordHash("hash")
+                    .build();
             when(agentProposalRepository.findById(request.getAgentProposalId()))
                     .thenReturn(Optional.of(agentProposal));
             when(propertyRepository.findById(request.getPropertyId()))
@@ -774,6 +808,8 @@ class EngagementApplicationServiceTest {
                                 .content(e.getContent())
                                 .build();
                     });
+            when(userRepository.findById(ownerId)).thenReturn(Optional.of(ownerUser));
+            when(userRepository.findById(agentUserId)).thenReturn(Optional.of(notifyingAgent));
 
             // Act
             UUID result = engagementApplicationService.submitAgentProposal(agentUserId, request);
@@ -782,6 +818,24 @@ class EngagementApplicationServiceTest {
             assertThat(result).isNotNull();
             assertThat(result).isEqualTo(expectedEngagementId);
             verify(engagementRepository).save(any(Engagement.class));
+
+            ArgumentCaptor<SendNotificationRequest> notifyCaptor =
+                    ArgumentCaptor.forClass(SendNotificationRequest.class);
+            verify(notificationApplicationService).sendNotification(notifyCaptor.capture());
+            SendNotificationRequest sent = notifyCaptor.getValue();
+            assertThat(sent.getUserId()).isEqualTo(ownerId);
+            assertThat(sent.getEventType()).isEqualTo(EventType.NEW_AGENT_PROPOSAL);
+            assertThat(sent.getEntityType()).isEqualTo(EntityType.PROPERTY);
+            assertThat(sent.getEntityId()).isEqualTo(property.getPropertyId());
+            assertThat(sent.getMetadata().get("engagementId")).isEqualTo(expectedEngagementId.toString());
+            assertThat(sent.getMetadata().get("propertyId")).isEqualTo(property.getPropertyId().toString());
+            assertThat(sent.getMetadata().get("agentUserId")).isEqualTo(agentUserId.toString());
+
+            verify(emailService).sendTemplateMessageAsync(
+                    eq("owner@test.com"),
+                    anyString(),
+                    eq("agent-proposal-notification"),
+                    anyMap());
         }
 
         @Test
@@ -796,6 +850,9 @@ class EngagementApplicationServiceTest {
                     engagementApplicationService.submitAgentProposal(agentUserId, request))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("AgentProposal");
+
+            verify(notificationApplicationService, never()).sendNotification(any());
+            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
 
         @Test
@@ -811,6 +868,9 @@ class EngagementApplicationServiceTest {
                     engagementApplicationService.submitAgentProposal(otherAgentId, request))
                     .isInstanceOf(BusinessConflictException.class)
                     .hasMessageContaining("You do not own this proposal template");
+
+            verify(notificationApplicationService, never()).sendNotification(any());
+            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
 
         @Test
@@ -832,6 +892,9 @@ class EngagementApplicationServiceTest {
                     engagementApplicationService.submitAgentProposal(agentUserId, request))
                     .isInstanceOf(BusinessConflictException.class)
                     .hasMessageContaining("cannot submit a proposal to your own property");
+
+            verify(notificationApplicationService, never()).sendNotification(any());
+            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
     }
 }
