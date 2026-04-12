@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <title th:text="${accepted} ? Hồ sơ được chấp nhận' : 'Hồ sơ bị từ chối'">RealVista</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f7; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color: #f4f4f7; padding: 24px 0;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+                   style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <tr>
+                    <td style="background-color: #4f46e5; padding: 28px 40px; text-align: center;">
+                        <span style="font-size: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">RealVista</span>
+                    </td>
+                </tr>
+                <tr th:if="${accepted}">
+                    <td style="background-color: #ecfdf5; padding: 20px 40px; text-align: center; border-bottom: 1px solid #a7f3d0;">
+                        <span style="font-size: 16px; font-weight: 600; color: #065f46;">Hồ sơ được chấp nhận</span>
+                    </td>
+                </tr>
+                <tr th:unless="${accepted}">
+                    <td style="background-color: #fef2f2; padding: 20px 40px; text-align: center; border-bottom: 1px solid #fecaca;">
+                        <span style="font-size: 16px; font-weight: 600; color: #991b1b;">Hồ sơ bị từ chối</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 32px 40px 16px 40px;">
+                        <p style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1f2937;">
+                            Xin chào <span th:text="${agentName}">Môi giới</span>,
+                        </p>
+                        <p th:if="${accepted}" style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
+                            Chủ nhà <strong th:text="${ownerName}">Chủ nhà</strong> đã <strong>chấp nhận</strong> hồ sơ của bạn trên RealVista.
+                        </p>
+                        <p th:unless="${accepted}" style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
+                            Chủ nhà <strong th:text="${ownerName}">Chủ nhà</strong> đã <strong>từ chối</strong> hồ sơ của bạn trên RealVista.
+                        </p>
+
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 20px;">
+                            <tr>
+                                <td style="padding: 20px;">
+                                    <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        Tiêu đề hồ sơ
+                                    </p>
+                                    <p style="margin: 0 0 16px 0; font-size: 15px; color: #1f2937;" th:text="${proposalTitle}">
+                                        Hồ sơ
+                                    </p>
+                                    <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        Địa chỉ bất động sản
+                                    </p>
+                                    <p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.5;" th:text="${propertyAddress}">
+                                        —
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="margin-bottom: 24px;">
+                            <tr>
+                                <td align="center">
+                                    <a th:href="${viewEngagementsUrl}"
+                                       style="display: inline-block; background-color: #4f46e5; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 32px; border-radius: 8px; letter-spacing: 0.3px;">
+                                        Xem hồ sơ của tôi
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.6; text-align: center;">
+                            Đăng nhập RealVista để xem chi tiết trong mục hồ sơ / hợp tác.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 0 40px 32px 40px; text-align: center;">
+                        <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
+                            &copy; 2026 RealVista. Bạn nhận email này vì có cập nhật về hồ sơ môi giới của bạn.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
