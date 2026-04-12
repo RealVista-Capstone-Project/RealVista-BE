@@ -82,12 +82,14 @@ public interface EngagementRepository {
     List<Engagement> findByInitiatorId(UUID userId);
 
     /**
-     * Finds the most recently updated AGENT_PROPOSAL engagement between
-     * an initiator (agent) and receiver (owner).
+     * Finds the most recently updated AGENT_PROPOSAL engagement for a property
+     * between an initiator (agent) and receiver (owner).
      *
      * @param initiatorId initiator user ID
      * @param receiverId receiver user ID
+     * @param propertyId property ID
      * @return latest engagement if exists
      */
-    Optional<Engagement> findLatestAgentProposalEngagement(UUID initiatorId, UUID receiverId);
+    Optional<Engagement> findLatestAgentProposalEngagement(
+            UUID initiatorId, UUID receiverId, UUID propertyId);
 }

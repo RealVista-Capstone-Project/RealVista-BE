@@ -82,8 +82,13 @@ public class AgentProfile extends BaseEntity {
     }
 
     public void updateYearsOfExperience(Integer years) {
-        if (years != null && years < 0) {
-            throw new IllegalArgumentException("Years of experience must be >= 0");
+        if (years != null) {
+            if (years < 0) {
+                throw new IllegalArgumentException("Years of experience must be >= 0");
+            }
+            if (years > 60) {
+                throw new IllegalArgumentException("Years of experience must be <= 60");
+            }
         }
         this.yearsOfExperience = years;
     }
