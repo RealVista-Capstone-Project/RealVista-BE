@@ -485,4 +485,30 @@ public class UserApplicationService {
     public long emailOtpRemainingSeconds(UUID userId) {
         return otpService.remainingSeconds(EMAIL_OTP_PREFIX + userId);
     }
+
+    /**
+     * Add OWNER role to a user if they don't already have it.
+     * Idempotent: does nothing if the user already has the OWNER role.
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public UserResponse addOwnerRole(UUID userId) {
+        log.info("Adding OWNER role to user ID: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+
+        // Skip if user already has OWNER role
+        if (userRepository.hasRole(userId, RoleCode.OWNER)) {
+            log.info("User {} already has OWNER role, skipping", userId);
+            return userMapper.toResponse(user);
+        }
+
+        Role ownerRole = roleRepository.findByRoleCode(RoleCode.OWNER)
+                .orElseThrow(() -> new BusinessConflictException("Role OWNER not found", "ROLE_NOT_FOUND"));
+
+        UserRole userRole = UserRole.create(user, ownerRole);
+        userRoleRepository.save(userRole);
+
+        log.info("OWNER role added successfully to user ID: {}", userId);
+        return userMapper.toResponse(userDomainService.getUserOrThrow(userId));
+    }
 }
