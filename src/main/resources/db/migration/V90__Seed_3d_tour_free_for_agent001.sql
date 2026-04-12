@@ -1,4 +1,4 @@
--- V87__Seed_3d_tour_free_for_agent001.sql
+-- V90__Seed_3d_tour_free_for_agent001.sql
 -- Seeds a 3D_TOUR_FREE subscription for agent001@realvista.com
 -- so the 3D management page has an active quota to display.
 
