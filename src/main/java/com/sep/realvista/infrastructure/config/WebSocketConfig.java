@@ -1,14 +1,20 @@
 package com.sep.realvista.infrastructure.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.sep.realvista.infrastructure.security.websocket.WebSocketAuthenticationInterceptor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+
+import java.util.List;
 
 /**
  * WebSocket configuration for real-time bidirectional communication.
@@ -98,5 +104,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(authenticationInterceptor);
         log.info("WebSocket authentication interceptor registered");
+    }
+
+    /**
+     * Register a MappingJackson2MessageConverter with snake_case naming strategy
+     * so all STOMP message payloads are serialised consistently.
+     * Returning false prevents Spring from adding its default converters on top.
+     */
+    @Override
+    public boolean configureMessageConverters(List<MessageConverter> messageConverters) {
+        ObjectMapper snakeCaseMapper = new ObjectMapper()
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+
+        MappingJackson2MessageConverter converter = new MappingJackson2MessageConverter();
+        converter.setObjectMapper(snakeCaseMapper);
+        messageConverters.add(converter);
+        return false;
     }
 }
