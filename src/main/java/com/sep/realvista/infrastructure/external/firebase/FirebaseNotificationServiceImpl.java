@@ -5,19 +5,27 @@ import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.SendResponse;
 import com.sep.realvista.application.service.FirebaseNotificationService;
+import com.sep.realvista.domain.user.notification.DeviceTokenRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class FirebaseNotificationServiceImpl implements FirebaseNotificationService {
+
+    private final DeviceTokenRepository deviceTokenRepository;
 
     @Override
     @Async
@@ -80,14 +88,29 @@ public class FirebaseNotificationServiceImpl implements FirebaseNotificationServ
                     response.getSuccessCount(), response.getFailureCount());
 
             if (response.getFailureCount() > 0) {
-                response.getResponses().forEach(sendResponse -> {
-                    if (!sendResponse.isSuccessful()) {
-                        log.warn("Failed to send to a device: {}",
-                                sendResponse.getException() != null
-                                        ? sendResponse.getException().getMessage()
-                                        : "Unknown error");
+                List<String> staleTokens = new ArrayList<>();
+                List<SendResponse> responses = response.getResponses();
+                for (int i = 0; i < responses.size(); i++) {
+                    SendResponse sendResponse = responses.get(i);
+                    if (!sendResponse.isSuccessful() && sendResponse.getException() != null) {
+                        MessagingErrorCode errorCode = sendResponse.getException().getMessagingErrorCode();
+                        if (errorCode == MessagingErrorCode.UNREGISTERED
+                                || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+                            staleTokens.add(fcmTokens.get(i));
+                            log.warn("Stale FCM token detected ({}): {}...",
+                                    errorCode,
+                                    fcmTokens.get(i).substring(0, Math.min(10, fcmTokens.get(i).length())));
+                        } else {
+                            log.warn("Failed to send to a device: {}",
+                                    sendResponse.getException().getMessage());
+                        }
                     }
-                });
+                }
+
+                if (!staleTokens.isEmpty()) {
+                    deviceTokenRepository.deactivateByFcmTokenIn(staleTokens);
+                    log.info("Deactivated {} stale FCM token(s).", staleTokens.size());
+                }
             }
         } catch (FirebaseMessagingException e) {
             log.error("Failed to send multicast FCM notification: {}", e.getMessage(), e);
