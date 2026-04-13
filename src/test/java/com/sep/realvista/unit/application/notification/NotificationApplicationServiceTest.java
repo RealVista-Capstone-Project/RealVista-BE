@@ -5,7 +5,9 @@ import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.FirebaseNotificationService;
 import com.sep.realvista.domain.user.notification.DeliveryStatus;
+import com.sep.realvista.domain.user.notification.DeviceToken;
 import com.sep.realvista.domain.user.notification.DeviceTokenRepository;
+import com.sep.realvista.domain.user.notification.DeviceType;
 import com.sep.realvista.domain.user.notification.EntityType;
 import com.sep.realvista.domain.user.notification.EventType;
 import com.sep.realvista.domain.user.notification.Notification;
@@ -199,5 +201,51 @@ class NotificationApplicationServiceTest {
 
         // WS should fire even with no preference record (defaults: inAppEnabled=true)
         verify(messagingTemplate).convertAndSendToUser(eq(userEmail), eq("/queue/notifications"), any());
+    }
+
+    // ── Task 6: FCM data keys snake_case ────────────────────────────────────
+
+    @Test
+    @DisplayName("sendFirebasePushNotification uses snake_case data keys")
+    void sendNotification_fcmDataKeysAreSnakeCase() {
+        UUID entityId = UUID.randomUUID();
+        SendNotificationRequest req = SendNotificationRequest.builder()
+                .userId(userId)
+                .userEmail(userEmail)
+                .title("T")
+                .message("M")
+                .eventType(EventType.NEW_LISTING)
+                .entityType(EntityType.LISTING)
+                .entityId(entityId)
+                .build();
+        Notification n = savedNotification(req);
+        when(notificationRepository.save(any())).thenReturn(n);
+        when(settingPreferenceRepository.findByUserId(userId))
+                .thenReturn(Optional.of(SettingPreference.builder()
+                        .userId(userId).inAppEnabled(false).pushEnabled(true).build()));
+
+        DeviceToken token = DeviceToken.builder()
+                .userId(userId)
+                .fcmToken("tok123")
+                .deviceType(DeviceType.ANDROID)
+                .build();
+        when(deviceTokenRepository.findByUserIdAndActiveTrue(userId)).thenReturn(List.of(token));
+
+        service.sendNotification(req);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> dataCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(firebaseNotificationService).sendNotificationToMultipleDevices(
+                any(), any(), any(), dataCaptor.capture());
+        Map<String, String> data = dataCaptor.getValue();
+        assertThat(data).containsKey("event_type")
+                        .containsKey("entity_type")
+                        .containsKey("entity_id")
+                        .doesNotContainKey("eventType")
+                        .doesNotContainKey("entityType")
+                        .doesNotContainKey("entityId");
+        assertThat(data.get("event_type")).isEqualTo("NEW_LISTING");
+        assertThat(data.get("entity_type")).isEqualTo("LISTING");
+        assertThat(data.get("entity_id")).isEqualTo(entityId.toString());
     }
 }
