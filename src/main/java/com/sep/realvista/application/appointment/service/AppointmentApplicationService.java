@@ -145,10 +145,10 @@ public class AppointmentApplicationService {
 
             // Build metadata for deep linking on frontend/mobile
             Map<String, String> metadata = new HashMap<>();
-            metadata.put("listingId", listing.getListingId().toString());
-            metadata.put("appointmentId", appointment.getAppointmentId().toString());
-            metadata.put("tourDate", tourDate);
-            metadata.put("tourTime", tourTime);
+            metadata.put("listing_id", listing.getListingId().toString());
+            metadata.put("appointment_id", appointment.getAppointmentId().toString());
+            metadata.put("tour_date", tourDate);
+            metadata.put("tour_time", tourTime);
 
             // In-app + push notification to the OWNER (most important - they need to respond)
             try {
