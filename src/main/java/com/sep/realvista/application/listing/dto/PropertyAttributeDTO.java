@@ -1,7 +1,6 @@
 package com.sep.realvista.application.listing.dto;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,20 +19,29 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class PropertyAttributeDTO {
+    @JsonProperty("attribute_id")
     private UUID attributeId;
+    @JsonProperty("attribute_code")
     private String attributeCode;
+    @JsonProperty("attribute_name")
     private String attributeName;
+    @JsonProperty("data_type")
     private String dataType;
+    @JsonProperty("icon")
     private String icon;
+    @JsonProperty("unit")
     private String unit;
 
+    @JsonProperty("priority")
     private Integer priority;
 
     // Value fields (only one will be populated based on data_type)
+    @JsonProperty("value_number")
     private BigDecimal valueNumber;
+    @JsonProperty("value_text")
     private String valueText;
+    @JsonProperty("value_boolean")
     private Boolean valueBoolean;
 
     private List<PropertyAttributeRangeDTO> ranges;
@@ -55,6 +63,7 @@ public class PropertyAttributeDTO {
      * Formats the value for display in UI.
      * For example: "3" for bedrooms, "2" for bathrooms, "Yes" for boolean amenities
      */
+    @JsonProperty("display_value")
     public String getDisplayValue() {
         if (valueNumber != null) {
             return unit != null ? valueNumber.toBigInteger() + " " + unit : valueNumber.toString();
