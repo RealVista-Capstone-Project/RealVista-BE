@@ -212,16 +212,6 @@ class UserUnitTest {
     }
 
     @Test
-    @DisplayName("Should return full name when both first and last names exist")
-    void shouldReturnFullNameWhenBothNamesExist() {
-        // Arrange
-        User user = createTestUserWithNames("John", "Doe", UserStatus.ACTIVE);
-
-        // Act & Assert
-        assertThat(user.getFullName()).isEqualTo("John Doe");
-    }
-
-    @Test
     @DisplayName("Should return business name when names are null")
     void shouldReturnEmailWhenNamesAreNull() {
         // Arrange

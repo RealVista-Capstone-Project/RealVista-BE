@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.media.dto.Property3DGenerationDto;
 import com.sep.realvista.application.media.dto.UpdateProperty3DOperationRequest;
+import com.sep.realvista.domain.billing.subscription.FeatureType;
+import com.sep.realvista.domain.billing.subscription.UserFeatureSubscription;
+import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubscriptionRepository;
+import com.sep.realvista.domain.common.exception.InsufficientQuotaException;
 import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.Property3DGeneration;
 import com.sep.realvista.domain.property.Property3DGenerationStatus;
@@ -40,6 +44,7 @@ public class Property3DGenerationService {
     private final MarbleClient marbleClient;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
 
     @Transactional
     public Property3DGenerationDto initiateOperation(
@@ -47,6 +52,17 @@ public class Property3DGenerationService {
         // verify property exists
         propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new IllegalArgumentException("Property not found"));
+
+        // Check and consume 3D_TOUR quota — pessimistic lock prevents double-spend
+        UserFeatureSubscription sub = userFeatureSubscriptionRepository
+                .findActiveByUserIdAndFeatureTypeForUpdate(uploaderId, FeatureType._3D_TOUR)
+                .stream()
+                .filter(UserFeatureSubscription::isUsable)
+                .findFirst()
+                .orElseThrow(() -> new InsufficientQuotaException(
+                        "No active 3D tour subscription with available quota"));
+        sub.useQuota(1);
+        userFeatureSubscriptionRepository.save(sub);
 
         // Build generate request
         MarbleGenerateRequest marbleRequest = MarbleGenerateRequest.builder()

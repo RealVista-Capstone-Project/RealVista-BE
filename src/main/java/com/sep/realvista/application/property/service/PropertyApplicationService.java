@@ -33,7 +33,10 @@ import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.application.listing.dto.ListingSummaryDTO;
 import com.sep.realvista.domain.listing.ListingStatus;
+import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.preference.SettingPreference;
+import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
 import com.sep.realvista.infrastructure.persistence.property.amenity.AmenityJpaRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import jakarta.persistence.EntityManager;
@@ -48,7 +51,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -71,6 +77,7 @@ public class PropertyApplicationService {
     private final PropertyMapper propertyMapper;
     private final EntityManager entityManager;
     private final AgentProposalRepository agentProposalRepository;
+    private final SettingPreferenceRepository settingPreferenceRepository;
 
     private UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -78,6 +85,19 @@ public class PropertyApplicationService {
             return userDetails.getUserId();
         }
         throw new IllegalStateException("Current user not found in security context");
+    }
+
+    private void applyOwnerContactForAgentView(
+            PropertyFeedItemResponse item, User owner, SettingPreference preference) {
+        item.setOwnerName(owner.getFullName());
+        boolean showEmail = preference != null && Boolean.FALSE.equals(preference.getHideEmail());
+        boolean showPhone = preference != null && Boolean.FALSE.equals(preference.getHidePhoneNumber());
+        if (showEmail && owner.getEmail() != null) {
+            item.setOwnerEmail(owner.getEmail().getValue());
+        }
+        if (showPhone && owner.getPhone() != null && !owner.getPhone().isBlank()) {
+            item.setOwnerPhone(owner.getPhone());
+        }
     }
 
     @Transactional
@@ -370,6 +390,14 @@ public class PropertyApplicationService {
         // Batch-fetch property IDs where this agent already has an active proposal
         java.util.Set<UUID> proposalPropertyIds = agentProposalRepository.findActiveProposalPropertyIds(agentId);
 
+        Set<UUID> ownerIds = page.getContent().stream()
+                .map(Property::getOwnerId)
+                .collect(Collectors.toSet());
+        Map<UUID, User> ownersById = userRepository.findAllByIdIn(ownerIds).stream()
+                .collect(Collectors.toMap(User::getUserId, Function.identity()));
+        Map<UUID, SettingPreference> prefsByUserId = settingPreferenceRepository.findByUserIdIn(ownerIds).stream()
+                .collect(Collectors.toMap(SettingPreference::getUserId, Function.identity(), (a, b) -> a));
+
         // Get price filter criteria
         java.math.BigDecimal minRentPrice = criteria != null ? criteria.getMinRentPrice() : null;
         java.math.BigDecimal maxRentPrice = criteria != null ? criteria.getMaxRentPrice() : null;
@@ -392,9 +420,10 @@ public class PropertyApplicationService {
                     PropertyFeedItemResponse item = propertyMapper.toFeedItemResponse(
                             property, media, attributes, amenities, hasActiveProposal);
 
-                    // Resolve owner name
-                    userRepository.findById(property.getOwnerId()).ifPresent(owner ->
-                            item.setOwnerName(owner.getFullName()));
+                    User owner = ownersById.get(property.getOwnerId());
+                    if (owner != null) {
+                        applyOwnerContactForAgentView(item, owner, prefsByUserId.get(property.getOwnerId()));
+                    }
 
                     return item;
                 }).collect(Collectors.toList());
@@ -444,9 +473,7 @@ public class PropertyApplicationService {
                 if (minBuyPrice != null && buy.getMin().compareTo(minBuyPrice) < 0) {
                     return false;
                 }
-                if (maxBuyPrice != null && buy.getMax() != null && buy.getMax().compareTo(maxBuyPrice) > 0) {
-                    return false;
-                }
+                return maxBuyPrice == null || buy.getMax() == null || buy.getMax().compareTo(maxBuyPrice) <= 0;
             }
         }
 

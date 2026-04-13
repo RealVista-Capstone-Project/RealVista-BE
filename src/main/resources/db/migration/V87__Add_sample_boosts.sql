@@ -1,4 +1,4 @@
--- V99__Add_sample_boosts.sql
+-- V87__Add_sample_boosts.sql
 -- Seed sample boost data for testing the priority-based search and UI badges
 -- Featured > Hot > Agent > Date
 
