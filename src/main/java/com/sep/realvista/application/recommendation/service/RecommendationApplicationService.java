@@ -261,6 +261,9 @@ public class RecommendationApplicationService {
                                             .area(searchRes.getArea())
                                             .publishedAt(searchRes.getPublishedAt())
                                             .userType(searchRes.getUserType())
+                                            .isFavorite(false)
+                                            .isBoosted(searchRes.getIsBoosted())
+                                            .boostPackages(searchRes.getBoostPackages())
                                             .reason(aiRec.getReason())
                                             .score(aiRec.getScore());
 
