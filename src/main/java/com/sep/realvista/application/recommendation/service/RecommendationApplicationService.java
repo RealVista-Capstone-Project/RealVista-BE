@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -75,12 +74,15 @@ public class RecommendationApplicationService {
         log.info("Ingesting {} behavior events for user {}",
                 request.getEvents().size(), userId);
 
+        // Try to identify the tracking context
+        String trackingId = userId;
+
         // Always forward to AI service for vector storage
         boolean success = aiServiceClient.ingestBehavior(
-                request, userId, userName, userRoles);
+                request, trackingId, userName, userRoles);
 
         if (success) {
-            // Increment the local counter
+            // Increment the local counter - using actual userId for threshold logic
             userEventCounters
                     .computeIfAbsent(userId, k -> new AtomicInteger(0))
                     .addAndGet(request.getEvents().size());
@@ -162,9 +164,12 @@ public class RecommendationApplicationService {
     private RecommendationResponse fetchAndEnrichRecommendations(
             String userId, int limit, String userName, String userRoles, ListingType listingType) {
 
-        // 1. Call AI service
+        // 1. Resolve Profile Context
+        String trackingId = userId;
+
+        // 2. Call AI service
         AiRecommendationResult aiResult = aiServiceClient.getRecommendations(
-                userId, limit, userName, userRoles, listingType);
+                trackingId, limit, userName, userRoles, listingType);
 
         if (aiResult == null || aiResult.getRecommendations() == null
                 || aiResult.getRecommendations().isEmpty()) {
@@ -192,10 +197,8 @@ public class RecommendationApplicationService {
                 .toList();
 
         // 3. Batch-fetch listings from PostgreSQL
-        Map<UUID, Listing> listingMap = new HashMap<>();
-        for (UUID id : listingIds) {
-            listingRepository.findById(id).ifPresent(listing -> listingMap.put(id, listing));
-        }
+        Map<UUID, Listing> listingMap = listingRepository.findAllById(listingIds).stream()
+                .collect(Collectors.toMap(Listing::getListingId, l -> l));
 
         // 4. Build enriched response
         List<RecommendationResponse.RecommendedListingDTO> enrichedListings =

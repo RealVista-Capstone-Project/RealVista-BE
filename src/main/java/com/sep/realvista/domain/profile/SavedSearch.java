@@ -55,6 +55,9 @@ public class SavedSearch extends BaseEntity {
     @Column(nullable = false, columnDefinition = "json")
     private String criteria;
 
+    @Column(name = "board_id", length = 100)
+    private String boardId;
+
     public void updateCriteria(String criteria) {
         if (criteria == null || criteria.isBlank()) {
             throw new IllegalArgumentException("Criteria cannot be null or empty");

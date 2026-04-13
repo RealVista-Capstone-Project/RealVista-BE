@@ -19,4 +19,8 @@ public class SaveSearchRequest {
 
     @NotNull(message = "Criteria cannot be null")
     private Map<String, Object> criteria;
+
+    private String boardId;
+    
+    private java.util.UUID profileId;
 }

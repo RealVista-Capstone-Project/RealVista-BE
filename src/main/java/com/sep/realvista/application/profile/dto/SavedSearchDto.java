@@ -18,5 +18,6 @@ public class SavedSearchDto {
     private UUID savedSearchId;
     private SearchType searchType;
     private Map<String, Object> criteria;
+    private String boardId;
     private LocalDateTime createdAt;
 }
