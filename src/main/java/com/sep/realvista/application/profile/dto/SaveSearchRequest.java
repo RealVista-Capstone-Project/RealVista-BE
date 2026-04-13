@@ -23,4 +23,6 @@ public class SaveSearchRequest {
     private String boardId;
     
     private java.util.UUID profileId;
+
+    private boolean isRecommendation;
 }

@@ -58,6 +58,10 @@ public class SavedSearch extends BaseEntity {
     @Column(name = "board_id", length = 100)
     private String boardId;
 
+    @Builder.Default
+    @Column(name = "is_recommendation")
+    private boolean isRecommendation = false;
+
     public void updateCriteria(String criteria) {
         if (criteria == null || criteria.isBlank()) {
             throw new IllegalArgumentException("Criteria cannot be null or empty");

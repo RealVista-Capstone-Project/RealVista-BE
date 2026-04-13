@@ -20,4 +20,5 @@ public class SavedSearchDto {
     private Map<String, Object> criteria;
     private String boardId;
     private LocalDateTime createdAt;
+    private boolean isRecommendation;
 }

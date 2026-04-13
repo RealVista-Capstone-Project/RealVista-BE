@@ -28,6 +28,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import com.sep.realvista.domain.profile.repository.SavedSearchRepository;
+import com.sep.realvista.application.profile.mapper.SavedSearchMapper;
+import com.sep.realvista.domain.profile.repository.CustomerProfileRepository;
+import com.sep.realvista.application.profile.dto.SavedSearchDto;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -38,6 +43,9 @@ public class RecommendationApplicationService {
     private final ListingRepository listingRepository;
     private final ListingMapper listingMapper;
     private final PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
+    private final SavedSearchRepository savedSearchRepository;
+    private final SavedSearchMapper savedSearchMapper;
+    private final CustomerProfileRepository customerProfileRepository;
 
     /**
      * In-memory event counters per user since last recommendation refresh.
@@ -164,12 +172,30 @@ public class RecommendationApplicationService {
     private RecommendationResponse fetchAndEnrichRecommendations(
             String userId, int limit, String userName, String userRoles, ListingType listingType) {
 
-        // 1. Resolve Profile Context
+        // 1. Resolve Profile Context & Preferences
         String trackingId = userId;
+        UUID parsedUserId;
+        try {
+            parsedUserId = UUID.fromString(userId);
+        } catch (Exception e) {
+            parsedUserId = null;
+        }
+
+        List<SavedSearchDto> preferences = Collections.emptyList();
+        if (parsedUserId != null) {
+            var profileOpt = customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(parsedUserId);
+            if (profileOpt.isPresent()) {
+                preferences = savedSearchRepository
+                        .findByProfileIdAndIsRecommendationTrueAndDeletedFalse(profileOpt.get().getCustomerProfileId())
+                        .stream()
+                        .map(savedSearchMapper::toDto)
+                        .toList();
+            }
+        }
 
         // 2. Call AI service
         AiRecommendationResult aiResult = aiServiceClient.getRecommendations(
-                trackingId, limit, userName, userRoles, listingType);
+                trackingId, limit, userName, userRoles, listingType, preferences);
 
         if (aiResult == null || aiResult.getRecommendations() == null
                 || aiResult.getRecommendations().isEmpty()) {

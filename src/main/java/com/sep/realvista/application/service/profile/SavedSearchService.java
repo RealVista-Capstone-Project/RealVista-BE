@@ -71,6 +71,7 @@ public class SavedSearchService {
                 .profileId(profile.getCustomerProfileId())
                 .searchType(request.getSearchType())
                 .criteria(criteriaJson)
+                .isRecommendation(request.isRecommendation())
                 .build();
 
         savedSearch = savedSearchRepository.save(savedSearch);

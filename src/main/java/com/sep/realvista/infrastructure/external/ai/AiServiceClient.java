@@ -91,7 +91,8 @@ public class AiServiceClient {
                                                      int limit,
                                                      String userName,
                                                      String userRoles,
-                                                     ListingType listingType) {
+                                                     ListingType listingType,
+                                                     java.util.List<?> preferences) {
         String url = aiServiceBaseUrl + "/recommendation/generate";
 
         try {
@@ -102,6 +103,9 @@ public class AiServiceClient {
             body.put("limit", limit);
             if (listingType != null) {
                 body.put("listingType", listingType.name());
+            }
+            if (preferences != null) {
+                body.put("preferences", preferences);
             }
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
