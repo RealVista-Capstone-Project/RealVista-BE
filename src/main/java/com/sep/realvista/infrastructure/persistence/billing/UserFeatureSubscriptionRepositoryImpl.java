@@ -43,6 +43,12 @@ public class UserFeatureSubscriptionRepositoryImpl implements UserFeatureSubscri
     }
 
     @Override
+    public List<UserFeatureSubscription> findActiveByUserIdAndFeatureTypeForUpdate(
+            UUID userId, FeatureType featureType) {
+        return jpa.findActiveByUserIdAndFeatureTypeForUpdate(userId, featureType);
+    }
+
+    @Override
     public List<UserFeatureSubscription> findAllActiveByUserId(UUID userId) {
         return jpa.findAllActiveByUserId(userId);
     }
