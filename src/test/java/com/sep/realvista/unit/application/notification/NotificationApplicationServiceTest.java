@@ -248,4 +248,45 @@ class NotificationApplicationServiceTest {
         assertThat(data.get("entity_type")).isEqualTo("LISTING");
         assertThat(data.get("entity_id")).isEqualTo(entityId.toString());
     }
+
+    // ── Task 7: deleteNotification ───────────────────────────────────────────
+
+    @Test
+    @DisplayName("deleteNotification marks notification as deleted and saves")
+    void deleteNotification_marksDeletedAndSaves() {
+        UUID notifId = UUID.randomUUID();
+        Notification n = Notification.builder()
+                .userId(userId)
+                .title("T")
+                .message("M")
+                .eventType(EventType.SYSTEM)
+                .build();
+        when(notificationRepository.findById(notifId)).thenReturn(Optional.of(n));
+        when(notificationRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        service.deleteNotification(notifId, userId);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        assertThat(captor.getValue().getDeleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("deleteNotification throws when notification belongs to different user")
+    void deleteNotification_throwsForWrongUser() {
+        UUID notifId = UUID.randomUUID();
+        UUID otherUser = UUID.randomUUID();
+        Notification n = Notification.builder()
+                .userId(otherUser)
+                .title("T")
+                .message("M")
+                .eventType(EventType.SYSTEM)
+                .build();
+        when(notificationRepository.findById(notifId)).thenReturn(Optional.of(n));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> service.deleteNotification(notifId, userId));
+
+        verify(notificationRepository, never()).save(any());
+    }
 }
