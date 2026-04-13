@@ -1,6 +1,7 @@
 package com.sep.realvista.application.listing.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.sep.realvista.domain.property.MediaType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,22 +18,15 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class MediaDTO {
-    @JsonProperty("media_id")
     private UUID mediaId;
-    @JsonProperty("media_type")
     private MediaType mediaType;
-    @JsonProperty("media_url")
     private String mediaUrl;
-    @JsonProperty("thumbnail_url")
     private String thumbnailUrl;
-    @JsonProperty("is_primary")
     private Boolean isPrimary;
-    @JsonProperty("is_property_standard")
     private Boolean isPropertyStandard;
-    @JsonProperty("display_order")
     private Integer displayOrder;
-    @JsonProperty("metadata")
     private Map<String, Object> metadata;
 
     // Helper methods for UI

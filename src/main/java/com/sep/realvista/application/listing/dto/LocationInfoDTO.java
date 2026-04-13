@@ -1,6 +1,7 @@
 package com.sep.realvista.application.listing.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,14 +17,11 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class LocationInfoDTO {
-    @JsonProperty("location_id")
     private UUID locationId;
-    @JsonProperty("city_name")
     private String cityName;
-    @JsonProperty("district_name")
     private String districtName;
-    @JsonProperty("ward_name")
     private String wardName;
     private BigDecimal latitude;
     private BigDecimal longitude;

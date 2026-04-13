@@ -1,6 +1,7 @@
 package com.sep.realvista.application.listing.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import lombok.AllArgsConstructor;
@@ -22,35 +23,25 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ListingDetailResponse {
 
     // Basic Listing Information
-    @JsonProperty("listing_id")
     private UUID listingId;
-    @JsonProperty("property_id")
     private UUID propertyId;
-    @JsonProperty("user_id")
     private UUID userId;
-    @JsonProperty("listing_type")
     private ListingType listingType;
     private ListingStatus status;
     private String slug;
     private String name;
     private String content;
     private BigDecimal price;
-    @JsonProperty("min_price")
     private BigDecimal minPrice;
-    @JsonProperty("max_price")
     private BigDecimal maxPrice;
-    @JsonProperty("is_negotiable")
     private Boolean isNegotiable;
-    @JsonProperty("available_from")
     private LocalDate availableFrom;
-    @JsonProperty("published_at")
     private LocalDateTime publishedAt;
-    @JsonProperty("created_at")
     private LocalDateTime createdAt;
-    @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
 
     // Property Information
@@ -75,21 +66,16 @@ public class ListingDetailResponse {
     private List<AmenityDTO> amenities;
 
     // Statistics
-    @JsonProperty("total_photos")
     private Integer totalPhotos;
-    @JsonProperty("total_videos")
     private Integer totalVideos;
-    @JsonProperty("total_3d_tours")
     private Integer total3DTours;
 
     // Cost Breakdown (for RENT listings)
     private CostBreakdownDTO costBreakdown;
 
     // Bookmark status for the requesting user (null for anonymous)
-    @JsonProperty("is_favorite")
     private Boolean isFavorite;
 
     // Indicates if the listing creator is the property owner
-    @JsonProperty("is_created_by_owner")
     private Boolean isCreatedByOwner;
 }
