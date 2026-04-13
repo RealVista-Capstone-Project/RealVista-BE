@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -70,7 +71,10 @@ public class AppointmentApplicationService {
 
         String listingName = listing.getName();
         String propertyAddress = buildPropertyAddress(listing);
-        String appointmentsUrl = frontendUrl + "/appointments";
+        String appointmentsUrl = UriComponentsBuilder.fromHttpUrl(frontendUrl)
+                .pathSegment("vi", "appointments")
+                .build()
+                .toUriString();
 
         for (Appointment appointment : result.appointments()) {
             String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
@@ -108,7 +112,8 @@ public class AppointmentApplicationService {
                 notificationVars.put("ownerName", owner.getFullName());
                 notificationVars.put("senderName", sender.getFullName());
                 notificationVars.put("senderEmail", sender.getEmail().getValue());
-                notificationVars.put("senderPhone", sender.getPhone());
+                notificationVars.put("senderPhone",
+                        sender.getPhone() != null ? sender.getPhone() : "N/A");
                 notificationVars.put("listingName", listingName);
                 notificationVars.put("propertyAddress", propertyAddress);
                 notificationVars.put("tourDate", tourDate);
