@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -143,5 +144,60 @@ class NotificationApplicationServiceTest {
         Map<String, String> parsed = objectMapper.readValue(metadataJson, Map.class);
         assertThat(parsed).containsKey("key");
         assertThat(parsed.get("key")).isEqualTo("val\"ue");
+    }
+
+    // ── Task 5: SettingPreference gates ─────────────────────────────────────
+
+    @Test
+    @DisplayName("sendNotification skips WebSocket when inAppEnabled is false")
+    void sendNotification_skipsWebSocketWhenInAppDisabled() {
+        SendNotificationRequest req = buildRequest();
+        Notification n = savedNotification(req);
+        when(notificationRepository.save(any())).thenReturn(n);
+        SettingPreference prefs = SettingPreference.builder()
+                .userId(userId)
+                .inAppEnabled(false)
+                .pushEnabled(true)
+                .build();
+        when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.of(prefs));
+        when(deviceTokenRepository.findByUserIdAndActiveTrue(userId)).thenReturn(List.of());
+
+        service.sendNotification(req);
+
+        verify(messagingTemplate, never()).convertAndSendToUser(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("sendNotification skips FCM when pushEnabled is false")
+    void sendNotification_skipsFcmWhenPushDisabled() {
+        SendNotificationRequest req = buildRequest();
+        Notification n = savedNotification(req);
+        when(notificationRepository.save(any())).thenReturn(n);
+        SettingPreference prefs = SettingPreference.builder()
+                .userId(userId)
+                .inAppEnabled(true)
+                .pushEnabled(false)
+                .build();
+        when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.of(prefs));
+
+        service.sendNotification(req);
+
+        verify(firebaseNotificationService, never())
+                .sendNotificationToMultipleDevices(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("sendNotification uses default prefs (both enabled) when preference not found")
+    void sendNotification_defaultsToAllEnabledWhenPrefMissing() {
+        SendNotificationRequest req = buildRequest();
+        Notification n = savedNotification(req);
+        when(notificationRepository.save(any())).thenReturn(n);
+        when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(deviceTokenRepository.findByUserIdAndActiveTrue(userId)).thenReturn(List.of());
+
+        service.sendNotification(req);
+
+        // WS should fire even with no preference record (defaults: inAppEnabled=true)
+        verify(messagingTemplate).convertAndSendToUser(eq(userEmail), eq("/queue/notifications"), any());
     }
 }
