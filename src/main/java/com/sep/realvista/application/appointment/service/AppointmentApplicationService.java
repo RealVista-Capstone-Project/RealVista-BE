@@ -186,7 +186,7 @@ public class AppointmentApplicationService {
                                 .userEmail(sender.getEmail().getValue())
                                 .title(senderTitle)
                                 .message(senderMessage)
-                                .eventType(EventType.NEW_TOUR_REQUEST)
+                                .eventType(EventType.APPOINTMENT_CONFIRMED)
                                 .entityType(EntityType.APPOINTMENT)
                                 .entityId(appointment.getAppointmentId())
                                 .metadata(metadata)
