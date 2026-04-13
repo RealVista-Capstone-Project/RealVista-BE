@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.sep.realvista.infrastructure.security.websocket.WebSocketAuthenticationInterceptor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
@@ -28,6 +29,7 @@ import java.util.List;
  * </ul>
  *
  * <p>Application destination prefix: /app
+ * <p>STOMP relay: RabbitMQ on rabbitmq.stomp.host:rabbitmq.stomp.port (default localhost:61613)
  */
 @Slf4j
 @Configuration
@@ -37,48 +39,53 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthenticationInterceptor authenticationInterceptor;
 
+    @Value("${rabbitmq.stomp.host:localhost}")
+    private String stompHost;
+
+    @Value("${rabbitmq.stomp.port:61613}")
+    private int stompPort;
+
+    @Value("${rabbitmq.stomp.login:guest}")
+    private String stompLogin;
+
+    @Value("${rabbitmq.stomp.passcode:guest}")
+    private String stompPasscode;
+
     /**
-     * Configure message broker options.
-     * - Simple broker for /topic and /queue destinations
-     * - Application destination prefix /app for @MessageMapping
-     *
-     * @param config the message broker registry
+     * Configure STOMP broker relay using RabbitMQ.
+     * Requires a running RabbitMQ with STOMP plugin enabled on stompPort (default 61613).
+     * Set rabbitmq.stomp.* in application.yml (or environment variables) to override defaults.
      */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Enable simple in-memory message broker for pub/sub
-        config.enableSimpleBroker("/topic", "/queue");
+        config.enableStompBrokerRelay("/topic", "/queue")
+                .setRelayHost(stompHost)
+                .setRelayPort(stompPort)
+                .setClientLogin(stompLogin)
+                .setClientPasscode(stompPasscode)
+                .setSystemLogin(stompLogin)
+                .setSystemPasscode(stompPasscode);
 
-        // Set prefix for messages bound for @MessageMapping methods
         config.setApplicationDestinationPrefixes("/app");
-
-        // Optional: Set prefix for user-specific destinations
         config.setUserDestinationPrefix("/user");
 
-        log.info("Message broker configured - broker destinations: /topic, /queue | app prefix: /app");
+        log.info("STOMP broker relay configured - host: {}:{}, destinations: /topic, /queue",
+                stompHost, stompPort);
     }
 
-    /**
-     * Note: AllowedOriginPatterns should not be hardcoded
-     * Register STOMP endpoints for WebSocket connections.
-     * Supports SockJS fallback for clients that don't support WebSocket.
-     * @param registry the STOMP endpoint registry
-     */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Native WebSocket endpoint (for Postman, mobile apps, etc.)
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(
-                        "http://localhost:3000",           // Next.js development
-                        "http://localhost:19006",          // React Native Expo
-                        "http://192.168.*.*:*",            // Local network for mobile testing
-                        "http://10.0.*.*:*",               // Local network for mobile testing
-                        "https://*.vercel.app",            // Vercel deployment
-                        "https://*.netlify.app",           // Netlify deployment
-                        "*"                                 // Allow all for development
+                        "http://localhost:3000",
+                        "http://localhost:19006",
+                        "http://192.168.*.*:*",
+                        "http://10.0.*.*:*",
+                        "https://*.vercel.app",
+                        "https://*.netlify.app",
+                        "*"
                 );
 
-        // SockJS fallback endpoint (for browsers that don't support WebSocket)
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(
                         "http://localhost:3000",
@@ -94,12 +101,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         log.info("STOMP endpoints registered at /ws with native WebSocket and SockJS fallback support");
     }
 
-    /**
-     * Configure client inbound channel with authentication interceptor.
-     * Validates JWT tokens for WebSocket connections.
-     *
-     * @param registration the channel registration
-     */
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(authenticationInterceptor);

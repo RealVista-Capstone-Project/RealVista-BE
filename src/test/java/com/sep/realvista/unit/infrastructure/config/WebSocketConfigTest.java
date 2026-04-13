@@ -46,4 +46,14 @@ class WebSocketConfigTest {
         assertThat(om.getPropertyNamingStrategy())
                 .isInstanceOf(PropertyNamingStrategies.SnakeCaseStrategy.class);
     }
+
+    @Test
+    @DisplayName("WebSocketConfig declares four @Value fields for RabbitMQ STOMP relay")
+    void webSocketConfig_hasBrokerRelayValueFields() {
+        // Verify that the four @Value fields exist on WebSocketConfig (structural check)
+        long valueAnnotatedCount = java.util.Arrays.stream(WebSocketConfig.class.getDeclaredFields())
+                .filter(f -> f.isAnnotationPresent(org.springframework.beans.factory.annotation.Value.class))
+                .count();
+        assertThat(valueAnnotatedCount).isGreaterThanOrEqualTo(4);
+    }
 }
