@@ -621,7 +621,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(mockAttributes);
 
                 // Act
-                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5);
+                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5, null);
 
                 // Assert
                 assertThat(response).isNotNull();
@@ -656,7 +656,7 @@ class ListingApplicationServiceUnitTest {
                 when(listingRepository.findSimilarListings(listingId, 5)).thenReturn(List.of());
 
                 // Act
-                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5);
+                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5, null);
 
                 // Assert
                 assertThat(response).isNotNull();
@@ -678,7 +678,7 @@ class ListingApplicationServiceUnitTest {
                 when(listingRepository.existsById(listingId)).thenReturn(false);
 
                 // Act & Assert
-                assertThatThrownBy(() -> listingApplicationService.getSimilarListings(listingId, 5))
+                assertThatThrownBy(() -> listingApplicationService.getSimilarListings(listingId, 5, null))
                                 .isInstanceOf(ResourceNotFoundException.class)
                                 .hasMessageContaining("Listing")
                                 .hasMessageContaining(listingId.toString());
@@ -697,7 +697,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(new ArrayList<>());
 
                 // Act
-                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 0);
+                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 0, null);
 
                 // Assert
                 assertThat(response).isNotNull();
@@ -717,7 +717,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(mockAttributes);
 
                 // Act
-                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 15);
+                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 15, null);
 
                 // Assert
                 assertThat(response).isNotNull();
@@ -737,7 +737,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(mockAttributes);
 
                 // Act
-                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5);
+                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5, null);
 
                 // Assert
                 assertThat(response).isNotNull();
@@ -763,7 +763,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(new ArrayList<>());
 
                 // Act
-                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5);
+                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5, null);
 
                 // Assert
                 assertThat(response).isNotNull();
@@ -801,7 +801,7 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(new ArrayList<>());
 
                 // Act
-                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5);
+                SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5, null);
 
                 // Assert
                 assertThat(response).isNotNull();
