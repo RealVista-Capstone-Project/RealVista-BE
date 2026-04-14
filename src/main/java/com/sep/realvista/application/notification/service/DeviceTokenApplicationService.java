@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,11 +23,14 @@ import java.util.UUID;
 @Slf4j
 public class DeviceTokenApplicationService {
 
+    private static final int MAX_ACTIVE_TOKENS = 20;
+
     private final DeviceTokenRepository deviceTokenRepository;
 
     /**
      * Register or update a device token for a user.
      * If the same FCM token already exists for the user, reactivates and updates it.
+     * Enforces a cap of 20 active tokens per user; deactivates oldest when exceeded.
      */
     public void registerDeviceToken(UUID userId, RegisterDeviceTokenRequest request) {
         log.info("Registering device token for user: {}, deviceType: {}", userId, request.getDeviceType());
@@ -50,6 +55,8 @@ public class DeviceTokenApplicationService {
             deviceTokenRepository.save(token);
             log.info("Registered new device token for user: {}", userId);
         }
+
+        enforceTokenCap(userId);
     }
 
     /**
@@ -73,5 +80,35 @@ public class DeviceTokenApplicationService {
     public void deactivateAllTokens(UUID userId) {
         log.info("Deactivating all device tokens for user: {}", userId);
         deviceTokenRepository.deactivateAllByUserId(userId);
+    }
+
+    // ============================================================================
+    // Private helpers
+    // ============================================================================
+
+    /**
+     * If the user has more than MAX_ACTIVE_TOKENS active tokens, deactivate the oldest
+     * ones (by createdAt ascending) until exactly MAX_ACTIVE_TOKENS remain.
+     */
+    private void enforceTokenCap(UUID userId) {
+        List<DeviceToken> activeTokens = deviceTokenRepository.findByUserIdAndActiveTrue(userId);
+
+        if (activeTokens.size() <= MAX_ACTIVE_TOKENS) {
+            return;
+        }
+
+        // Sort oldest-first (nulls last to handle tokens not yet fully persisted)
+        List<DeviceToken> sorted = activeTokens.stream()
+                .sorted(Comparator.comparing(DeviceToken::getCreatedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        int excess = sorted.size() - MAX_ACTIVE_TOKENS;
+        for (int i = 0; i < excess; i++) {
+            DeviceToken old = sorted.get(i);
+            old.deactivate();
+            deviceTokenRepository.save(old);
+            log.info("Deactivated excess device token for user {} (createdAt: {})", userId, old.getCreatedAt());
+        }
     }
 }

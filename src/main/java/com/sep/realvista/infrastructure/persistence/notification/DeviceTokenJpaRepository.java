@@ -21,4 +21,8 @@ public interface DeviceTokenJpaRepository extends JpaRepository<DeviceToken, UUI
     void deactivateAllByUserId(@Param("userId") UUID userId);
 
     void deleteByUserIdAndFcmToken(UUID userId, String fcmToken);
+
+    @Modifying
+    @Query("UPDATE DeviceToken d SET d.active = false WHERE d.fcmToken IN :tokens")
+    void deactivateByFcmTokenIn(@Param("tokens") List<String> tokens);
 }

@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -81,5 +82,17 @@ public class NotificationController {
         log.info("Marking all notifications as read for user {}", currentUser.getUserId());
         notificationApplicationService.markAllAsRead(currentUser.getUserId());
         return ResponseEntity.ok(ApiResponse.success("All notifications marked as read", null));
+    }
+
+    @DeleteMapping("/{notificationId}")
+    @Operation(summary = "Delete notification",
+            description = "Soft-deletes a notification for the current user")
+    public ResponseEntity<ApiResponse<Void>> deleteNotification(
+            @PathVariable UUID notificationId,
+            @AuthenticationPrincipal SecurityUserDetails currentUser
+    ) {
+        log.info("Deleting notification {} for user {}", notificationId, currentUser.getUserId());
+        notificationApplicationService.deleteNotification(notificationId, currentUser.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("Notification deleted", null));
     }
 }

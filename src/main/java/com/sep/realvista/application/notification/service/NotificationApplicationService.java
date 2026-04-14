@@ -1,5 +1,8 @@
 package com.sep.realvista.application.notification.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.notification.dto.NotificationResponse;
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.service.FirebaseNotificationService;
@@ -10,7 +13,8 @@ import com.sep.realvista.domain.user.notification.EventType;
 import com.sep.realvista.domain.user.notification.Notification;
 import com.sep.realvista.domain.user.notification.NotificationChannel;
 import com.sep.realvista.domain.user.notification.NotificationRepository;
-import com.sep.realvista.application.common.dto.PageResponse;
+import com.sep.realvista.domain.user.preference.SettingPreference;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,18 +42,22 @@ public class NotificationApplicationService {
     private final DeviceTokenRepository deviceTokenRepository;
     private final FirebaseNotificationService firebaseNotificationService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final SettingPreferenceRepository settingPreferenceRepository;
+    private final ObjectMapper objectMapper;
 
     /**
-     * Send a notification to a user via all channels:
-     * 1. Persist in DB (for notification history / inbox)
-     * 2. Push via WebSocket (real-time in-app UI)
-     * 3. Push via Firebase FCM (mobile + web push)
+     * Send a notification to a user via all channels.
+     * Preference gates: in-app (WS) only if inAppEnabled; push (FCM) only if pushEnabled.
      */
     public void sendNotification(SendNotificationRequest request) {
         log.info("Sending notification to user {} - type: {}, title: {}",
                 request.getUserId(), request.getEventType(), request.getTitle());
 
-        // 1. Persist notification
+        SettingPreference prefs = settingPreferenceRepository
+                .findByUserId(request.getUserId())
+                .orElse(SettingPreference.builder().userId(request.getUserId()).build());
+
+        // 1. Persist notification — markAsSent() BEFORE save (single save, no double-save)
         Notification notification = Notification.builder()
                 .userId(request.getUserId())
                 .channel(NotificationChannel.BOTH)
@@ -61,35 +69,37 @@ public class NotificationApplicationService {
                 .metadata(request.getMetadata() != null
                         ? toJsonString(request.getMetadata()) : null)
                 .build();
-
+        notification.markAsSent();
         Notification saved = notificationRepository.save(notification);
-        saved.markAsSent();
-        notificationRepository.save(saved);
 
         // 2. Build response DTO for WebSocket
         NotificationResponse response = toResponse(saved);
 
-        // 3. Push via WebSocket (real-time in-app)
-        sendWebSocketNotification(request.getUserEmail(), response);
+        // 3. Push via WebSocket (real-time in-app) — gated by inAppEnabled
+        if (Boolean.TRUE.equals(prefs.getInAppEnabled())) {
+            sendWebSocketNotification(request.getUserEmail(), response);
+        } else {
+            log.debug("In-app notifications disabled for user {}. Skipping WebSocket.", request.getUserId());
+        }
 
-        // 4. Push via Firebase FCM (mobile + web push)
-        sendFirebasePushNotification(
-                request.getUserId(), request.getTitle(),
-                request.getMessage(), request.getEventType(),
-                request.getEntityType(), request.getEntityId(),
-                request.getMetadata()
-        );
+        // 4. Push via Firebase FCM — gated by pushEnabled
+        if (Boolean.TRUE.equals(prefs.getPushEnabled())) {
+            sendFirebasePushNotification(
+                    request.getUserId(), request.getTitle(),
+                    request.getMessage(), request.getEventType(),
+                    request.getEntityType(), request.getEntityId(),
+                    request.getMetadata()
+            );
+        } else {
+            log.debug("Push notifications disabled for user {}. Skipping FCM.", request.getUserId());
+        }
 
-        log.info("Notification sent successfully to user {} via all channels",
-                request.getUserId());
+        log.info("Notification sent successfully to user {} via enabled channels", request.getUserId());
     }
 
-    /**
-     * Get paginated notifications for a user.
-     */
+    /** Get paginated notifications for a user. */
     @Transactional(readOnly = true)
-    public PageResponse<NotificationResponse> getUserNotifications(
-            UUID userId, Pageable pageable) {
+    public PageResponse<NotificationResponse> getUserNotifications(UUID userId, Pageable pageable) {
         Page<NotificationResponse> page = notificationRepository
                 .findByUserIdAndDeletedFalse(userId, pageable)
                 .map(this::toResponse);
@@ -105,17 +115,13 @@ public class NotificationApplicationService {
                 .build();
     }
 
-    /**
-     * Get unread notification count for a user.
-     */
+    /** Get unread notification count for a user. */
     @Transactional(readOnly = true)
     public long getUnreadCount(UUID userId) {
         return notificationRepository.countByUserIdAndIsReadFalseAndDeletedFalse(userId);
     }
 
-    /**
-     * Mark a single notification as read.
-     */
+    /** Mark a single notification as read. */
     public void markAsRead(UUID notificationId, UUID userId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
@@ -128,11 +134,22 @@ public class NotificationApplicationService {
         notificationRepository.save(notification);
     }
 
-    /**
-     * Mark all notifications as read for a user.
-     */
+    /** Mark all notifications as read for a user. */
     public void markAllAsRead(UUID userId) {
         notificationRepository.markAllAsReadByUserId(userId);
+    }
+
+    /** Soft-delete a notification (sets deleted = true via BaseEntity.markAsDeleted()). */
+    public void deleteNotification(UUID notificationId, UUID userId) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+
+        if (!notification.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Notification does not belong to this user");
+        }
+
+        notification.markAsDeleted();
+        notificationRepository.save(notification);
     }
 
     // ============================================================================
@@ -141,11 +158,7 @@ public class NotificationApplicationService {
 
     private void sendWebSocketNotification(String userEmail, NotificationResponse response) {
         try {
-            messagingTemplate.convertAndSendToUser(
-                    userEmail,
-                    "/queue/notifications",
-                    response
-            );
+            messagingTemplate.convertAndSendToUser(userEmail, "/queue/notifications", response);
             log.debug("WebSocket notification sent to user: {}", userEmail);
         } catch (Exception e) {
             log.error("Failed to send WebSocket notification to {}: {}", userEmail, e.getMessage(), e);
@@ -168,12 +181,12 @@ public class NotificationApplicationService {
                     .toList();
 
             Map<String, String> data = new HashMap<>();
-            data.put("eventType", eventType.name());
+            data.put("event_type", eventType.name());
             if (entityType != null) {
-                data.put("entityType", entityType.name());
+                data.put("entity_type", entityType.name());
             }
             if (entityId != null) {
-                data.put("entityId", entityId.toString());
+                data.put("entity_id", entityId.toString());
             }
             if (extraData != null) {
                 data.putAll(extraData);
@@ -202,32 +215,10 @@ public class NotificationApplicationService {
 
     private String toJsonString(Map<String, String> map) {
         try {
-            StringBuilder sb = new StringBuilder("{");
-            boolean first = true;
-            for (Map.Entry<String, String> entry : map.entrySet()) {
-                if (!first) {
-                    sb.append(",");
-                }
-                sb.append("\"").append(escapeJson(entry.getKey())).append("\":\"")
-                        .append(escapeJson(entry.getValue())).append("\"");
-                first = false;
-            }
-            sb.append("}");
-            return sb.toString();
-        } catch (Exception e) {
+            return objectMapper.writeValueAsString(map);
+        } catch (JsonProcessingException e) {
             log.warn("Failed to serialize metadata to JSON: {}", e.getMessage());
             return null;
         }
-    }
-
-    private String escapeJson(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
     }
 }
