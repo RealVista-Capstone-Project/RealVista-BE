@@ -278,6 +278,11 @@
 			<artifactId>java-jwt</artifactId>
 			<version>4.4.0</version>
 		</dependency>
+		<!-- Reactor Netty - required by STOMP broker relay (enableStompBrokerRelay) -->
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
