@@ -91,13 +91,25 @@ public class UserApplicationService {
         User savedUser = userRepository.save(user);
         log.info("User created successfully with ID: {}", savedUser.getUserId());
 
-        // 1. Assign Role
-        RoleCode targetRoleCode = "AGENT".equalsIgnoreCase(request.getRole()) ? RoleCode.AGENT : RoleCode.BUYER;
-        Role role = roleRepository.findByRoleCode(targetRoleCode)
-                .orElseThrow(() -> new BusinessConflictException("Role not found", "ROLE_NOT_FOUND"));
+        // 1. Assign Role(s)
+        if ("AGENT".equalsIgnoreCase(request.getRole())) {
+            // Agent role only
+            Role agentRole = roleRepository.findByRoleCode(RoleCode.AGENT)
+                    .orElseThrow(() -> new BusinessConflictException("Role AGENT not found", "ROLE_NOT_FOUND"));
+            UserRole userRole = UserRole.create(savedUser, agentRole);
+            userRoleRepository.save(userRole);
+        } else {
+            // User gets both BUYER and TENANT roles
+            Role buyerRole = roleRepository.findByRoleCode(RoleCode.BUYER)
+                    .orElseThrow(() -> new BusinessConflictException("Role BUYER not found", "ROLE_NOT_FOUND"));
+            Role tenantRole = roleRepository.findByRoleCode(RoleCode.TENANT)
+                    .orElseThrow(() -> new BusinessConflictException("Role TENANT not found", "ROLE_NOT_FOUND"));
 
-        UserRole userRole = UserRole.create(savedUser, role);
-        userRoleRepository.save(userRole);
+            UserRole buyerUserRole = UserRole.create(savedUser, buyerRole);
+            UserRole tenantUserRole = UserRole.create(savedUser, tenantRole);
+            userRoleRepository.save(buyerUserRole);
+            userRoleRepository.save(tenantUserRole);
+        }
 
         // 2. Create full true preferences
         SettingPreference preference = SettingPreference.builder()
@@ -113,7 +125,7 @@ public class UserApplicationService {
         settingPreferenceRepository.save(preference);
 
         // 3. Create default profile
-        if (targetRoleCode == RoleCode.AGENT) {
+        if ("AGENT".equalsIgnoreCase(request.getRole())) {
             AgentProfile profile = AgentProfile.builder()
                     .userId(savedUser.getUserId())
                     .rating(java.math.BigDecimal.ZERO)
