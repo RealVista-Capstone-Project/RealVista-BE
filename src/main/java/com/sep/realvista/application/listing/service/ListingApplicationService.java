@@ -531,6 +531,9 @@ public class ListingApplicationService {
         if (mediaIds != null && !mediaIds.isEmpty()) {
             for (int displayOrder = 0; displayOrder < mediaIds.size(); displayOrder++) {
                 UUID mediaId = mediaIds.get(displayOrder);
+                if (mediaId == null) {
+                    continue; // skip null IDs sent from client
+                }
                 boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
                 ListingMedia listingMedia = ListingMedia.create(
                         savedListing.getListingId(), mediaId, displayOrder, isPrimary);
