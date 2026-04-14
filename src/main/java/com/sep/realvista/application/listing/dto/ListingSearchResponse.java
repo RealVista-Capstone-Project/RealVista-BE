@@ -16,7 +16,7 @@ import java.util.UUID;
 import com.sep.realvista.application.listing.dto.map.PropertyMapMarker.CoordinatesDTO;
 
 @Data
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class ListingSearchResponse {
