@@ -51,3 +51,4 @@ src/main/resources/firebase-service-account.json
 .agent
 .agents
 .opencode
+.google-services.json
