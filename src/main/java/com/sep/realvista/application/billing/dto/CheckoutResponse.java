@@ -16,4 +16,6 @@ public class CheckoutResponse {
     private String paymentMethod;
     private String planName;
     private Long amount;
+    /** Unix timestamp (seconds) when the PayOS payment link expires. Null for VNPay. */
+    private Long expiredAt;
 }
