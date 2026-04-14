@@ -31,7 +31,32 @@ services:
     depends_on:
       - postgres
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: realvista-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
+      - "61613:61613"  # STOMP
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - realvista-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      sh -c "rabbitmq-plugins enable rabbitmq_stomp &&
+             rabbitmq-server"
+
 volumes:
+  rabbitmq_data:
+    driver: local
   postgres_data:
     driver: local
 

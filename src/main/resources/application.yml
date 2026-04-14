@@ -215,3 +215,12 @@ payment:
     pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
     # Must match Return URL on VNPay merchant (register this exact URL, including query).
     return-url: "${VNPAY_RETURN_URL:http://localhost:3000/vi/subscribe}"
+
+# ── RabbitMQ STOMP Relay Configuration ──
+# Used by WebSocketConfig.configureMessageBroker (STOMP broker relay).
+rabbitmq:
+  stomp:
+    host: ${RABBITMQ_STOMP_HOST:localhost}
+    port: ${RABBITMQ_STOMP_PORT:61613}
+    login: ${RABBITMQ_STOMP_LOGIN:guest}
+    passcode: ${RABBITMQ_STOMP_PASSCODE:guest}
