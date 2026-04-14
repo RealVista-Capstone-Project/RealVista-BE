@@ -17,4 +17,7 @@ public interface DeviceTokenRepository {
     void deleteByUserIdAndFcmToken(UUID userId, String fcmToken);
 
     void deactivateAllByUserId(UUID userId);
+
+    /** Bulk-deactivate tokens by their FCM token strings (used for stale token cleanup). */
+    void deactivateByFcmTokenIn(List<String> fcmTokens);
 }

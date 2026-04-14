@@ -52,6 +52,11 @@ class AppointmentApplicationServiceTest {
     @InjectMocks
     private AppointmentApplicationService applicationService;
 
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        org.springframework.test.util.ReflectionTestUtils.setField(applicationService, "frontendUrl", "http://localhost:3000");
+    }
+
     @Test
     @DisplayName("Should delegate getAvailableSlots to domain service")
     void shouldDelegateGetAvailableSlots() {

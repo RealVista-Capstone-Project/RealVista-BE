@@ -44,4 +44,12 @@ public class DeviceTokenRepositoryImpl implements DeviceTokenRepository {
     public void deactivateAllByUserId(UUID userId) {
         jpaRepository.deactivateAllByUserId(userId);
     }
+
+    @Override
+    public void deactivateByFcmTokenIn(List<String> fcmTokens) {
+        if (fcmTokens == null || fcmTokens.isEmpty()) {
+            return;
+        }
+        jpaRepository.deactivateByFcmTokenIn(fcmTokens);
+    }
 }

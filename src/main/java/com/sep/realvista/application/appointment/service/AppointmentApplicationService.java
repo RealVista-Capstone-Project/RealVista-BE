@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -70,7 +71,10 @@ public class AppointmentApplicationService {
 
         String listingName = listing.getName();
         String propertyAddress = buildPropertyAddress(listing);
-        String appointmentsUrl = frontendUrl + "/appointments";
+        String appointmentsUrl = UriComponentsBuilder.fromHttpUrl(frontendUrl)
+                .pathSegment("vi", "appointments")
+                .build()
+                .toUriString();
 
         for (Appointment appointment : result.appointments()) {
             String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
@@ -108,7 +112,8 @@ public class AppointmentApplicationService {
                 notificationVars.put("ownerName", owner.getFullName());
                 notificationVars.put("senderName", sender.getFullName());
                 notificationVars.put("senderEmail", sender.getEmail().getValue());
-                notificationVars.put("senderPhone", sender.getPhone());
+                notificationVars.put("senderPhone",
+                        sender.getPhone() != null ? sender.getPhone() : "N/A");
                 notificationVars.put("listingName", listingName);
                 notificationVars.put("propertyAddress", propertyAddress);
                 notificationVars.put("tourDate", tourDate);
@@ -145,10 +150,10 @@ public class AppointmentApplicationService {
 
             // Build metadata for deep linking on frontend/mobile
             Map<String, String> metadata = new HashMap<>();
-            metadata.put("listingId", listing.getListingId().toString());
-            metadata.put("appointmentId", appointment.getAppointmentId().toString());
-            metadata.put("tourDate", tourDate);
-            metadata.put("tourTime", tourTime);
+            metadata.put("listing_id", listing.getListingId().toString());
+            metadata.put("appointment_id", appointment.getAppointmentId().toString());
+            metadata.put("tour_date", tourDate);
+            metadata.put("tour_time", tourTime);
 
             // In-app + push notification to the OWNER (most important - they need to respond)
             try {
@@ -186,7 +191,7 @@ public class AppointmentApplicationService {
                                 .userEmail(sender.getEmail().getValue())
                                 .title(senderTitle)
                                 .message(senderMessage)
-                                .eventType(EventType.NEW_TOUR_REQUEST)
+                                .eventType(EventType.APPOINTMENT_CONFIRMED)
                                 .entityType(EntityType.APPOINTMENT)
                                 .entityId(appointment.getAppointmentId())
                                 .metadata(metadata)
