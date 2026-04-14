@@ -19,6 +19,8 @@ public interface UserFeatureSubscriptionRepository {
 
     List<UserFeatureSubscription> findActiveByUserIdAndFeatureType(UUID userId, FeatureType featureType);
 
+    List<UserFeatureSubscription> findActiveByUserIdAndFeatureTypeForUpdate(UUID userId, FeatureType featureType);
+
     List<UserFeatureSubscription> findAllActiveByUserId(UUID userId);
 
     List<UserFeatureSubscription> findByStatus(UserFeatureSubscriptionStatus status);
