@@ -24,6 +24,9 @@ public class PropertySummaryResponse {
     @JsonProperty("property_id")
     private UUID propertyId;
 
+    @JsonProperty("owner_id")
+    private UUID ownerId;
+
     @JsonProperty("property_type_id")
     private UUID propertyTypeId;
 

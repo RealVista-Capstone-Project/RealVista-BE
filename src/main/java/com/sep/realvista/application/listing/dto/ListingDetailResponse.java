@@ -78,6 +78,10 @@ public class ListingDetailResponse {
     @JsonProperty("agent")
     private AgentInfoDTO agent;
 
+    // Property Owner Information (the actual owner of the property)
+    @JsonProperty("property_owner")
+    private AgentInfoDTO propertyOwner;
+
     // Property Attributes/Features (bedrooms, bathrooms, etc.)
     @JsonProperty("attributes")
     private List<PropertyAttributeDTO> attributes;

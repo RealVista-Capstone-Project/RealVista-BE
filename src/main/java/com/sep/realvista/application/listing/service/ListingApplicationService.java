@@ -210,6 +210,15 @@ public class ListingApplicationService {
         boolean isCreatedByOwner = listing.getUserId().equals(property.getOwnerId());
         response.setIsCreatedByOwner(isCreatedByOwner);
 
+        // Set property owner info
+        com.sep.realvista.domain.user.User propertyOwner = userRepository.findById(property.getOwnerId())
+                .orElse(null);
+        if (propertyOwner != null) {
+            SettingPreference ownerPreference = settingPreferenceRepository
+                    .findByUserId(propertyOwner.getUserId()).orElse(null);
+            response.setPropertyOwner(listingMapper.mapAgentInfo(propertyOwner, ownerPreference));
+        }
+
         // Calculate and add cost breakdown (only for RENT listings)
         CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
         response.setCostBreakdown(costBreakdown);
