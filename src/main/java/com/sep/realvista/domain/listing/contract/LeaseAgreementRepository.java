@@ -32,4 +32,8 @@ public interface LeaseAgreementRepository {
     Page<LeaseAgreement> findByLandlordIdAndStatus(UUID landlordId, LeaseStatus status, Pageable pageable);
 
     List<LeaseAgreement> findActiveLeasesByPropertyId(UUID propertyId);
+
+    Page<LeaseAgreement> findByAgentId(UUID agentId, Pageable pageable);
+
+    Page<LeaseAgreement> findByAgentIdAndStatus(UUID agentId, LeaseStatus status, Pageable pageable);
 }
