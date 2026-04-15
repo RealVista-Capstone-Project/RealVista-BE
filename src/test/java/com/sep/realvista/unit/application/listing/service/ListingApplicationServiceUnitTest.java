@@ -30,8 +30,11 @@ import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
+import com.sep.realvista.application.listing.service.ListingAnalyticsService;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -93,6 +96,15 @@ class ListingApplicationServiceUnitTest {
 
         @Mock
         private SettingPreferenceRepository settingPreferenceRepository;
+
+        @Mock
+        private UserRepository userRepository;
+
+        @Mock
+        private ListingAnalyticsService listingAnalyticsService;
+
+        @Mock
+        private NotificationApplicationService notificationApplicationService;
 
         @InjectMocks
         private ListingApplicationService listingApplicationService;

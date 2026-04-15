@@ -91,6 +91,7 @@ public class PropertyMapper {
 
         return PropertySummaryResponse.builder()
                 .propertyId(property.getPropertyId())
+                .ownerId(property.getOwnerId())
                 .propertyTypeId(property.getPropertyTypeId())
                 .streetAddress(property.getStreetAddress())
                 .status(property.getStatus())
@@ -116,6 +117,7 @@ public class PropertyMapper {
     public PropertySummaryResponse toSummaryResponse(Property property, String thumbnailUrl) {
         return PropertySummaryResponse.builder()
                 .propertyId(property.getPropertyId())
+                .ownerId(property.getOwnerId())
                 .propertyTypeId(property.getPropertyTypeId())
                 .streetAddress(property.getStreetAddress())
                 .status(property.getStatus())
