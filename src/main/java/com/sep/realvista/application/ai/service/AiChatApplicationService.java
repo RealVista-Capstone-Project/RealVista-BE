@@ -57,6 +57,7 @@ public class AiChatApplicationService {
     private final AiConversationRepository conversationRepository;
     private final AiMessageRepository messageRepository;
     private final AiChatPersistenceHelper persistenceHelper;
+    private final AiQuotaApplicationService quotaService;
 
     public AiChatApplicationService(
             WebClient aiWebClient,
@@ -64,7 +65,8 @@ public class AiChatApplicationService {
             @Value("${realvista.ai.api-key:}") String serviceApiKey,
             AiConversationRepository conversationRepository,
             AiMessageRepository messageRepository,
-            AiChatPersistenceHelper persistenceHelper
+            AiChatPersistenceHelper persistenceHelper,
+            AiQuotaApplicationService quotaService
     ) {
         this.aiWebClient = aiWebClient;
         this.objectMapper = objectMapper;
@@ -72,6 +74,7 @@ public class AiChatApplicationService {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.persistenceHelper = persistenceHelper;
+        this.quotaService = quotaService;
     }
 
     /**
@@ -86,6 +89,13 @@ public class AiChatApplicationService {
                                    String userName,
                                    String userRoles) {
         log.info("AI chat request from user={}", userId);
+
+        // 0. Check Quota
+        com.sep.realvista.domain.billing.subscription.AiFeature feature = 
+            com.sep.realvista.domain.billing.subscription.AiFeature.AI_ASSISTANT;
+        if (!quotaService.checkAndIncrementQuota(userId, feature)) {
+            return Flux.just(buildErrorEvent("QUOTA_EXCEEDED"));
+        }
 
         // 1. Find or create conversation
         AiConversation conversation = conversationRepository

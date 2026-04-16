@@ -75,6 +75,10 @@ public class SettingPreference extends BaseEntity {
     @Builder.Default
     private Boolean hideEmail = true;
 
+    @Column(name = "auto_refresh_enabled")
+    @Builder.Default
+    private Boolean autoRefreshEnabled = true;
+
     public void enableInApp() {
         this.inAppEnabled = true;
     }
@@ -99,9 +103,15 @@ public class SettingPreference extends BaseEntity {
         this.pushEnabled = false;
     }
 
-    public void updateNotificationSettings(Boolean inAppEnabled, Boolean emailEnabled, Boolean pushEnabled,
-                                           Boolean contactViaEmail, Boolean contactViaPhone,
-                                           Boolean hidePhoneNumber, Boolean hideEmail) {
+    public void enableAutoRefresh() {
+        this.autoRefreshEnabled = true;
+    }
+
+    public void disableAutoRefresh() {
+        this.autoRefreshEnabled = false;
+    }
+
+    public void updateNotificationChannels(Boolean inAppEnabled, Boolean emailEnabled, Boolean pushEnabled) {
         if (inAppEnabled != null) {
             this.inAppEnabled = inAppEnabled;
         }
@@ -111,6 +121,10 @@ public class SettingPreference extends BaseEntity {
         if (pushEnabled != null) {
             this.pushEnabled = pushEnabled;
         }
+    }
+
+    public void updatePrivacyAndAutomation(Boolean contactViaEmail, Boolean contactViaPhone,
+                                            Boolean hidePhoneNumber, Boolean hideEmail, Boolean autoRefreshEnabled) {
         if (contactViaEmail != null) {
             this.contactViaEmail = contactViaEmail;
         }
@@ -122,6 +136,9 @@ public class SettingPreference extends BaseEntity {
         }
         if (hideEmail != null) {
             this.hideEmail = hideEmail;
+        }
+        if (autoRefreshEnabled != null) {
+            this.autoRefreshEnabled = autoRefreshEnabled;
         }
     }
 }

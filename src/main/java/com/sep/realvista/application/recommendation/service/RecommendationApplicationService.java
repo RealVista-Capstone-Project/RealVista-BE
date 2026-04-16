@@ -22,7 +22,6 @@ import com.sep.realvista.domain.billing.boost.ListingBoost;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +53,8 @@ public class RecommendationApplicationService {
     private final CustomerProfileRepository customerProfileRepository;
     private final BookmarkRepository bookmarkRepository;
     private final ListingBoostRepository listingBoostRepository;
+    private final com.sep.realvista.domain.user.preference.SettingPreferenceRepository settingPreferenceRepository;
+    private final org.springframework.cache.CacheManager cacheManager;
 
     private final ConcurrentHashMap<String, AtomicInteger> userEventCounters =
             new ConcurrentHashMap<>();
@@ -129,19 +130,25 @@ public class RecommendationApplicationService {
         return response;
     }
 
-    @CacheEvict(value = "recommendations",
-            key = "#userId + ':' + '*' + ':' + (#listingType != null ? #listingType.name() : 'ANY')")
     public RecommendationResponse refreshRecommendations(String userId,
                                                         Integer limit,
                                                         String userName,
                                                         String userRoles,
                                                         ListingType listingType) {
-        UUID profileId = null;
+        UUID parsedUserId = null;
         try {
-            profileId = customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(UUID.fromString(userId))
+            parsedUserId = UUID.fromString(userId);
+        } catch (Exception ignored) { }
+
+        UUID profileId = null;
+        if (parsedUserId != null) {
+            profileId = customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(parsedUserId)
                     .map(CustomerProfile::getCustomerProfileId)
                     .orElse(null);
-        } catch (Exception ignored) { }
+        }
+
+        // Programmatic cache eviction to fix the key mismatch bug
+        evictCache(userId, profileId, listingType);
 
         userEventCounters.remove(userId);
         int effectiveLimit = (limit != null && limit > 0) ? limit : defaultLimit;
@@ -158,9 +165,36 @@ public class RecommendationApplicationService {
                 .build();
     }
 
+    private void evictCache(String userId, UUID profileId, ListingType listingType) {
+        var cache = cacheManager.getCache("recommendations");
+        if (cache != null) {
+            String key = userId + ":" 
+                    + (profileId != null ? profileId : "NO_PROFILE") 
+                    + ":" 
+                    + (listingType != null ? listingType.name() : "ANY");
+            cache.evict(key);
+            log.debug("Evicted cache for key: {}", key);
+        }
+    }
+
     public boolean isThresholdMet(String userId) {
         AtomicInteger counter = userEventCounters.get(userId);
         return counter != null && counter.get() >= metricsThreshold;
+    }
+
+    public boolean shouldAutoRefresh(String userId) {
+        if (!isThresholdMet(userId)) {
+            return false;
+        }
+
+        try {
+            UUID parsedId = UUID.fromString(userId);
+            return settingPreferenceRepository.findByUserId(parsedId)
+                    .map(pref -> Boolean.TRUE.equals(pref.getAutoRefreshEnabled()))
+                    .orElse(true); // Default to true if not set
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     public int getEventCount(String userId) {
