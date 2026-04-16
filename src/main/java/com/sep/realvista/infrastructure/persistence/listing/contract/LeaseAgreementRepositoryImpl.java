@@ -62,4 +62,14 @@ public class LeaseAgreementRepositoryImpl implements LeaseAgreementRepository {
     public List<LeaseAgreement> findActiveLeasesByPropertyId(UUID propertyId) {
         return jpaRepository.findByPropertyIdAndStatus(propertyId, LeaseStatus.ACTIVE);
     }
+
+    @Override
+    public Page<LeaseAgreement> findByAgentId(UUID agentId, Pageable pageable) {
+        return jpaRepository.findByAgentId(agentId, pageable);
+    }
+
+    @Override
+    public Page<LeaseAgreement> findByAgentIdAndStatus(UUID agentId, LeaseStatus status, Pageable pageable) {
+        return jpaRepository.findByAgentIdAndStatus(agentId, status, pageable);
+    }
 }

@@ -37,14 +37,20 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_VM_MEMORY_HIGH_WATERMARK_RELATIVE: 0.6
     ports:
       - "5672:5672"    # AMQP
       - "15672:15672"  # Management UI
       - "61613:61613"  # STOMP
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     networks:
       - realvista-network
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s

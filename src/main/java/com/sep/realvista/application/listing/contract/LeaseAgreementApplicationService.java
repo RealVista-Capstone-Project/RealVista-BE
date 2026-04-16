@@ -165,6 +165,19 @@ public class LeaseAgreementApplicationService {
     return getLeasesByProperty(listing.getPropertyId(), page, size);
   }
 
+  /**
+   * Lists leases by agent ID with optional status filter.
+   * Allows agents to view all rental contracts they facilitated.
+   */
+  @Transactional(readOnly = true)
+  public PageResponse<LeaseResponse> getLeasesByAgent(UUID agentId, LeaseStatus status, int page, int size) {
+    Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+    Page<LeaseAgreement> leases = (status != null)
+        ? leaseAgreementRepository.findByAgentIdAndStatus(agentId, status, pageable)
+        : leaseAgreementRepository.findByAgentId(agentId, pageable);
+    return toPageResponse(leases);
+  }
+
   // ── DocuSign Signing Workflow ─────────────────────────────────────────────
 
   /**

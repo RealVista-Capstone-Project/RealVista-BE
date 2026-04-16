@@ -44,6 +44,7 @@ import java.util.UUID;
  *   GET    /api/v1/leases/{id}                         — Get lease by ID
  *   GET    /api/v1/leases/renter/{renterId}            — List by renter
  *   GET    /api/v1/leases/landlord/{landlordId}        — List by landlord
+ *   GET    /api/v1/leases/agent/{agentId}              — List by agent
  *   GET    /api/v1/leases/property/{propertyId}        — List by property
  *   GET    /api/v1/leases/listing/{listingId}          — List by listing (resolves to property)
  *   POST   /api/v1/leases/{id}/send-renter             — Send to renter for signing
@@ -132,6 +133,21 @@ public class LeaseAgreementController {
       @RequestParam(defaultValue = "10") int size) {
     return ResponseEntity.ok(ApiResponse.success("Leases retrieved",
         leaseService.getLeasesByListing(listingId, page, size)));
+  }
+
+  @GetMapping("/agent/{agentId}")
+  @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
+  @Operation(summary = "List leases by agent",
+      description = "Returns all rental contracts that the agent facilitated (agentId matches). "
+          + "Supports optional status filtering and pagination.")
+  public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByAgent(
+      @PathVariable UUID agentId,
+      @Parameter(description = "Filter by lease status (e.g. ACTIVE, EXPIRED, TERMINATED). Omit to return all.")
+      @RequestParam(required = false) LeaseStatus status,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "10") int size) {
+    return ResponseEntity.ok(ApiResponse.success("Leases retrieved",
+        leaseService.getLeasesByAgent(agentId, status, page, size)));
   }
 
   // ── DocuSign Signing Endpoints ────────────────────────────────────────────
