@@ -24,6 +24,8 @@ public interface ListingRepository {
 
     List<Listing> findAll();
 
+    List<Listing> findAllById(Iterable<UUID> ids);
+
     Page<Listing> findAll(Specification<Listing> spec, Pageable pageable);
 
     Optional<String> findThumbnailByListingId(UUID listingId);

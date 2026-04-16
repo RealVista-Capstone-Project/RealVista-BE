@@ -11,6 +11,14 @@ import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.infrastructure.external.ai.AiServiceClient;
 import com.sep.realvista.infrastructure.persistence.property.attribute.PropertyAttributeValueJpaRepository;
+import com.sep.realvista.domain.profile.repository.SavedSearchRepository;
+import com.sep.realvista.application.profile.mapper.SavedSearchMapper;
+import com.sep.realvista.domain.profile.repository.CustomerProfileRepository;
+import com.sep.realvista.domain.profile.CustomerProfile;
+import com.sep.realvista.application.profile.dto.SavedSearchDto;
+import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
+import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
+import com.sep.realvista.domain.billing.boost.ListingBoost;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,11 +27,13 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -31,43 +41,29 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
+@RequiredArgsConstructor
 public class RecommendationApplicationService {
 
     private final AiServiceClient aiServiceClient;
     private final ListingRepository listingRepository;
     private final ListingMapper listingMapper;
     private final PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
+    private final SavedSearchRepository savedSearchRepository;
+    private final SavedSearchMapper savedSearchMapper;
+    private final CustomerProfileRepository customerProfileRepository;
+    private final BookmarkRepository bookmarkRepository;
+    private final ListingBoostRepository listingBoostRepository;
 
-    /**
-     * In-memory event counters per user since last recommendation refresh.
-     * In production, replace with Redis or a persistent counter.
-     */
     private final ConcurrentHashMap<String, AtomicInteger> userEventCounters =
             new ConcurrentHashMap<>();
 
-    /**
-     * Minimum number of new behavior events required before calling the AI
-     * service for fresh recommendations. Below this threshold, cached results
-     * are returned instead.
-     */
-    @Value("${realvista.recommendation.threshold:5}")
+    @Value("${realvista.recommendation.threshold:2}")
     private int metricsThreshold;
 
     @Value("${realvista.recommendation.default-limit:10}")
     private int defaultLimit;
 
-    // ─── Public API ──────────────────────────────────────────────
-
-    /**
-     * Ingest user behavior events from PostHog (forwarded by the FE).
-     * Events are always forwarded to the AI service for vector storage.
-     * The local counter tracks how many events have accumulated since
-     * the last recommendation refresh.
-     *
-     * @return true if ingestion was successful
-     */
     public boolean ingestBehavior(UserBehaviorRequest request,
                                   String userId,
                                   String userName,
@@ -75,100 +71,137 @@ public class RecommendationApplicationService {
         log.info("Ingesting {} behavior events for user {}",
                 request.getEvents().size(), userId);
 
-        // Always forward to AI service for vector storage
+        String trackingId = userId;
         boolean success = aiServiceClient.ingestBehavior(
-                request, userId, userName, userRoles);
+                request, trackingId, userName, userRoles);
 
         if (success) {
-            // Increment the local counter
             userEventCounters
                     .computeIfAbsent(userId, k -> new AtomicInteger(0))
                     .addAndGet(request.getEvents().size());
-
-            int currentCount = userEventCounters.get(userId).get();
-            log.debug("User {} event counter: {}/{} (threshold)",
-                    userId, currentCount, metricsThreshold);
         }
 
         return success;
     }
 
-    /**
-     * Get personalized recommendations for a user.
-     * Decision logic:
-     * - If the user's accumulated events >= threshold → call AI service
-     * for fresh recommendations, reset counter, evict cache, cache new results.
-     * - If below threshold → return cached recommendations (fast path).
-     * - If no cache exists and below threshold → still call AI service
-     * (cold-start scenario).
-     * After receiving listing IDs from the AI service, enrich them with
-     * full listing data from PostgreSQL.
-     */
-    @Cacheable(value = "recommendations",
-            key = "#userId + ':' + (#listingType != null ? #listingType.name() : 'ANY')")
     public RecommendationResponse getRecommendations(String userId,
                                                      Integer limit,
                                                      String userName,
                                                      String userRoles,
                                                      ListingType listingType) {
         int effectiveLimit = (limit != null && limit > 0) ? limit : defaultLimit;
-        log.info("Generating recommendations for user {} (limit={}, listingType={})",
-                userId, effectiveLimit, listingType);
 
-        // This method body only runs on cache MISS.
-        // On cache HIT, Spring returns the cached value directly.
-        return fetchAndEnrichRecommendations(userId, effectiveLimit, userName, userRoles, listingType);
+        UUID parsedUserId;
+        try {
+            parsedUserId = UUID.fromString(userId);
+        } catch (Exception e) {
+            parsedUserId = null;
+        }
+
+        UUID profileId = null;
+        if (parsedUserId != null) {
+            profileId = customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(parsedUserId)
+                    .map(CustomerProfile::getCustomerProfileId)
+                    .orElse(null);
+        }
+
+        RecommendationResponse response = getCachedRecommendations(
+                userId, profileId, effectiveLimit, userName, userRoles, listingType);
+
+        return response.toBuilder()
+                .recommendations(enrichWithFavoriteStatus(response.getRecommendations(), userId))
+                .fromCache(true)
+                .build();
     }
 
-    /**
-     * Force-refresh recommendations regardless of threshold.
-     * Called when the threshold is met or when explicitly requested.
-     */
+    @Cacheable(value = "recommendations",
+            key = "#userId + ':' + (#profileId != null ? #profileId : 'NO_PROFILE') "
+                    + " + ':' + (#listingType != null ? #listingType.name() : 'ANY')")
+    public RecommendationResponse getCachedRecommendations(String userId,
+                                                           UUID profileId,
+                                                           int limit,
+                                                           String userName,
+                                                           String userRoles,
+                                                           ListingType listingType) {
+        RecommendationResponse response = fetchAndEnrichRecommendations(
+                userId, profileId, limit, userName, userRoles, listingType);
+        response.setFromCache(false);
+        return response;
+    }
+
     @CacheEvict(value = "recommendations",
-            key = "#userId + ':' + (#listingType != null ? #listingType.name() : 'ANY')")
+            key = "#userId + ':' + '*' + ':' + (#listingType != null ? #listingType.name() : 'ANY')")
     public RecommendationResponse refreshRecommendations(String userId,
-                                                         Integer limit,
-                                                         String userName,
-                                                         String userRoles,
-                                                         ListingType listingType) {
-        int effectiveLimit = (limit != null && limit > 0) ? limit : defaultLimit;
-        log.info("Force-refreshing recommendations for user {} (listingType={})", userId, listingType);
+                                                        Integer limit,
+                                                        String userName,
+                                                        String userRoles,
+                                                        ListingType listingType) {
+        UUID profileId = null;
+        try {
+            profileId = customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(UUID.fromString(userId))
+                    .map(CustomerProfile::getCustomerProfileId)
+                    .orElse(null);
+        } catch (Exception ignored) { }
 
-        // Reset the event counter
         userEventCounters.remove(userId);
+        int effectiveLimit = (limit != null && limit > 0) ? limit : defaultLimit;
 
-        return fetchAndEnrichRecommendations(userId, effectiveLimit, userName, userRoles, listingType);
+        RecommendationResponse response = fetchAndEnrichRecommendations(
+                userId, profileId, effectiveLimit, userName, userRoles, listingType);
+        
+        log.info("AI Service returned fresh recommendations for user {}: {} items", 
+                userId, response.getRecommendations().size());
+        
+        return response.toBuilder()
+                .recommendations(enrichWithFavoriteStatus(response.getRecommendations(), userId))
+                .fromCache(false)
+                .build();
     }
 
-    /**
-     * Check if the user has accumulated enough events to warrant
-     * a fresh AI recommendation call.
-     */
     public boolean isThresholdMet(String userId) {
         AtomicInteger counter = userEventCounters.get(userId);
         return counter != null && counter.get() >= metricsThreshold;
     }
 
-    /**
-     * Get the current event count for a user (for debugging / FE display).
-     */
     public int getEventCount(String userId) {
         AtomicInteger counter = userEventCounters.get(userId);
         return counter != null ? counter.get() : 0;
     }
 
-    // ─── Internal ────────────────────────────────────────────────
+    private RecommendationResponse fetchAndEnrichRecommendations(String userId,
+                                                                 UUID profileId,
+                                                                 int limit,
+                                                                 String userName,
+                                                                 String userRoles,
+                                                                 ListingType listingType) {
 
-    private RecommendationResponse fetchAndEnrichRecommendations(
-            String userId, int limit, String userName, String userRoles, ListingType listingType) {
+        List<SavedSearchDto> preferences = Collections.emptyList();
+        String profileName = "Default";
+        if (profileId != null) {
+            customerProfileRepository.findById(profileId).ifPresent(p -> {
+                // If the profile exists, get its name (e.g., 'Studio')
+                // This will be passed to AI as a semantic hint
+            });
+            var profileOpt = customerProfileRepository.findById(profileId);
+            if (profileOpt.isPresent()) {
+                profileName = profileOpt.get().getProfileName();
+            }
 
-        // 1. Call AI service
+            preferences = savedSearchRepository
+                    .findByProfileIdAndIsRecommendationTrueAndDeletedFalse(profileId)
+                    .stream()
+                    .map(savedSearchMapper::toDto)
+                    .collect(Collectors.toList());
+            log.info("Found {} preference(s) for active profile '{}' ({})", 
+                    preferences.size(), profileName, profileId);
+        } else {
+            log.warn("No active profile found for user {}, skipping preferences", userId);
+        }
+
         AiRecommendationResult aiResult = aiServiceClient.getRecommendations(
-                userId, limit, userName, userRoles, listingType);
+                userId, limit, userName, userRoles, listingType, preferences, profileName);
 
-        if (aiResult == null || aiResult.getRecommendations() == null
-                || aiResult.getRecommendations().isEmpty()) {
-            log.warn("AI service returned no recommendations for user {}", userId);
+        if (aiResult == null || aiResult.getRecommendations() == null || aiResult.getRecommendations().isEmpty()) {
             return RecommendationResponse.builder()
                     .userId(userId)
                     .recommendations(Collections.emptyList())
@@ -178,92 +211,33 @@ public class RecommendationApplicationService {
                     .build();
         }
 
-        // 2. Extract listing IDs from AI results
         List<UUID> listingIds = aiResult.getRecommendations().stream()
                 .map(r -> {
                     try {
                         return UUID.fromString(r.getListingId());
-                    } catch (IllegalArgumentException e) {
-                        log.warn("Invalid listing ID from AI service: {}", r.getListingId());
+                    } catch (Exception e) {
                         return null;
                     }
                 })
                 .filter(Objects::nonNull)
-                .toList();
+                .collect(Collectors.toList());
 
-        // 3. Batch-fetch listings from PostgreSQL
-        Map<UUID, Listing> listingMap = new HashMap<>();
-        for (UUID id : listingIds) {
-            listingRepository.findById(id).ifPresent(listing -> listingMap.put(id, listing));
+        Map<UUID, Listing> listingMap = listingRepository.findAllById(listingIds).stream()
+                .collect(Collectors.toMap(Listing::getListingId, l -> l));
+
+        Map<UUID, List<ListingBoost>> activeBoostsByListingId = listingBoostRepository
+                .findAllActiveByListingIds(listingIds, LocalDate.now())
+                .stream()
+                .collect(Collectors.groupingBy(ListingBoost::getListingId));
+
+        List<RecommendationResponse.RecommendedListingDTO> enrichedListings = new ArrayList<>();
+        for (AiRecommendationResult.AiRecommendedListing aiRec : aiResult.getRecommendations()) {
+            RecommendationResponse.RecommendedListingDTO dto = mapToRecommendedListingDTO(
+                    aiRec, listingMap, listingType, Collections.emptySet(), activeBoostsByListingId);
+            if (dto != null) {
+                enrichedListings.add(dto);
+            }
         }
-
-        // 4. Build enriched response
-        List<RecommendationResponse.RecommendedListingDTO> enrichedListings =
-                aiResult.getRecommendations().stream()
-                        .map(aiRec -> {
-                            UUID lid;
-                            try {
-                                lid = UUID.fromString(aiRec.getListingId());
-                            } catch (IllegalArgumentException e) {
-                                return null;
-                            }
-
-                            Listing listing = listingMap.get(lid);
-                            if (listing == null) {
-                                return null;
-                            }
-                            if (listingType != null && listing.getListingType() != listingType) {
-                                return null;
-                            }
-
-                            // Start with base search response mapping
-                            com.sep.realvista.application.listing.dto.ListingSearchResponse searchRes =
-                                    listingMapper.toSearchResponse(listing);
-
-                            // Build the final recommended DTO
-                            RecommendationResponse.RecommendedListingDTO.RecommendedListingDTOBuilder<?, ?> builder =
-                                    RecommendationResponse.RecommendedListingDTO.builder()
-                                            .listingId(searchRes.getListingId())
-                                            .name(searchRes.getName())
-                                            .slug(searchRes.getSlug())
-                                            .listingType(searchRes.getListingType())
-                                            .status(searchRes.getStatus())
-                                            .price(searchRes.getPrice())
-                                            .area(searchRes.getArea())
-                                            .publishedAt(searchRes.getPublishedAt())
-                                            .userType(searchRes.getUserType())
-                                            .reason(aiRec.getReason())
-                                            .score(aiRec.getScore());
-
-                            // Populate address fields
-                            if (listing.getProperty() != null) {
-                                builder.streetAddress(listing.getProperty().getStreetAddress());
-                                Location loc = listing.getProperty().getLocation();
-                                while (loc != null) {
-                                    switch (loc.getType()) {
-                                        case CITY -> builder.cityName(loc.getName());
-                                        case DISTRICT -> builder.districtName(loc.getName());
-                                        case WARD -> builder.wardName(loc.getName());
-                                        default -> {
-                                        }
-                                    }
-                                    loc = loc.getParent();
-                                }
-                            }
-
-                            // Populate thumbnail
-                            var thumbnail = listingRepository.findThumbnailByListingId(lid);
-                            builder.thumbnail(thumbnail.orElse(null));
-
-                            // Populate attributes
-                            List<PropertyAttributeValue> attrs = propertyAttributeValueRepository
-                                    .findByPropertyIdWithAttribute(listing.getPropertyId());
-                            builder.attributes(listingMapper.toAttributeList(attrs));
-
-                            return (RecommendationResponse.RecommendedListingDTO) builder.build();
-                        })
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
 
         return RecommendationResponse.builder()
                 .userId(userId)
@@ -272,5 +246,109 @@ public class RecommendationApplicationService {
                 .behaviorSummary(aiResult.getBehaviorSummary())
                 .fromCache(false)
                 .build();
+    }
+
+    private RecommendationResponse.RecommendedListingDTO mapToRecommendedListingDTO(
+            AiRecommendationResult.AiRecommendedListing aiRec,
+            Map<UUID, Listing> listingMap,
+            ListingType listingType,
+            Set<UUID> bookmarkedIds,
+            Map<UUID, List<ListingBoost>> activeBoostsByListingId) {
+        
+        UUID lid;
+        try {
+            lid = UUID.fromString(aiRec.getListingId());
+        } catch (Exception e) {
+            return null;
+        }
+
+        Listing listing = listingMap.get(lid);
+        if (listing == null) {
+            return null;
+        }
+        if (listingType != null && listing.getListingType() != listingType) {
+            return null;
+        }
+
+        com.sep.realvista.application.listing.dto.ListingSearchResponse searchRes =
+                listingMapper.toSearchResponse(listing);
+
+        RecommendationResponse.RecommendedListingDTO.RecommendedListingDTOBuilder<?, ?> builder = 
+                RecommendationResponse.RecommendedListingDTO.builder()
+                .listingId(searchRes.getListingId())
+                .name(searchRes.getName())
+                .slug(searchRes.getSlug())
+                .listingType(searchRes.getListingType())
+                .status(searchRes.getStatus())
+                .price(searchRes.getPrice())
+                .area(searchRes.getArea())
+                .publishedAt(searchRes.getPublishedAt())
+                .userType(searchRes.getUserType())
+                .isFavorite(bookmarkedIds.contains(lid))
+                .isBoosted(activeBoostsByListingId.containsKey(lid))
+                .boostPackages(activeBoostsByListingId.getOrDefault(lid, Collections.emptyList())
+                        .stream()
+                        .map(b -> b.getBoostType().name())
+                        .collect(Collectors.toList()))
+                .reason(aiRec.getReason())
+                .score(aiRec.getScore());
+
+        if (listing.getProperty() != null) {
+            builder.streetAddress(listing.getProperty().getStreetAddress());
+            Location loc = listing.getProperty().getLocation();
+            while (loc != null) {
+                switch (loc.getType()) {
+                    case CITY:
+                        builder.cityName(loc.getName());
+                        break;
+                    case DISTRICT:
+                        builder.districtName(loc.getName());
+                        break;
+                    case WARD:
+                        builder.wardName(loc.getName());
+                        break;
+                    default:
+                        break;
+                }
+                loc = loc.getParent();
+            }
+        }
+
+        var thumbnailArr = listingRepository.findThumbnailByListingId(lid);
+        builder.thumbnail(thumbnailArr.orElse(null));
+
+        List<PropertyAttributeValue> attrs = propertyAttributeValueRepository
+                .findByPropertyIdWithAttribute(listing.getPropertyId());
+        builder.attributes(listingMapper.toAttributeList(attrs));
+
+        return builder.build();
+    }
+
+    private List<RecommendationResponse.RecommendedListingDTO> enrichWithFavoriteStatus(
+            List<RecommendationResponse.RecommendedListingDTO> recommendations, String userId) {
+        if (recommendations == null || recommendations.isEmpty() || userId == null) {
+            return recommendations;
+        }
+
+        UUID parsedUserId;
+        try {
+            parsedUserId = UUID.fromString(userId);
+        } catch (Exception e) {
+            return recommendations;
+        }
+
+        List<UUID> listingIds = recommendations.stream()
+                .map(RecommendationResponse.RecommendedListingDTO::getListingId)
+                .collect(Collectors.toList());
+
+        Set<UUID> bookmarkedIds = bookmarkRepository.findBookmarkedListingIds(parsedUserId, listingIds);
+
+        List<RecommendationResponse.RecommendedListingDTO> result = new ArrayList<>();
+        for (RecommendationResponse.RecommendedListingDTO dto : recommendations) {
+            result.add(dto.toBuilder()
+                    .isFavorite(bookmarkedIds.contains(dto.getListingId()))
+                    .build());
+        }
+        return result;
     }
 }

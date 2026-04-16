@@ -5,6 +5,7 @@ import com.sep.realvista.application.recommendation.dto.RecommendationResponse;
 import com.sep.realvista.application.recommendation.dto.UserBehaviorRequest;
 import com.sep.realvista.application.recommendation.service.RecommendationApplicationService;
 import com.sep.realvista.domain.listing.ListingType;
+import com.sep.realvista.presentation.common.util.ControllerUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 public class RecommendationController {
 
     private final RecommendationApplicationService recommendationService;
+    private final ControllerUtils controllerUtils;
 
     /**
      * Ingest user behavior events from PostHog.
@@ -233,17 +235,19 @@ public class RecommendationController {
     }
 
     private String extractUserId(Authentication authentication) {
-        if (authentication != null && authentication.getName() != null) {
-            return authentication.getName();
+        try {
+            return controllerUtils.getCurrentUser(authentication).getUserId().toString();
+        } catch (Exception e) {
+            return authentication != null ? authentication.getName() : "anonymous";
         }
-        return "anonymous";
     }
 
     private String extractUserName(Authentication authentication) {
-        if (authentication != null && authentication.getName() != null) {
-            return authentication.getName();
+        try {
+            return controllerUtils.getCurrentUser(authentication).getFullName();
+        } catch (Exception e) {
+            return authentication != null ? authentication.getName() : "unknown";
         }
-        return "unknown";
     }
 
     private String extractUserRoles(Authentication authentication) {

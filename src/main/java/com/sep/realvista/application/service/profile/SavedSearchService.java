@@ -30,14 +30,23 @@ public class SavedSearchService {
 
     @Transactional
     public SavedSearchDto saveSearch(UUID userId, SaveSearchRequest request) {
-        CustomerProfile profile = customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(userId)
-                .orElseGet(() -> {
-                    CustomerProfile newProfile = CustomerProfile.builder()
-                            .userId(userId)
-                            .profileName("Default Profile")
-                            .build();
-                    return customerProfileRepository.save(newProfile);
-                });
+        CustomerProfile profile;
+        if (request.getProfileId() != null) {
+            profile = customerProfileRepository.findById(request.getProfileId())
+                    .orElseThrow(() -> new IllegalArgumentException("Profile not found"));
+            if (!profile.getUserId().equals(userId)) {
+                throw new org.springframework.security.access.AccessDeniedException("Profile does not belong to user");
+            }
+        } else {
+            profile = customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(userId)
+                    .orElseGet(() -> {
+                        CustomerProfile newProfile = CustomerProfile.builder()
+                                .userId(userId)
+                                .profileName("Default Profile")
+                                .build();
+                        return customerProfileRepository.save(newProfile);
+                    });
+        }
 
         String criteriaJson;
         try {
@@ -62,6 +71,8 @@ public class SavedSearchService {
                 .profileId(profile.getCustomerProfileId())
                 .searchType(request.getSearchType())
                 .criteria(criteriaJson)
+                .boardId(request.getBoardId())
+                .isRecommendation(request.isRecommendation())
                 .build();
 
         savedSearch = savedSearchRepository.save(savedSearch);
@@ -88,12 +99,12 @@ public class SavedSearchService {
         Optional<CustomerProfile> profileOpt = customerProfileRepository
                 .findByUserIdAndIsActiveTrueAndDeletedFalse(userId);
         if (profileOpt.isEmpty()) {
-            return;
+            throw new ResourceNotFoundException("Profile", userId);
         }
         CustomerProfile profile = profileOpt.get();
 
-        SavedSearch savedSearch = savedSearchRepository.findBySavedSearchIdAndProfileIdAndDeletedFalse(
-                        savedSearchId, profile.getCustomerProfileId())
+        SavedSearch savedSearch = savedSearchRepository
+                .findBySavedSearchIdAndProfileIdAndDeletedFalse(savedSearchId, profile.getCustomerProfileId())
                 .orElseThrow(() -> new ResourceNotFoundException("Saved Search", savedSearchId));
 
         savedSearch.markAsDeleted();

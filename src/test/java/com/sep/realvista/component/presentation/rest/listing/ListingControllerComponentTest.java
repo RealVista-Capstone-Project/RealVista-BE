@@ -404,7 +404,7 @@ class ListingControllerComponentTest {
         @DisplayName("Should return 200 OK when getting similar listings with valid ID")
         void getSimilarListings_withValidId_shouldReturnOk() throws Exception {
                 // Arrange
-                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class)))
+                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class), any()))
                                 .thenReturn(mockSimilarListingsResponse);
 
                 // Act & Assert
@@ -428,9 +428,9 @@ class ListingControllerComponentTest {
 
         @Test
         @DisplayName("Should return 200 OK with default limit when limit parameter not provided")
-        void getSimilarListings_withoutLimit_shouldUseDefaultLimit() throws Exception {
+        void getSimilarListings_withWithoutLimit_shouldUseDefaultLimit() throws Exception {
                 // Arrange
-                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class)))
+                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class), any()))
                                 .thenReturn(mockSimilarListingsResponse);
 
                 // Act & Assert
@@ -451,7 +451,7 @@ class ListingControllerComponentTest {
                                 .limit(3)
                                 .build();
 
-                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class)))
+                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class), any()))
                                 .thenReturn(responseWithLimit3);
 
                 // Act & Assert
@@ -472,7 +472,7 @@ class ListingControllerComponentTest {
                                 .limit(5)
                                 .build();
 
-                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class)))
+                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class), any()))
                                 .thenReturn(emptyResponse);
 
                 // Act & Assert
@@ -489,7 +489,7 @@ class ListingControllerComponentTest {
         void getSimilarListings_withNonExistentId_shouldReturnNotFound() throws Exception {
                 // Arrange
                 UUID nonExistentId = UUID.randomUUID();
-                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class)))
+                when(listingApplicationService.getSimilarListings(any(UUID.class), any(int.class), any()))
                                 .thenThrow(new com.sep.realvista.domain.common.exception.ResourceNotFoundException(
                                                 "Listing", nonExistentId));
 
