@@ -1,12 +1,16 @@
 package com.sep.realvista.application.appointment.service;
 
 import com.sep.realvista.application.appointment.dto.BookTourRequest;
+import com.sep.realvista.application.appointment.dto.AppointmentResponse;
+import com.sep.realvista.application.appointment.dto.SyncBlocksRequest;
+import com.sep.realvista.application.appointment.dto.UpdateAppointmentStatusRequest;
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.EmailService;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.appointment.Appointment;
 import com.sep.realvista.domain.listing.appointment.AppointmentService;
+import com.sep.realvista.domain.listing.appointment.AppointmentStatus;
 import com.sep.realvista.domain.listing.appointment.BookTourResult;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.notification.EntityType;
@@ -19,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -26,6 +31,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -71,7 +77,7 @@ public class AppointmentApplicationService {
 
         String listingName = listing.getName();
         String propertyAddress = buildPropertyAddress(listing);
-        String appointmentsUrl = UriComponentsBuilder.fromHttpUrl(frontendUrl)
+        String appointmentsUrl = UriComponentsBuilder.fromUriString(frontendUrl)
                 .pathSegment("vi", "appointments")
                 .build()
                 .toUriString();
@@ -218,5 +224,52 @@ public class AppointmentApplicationService {
                     listing.getListingId(), e.getMessage());
         }
         return "";
+    }
+
+    @Transactional(readOnly = true)
+    public List<AppointmentResponse> getAppointments(UUID userId, LocalDateTime start, 
+                                                     LocalDateTime end, List<AppointmentStatus> statuses) {
+        List<Appointment> appointments = appointmentService.getAppointmentsByUserId(userId, start, end, statuses);
+        return appointments.stream()
+                .map(appt -> mapToResponse(appt, userId))
+                .collect(Collectors.toList());
+    }
+
+    public AppointmentResponse updateAppointmentStatus(UUID userId, UUID appointmentId, 
+                                                       UpdateAppointmentStatusRequest request) {
+        AppointmentStatus newStatus = AppointmentStatus.valueOf(request.getStatus().toUpperCase());
+        Appointment updated = appointmentService.updateAppointmentStatus(
+                appointmentId, userId, newStatus, request.getReason());
+        return mapToResponse(updated, userId);
+    }
+    
+    public void syncBlocks(UUID userId, SyncBlocksRequest request) {
+        appointmentService.syncBlocks(userId, request.getStartDate(), request.getEndDate(), request.getBlocks());
+    }
+
+    public void deleteAppointment(UUID userId, UUID appointmentId) {
+        appointmentService.deleteAppointment(userId, appointmentId);
+    }
+    
+    private AppointmentResponse mapToResponse(Appointment appt, UUID userId) {
+        return AppointmentResponse.builder()
+                .appointmentId(appt.getAppointmentId())
+                .listingId(appt.getListingId())
+                .listingName(appt.getListing() != null ? appt.getListing().getName() : null)
+                .listingAddress(appt.getListing() != null ? buildPropertyAddress(appt.getListing()) : null)
+                .senderId(appt.getSenderId())
+                .senderName(appt.getSender() != null ? appt.getSender().getFullName() : null)
+                .receiverId(appt.getReceiverId())
+                .receiverName(appt.getReceiver() != null ? appt.getReceiver().getFullName() : null)
+                .startTime(appt.getStartTime())
+                .endTime(appt.getEndTime())
+                .status(appt.getStatus() != null ? appt.getStatus().name() : null)
+                .appointmentType(appt.getAppointmentType() != null ? appt.getAppointmentType().name() : null)
+                .senderNotes(appt.getSenderNotes())
+                .rejectionReason(appt.getRejectionReason())
+                .cancellationReason(appt.getCancellationReason())
+                .canceledByUserId(appt.getCanceledByUserId())
+                .isSender(appt.getSenderId() != null && appt.getSenderId().equals(userId))
+                .build();
     }
 }
