@@ -48,10 +48,9 @@ public class AppointmentApplicationService {
     @Value("${spring.application.frontend.url}")
     private String frontendUrl;
 
-    private static final DateTimeFormatter DATE_FORMATTER =
-            DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy", Locale.forLanguageTag("vi"));
-    private static final DateTimeFormatter TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy",
+            Locale.forLanguageTag("vi"));
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     @Transactional(readOnly = true)
     public List<LocalTime> getAvailableSlots(UUID listingId, LocalDate date) {
@@ -65,8 +64,7 @@ public class AppointmentApplicationService {
                 request.getListingId(),
                 userId,
                 request.getSelectedSlots(),
-                request.getNotes()
-        );
+                request.getNotes());
 
         sendTourBookingEmails(result);
         sendTourBookingNotifications(result);
@@ -106,8 +104,7 @@ public class AppointmentApplicationService {
                         sender.getEmail().getValue(),
                         "Đặt lịch tham quan: " + listingName,
                         "tour-booking-confirmation",
-                        confirmationVars
-                );
+                        confirmationVars);
                 log.info("Sent tour confirmation email to sender: {}", sender.getEmail().getValue());
             } catch (Exception e) {
                 log.error("Failed to send tour confirmation email to sender {}: {}",
@@ -134,8 +131,7 @@ public class AppointmentApplicationService {
                         owner.getEmail().getValue(),
                         "Yêu cầu tham quan mới: " + listingName,
                         "tour-booking-notification",
-                        notificationVars
-                );
+                        notificationVars);
                 log.info("Sent tour notification email to owner: {}", owner.getEmail().getValue());
             } catch (Exception e) {
                 log.error("Failed to send tour notification email to owner {}: {}",
@@ -163,11 +159,14 @@ public class AppointmentApplicationService {
             metadata.put("tour_date", tourDate);
             metadata.put("tour_time", tourTime);
 
-            // In-app + push notification to the OWNER (most important - they need to respond)
+            // In-app + push notification to the OWNER (most important - they need to
+            // respond)
             try {
-                String ownerTitle = "Yêu cầu tham quan mới";
-                String ownerMessage = sender.getFullName() + " muốn tham quan \""
-                        + listingName + "\" vào " + tourDate + " lúc " + tourTime;
+                String lang = getUserLanguage(owner.getUserId());
+                String ownerTitle = notificationMessageService.getMessage("NEW_TOUR_REQUEST_TITLE", lang);
+                String ownerMessage = notificationMessageService
+                        .getMessage("NEW_TOUR_REQUEST_MESSAGE", lang,
+                                sender.getFullName(), listingName, tourDate, tourTime);
 
                 notificationApplicationService.sendNotification(
                         SendNotificationRequest.builder()
@@ -179,8 +178,7 @@ public class AppointmentApplicationService {
                                 .entityType(EntityType.APPOINTMENT)
                                 .entityId(appointment.getAppointmentId())
                                 .metadata(metadata)
-                                .build()
-                );
+                                .build());
             } catch (Exception e) {
                 log.error("Failed to send in-app/push notification to owner {}: {}",
                         owner.getUserId(), e.getMessage(), e);
@@ -188,10 +186,10 @@ public class AppointmentApplicationService {
 
             // In-app + push notification to the SENDER (confirmation)
             try {
-                String senderTitle = "Đặt lịch tham quan thành công";
-                String senderMessage = "Bạn đã đặt lịch tham quan \""
-                        + listingName + "\" vào " + tourDate + " lúc " + tourTime
-                        + ". Đang chờ xác nhận.";
+                String lang = getUserLanguage(sender.getUserId());
+                String senderTitle = notificationMessageService.getMessage("TOUR_BOOKING_SUCCESS_TITLE", lang);
+                String senderMessage = notificationMessageService.getMessage(
+                        "TOUR_BOOKING_SUCCESS_MESSAGE", lang, listingName, tourDate, tourTime);
 
                 notificationApplicationService.sendNotification(
                         SendNotificationRequest.builder()
@@ -203,8 +201,7 @@ public class AppointmentApplicationService {
                                 .entityType(EntityType.APPOINTMENT)
                                 .entityId(appointment.getAppointmentId())
                                 .metadata(metadata)
-                                .build()
-                );
+                                .build());
             } catch (Exception e) {
                 log.error("Failed to send in-app/push notification to sender {}: {}",
                         sender.getUserId(), e.getMessage(), e);
@@ -229,16 +226,16 @@ public class AppointmentApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> getAppointments(UUID userId, LocalDateTime start, 
-                                                     LocalDateTime end, List<AppointmentStatus> statuses) {
+    public List<AppointmentResponse> getAppointments(UUID userId, LocalDateTime start,
+            LocalDateTime end, List<AppointmentStatus> statuses) {
         List<Appointment> appointments = appointmentService.getAppointmentsByUserId(userId, start, end, statuses);
         return appointments.stream()
                 .map(appt -> mapToResponse(appt, userId))
                 .collect(Collectors.toList());
     }
 
-    public AppointmentResponse updateAppointmentStatus(UUID userId, UUID appointmentId, 
-                                                       UpdateAppointmentStatusRequest request) {
+    public AppointmentResponse updateAppointmentStatus(UUID userId, UUID appointmentId,
+            UpdateAppointmentStatusRequest request) {
         AppointmentStatus newStatus = AppointmentStatus.valueOf(request.getStatus().toUpperCase());
         Appointment updated = appointmentService.updateAppointmentStatus(
                 appointmentId, userId, newStatus, request.getReason());
@@ -286,7 +283,7 @@ public class AppointmentApplicationService {
                 notifyUserEmail = sender.getEmail().getValue();
                 lang = getUserLanguage(notifyUserId);
                 title = notificationMessageService.getMessage("APPOINTMENT_ACCEPTED_TITLE", lang);
-                message = String.format(notificationMessageService.getMessage("APPOINTMENT_ACCEPTED_MESSAGE", lang),
+                message = notificationMessageService.getMessage("APPOINTMENT_ACCEPTED_MESSAGE", lang,
                         listingName, tourDate, tourTime);
                 eventType = EventType.APPOINTMENT_CONFIRMED;
             }
@@ -295,10 +292,11 @@ public class AppointmentApplicationService {
                 notifyUserEmail = sender.getEmail().getValue();
                 lang = getUserLanguage(notifyUserId);
                 title = notificationMessageService.getMessage("APPOINTMENT_REJECTED_TITLE", lang);
-                message = String.format(notificationMessageService.getMessage("APPOINTMENT_REJECTED_MESSAGE", lang),
+                message = notificationMessageService.getMessage("APPOINTMENT_REJECTED_MESSAGE", lang,
                         listingName, tourDate, tourTime);
                 if (appointment.getRejectionReason() != null && !appointment.getRejectionReason().isBlank()) {
-                    message += " " + (lang.equals("en") ? "Reason: " : "Lý do: ") + appointment.getRejectionReason();
+                    message += " " + notificationMessageService.getMessage("LABEL_REASON", lang)
+                            + appointment.getRejectionReason();
                 }
                 eventType = EventType.APPOINTMENT_REJECTED;
             }
@@ -311,15 +309,25 @@ public class AppointmentApplicationService {
                 notifyUserEmail = recipient.getEmail().getValue();
                 lang = getUserLanguage(notifyUserId);
                 title = notificationMessageService.getMessage("APPOINTMENT_CANCELLED_TITLE", lang);
-                message = String.format(notificationMessageService.getMessage("APPOINTMENT_CANCELLED_MESSAGE", lang),
+                message = notificationMessageService.getMessage("APPOINTMENT_CANCELLED_MESSAGE", lang,
                         actor.getFullName(), listingName, tourDate, tourTime);
                 if (appointment.getCancellationReason() != null && !appointment.getCancellationReason().isBlank()) {
-                    message += " " + (lang.equals("en") ? "Reason: " : "Lý do: ") + appointment.getCancellationReason();
+                    message += " " + notificationMessageService.getMessage("LABEL_REASON", lang)
+                            + appointment.getCancellationReason();
                 }
                 eventType = EventType.APPOINTMENT_CANCELLED;
             }
-            case PENDING, COMPLETED -> {
-                // No notification for PENDING or COMPLETED from this method
+            case COMPLETED -> {
+                notifyUserId = sender.getUserId();
+                notifyUserEmail = sender.getEmail().getValue();
+                lang = getUserLanguage(notifyUserId);
+                title = notificationMessageService.getMessage("APPOINTMENT_COMPLETED_TITLE", lang);
+                message = notificationMessageService.getMessage("APPOINTMENT_COMPLETED_MESSAGE", lang,
+                        listingName, tourDate, tourTime);
+                eventType = EventType.APPOINTMENT_CONFIRMED;
+            }
+            case PENDING -> {
+                // No notification for PENDING from this method
             }
             default -> log.debug("No notification logic for status: {}", appointment.getStatus());
         }
@@ -336,8 +344,7 @@ public class AppointmentApplicationService {
                                 .entityType(EntityType.APPOINTMENT)
                                 .entityId(appointment.getAppointmentId())
                                 .metadata(metadata)
-                                .build()
-                );
+                                .build());
             } catch (Exception e) {
                 log.error("Failed to send status change notification to user {}: {}", notifyUserId, e.getMessage(), e);
             }
@@ -411,8 +418,7 @@ public class AppointmentApplicationService {
                         recipient.getEmail().getValue(),
                         subject,
                         template,
-                        vars
-                );
+                        vars);
             } catch (Exception e) {
                 log.error("Failed to send status change email to {}: {}",
                         recipient.getEmail().getValue(), e.getMessage());
@@ -420,8 +426,6 @@ public class AppointmentApplicationService {
         }
     }
 
-
-    
     public void syncBlocks(UUID userId, SyncBlocksRequest request) {
         appointmentService.syncBlocks(userId, request.getStartDate(), request.getEndDate(), request.getBlocks());
     }
@@ -432,10 +436,10 @@ public class AppointmentApplicationService {
 
     public void cancelActiveAppointmentsByListingId(UUID listingId, UUID ownerId, String reason) {
         log.info("Starting mass cancellation for listing {}. Reason: {}", listingId, reason);
-        
+
         List<Appointment> cancelledList = appointmentService
                 .cancelActiveAppointmentsByListingId(listingId, ownerId, reason);
-        
+
         for (Appointment appt : cancelledList) {
             if (appt.isTour()) {
                 try {
@@ -474,8 +478,7 @@ public class AppointmentApplicationService {
                                 .eventType(EventType.LISTING_UNPUBLISHED)
                                 .entityType(EntityType.APPOINTMENT)
                                 .entityId(appointment.getAppointmentId())
-                                .build()
-                );
+                                .build());
             } catch (Exception e) {
                 log.error("Failed to notify user {} about unpublished listing: {}", sender.getUserId(), e.getMessage());
             }
@@ -490,9 +493,9 @@ public class AppointmentApplicationService {
                 .map(com.sep.realvista.domain.user.preference.SettingPreference::getPreferredLanguage)
                 .orElse("vi");
     }
-    
+
     private AppointmentResponse mapToResponse(Appointment appt, UUID userId) {
-// ...
+        // ...
         return AppointmentResponse.builder()
                 .appointmentId(appt.getAppointmentId())
                 .listingId(appt.getListingId())
@@ -512,5 +515,31 @@ public class AppointmentApplicationService {
                 .canceledByUserId(appt.getCanceledByUserId())
                 .isSender(appt.getSenderId() != null && appt.getSenderId().equals(userId))
                 .build();
+    }
+
+    public void autoCompleteAppointment(UUID appointmentId) {
+        Appointment appointment = appointmentService.getAppointmentById(appointmentId);
+        if (appointment.getStatus() == AppointmentStatus.ACCEPTED) {
+            appointment.complete();
+            appointmentService.save(appointment);
+            sendAppointmentStatusNotifications(appointment);
+            sendAppointmentStatusEmails(appointment);
+            log.info("System automatically completed appointment: {}", appointmentId);
+        }
+    }
+
+    public void autoCancelAppointment(UUID appointmentId) {
+        Appointment appointment = appointmentService.getAppointmentById(appointmentId);
+        if (appointment.getStatus() == AppointmentStatus.PENDING) {
+            String lang = getUserLanguage(appointment.getReceiverId());
+            String reason = notificationMessageService.getMessage("APPOINTMENT_EXPIRED_REASON", lang);
+            
+            // Use ownerId as actor for system cancellation
+            appointment.cancel(appointment.getReceiverId(), reason);
+            appointmentService.save(appointment);
+            sendAppointmentStatusNotifications(appointment);
+            sendAppointmentStatusEmails(appointment);
+            log.info("System automatically canceled appointment {}. Reason: {}", appointmentId, reason);
+        }
     }
 }
