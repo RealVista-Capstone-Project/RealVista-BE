@@ -58,6 +58,11 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
+    public List<Listing> findAllById(Iterable<UUID> ids) {
+        return jpaRepository.findAllById(ids);
+    }
+
+    @Override
     public List<Listing> findByPropertyId(UUID propertyId) {
         return jpaRepository.findByPropertyId(propertyId);
     }

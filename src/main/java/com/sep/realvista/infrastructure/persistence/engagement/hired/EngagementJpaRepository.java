@@ -224,4 +224,23 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
       AND e.deleted = false
       """)
   Optional<Engagement> findByIdWithFetches(@Param("id") UUID id);
+    /**
+     * Finds all active engagements (not REJECTED/CANCELLED) for a specific property —
+     * used to build an agent-engagement-status map on the delegate page.
+     */
+    @Query("""
+            SELECT e FROM Engagement e
+            WHERE e.propertyId = :propertyId
+            AND e.deleted = false
+            AND e.engagementType IN (
+                com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL,
+                com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+            )
+            AND e.status NOT IN (
+                com.sep.realvista.domain.engagement.EngagementStatus.REJECTED,
+                com.sep.realvista.domain.engagement.EngagementStatus.CANCELLED
+            )
+            ORDER BY e.updatedAt DESC
+            """)
+    List<Engagement> findActiveEngagementsForProperty(@Param("propertyId") UUID propertyId);
 }

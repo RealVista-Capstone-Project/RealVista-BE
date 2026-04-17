@@ -152,4 +152,25 @@ public class AiChatController {
         return ResponseEntity.ok(
                 ApiResponse.success("Conversation deleted", null));
     }
+    // ── GET /api/v1/ai/quota ──────────────────────────────────
+
+    @GetMapping("/quota")
+    @Operation(
+            summary = "Get AI chat quota status",
+            description = "Returns the remaining and total AI chat quota "
+                    + "for the authenticated user for the current day."
+    )
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>>
+            getQuotaStatus(
+            @AuthenticationPrincipal SecurityUserDetails principal
+    ) {
+        log.info("Get AI quota status for user={}",
+                principal.getUserId());
+
+        java.util.Map<String, Object> status =
+                aiChatService.getAiQuotaStatus(principal.getUserId());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Quota status retrieved", status));
+    }
 }

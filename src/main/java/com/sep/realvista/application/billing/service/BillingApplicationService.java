@@ -43,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -207,8 +208,13 @@ public class BillingApplicationService {
         String cancelUrl = frontendUrl.replaceAll("/$", "") + "/vi/subscribe?payment=cancelled";
 
         if (order.getPaymentMethod() == PaymentMethod.PAYOS) {
+            // PayOS order stays open 30 min so in-progress bank transfers can still complete
+            long payosExpiredAt = Instant.now().plusSeconds(1800).getEpochSecond();
+            // UI countdown is shorter (10 min) to prompt user to act before the link goes stale
+            long uiExpiredAt = Instant.now().plusSeconds(600).getEpochSecond();
             PayOsPaymentResult result = payOsService.createPaymentLink(
-                    order.getOrderCode(), (int) (amountLong / 10), payOsDescription, payOsReturnUrl, cancelUrl);
+                    order.getOrderCode(), (int) (amountLong / 10),
+                    payOsDescription, payOsReturnUrl, cancelUrl, payosExpiredAt);
 
             return CheckoutResponse.builder()
                     .checkoutOrderId(order.getCheckoutOrderId().toString())
@@ -218,6 +224,7 @@ public class BillingApplicationService {
                     .paymentMethod("PAYOS")
                     .planName(planName)
                     .amount(amountLong)
+                    .expiredAt(uiExpiredAt)
                     .build();
 
         } else {
@@ -437,7 +444,7 @@ public class BillingApplicationService {
         if (info.getAmountRemaining() == 0 && info.getAmount() > 0) {
             return true;
         }
-        if (expectedAmountVnd > 0 && info.getAmountPaid() >= expectedAmountVnd) {
+        if (expectedAmountVnd > 0 && info.getAmountPaid() * 10 >= expectedAmountVnd) {
             return true;
         }
         return st != null && (st.equalsIgnoreCase("PAID") || st.equalsIgnoreCase("SUCCESS"));
@@ -721,6 +728,31 @@ public class BillingApplicationService {
                 .createdAt(txn.getCreatedAt())
                 .description(description)
                 .build();
+    }
+
+    /**
+     * Assigns the default AI_FREE package to a user if they don't have one.
+     */
+    public void assignDefaultAiPackage(UUID userId) {
+        log.info("Assigning default AI_FREE package to user: {}", userId);
+
+        featurePackageRepository.findByCode("AI_FREE").ifPresent(pkg -> {
+            List<UserFeatureSubscription> existing = userFeatureSubscriptionRepository
+                    .findActiveByUserIdAndFeatureType(userId, FeatureType.AI_REQUEST);
+
+            if (existing.isEmpty()) {
+                UserFeatureSubscription sub = UserFeatureSubscription.builder()
+                        .userId(userId)
+                        .featurePackageId(pkg.getFeaturePackageId())
+                        .startDate(LocalDate.now())
+                        .endDate(null)
+                        .remainingQuota(pkg.getQuota())
+                        .status(UserFeatureSubscriptionStatus.ACTIVE)
+                        .build();
+                userFeatureSubscriptionRepository.save(sub);
+                log.info("Assigned default AI_FREE package to user={}", userId);
+            }
+        });
     }
 
 }

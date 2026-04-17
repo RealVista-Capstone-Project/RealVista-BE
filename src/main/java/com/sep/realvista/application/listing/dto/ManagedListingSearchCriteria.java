@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -22,4 +24,7 @@ public class ManagedListingSearchCriteria {
 
     @Parameter(description = "Sort criteria: newest, oldest, priceAsc, priceDesc")
     private String sortBy;
+
+    @Parameter(description = "Filter by property ID")
+    private UUID propertyId;
 }

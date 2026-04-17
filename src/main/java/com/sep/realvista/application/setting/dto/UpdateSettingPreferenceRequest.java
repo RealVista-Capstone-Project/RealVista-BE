@@ -18,4 +18,5 @@ public class UpdateSettingPreferenceRequest {
     private Boolean hidePhoneNumber;
     private Boolean hideEmail;
     private String preferredLanguage;
+    private Boolean autoRefreshEnabled;
 }

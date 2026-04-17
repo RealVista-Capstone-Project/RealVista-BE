@@ -14,25 +14,21 @@ import java.util.UUID;
  */
 public interface AgentProfileJpaRepository extends JpaRepository<AgentProfile, UUID> {
 
-    /**
-     * Finds an agent profile by user ID with user data eagerly fetched.
-     *
-     * @param userId the user ID
-     * @return optional agent profile if found
-     */
     @Query("SELECT ap FROM AgentProfile ap "
            + "LEFT JOIN FETCH ap.user "
            + "WHERE ap.userId = :userId AND ap.deleted = false")
     Optional<AgentProfile> findByUserId(@Param("userId") UUID userId);
 
-    /**
-     * Finds agent profiles by a list of user IDs with user data eagerly fetched.
-     *
-     * @param userIds the list of user IDs
-     * @return list of agent profiles
-     */
     @Query("SELECT ap FROM AgentProfile ap "
            + "LEFT JOIN FETCH ap.user "
            + "WHERE ap.userId IN :userIds AND ap.deleted = false")
     List<AgentProfile> findByUserIdIn(@Param("userIds") List<UUID> userIds);
+
+    /**
+     * Returns all non-deleted agent profiles with their associated user eagerly fetched.
+     */
+    @Query("SELECT ap FROM AgentProfile ap "
+           + "LEFT JOIN FETCH ap.user "
+           + "WHERE ap.deleted = false ORDER BY ap.rating DESC")
+    List<AgentProfile> findAllActive();
 }

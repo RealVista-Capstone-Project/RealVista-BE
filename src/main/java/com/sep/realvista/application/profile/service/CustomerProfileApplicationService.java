@@ -8,6 +8,7 @@ import com.sep.realvista.domain.profile.CustomerProfile;
 import com.sep.realvista.domain.profile.CustomerProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,11 +72,14 @@ public class CustomerProfileApplicationService {
         log.info("CustomerProfile deleted: {} for userId: {}", profileId, userId);
     }
 
+    @CacheEvict(value = "recommendations", key = "#userId + ':*'")
     public CustomerProfileResponse switchMainProfile(UUID profileId, UUID userId) {
         CustomerProfile newActive = customerProfileRepository.findById(profileId)
                 .orElseThrow(() -> new ResourceNotFoundException("CustomerProfile not found: " + profileId));
 
         if (!newActive.getUserId().equals(userId)) {
+            log.error("Profile ownership violation: profileId={}, profileOwnerId={}, sessionUserId={}", 
+                    profileId, newActive.getUserId(), userId);
             throw new BusinessConflictException("Profile does not belong to user", "PROFILE_OWNERSHIP_VIOLATION");
         }
 

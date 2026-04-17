@@ -6,6 +6,7 @@ import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
+import com.sep.realvista.domain.common.value.PriceRangeVO;
 import com.sep.realvista.domain.property.PropertyStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -75,4 +76,7 @@ public class PropertySummaryResponse {
 
     @JsonProperty("has_3d")
     private boolean has3d;
+
+    @JsonProperty("price_range")
+    private PriceRangeVO priceRange;
 }

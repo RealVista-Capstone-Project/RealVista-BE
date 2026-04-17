@@ -46,6 +46,9 @@ public class SimilarListingDTO {
     @JsonProperty("location_name")
     private String locationName;
 
+    @JsonProperty("full_address")
+    private String fullAddress;
+
     @JsonProperty("thumbnail_url")
     private String thumbnailUrl;
 
@@ -61,4 +64,7 @@ public class SimilarListingDTO {
      */
     @JsonProperty("attributes")
     private List<PropertyAttributeDTO> attributes;
+
+    @JsonProperty("is_favorite")
+    private boolean isFavorite;
 }

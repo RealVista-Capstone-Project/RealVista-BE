@@ -23,6 +23,7 @@ public class SettingPreferenceResponse {
     private Boolean hidePhoneNumber;
     private Boolean hideEmail;
     private String preferredLanguage;
+    private Boolean autoRefreshEnabled;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

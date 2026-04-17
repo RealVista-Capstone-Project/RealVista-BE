@@ -26,10 +26,13 @@ public class AgentInfoDTO {
     private String fullName;
     @JsonProperty("business_name")
     private String businessName;
+    @JsonProperty("email")
     private String email;
+    @JsonProperty("phone")
     private String phone;
     @JsonProperty("avatar_url")
     private String avatarUrl;
+    @JsonProperty("company")
     private String company;
     @JsonProperty("is_verified")
     private Boolean isVerified;

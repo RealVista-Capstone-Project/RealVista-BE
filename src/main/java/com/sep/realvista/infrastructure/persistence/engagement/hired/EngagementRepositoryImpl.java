@@ -76,4 +76,9 @@ public class EngagementRepositoryImpl implements EngagementRepository {
                         EngagementType.AGENT_PROPOSAL
                 );
     }
+
+    @Override
+    public List<Engagement> findActiveEngagementsForProperty(UUID propertyId) {
+        return jpaRepository.findActiveEngagementsForProperty(propertyId);
+    }
 }

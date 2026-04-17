@@ -29,6 +29,7 @@ public class PropertyInfoDTO {
     private BigDecimal widthM;
     @JsonProperty("length_m")
     private BigDecimal lengthM;
+    @JsonProperty("description")
     private String description;
 
     // Property details for UI display (bedrooms, bathrooms, area)

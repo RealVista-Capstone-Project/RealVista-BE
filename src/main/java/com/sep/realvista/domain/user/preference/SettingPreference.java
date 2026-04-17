@@ -28,7 +28,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-@ToString(exclude = {"user"})
+@ToString(exclude = { "user" })
 public class SettingPreference extends BaseEntity {
 
     @Id
@@ -79,6 +79,10 @@ public class SettingPreference extends BaseEntity {
     @Builder.Default
     private String preferredLanguage = "vi";
 
+    @Column(name = "auto_refresh_enabled")
+    @Builder.Default
+    private Boolean autoRefreshEnabled = true;
+
     public void enableInApp() {
         this.inAppEnabled = true;
     }
@@ -103,7 +107,15 @@ public class SettingPreference extends BaseEntity {
         this.pushEnabled = false;
     }
 
-    public void updateNotificationSettings(Boolean inAppEnabled, Boolean emailEnabled, Boolean pushEnabled) {
+    public void enableAutoRefresh() {
+        this.autoRefreshEnabled = true;
+    }
+
+    public void disableAutoRefresh() {
+        this.autoRefreshEnabled = false;
+    }
+
+    public void updateNotificationChannels(Boolean inAppEnabled, Boolean emailEnabled, Boolean pushEnabled) {
         if (inAppEnabled != null) {
             this.inAppEnabled = inAppEnabled;
         }
@@ -115,8 +127,8 @@ public class SettingPreference extends BaseEntity {
         }
     }
 
-    public void updateContactSettings(Boolean contactViaEmail, Boolean contactViaPhone,
-                                    Boolean hidePhoneNumber, Boolean hideEmail) {
+    public void updatePrivacyAndAutomation(Boolean contactViaEmail, Boolean contactViaPhone,
+            Boolean hidePhoneNumber, Boolean hideEmail, Boolean autoRefreshEnabled) {
         if (contactViaEmail != null) {
             this.contactViaEmail = contactViaEmail;
         }
@@ -128,6 +140,9 @@ public class SettingPreference extends BaseEntity {
         }
         if (hideEmail != null) {
             this.hideEmail = hideEmail;
+        }
+        if (autoRefreshEnabled != null) {
+            this.autoRefreshEnabled = autoRefreshEnabled;
         }
     }
 

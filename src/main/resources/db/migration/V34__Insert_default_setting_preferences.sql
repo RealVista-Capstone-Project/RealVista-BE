@@ -43,6 +43,6 @@ SELECT
     NULL::json as event_preference, -- Set to NULL as requested
     TRUE as contact_via_email,
     TRUE as contact_via_phone,  -- Override default FALSE to TRUE
-    TRUE as hide_phone_number,
-    TRUE as hide_email
+    FALSE as hide_phone_number,
+    FALSE as hide_email
 FROM non_admin_users nau;
