@@ -24,9 +24,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmailValue(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+        User user = identifier.contains("@")
+                ? userRepository.findByEmailValue(identifier)
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + identifier))
+                : userRepository.findByPhone(identifier)
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found with phone: " + identifier));
 
         if (Boolean.TRUE.equals(user.getDeleted())) {
             throw new UsernameNotFoundException("Account has been deleted");
