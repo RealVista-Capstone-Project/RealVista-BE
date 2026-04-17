@@ -1,5 +1,8 @@
 package com.sep.realvista.unit.application.user;
 
+import com.sep.realvista.application.billing.service.BillingApplicationService;
+import com.sep.realvista.application.service.EmailService;
+import com.sep.realvista.application.service.OtpService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.mapper.UserMapper;
 import com.sep.realvista.application.user.service.UserApplicationService;
@@ -47,6 +50,12 @@ public class UserApplicationServiceUnitTest {
     private AgentProfileRepository agentProfileRepository;
     @Mock
     private CustomerProfileRepository customerProfileRepository;
+    @Mock
+    private EmailService emailService;
+    @Mock
+    private OtpService otpService;
+    @Mock
+    private BillingApplicationService billingApplicationService;
 
     @InjectMocks
     private UserApplicationService userApplicationService;
@@ -81,6 +90,7 @@ public class UserApplicationServiceUnitTest {
         verify(settingPreferenceRepository, times(1)).save(any());
         verify(agentProfileRepository, times(1)).save(any());
         verify(customerProfileRepository, never()).save(any());
+        verify(billingApplicationService, times(1)).assignDefaultAiPackage(any());
     }
 
     @Test
@@ -109,5 +119,6 @@ public class UserApplicationServiceUnitTest {
         verify(settingPreferenceRepository, times(1)).save(any());
         verify(customerProfileRepository, times(1)).save(any());
         verify(agentProfileRepository, never()).save(any());
+        verify(billingApplicationService, times(1)).assignDefaultAiPackage(any());
     }
 }
