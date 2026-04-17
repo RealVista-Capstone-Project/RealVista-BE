@@ -1,17 +1,15 @@
 package com.sep.realvista.infrastructure.external.email;
 
 import com.sep.realvista.application.service.EmailService;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -19,8 +17,8 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class EmailServiceImpl implements EmailService {
 
-    private final JavaMailSender emailSender;
-    private final org.thymeleaf.spring6.SpringTemplateEngine templateEngine;
+    private final EmailProvider emailProvider;
+    private final SpringTemplateEngine templateEngine;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -28,15 +26,10 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendSimpleMessage(String to, String subject, String text) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(text);
-            emailSender.send(message);
-            log.info("Email sent to {}", to);
+            emailProvider.sendSimple(fromEmail, to, subject, text);
+            log.info("Simple email sent to {}", to);
         } catch (Exception e) {
-            log.error("Failed to send email to {}", to, e);
+            log.error("Failed to send simple email to {}", to, e);
             throw e;
         }
     }
@@ -55,19 +48,11 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendHtmlMessage(String to, String subject, String htmlBody) {
         try {
-            MimeMessage message = emailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlBody, true);
-
-            emailSender.send(message);
-            log.info("HTML Email sent to {}", to);
-        } catch (MessagingException e) {
+            emailProvider.sendHtml(fromEmail, to, subject, htmlBody);
+            log.info("HTML email sent to {}", to);
+        } catch (Exception e) {
             log.error("Failed to send HTML email to {}: {}", to, e.getMessage(), e);
-            throw new RuntimeException("Failed to send HTML email: " + e.getMessage(), e);
+            throw e;
         }
     }
 
@@ -83,10 +68,9 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendTemplateMessage(String to, String subject, String templateName,
-                                    java.util.Map<String, Object> variables) {
+    public void sendTemplateMessage(String to, String subject, String templateName, Map<String, Object> variables) {
         try {
-            org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
+            Context context = new Context();
             context.setVariables(variables);
             String htmlBody = templateEngine.process("mail/" + templateName, context);
             sendHtmlMessage(to, subject, htmlBody);
@@ -99,7 +83,7 @@ public class EmailServiceImpl implements EmailService {
     @Async
     @Override
     public CompletableFuture<Void> sendTemplateMessageAsync(String to, String subject, String templateName,
-                                                            java.util.Map<String, Object> variables) {
+                                                            Map<String, Object> variables) {
         try {
             sendTemplateMessage(to, subject, templateName, variables);
             return CompletableFuture.completedFuture(null);

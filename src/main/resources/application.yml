@@ -205,16 +205,16 @@ docusign:
 # Values in .env (PAYOS_CLIENT_ID, etc.) override only when referenced below with ${...}.
 payment:
   payos:
-    client-id: ${PAYOS_CLIENT_ID:28f71985-98d1-4ec1-a030-2ed3674b4205}
-    api-key: ${PAYOS_API_KEY:a1a2c844-8483-4bde-9848-6858a28dbfcd}
-    checksum-key: ${PAYOS_CHECKSUM_KEY:d5feead23b6f0f02afdadd0880f49a2ba38ec0c78d13be759cad61aaf6531824}
-    api-url: ${PAYOS_API_URL:https://api-merchant.payos.vn}
+    client-id: ${PAYOS_CLIENT_ID:}
+    api-key: ${PAYOS_API_KEY:}
+    checksum-key: ${PAYOS_CHECKSUM_KEY:}
+    api-url: ${PAYOS_API_URL:}
   vnpay:
-    tmn-code: ${VNPAY_TMN_CODE:P5IZ4AXX}
-    hash-secret: ${VNPAY_HASH_SECRET:1LTYQVYIN4PKUOSX81JTLDDBJ6Z4Y3C1}
-    pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+    tmn-code: ${VNPAY_TMN_CODE:}
+    hash-secret: ${VNPAY_HASH_SECRET:}
+    pay-url: ${VNPAY_PAY_URL:}
     # Must match Return URL on VNPay merchant (register this exact URL, including query).
-    return-url: "${VNPAY_RETURN_URL:http://localhost:3000/vi/subscribe}"
+    return-url: "${VNPAY_RETURN_URL:}"
 
 # ── RabbitMQ STOMP Relay Configuration ──
 # Used by WebSocketConfig.configureMessageBroker (STOMP broker relay).
@@ -224,3 +224,11 @@ rabbitmq:
     port: ${RABBITMQ_STOMP_PORT:61613}
     login: ${RABBITMQ_STOMP_LOGIN:guest}
     passcode: ${RABBITMQ_STOMP_PASSCODE:guest}
+
+# Email provider selection: smtp (default) or sendgrid
+email:
+  provider: ${EMAIL_PROVIDER:smtp}
+
+# SendGrid configuration (required when email.provider=sendgrid)
+sendgrid:
+  api-key: ${SENDGRID_API_KEY:}
