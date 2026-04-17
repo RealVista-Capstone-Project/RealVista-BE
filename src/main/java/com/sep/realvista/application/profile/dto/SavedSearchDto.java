@@ -20,5 +20,6 @@ public class SavedSearchDto {
     private Map<String, Object> criteria;
     private String boardId;
     private LocalDateTime createdAt;
+    @com.fasterxml.jackson.annotation.JsonProperty("is_recommendation")
     private boolean isRecommendation;
 }

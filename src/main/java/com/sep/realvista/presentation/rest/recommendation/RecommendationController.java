@@ -147,8 +147,8 @@ public class RecommendationController {
 
         RecommendationResponse response;
 
-        // Check if we should refresh (threshold met) or use cache
-        if (recommendationService.isThresholdMet(userId)) {
+        // Check if we should refresh (threshold met + user preference enabled) or use cache
+        if (recommendationService.shouldAutoRefresh(userId)) {
             log.info("Threshold met for user {} — refreshing recommendations", userId);
             response = recommendationService.refreshRecommendations(
                     userId, limit, userName, userRoles, listingType);

@@ -43,14 +43,18 @@ public class SettingPreferenceApplicationService {
         SettingPreference setting = settingPreferenceRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("SettingPreference not found for user: " + userId));
 
-        setting.updateNotificationSettings(
+        setting.updateNotificationChannels(
                 request.getInAppEnabled(),
                 request.getEmailEnabled(),
-                request.getPushEnabled(),
+                request.getPushEnabled()
+        );
+
+        setting.updatePrivacyAndAutomation(
                 request.getContactViaEmail(),
                 request.getContactViaPhone(),
                 request.getHidePhoneNumber(),
-                request.getHideEmail()
+                request.getHideEmail(),
+                request.getAutoRefreshEnabled()
         );
 
         SettingPreference saved = settingPreferenceRepository.save(setting);
@@ -69,6 +73,7 @@ public class SettingPreferenceApplicationService {
                 .contactViaPhone(setting.getContactViaPhone())
                 .hidePhoneNumber(setting.getHidePhoneNumber())
                 .hideEmail(setting.getHideEmail())
+                .autoRefreshEnabled(setting.getAutoRefreshEnabled())
                 .createdAt(setting.getCreatedAt())
                 .updatedAt(setting.getUpdatedAt())
                 .build();
