@@ -63,6 +63,13 @@ class UserControllerComponentTest {
     @MockitoBean
     private TokenService jwtService;
 
+    // Mocks for GlobalExceptionHandler
+    @MockitoBean
+    private com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
+
+    @MockitoBean
+    private com.sep.realvista.domain.user.preference.SettingPreferenceRepository settingPreferenceRepository;
+
     @MockitoBean
     private UserDetailsService userDetailsService;
 

@@ -72,6 +72,13 @@ class ListingControllerComponentTest {
         @MockitoBean
         private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+        // Mocks for GlobalExceptionHandler
+        @MockitoBean
+        private com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
+
+        @MockitoBean
+        private com.sep.realvista.domain.user.preference.SettingPreferenceRepository settingPreferenceRepository;
+
         @MockitoBean
         private ListingSearchService listingSearchService;
 

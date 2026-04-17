@@ -64,6 +64,13 @@ class BookmarkControllerComponentTest {
     @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    // Mocks for GlobalExceptionHandler
+    @MockitoBean
+    private com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
+
+    @MockitoBean
+    private com.sep.realvista.domain.user.preference.SettingPreferenceRepository settingPreferenceRepository;
+
     private static final UUID TEST_USER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
     private static final UUID TEST_LISTING_ID = UUID.fromString("650e8400-e29b-41d4-a716-446655440002");
     private static final String TEST_USER_EMAIL = "buyer@example.com";
