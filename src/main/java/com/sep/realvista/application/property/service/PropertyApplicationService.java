@@ -649,6 +649,63 @@ public class PropertyApplicationService {
     }
 
     @Transactional
+    public PropertyDetailResponse updatePropertyStatus(UUID propertyId, String status) {
+        UUID currentUserId = getCurrentUserId();
+        log.info("User {} updating status of property {} to {}", currentUserId, propertyId, status);
+
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+
+        if (!property.getOwnerId().equals(currentUserId)) {
+            throw new IllegalArgumentException("Only the property owner can update the status");
+        }
+
+        Set<PropertyStatus> systemStatuses = Set.of(
+                PropertyStatus.PENDING, PropertyStatus.VERIFIED, PropertyStatus.REJECTED);
+
+        if (systemStatuses.contains(property.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Cannot manually change status of a property with system-managed status: "
+                    + property.getStatus());
+        }
+
+        PropertyStatus newStatus;
+        try {
+            newStatus = PropertyStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid property status: " + status);
+        }
+
+        if (systemStatuses.contains(newStatus)) {
+            throw new IllegalArgumentException(
+                    "Cannot manually set a property to system-managed status: " + newStatus);
+        }
+
+        property.updateStatus(newStatus);
+        propertyRepository.save(property);
+        log.info("Property {} status updated to {} by user {}", propertyId, status, currentUserId);
+
+        return getPropertyDetails(propertyId);
+    }
+
+    @Transactional
+    public void softDeleteProperty(UUID propertyId) {
+        UUID currentUserId = getCurrentUserId();
+        log.info("User {} soft-deleting property {}", currentUserId, propertyId);
+
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+
+        if (!property.getOwnerId().equals(currentUserId)) {
+            throw new IllegalArgumentException("Only the property owner can delete this property");
+        }
+
+        property.markAsDeleted();
+        propertyRepository.save(property);
+        log.info("Property {} soft-deleted by user {}", propertyId, currentUserId);
+    }
+
+    @Transactional
     public PropertyDetailResponse assignAgentToProperty(UUID propertyId) {
         UUID agentId = getCurrentUserId();
         log.info("Assigning agent {} to property {}", agentId, propertyId);

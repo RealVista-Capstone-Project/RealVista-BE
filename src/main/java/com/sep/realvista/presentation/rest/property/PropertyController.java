@@ -28,7 +28,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -172,6 +174,30 @@ public class PropertyController {
     List<PropertySummaryResponse> response = propertyApplicationService.searchProperties(
         address, northLat, southLat, eastLng, westLng);
     return ResponseEntity.ok(ApiResponse.success("Properties found successfully", response));
+  }
+
+  @PatchMapping("/{propertyId}/status")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(
+      summary = "Update property status",
+      description = "Allows the property owner to update the status of their property")
+  public ResponseEntity<ApiResponse<PropertyDetailResponse>> updatePropertyStatus(
+      @PathVariable UUID propertyId,
+      @RequestParam String status) {
+    log.info("REST request to update status of Property {} to {}", propertyId, status);
+    PropertyDetailResponse response = propertyApplicationService.updatePropertyStatus(propertyId, status);
+    return ResponseEntity.ok(ApiResponse.success("Property status updated successfully", response));
+  }
+
+  @DeleteMapping("/{propertyId}")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(
+      summary = "Soft delete a property",
+      description = "Marks a property as deleted (soft delete). Only the owner can delete their property.")
+  public ResponseEntity<ApiResponse<Void>> deleteProperty(@PathVariable UUID propertyId) {
+    log.info("REST request to soft-delete Property: {}", propertyId);
+    propertyApplicationService.softDeleteProperty(propertyId);
+    return ResponseEntity.ok(ApiResponse.success("Property deleted successfully", null));
   }
 
   @GetMapping("/feed")

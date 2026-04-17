@@ -65,6 +65,7 @@ public class PropertyMapper {
                         .map(this::mapAmenity).collect(Collectors.toList()) : null)
                 .media(media != null ? media.stream()
                         .map(this::mapMedia).collect(Collectors.toList()) : null)
+                .priceRange(property.getPriceRange())
                 .build();
     }
 
