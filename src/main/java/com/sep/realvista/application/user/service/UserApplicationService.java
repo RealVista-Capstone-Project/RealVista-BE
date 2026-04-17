@@ -21,7 +21,7 @@ import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.domain.user.preference.SettingPreference;
-import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.domain.user.role.Role;
 import com.sep.realvista.domain.user.role.RoleCode;
 import com.sep.realvista.domain.user.role.RoleRepository;

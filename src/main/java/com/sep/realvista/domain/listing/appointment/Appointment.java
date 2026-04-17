@@ -15,6 +15,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.SQLRestriction;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,6 +34,7 @@ import java.util.UUID;
         @Index(name = "idx_appointment_type", columnList = "appointment_type"),
         @Index(name = "idx_appointment_start", columnList = "start_time")
 })
+@SQLRestriction("deleted = false")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -44,7 +46,7 @@ public class Appointment extends BaseEntity {
     @Column(name = "appointment_id")
     private UUID appointmentId;
 
-    @Column(name = "listing_id", nullable = false)
+    @Column(name = "listing_id", nullable = true)
     private UUID listingId;
 
     @ManyToOne(fetch = FetchType.LAZY)

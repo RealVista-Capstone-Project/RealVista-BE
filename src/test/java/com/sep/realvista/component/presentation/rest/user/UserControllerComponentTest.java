@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -63,6 +64,13 @@ class UserControllerComponentTest {
     @MockitoBean
     private TokenService jwtService;
 
+    // Mocks for GlobalExceptionHandler
+    @MockitoBean
+    private com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
+
+    @MockitoBean
+    private com.sep.realvista.domain.user.preference.SettingPreferenceRepository settingPreferenceRepository;
+
     @MockitoBean
     private UserDetailsService userDetailsService;
 
@@ -70,6 +78,12 @@ class UserControllerComponentTest {
 
     @BeforeEach
     void setUp() {
+        // Mock GlobalExceptionHandler messages
+        when(notificationMessageService.getMessage(anyString(), any()))
+                .thenReturn("Mocked notification message");
+        when(notificationMessageService.getMessage(anyString(), any(), any()))
+                .thenReturn("Mocked notification message with args");
+
         // Arrange: Prepare test data
         mockUserResponse = UserResponse.builder()
                 .userId(UUID.fromString("550e8400-e29b-41d4-a716-446655440001"))

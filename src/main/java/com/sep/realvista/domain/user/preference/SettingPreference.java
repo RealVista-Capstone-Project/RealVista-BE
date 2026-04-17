@@ -28,7 +28,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-@ToString(exclude = {"user"})
+@ToString(exclude = { "user" })
 public class SettingPreference extends BaseEntity {
 
     @Id
@@ -74,6 +74,10 @@ public class SettingPreference extends BaseEntity {
     @Column(name = "hide_email")
     @Builder.Default
     private Boolean hideEmail = true;
+
+    @Column(name = "preferred_language")
+    @Builder.Default
+    private String preferredLanguage = "vi";
 
     @Column(name = "auto_refresh_enabled")
     @Builder.Default
@@ -124,7 +128,7 @@ public class SettingPreference extends BaseEntity {
     }
 
     public void updatePrivacyAndAutomation(Boolean contactViaEmail, Boolean contactViaPhone,
-                                            Boolean hidePhoneNumber, Boolean hideEmail, Boolean autoRefreshEnabled) {
+            Boolean hidePhoneNumber, Boolean hideEmail, Boolean autoRefreshEnabled) {
         if (contactViaEmail != null) {
             this.contactViaEmail = contactViaEmail;
         }
@@ -139,6 +143,12 @@ public class SettingPreference extends BaseEntity {
         }
         if (autoRefreshEnabled != null) {
             this.autoRefreshEnabled = autoRefreshEnabled;
+        }
+    }
+
+    public void updateLanguagePreference(String preferredLanguage) {
+        if (preferredLanguage != null) {
+            this.preferredLanguage = preferredLanguage;
         }
     }
 }

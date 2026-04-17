@@ -7,7 +7,6 @@ import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.application.listing.dto.map.PropertyMapMarker;
 import com.sep.realvista.application.listing.service.MapSearchApplicationService;
 import com.sep.realvista.domain.listing.ListingType;
-import com.sep.realvista.infrastructure.config.AppConfig;
 import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
 import com.sep.realvista.presentation.exception.GlobalExceptionHandler;
 import com.sep.realvista.presentation.rest.map.MapController;
@@ -29,6 +28,7 @@ import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = MapController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({ GlobalExceptionHandler.class, AppConfig.class })
+@Import(GlobalExceptionHandler.class)
 @DisplayName("MapController Component Tests (Web Layer)")
 class MapControllerComponentTest {
 
@@ -62,6 +62,13 @@ class MapControllerComponentTest {
         @MockitoBean
         private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+        // Mocks for GlobalExceptionHandler
+        @MockitoBean
+        private com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
+
+        @MockitoBean
+        private com.sep.realvista.domain.user.preference.SettingPreferenceRepository settingPreferenceRepository;
+
         // -- Shared test data --
 
         private ListingSearchResponse sampleMarker1;
@@ -72,6 +79,12 @@ class MapControllerComponentTest {
 
         @BeforeEach
         void setUp() {
+                // Mock GlobalExceptionHandler messages
+                when(notificationMessageService.getMessage(anyString(), any()))
+                                .thenReturn("Mocked notification message");
+                when(notificationMessageService.getMessage(anyString(), any(), any()))
+                                .thenReturn("Mocked notification message with args");
+
                 sampleMarker1 = ListingSearchResponse.builder()
                                 .listingId(UUID.randomUUID())
                                 .coordinates(com.sep.realvista.application.listing.dto.map.PropertyMapMarker.CoordinatesDTO.builder()

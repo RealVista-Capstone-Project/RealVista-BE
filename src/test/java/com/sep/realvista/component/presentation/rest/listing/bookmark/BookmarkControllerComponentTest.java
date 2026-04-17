@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -56,13 +57,17 @@ class BookmarkControllerComponentTest {
     private BookmarkApplicationService bookmarkApplicationService;
 
     @MockitoBean
-    private UserApplicationService userApplicationService;
-
-    @MockitoBean
     private TokenService tokenService;
 
     @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    // Mocks for GlobalExceptionHandler
+    @MockitoBean
+    private com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
+
+    @MockitoBean
+    private com.sep.realvista.domain.user.preference.SettingPreferenceRepository settingPreferenceRepository;
 
     private static final UUID TEST_USER_ID = UUID.fromString("550e8400-e29b-41d4-a716-446655440001");
     private static final UUID TEST_LISTING_ID = UUID.fromString("650e8400-e29b-41d4-a716-446655440002");
@@ -72,6 +77,12 @@ class BookmarkControllerComponentTest {
 
     @BeforeEach
     void setUp() {
+        // Mock GlobalExceptionHandler messages
+        when(notificationMessageService.getMessage(anyString(), any()))
+                .thenReturn("Mocked notification message");
+        when(notificationMessageService.getMessage(anyString(), any(), any()))
+                .thenReturn("Mocked notification message with args");
+
         // Set up SecurityContext with SecurityUserDetails as principal
         SecurityUserDetails userDetails = new SecurityUserDetails(
                 TEST_USER_ID, TEST_USER_EMAIL, "password",

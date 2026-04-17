@@ -59,6 +59,12 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     List<Listing> findPublishedListingsPublishedBetween(@Param("windowStart") java.time.LocalDateTime windowStart,
                                                         @Param("windowEnd") java.time.LocalDateTime windowEnd);
 
+    @Query("SELECT l FROM Listing l "
+            + "WHERE l.status = :status AND l.deleted = false "
+            + "AND l.updatedAt < :cutoff")
+    List<Listing> findByStatusAndUpdatedAtBefore(@Param("status") ListingStatus status,
+                                                 @Param("cutoff") java.time.LocalDateTime cutoff);
+
     @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status "
             + "AND l.deleted = false")
     List<Listing> findByListingTypeAndStatus(@Param("listingType") ListingType listingType,
