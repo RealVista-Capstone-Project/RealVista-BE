@@ -46,12 +46,15 @@ public class SettingPreferenceApplicationService {
         setting.updateNotificationSettings(
                 request.getInAppEnabled(),
                 request.getEmailEnabled(),
-                request.getPushEnabled(),
+                request.getPushEnabled()
+        );
+        setting.updateContactSettings(
                 request.getContactViaEmail(),
                 request.getContactViaPhone(),
                 request.getHidePhoneNumber(),
                 request.getHideEmail()
         );
+        setting.updateLanguagePreference(request.getPreferredLanguage());
 
         SettingPreference saved = settingPreferenceRepository.save(setting);
         log.info("SettingPreference updated for userId: {}", userId);
@@ -69,6 +72,7 @@ public class SettingPreferenceApplicationService {
                 .contactViaPhone(setting.getContactViaPhone())
                 .hidePhoneNumber(setting.getHidePhoneNumber())
                 .hideEmail(setting.getHideEmail())
+                .preferredLanguage(setting.getPreferredLanguage())
                 .createdAt(setting.getCreatedAt())
                 .updatedAt(setting.getUpdatedAt())
                 .build();

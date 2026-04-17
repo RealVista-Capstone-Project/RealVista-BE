@@ -22,6 +22,7 @@ public class SettingPreferenceResponse {
     private Boolean contactViaPhone;
     private Boolean hidePhoneNumber;
     private Boolean hideEmail;
+    private String preferredLanguage;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

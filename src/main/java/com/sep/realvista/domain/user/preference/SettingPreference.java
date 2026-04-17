@@ -75,6 +75,10 @@ public class SettingPreference extends BaseEntity {
     @Builder.Default
     private Boolean hideEmail = true;
 
+    @Column(name = "preferred_language")
+    @Builder.Default
+    private String preferredLanguage = "vi";
+
     public void enableInApp() {
         this.inAppEnabled = true;
     }
@@ -99,9 +103,7 @@ public class SettingPreference extends BaseEntity {
         this.pushEnabled = false;
     }
 
-    public void updateNotificationSettings(Boolean inAppEnabled, Boolean emailEnabled, Boolean pushEnabled,
-                                           Boolean contactViaEmail, Boolean contactViaPhone,
-                                           Boolean hidePhoneNumber, Boolean hideEmail) {
+    public void updateNotificationSettings(Boolean inAppEnabled, Boolean emailEnabled, Boolean pushEnabled) {
         if (inAppEnabled != null) {
             this.inAppEnabled = inAppEnabled;
         }
@@ -111,6 +113,10 @@ public class SettingPreference extends BaseEntity {
         if (pushEnabled != null) {
             this.pushEnabled = pushEnabled;
         }
+    }
+
+    public void updateContactSettings(Boolean contactViaEmail, Boolean contactViaPhone,
+                                    Boolean hidePhoneNumber, Boolean hideEmail) {
         if (contactViaEmail != null) {
             this.contactViaEmail = contactViaEmail;
         }
@@ -122,6 +128,12 @@ public class SettingPreference extends BaseEntity {
         }
         if (hideEmail != null) {
             this.hideEmail = hideEmail;
+        }
+    }
+
+    public void updateLanguagePreference(String preferredLanguage) {
+        if (preferredLanguage != null) {
+            this.preferredLanguage = preferredLanguage;
         }
     }
 }
