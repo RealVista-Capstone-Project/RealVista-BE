@@ -106,11 +106,13 @@ public class UserApplicationServiceUnitTest {
 
         User user = User.builder().build();
         Role role = Role.builder().roleCode(RoleCode.BUYER).build();
+        Role tenantRole = Role.builder().roleCode(RoleCode.TENANT).build();
 
         doNothing().when(userDomainService).validateUniqueEmail(anyString());
         when(passwordService.encode(anyString())).thenReturn("hashed_pass");
         when(userRepository.save(any(User.class))).thenReturn(user);
         when(roleRepository.findByRoleCode(RoleCode.BUYER)).thenReturn(Optional.of(role));
+        when(roleRepository.findByRoleCode(RoleCode.TENANT)).thenReturn(Optional.of(tenantRole));
 
         // Act
         userApplicationService.createUser(request);

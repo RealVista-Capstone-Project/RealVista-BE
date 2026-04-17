@@ -54,6 +54,10 @@ import java.util.UUID;
                 @ColumnResult(name = "price", type = BigDecimal.class),
                 @ColumnResult(name = "area", type = BigDecimal.class),
                 @ColumnResult(name = "location_name", type = String.class),
+                @ColumnResult(name = "street_address", type = String.class),
+                @ColumnResult(name = "ward_name", type = String.class),
+                @ColumnResult(name = "district_name", type = String.class),
+                @ColumnResult(name = "city_name", type = String.class),
                 @ColumnResult(name = "property_type_name", type = String.class),
                 @ColumnResult(name = "thumbnail_url", type = String.class),
                 @ColumnResult(name = "published_at", type = LocalDateTime.class),
@@ -197,8 +201,12 @@ public class Listing extends BaseEntity {
         if (price != null) {
             this.price = price;
         }
-        this.minPrice = minPrice;
-        this.maxPrice = maxPrice;
+        if (minPrice != null) {
+            this.minPrice = minPrice;
+        }
+        if (maxPrice != null) {
+            this.maxPrice = maxPrice;
+        }
         if (isNegotiable != null) {
             this.isNegotiable = isNegotiable;
         }

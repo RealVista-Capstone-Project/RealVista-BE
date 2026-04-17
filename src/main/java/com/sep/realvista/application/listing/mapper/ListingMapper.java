@@ -99,6 +99,11 @@ public interface ListingMapper {
         // Map agent/user with privacy logic
         if (listing.getUser() != null) {
             response.setAgent(mapAgentInfo(listing.getUser(), preference));
+            boolean isAgent = listing.getUser().getUserRoles() != null
+                    && listing.getUser().getUserRoles().stream()
+                            .anyMatch(ur -> ur.getRole() != null
+                                    && ur.getRole().getRoleCode() == com.sep.realvista.domain.user.role.RoleCode.AGENT);
+            response.setUserType(isAgent ? "AGENT" : "OWNER");
         }
 
         // Map media

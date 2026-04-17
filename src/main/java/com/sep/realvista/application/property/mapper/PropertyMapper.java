@@ -65,6 +65,7 @@ public class PropertyMapper {
                         .map(this::mapAmenity).collect(Collectors.toList()) : null)
                 .media(media != null ? media.stream()
                         .map(this::mapMedia).collect(Collectors.toList()) : null)
+                .priceRange(property.getPriceRange())
                 .build();
     }
 
@@ -103,6 +104,7 @@ public class PropertyMapper {
                 .description(property.getDescriptions())
                 .has3d(has3d)
                 .thumbnailUrl(thumbnailUrl)
+                .priceRange(property.getPriceRange())
                 .media(media != null ? media.stream()
                         .map(this::mapMedia).collect(Collectors.toList()) : null)
                 .attributes(attributes != null ? attributes.stream()
@@ -127,6 +129,7 @@ public class PropertyMapper {
                 .lengthM(property.getLengthM())
                 .description(property.getDescriptions())
                 .thumbnailUrl(thumbnailUrl)
+                .priceRange(property.getPriceRange())
                 .media(thumbnailUrl != null ? List.of(MediaDTO.builder()
                         .thumbnailUrl(thumbnailUrl)
                         .isPrimary(true)

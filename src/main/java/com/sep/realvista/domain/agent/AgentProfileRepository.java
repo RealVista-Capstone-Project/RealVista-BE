@@ -29,6 +29,13 @@ public interface AgentProfileRepository {
     List<AgentProfile> findByUserIds(List<UUID> userIds);
 
     /**
+     * Finds all active (non-deleted) agent profiles ordered by rating descending.
+     *
+     * @return list of all active agent profiles
+     */
+    List<AgentProfile> findAllActive();
+
+    /**
      * Saves an agent profile.
      *
      * @param agentProfile the agent profile to save

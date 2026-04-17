@@ -44,4 +44,12 @@ public interface AgentReviewRepository {
      * @return average rating, or null if no reviews exist
      */
     BigDecimal calculateAverageRating(UUID agentProfileId);
+
+    /**
+     * Returns all reviews for a given agent profile, newest first.
+     *
+     * @param agentProfileId the agent profile ID
+     * @return list of reviews
+     */
+    List<AgentReview> findByAgentProfileId(UUID agentProfileId);
 }

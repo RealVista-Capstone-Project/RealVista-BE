@@ -8,6 +8,7 @@ import com.sep.realvista.application.engagement.dto.EngagementSummaryResponse;
 import com.sep.realvista.application.engagement.dto.HiredAgentResponse;
 import com.sep.realvista.application.engagement.dto.AgentProposalApplyStateResponse;
 import com.sep.realvista.application.engagement.dto.ReviewResponse;
+import com.sep.realvista.application.engagement.dto.SendOwnerInvitationRequest;
 import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
 import com.sep.realvista.application.engagement.service.AgentReviewApplicationService;
 import com.sep.realvista.application.engagement.service.EngagementApplicationService;
@@ -375,5 +376,32 @@ public class EngagementController {
                 engagementApplicationService.getAgentProposalApplyState(initiatorId, receiverId, propertyId);
 
         return ResponseEntity.ok(ApiResponse.success("Proposal apply state retrieved successfully", response));
+    }
+
+    /**
+     * Send an owner invitation to a specific agent to manage their property.
+     *
+     * @param userDetails the authenticated owner
+     * @param request     the invitation details (agentId, propertyId, optional message)
+     * @return the created engagement ID
+     */
+    @PostMapping("/owner-invitation")
+    @PreAuthorize("hasRole('OWNER')")
+    @Operation(
+            summary = "Send owner invitation to agent",
+            description = "Owner invites a specific agent to manage their property. "
+                    + "Creates an OWNER_INVITATION engagement with status SUBMITTED."
+    )
+    public ResponseEntity<ApiResponse<Map<String, UUID>>> sendOwnerInvitation(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @Valid @RequestBody SendOwnerInvitationRequest request
+    ) {
+        UUID ownerId = userDetails.getUserId();
+        log.info("Send owner invitation - ownerId: {}, agentId: {}, propertyId: {}",
+                ownerId, request.getAgentId(), request.getPropertyId());
+        UUID engagementId = engagementApplicationService.createOwnerInvitation(ownerId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Invitation sent successfully",
+                        Map.of("engagement_id", engagementId)));
     }
 }

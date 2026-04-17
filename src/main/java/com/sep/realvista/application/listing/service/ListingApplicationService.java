@@ -28,6 +28,7 @@ import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
+import com.sep.realvista.shared.util.AddressFormatter;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
@@ -409,6 +410,11 @@ public class ListingApplicationService {
                 .price(similarListing.getPrice())
                 .area(similarListing.getArea())
                 .locationName(similarListing.getLocationName())
+                .fullAddress(AddressFormatter.formatFullAddress(
+                        similarListing.getStreetAddress(),
+                        similarListing.getWardName(),
+                        similarListing.getDistrictName(),
+                        similarListing.getCityName()))
                 .thumbnailUrl(similarListing.getThumbnailUrl())
                 .similarityScore(similarListing.getSimilarityPercentage())
                 .publishedAt(similarListing.getPublishedAt())
@@ -599,6 +605,9 @@ public class ListingApplicationService {
         if (mediaIds != null && !mediaIds.isEmpty()) {
             for (int displayOrder = 0; displayOrder < mediaIds.size(); displayOrder++) {
                 UUID mediaId = mediaIds.get(displayOrder);
+                if (mediaId == null) {
+                    continue; // skip null IDs sent from client
+                }
                 boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
                 ListingMedia listingMedia = ListingMedia.create(
                         savedListing.getListingId(), mediaId, displayOrder, isPrimary);
@@ -897,6 +906,11 @@ public class ListingApplicationService {
                     Predicate locMatch = cb.like(cb.lower(locationJoin.get("name")), searchStr);
 
                     predicates.add(cb.or(nameMatch, addressMatch, locMatch));
+                }
+
+                // Filter by property ID
+                if (criteria.getPropertyId() != null) {
+                    predicates.add(cb.equal(propertyJoin.get("propertyId"), criteria.getPropertyId()));
                 }
             }
 

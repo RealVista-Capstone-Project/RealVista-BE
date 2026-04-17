@@ -53,32 +53,36 @@ public class AuthService {
     }
 
     public AuthenticationResponse login(LoginRequest request) {
-        log.debug("Authenticating user with email: {}", request.getEmail());
+        boolean loginByEmail = request.getEmail() != null && !request.getEmail().isBlank();
+        String identifier = loginByEmail ? request.getEmail() : request.getPhone();
+        log.debug("Authenticating user with {}: {}", loginByEmail ? "email" : "phone", identifier);
 
         // Step 1: Authenticate user credentials
-        Authentication authentication = authenticateUser(request);
+        Authentication authentication = authenticateUser(identifier, request.getPassword());
 
         // Step 2: Retrieve user details for role mapping
-        User user = userRepository.findByEmailValue(request.getEmail())
-                .orElseThrow(() -> new UserNotFoundException(request.getEmail()));
+        User user = loginByEmail
+                ? userRepository.findByEmailValue(identifier)
+                        .orElseThrow(() -> new UserNotFoundException(identifier))
+                : userRepository.findByPhone(identifier)
+                        .orElseThrow(() -> new UserNotFoundException(identifier));
 
         // Step 3: Generate JWT token with roles in claims
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
-        
-        // Add roles to JWT claims
+
         java.util.List<String> roles = user.getUserRoles().stream()
                 .filter(ur -> ur.getRole() != null)
                 .map(ur -> ur.getRole().getRoleCode().name())
                 .toList();
         extraClaims.put("roles", roles);
-        
+
         String token = tokenService.generateToken(extraClaims, userDetails);
 
         // Step 4: Build authentication response
         AuthenticationResponse response = authenticationMapper.toAuthenticationResponse(user, token);
 
-        log.info("User authenticated successfully: {}", request.getEmail());
+        log.info("User authenticated successfully: {}", identifier);
 
         return response;
     }
@@ -177,16 +181,13 @@ public class AuthService {
                 .orElseGet(() -> userApplicationService.createGoogleUser(email, firstName, lastName, avatarUrl));
     }
 
-    private Authentication authenticateUser(LoginRequest request) {
+    private Authentication authenticateUser(String identifier, String password) {
         try {
             return authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            request.getEmail(),
-                            request.getPassword()
-                    )
+                    new UsernamePasswordAuthenticationToken(identifier, password)
             );
         } catch (Exception e) {
-            log.error("Authentication failed for email: {}", request.getEmail(), e);
+            log.error("Authentication failed for identifier: {}", identifier, e);
             throw e;
         }
     }

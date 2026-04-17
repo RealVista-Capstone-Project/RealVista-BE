@@ -110,65 +110,42 @@ class MapControllerComponentTest {
                                 .isFavorite(true)
                                 .build();
 
-                singleResultResponse = MapSearchResponse.builder()
-                                .content(List.of(sampleMarker1))
-                                .page(1)
-                                .size(20)
-                                .totalElements(1L)
-                                .totalPages(1)
-                                .first(true)
-                                .last(true)
-                                .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                                                .northLat(new BigDecimal("10.85"))
-                                                .southLat(new BigDecimal("10.70"))
-                                                .eastLng(new BigDecimal("106.75"))
-                                                .westLng(new BigDecimal("106.60"))
-                                                .build())
-                                .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
-                                                .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder()
-                                                                .build())
-                                                .build())
-                                .build();
+                singleResultResponse = createMapSearchResponse(
+                        List.of(sampleMarker1), 1L,
+                        new BigDecimal("10.85"), new BigDecimal("10.70"),
+                        new BigDecimal("106.75"), new BigDecimal("106.60"));
 
-                multiResultResponse = MapSearchResponse.builder()
-                                .content(List.of(sampleMarker1, sampleMarker2))
-                                .page(1)
-                                .size(20)
-                                .totalElements(2L)
-                                .totalPages(1)
-                                .first(true)
-                                .last(true)
-                                .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                                                .northLat(new BigDecimal("10.85"))
-                                                .southLat(new BigDecimal("10.70"))
-                                                .eastLng(new BigDecimal("106.75"))
-                                                .westLng(new BigDecimal("106.60"))
-                                                .build())
-                                .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
-                                                .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder()
-                                                                .build())
-                                                .build())
-                                .build();
+                multiResultResponse = createMapSearchResponse(
+                        List.of(sampleMarker1, sampleMarker2), 2L,
+                        new BigDecimal("10.85"), new BigDecimal("10.70"),
+                        new BigDecimal("106.75"), new BigDecimal("106.60"));
 
-                emptyResponse = MapSearchResponse.builder()
-                                .content(List.of())
-                                .page(1)
-                                .size(20)
-                                .totalElements(0L)
-                                .totalPages(0)
-                                .first(true)
-                                .last(true)
-                                .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                                                .northLat(new BigDecimal("10.85"))
-                                                .southLat(new BigDecimal("10.70"))
-                                                .eastLng(new BigDecimal("106.75"))
-                                                .westLng(new BigDecimal("106.60"))
-                                                .build())
-                                .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
-                                                .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder()
-                                                                .build())
-                                                .build())
-                                .build();
+                emptyResponse = createMapSearchResponse(
+                        List.of(), 0L,
+                        new BigDecimal("10.85"), new BigDecimal("10.70"),
+                        new BigDecimal("106.75"), new BigDecimal("106.60"));
+        }
+
+        private MapSearchResponse createMapSearchResponse(List<ListingSearchResponse> content, Long totalElements,
+                        BigDecimal northLat, BigDecimal southLat, BigDecimal eastLng, BigDecimal westLng) {
+                MapSearchResponse response = new MapSearchResponse();
+                response.setContent(content);
+                response.setPage(1);
+                response.setSize(20);
+                response.setTotalElements(totalElements);
+                response.setTotalPages(totalElements > 0 ? 1 : 0);
+                response.setFirst(true);
+                response.setLast(true);
+                response.setBounds(MapSearchResponse.MapBoundsDTO.builder()
+                                .northLat(northLat)
+                                .southLat(southLat)
+                                .eastLng(eastLng)
+                                .westLng(westLng)
+                                .build());
+                response.setFilterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
+                                .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder().build())
+                                .build());
+                return response;
         }
 
         // =========================================================================
@@ -211,23 +188,15 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should return 200 OK when searching with text only (no bounds)")
                 void searchWithTextOnly_shouldReturnOk() throws Exception {
-                        MapSearchResponse textResponse = MapSearchResponse.builder()
-                                        .content(List.of(sampleMarker1))
-                                        .page(1).size(20).totalElements(1L).totalPages(1)
-                                        .first(true).last(true)
-                                        .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                                                        .northLat(new BigDecimal("90"))
-                                                        .southLat(new BigDecimal("-90"))
-                                                        .eastLng(new BigDecimal("180"))
-                                                        .westLng(new BigDecimal("-180"))
+                        MapSearchResponse textResponse = createMapSearchResponse(
+                                        List.of(sampleMarker1), 1L,
+                                        new BigDecimal("90"), new BigDecimal("-90"),
+                                        new BigDecimal("180"), new BigDecimal("-180"));
+                        textResponse.setFilterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
+                                        .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder()
+                                                        .searchText("101 Ben Nghe")
                                                         .build())
-                                        .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
-                                                        .appliedFilters(MapSearchResponse.AppliedFiltersDTO
-                                                                        .builder()
-                                                                        .searchText("101 Ben Nghe")
-                                                                        .build())
-                                                        .build())
-                                        .build();
+                                        .build());
 
                         when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(textResponse);
@@ -252,33 +221,25 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should return 200 OK when searching with all filters")
                 void searchWithAllFilters_shouldReturnOk() throws Exception {
-                        MapSearchResponse filteredResponse = MapSearchResponse.builder()
-                                        .content(List.of(sampleMarker1))
-                                        .page(1).size(10).totalElements(1L).totalPages(1)
-                                        .first(true).last(true)
-                                        .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                                                        .northLat(new BigDecimal("10.85"))
-                                                        .southLat(new BigDecimal("10.70"))
-                                                        .eastLng(new BigDecimal("106.75"))
-                                                        .westLng(new BigDecimal("106.60"))
-                                                        .build())
-                                        .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
-                                                        .appliedFilters(MapSearchResponse.AppliedFiltersDTO
-                                                                        .builder()
-                                                                        .listingType("SALE")
-                                                                        .priceRange(MapSearchResponse.PriceRangeDTO
-                                                                                        .builder()
-                                                                                        .min(new BigDecimal("500000"))
-                                                                                        .max(new BigDecimal("2000000"))
-                                                                                        .build())
-                                                                        .bedrooms(2)
-                                                                        .bathrooms(1)
-                                                                        .area(new BigDecimal("80"))
-                                                                        .propertyType("apartment")
-                                                                        .searchText("Ben Nghe")
+                        MapSearchResponse filteredResponse = createMapSearchResponse(
+                                        List.of(sampleMarker1), 1L,
+                                        new BigDecimal("10.85"), new BigDecimal("10.70"),
+                                        new BigDecimal("106.75"), new BigDecimal("106.60"));
+                        filteredResponse.setSize(10);
+                        filteredResponse.setFilterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
+                                        .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder()
+                                                        .listingType("SALE")
+                                                        .priceRange(MapSearchResponse.PriceRangeDTO.builder()
+                                                                        .min(new BigDecimal("500000"))
+                                                                        .max(new BigDecimal("2000000"))
                                                                         .build())
+                                                        .bedrooms(2)
+                                                        .bathrooms(1)
+                                                        .area(new BigDecimal("80"))
+                                                        .propertyType("apartment")
+                                                        .searchText("Ben Nghe")
                                                         .build())
-                                        .build();
+                                        .build());
 
                         when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(filteredResponse);
@@ -389,21 +350,15 @@ class MapControllerComponentTest {
                 @DisplayName("Should return 200 OK with correct pagination metadata")
                 void searchWithPagination_shouldReturnCorrectMetadata()
                                 throws Exception {
-                        MapSearchResponse page2Response = MapSearchResponse.builder()
-                                        .content(List.of(sampleMarker2))
-                                        .page(2).size(1).totalElements(3L).totalPages(3)
-                                        .first(false).last(false)
-                                        .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                                                        .northLat(new BigDecimal("10.85"))
-                                                        .southLat(new BigDecimal("10.70"))
-                                                        .eastLng(new BigDecimal("106.75"))
-                                                        .westLng(new BigDecimal("106.60"))
-                                                        .build())
-                                        .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
-                                                        .appliedFilters(MapSearchResponse.AppliedFiltersDTO
-                                                                        .builder().build())
-                                                        .build())
-                                        .build();
+                        MapSearchResponse page2Response = createMapSearchResponse(
+                                        List.of(sampleMarker2), 3L,
+                                        new BigDecimal("10.85"), new BigDecimal("10.70"),
+                                        new BigDecimal("106.75"), new BigDecimal("106.60"));
+                        page2Response.setPage(2);
+                        page2Response.setSize(1);
+                        page2Response.setTotalPages(3);
+                        page2Response.setFirst(false);
+                        page2Response.setLast(false);
 
                         when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(page2Response);
@@ -827,34 +782,25 @@ class MapControllerComponentTest {
                 @Test
                 @DisplayName("Should echo back applied filters in filter_metadata")
                 void filterMetadata_shouldEchoAppliedFilters() throws Exception {
-                        MapSearchResponse responseWithFilters = MapSearchResponse.builder()
-                                        .content(List.of(sampleMarker1))
-                                        .page(1).size(20).totalElements(1L).totalPages(1)
-                                        .first(true).last(true)
-                                        .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                                                        .northLat(new BigDecimal("10.85"))
-                                                        .southLat(new BigDecimal("10.70"))
-                                                        .eastLng(new BigDecimal("106.75"))
-                                                        .westLng(new BigDecimal("106.60"))
-                                                        .build())
-                                        .filterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
-                                                        .appliedFilters(MapSearchResponse.AppliedFiltersDTO
-                                                                        .builder()
-                                                                        .listingType("SALE")
-                                                                        .priceRange(MapSearchResponse.PriceRangeDTO
-                                                                                        .builder()
-                                                                                        .min(new BigDecimal("1000000"))
-                                                                                        .max(new BigDecimal("5000000"))
-                                                                                        .build())
-                                                                        .searchText("Apartment")
-                                                                        .bedrooms(2)
-                                                                        .bathrooms(1)
-                                                                        .area(new BigDecimal("80"))
-                                                                        .propertyType("apartment")
-                                                                        .rentalPeriod("1-12")
+                        MapSearchResponse responseWithFilters = createMapSearchResponse(
+                                        List.of(sampleMarker1), 1L,
+                                        new BigDecimal("10.85"), new BigDecimal("10.70"),
+                                        new BigDecimal("106.75"), new BigDecimal("106.60"));
+                        responseWithFilters.setFilterMetadata(MapSearchResponse.FilterMetadataDTO.builder()
+                                        .appliedFilters(MapSearchResponse.AppliedFiltersDTO.builder()
+                                                        .listingType("SALE")
+                                                        .priceRange(MapSearchResponse.PriceRangeDTO.builder()
+                                                                        .min(new BigDecimal("1000000"))
+                                                                        .max(new BigDecimal("5000000"))
                                                                         .build())
+                                                        .searchText("Apartment")
+                                                        .bedrooms(2)
+                                                        .bathrooms(1)
+                                                        .area(new BigDecimal("80"))
+                                                        .propertyType("apartment")
+                                                        .rentalPeriod("1-12")
                                                         .build())
-                                        .build();
+                                        .build());
 
                         when(mapSearchService.searchPropertiesOnMap(any(MapSearchRequest.class), any()))
                                         .thenReturn(responseWithFilters);
