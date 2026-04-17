@@ -848,6 +848,11 @@ public class ListingApplicationService {
 
                     predicates.add(cb.or(nameMatch, addressMatch, locMatch));
                 }
+
+                // Filter by property ID
+                if (criteria.getPropertyId() != null) {
+                    predicates.add(cb.equal(propertyJoin.get("propertyId"), criteria.getPropertyId()));
+                }
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
