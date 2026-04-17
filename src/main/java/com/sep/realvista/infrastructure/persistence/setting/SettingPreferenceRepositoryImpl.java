@@ -28,4 +28,9 @@ public class SettingPreferenceRepositoryImpl implements SettingPreferenceReposit
     public boolean existsByUserId(UUID userId) {
         return jpaRepository.existsByUserId(userId);
     }
+
+    @Override
+    public java.util.List<SettingPreference> findByUserIdIn(java.util.Collection<java.util.UUID> userIds) {
+        return jpaRepository.findByUserIdIn(userIds);
+    }
 }

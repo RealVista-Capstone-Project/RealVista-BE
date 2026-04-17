@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -56,9 +57,6 @@ class BookmarkControllerComponentTest {
     private BookmarkApplicationService bookmarkApplicationService;
 
     @MockitoBean
-    private UserApplicationService userApplicationService;
-
-    @MockitoBean
     private TokenService tokenService;
 
     @MockitoBean
@@ -79,6 +77,12 @@ class BookmarkControllerComponentTest {
 
     @BeforeEach
     void setUp() {
+        // Mock GlobalExceptionHandler messages
+        when(notificationMessageService.getMessage(anyString(), any()))
+                .thenReturn("Mocked notification message");
+        when(notificationMessageService.getMessage(anyString(), any(), any()))
+                .thenReturn("Mocked notification message with args");
+
         // Set up SecurityContext with SecurityUserDetails as principal
         SecurityUserDetails userDetails = new SecurityUserDetails(
                 TEST_USER_ID, TEST_USER_EMAIL, "password",

@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -91,6 +92,12 @@ class ListingControllerComponentTest {
                 listingId = UUID.randomUUID();
                 UUID propertyId = UUID.randomUUID();
                 UUID userId = UUID.randomUUID();
+
+                // Mock GlobalExceptionHandler messages
+                when(notificationMessageService.getMessage(anyString(), any()))
+                                .thenReturn("Mocked notification message");
+                when(notificationMessageService.getMessage(anyString(), any(), any()))
+                                .thenReturn("Mocked notification message with args");
 
                 // Prepare test media
                 MediaDTO media1 = MediaDTO.builder()
