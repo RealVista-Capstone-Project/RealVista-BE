@@ -1,0 +1,2 @@
+ALTER TABLE saved_searches
+    ADD COLUMN IF NOT EXISTS is_recommendation BOOLEAN NOT NULL DEFAULT FALSE;

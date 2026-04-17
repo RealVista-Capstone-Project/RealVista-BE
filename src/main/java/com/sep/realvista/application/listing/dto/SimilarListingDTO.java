@@ -61,4 +61,7 @@ public class SimilarListingDTO {
      */
     @JsonProperty("attributes")
     private List<PropertyAttributeDTO> attributes;
+
+    @JsonProperty("is_favorite")
+    private boolean isFavorite;
 }

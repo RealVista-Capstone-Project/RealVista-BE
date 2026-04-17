@@ -162,7 +162,8 @@ public class ListingController {
     public ResponseEntity<ApiResponse<SimilarListingsResponse>> getSimilarListings(
             @PathVariable String idOrSlug,
             @Parameter(description = "Maximum number of results to return (default: 5, max: 10)")
-            @RequestParam(defaultValue = "5") @Min(1) @Max(10) int limit) {
+            @RequestParam(defaultValue = "5") @Min(1) @Max(10) int limit,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
         String traceId = UUID.randomUUID().toString();
         MDC.put("traceId", traceId);
@@ -171,7 +172,8 @@ public class ListingController {
             log.info("Fetching similar listings - traceId: {}, idOrSlug: {}, limit: {}", traceId, idOrSlug, limit);
 
             UUID id = parseIdOrSlug(idOrSlug);
-            SimilarListingsResponse similarListings = listingApplicationService.getSimilarListings(id, limit);
+            UUID userId = userDetails != null ? userDetails.getUserId() : null;
+            SimilarListingsResponse similarListings = listingApplicationService.getSimilarListings(id, limit, userId);
             return ResponseEntity.ok(ApiResponse.success("Similar listings retrieved successfully", similarListings));
         } finally {
             MDC.remove("traceId");

@@ -37,7 +37,9 @@ public class SavedSearchMapper {
                 .savedSearchId(entity.getSavedSearchId())
                 .searchType(entity.getSearchType())
                 .criteria(parsedCriteria)
+                .boardId(entity.getBoardId())
                 .createdAt(entity.getCreatedAt())
+                .isRecommendation(entity.isRecommendation())
                 .build();
     }
 }
