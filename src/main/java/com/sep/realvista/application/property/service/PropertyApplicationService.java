@@ -23,6 +23,7 @@ import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRangeRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.property.attribute.repository.PropertyTypeAttributeRepository;
 import com.sep.realvista.domain.property.location.LocationRepository;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeRangeDTO;
@@ -73,6 +74,7 @@ public class PropertyApplicationService {
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
     private final PropertyAttributeRangeRepository propertyAttributeRangeRepository;
+    private final PropertyTypeAttributeRepository propertyTypeAttributeRepository;
     private final ListingRepository listingRepository;
     private final PropertyMapper propertyMapper;
     private final EntityManager entityManager;
@@ -135,6 +137,7 @@ public class PropertyApplicationService {
                 .lengthM(request.getLengthM())
                 .descriptions(request.getDescriptions())
                 .extraAttributes(request.getExtraAttributes())
+                .priceRange(request.getPriceRange())
                 .status(finalStatus)
                 .slug(titleSlug)
                 .build();
@@ -226,6 +229,10 @@ public class PropertyApplicationService {
             } catch (IllegalArgumentException e) {
                 log.warn("Invalid property status provided during update: {}", request.getStatus());
             }
+        }
+
+        if (request.getPriceRange() != null) {
+            property.updatePriceRange(request.getPriceRange());
         }
 
         propertyRepository.save(property);
@@ -342,6 +349,41 @@ public class PropertyApplicationService {
                     .ranges(ranges)
                     .build();
         }).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PropertyAttributeDTO> getAttributesByPropertyType(String propertyTypeCode) {
+        log.info("Getting attributes for property type code: {}", propertyTypeCode);
+
+        var propertyType = propertyTypeRepository.findByCode(propertyTypeCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Property type not found: " + propertyTypeCode));
+
+        return propertyTypeAttributeRepository.findByPropertyTypeId(propertyType.getPropertyTypeId()).stream()
+                .map(pta -> {
+                    var attr = pta.getPropertyAttribute();
+                    var ranges = propertyAttributeRangeRepository
+                            .findByPropertyAttributeId(attr.getPropertyAttributeId())
+                            .stream()
+                            .map(range -> PropertyAttributeRangeDTO.builder()
+                                    .propertyAttributeRangeId(range.getPropertyAttributeRangeId())
+                                    .label(range.getLabel())
+                                    .minValue(range.getMinValue())
+                                    .maxValue(range.getMaxValue())
+                                    .displayOrder(range.getDisplayOrder())
+                                    .build())
+                            .collect(Collectors.toList());
+
+                    return PropertyAttributeDTO.builder()
+                            .attributeId(attr.getPropertyAttributeId())
+                            .attributeCode(attr.getCode())
+                            .attributeName(attr.getName())
+                            .dataType(attr.getDataType().name())
+                            .icon(attr.getIcon())
+                            .unit(attr.getUnit())
+                            .ranges(ranges)
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     private UUID resolveLocationId(java.math.BigDecimal lat, java.math.BigDecimal lng) {
