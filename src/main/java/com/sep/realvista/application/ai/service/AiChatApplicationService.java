@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.ai.dto.AiChatMessageResponse;
+import com.sep.realvista.domain.billing.subscription.AiFeature;
 import com.sep.realvista.application.ai.dto.AiConversationMessagesResponse;
 import com.sep.realvista.domain.aichat.AiConversation;
 import com.sep.realvista.domain.aichat.AiConversationRepository;
@@ -52,29 +53,29 @@ public class AiChatApplicationService {
             new ParameterizedTypeReference<>() { };
 
     private final WebClient aiWebClient;
+    private final AiQuotaApplicationService quotaService;
     private final ObjectMapper objectMapper;
     private final String serviceApiKey;
     private final AiConversationRepository conversationRepository;
     private final AiMessageRepository messageRepository;
     private final AiChatPersistenceHelper persistenceHelper;
-    private final AiQuotaApplicationService quotaService;
 
     public AiChatApplicationService(
             WebClient aiWebClient,
+            AiQuotaApplicationService quotaService,
             ObjectMapper objectMapper,
             @Value("${realvista.ai.api-key:}") String serviceApiKey,
             AiConversationRepository conversationRepository,
             AiMessageRepository messageRepository,
-            AiChatPersistenceHelper persistenceHelper,
-            AiQuotaApplicationService quotaService
+            AiChatPersistenceHelper persistenceHelper
     ) {
         this.aiWebClient = aiWebClient;
+        this.quotaService = quotaService;
         this.objectMapper = objectMapper;
         this.serviceApiKey = serviceApiKey;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.persistenceHelper = persistenceHelper;
-        this.quotaService = quotaService;
     }
 
     /**
@@ -90,14 +91,13 @@ public class AiChatApplicationService {
                                    String userRoles) {
         log.info("AI chat request from user={}", userId);
 
-        // 0. Check Quota
-        com.sep.realvista.domain.billing.subscription.AiFeature feature = 
-            com.sep.realvista.domain.billing.subscription.AiFeature.AI_ASSISTANT;
-        if (!quotaService.checkAndIncrementQuota(userId, feature)) {
-            return Flux.just(buildErrorEvent("QUOTA_EXCEEDED"));
+        // 1. Check AI Quota
+        if (!quotaService.checkAndIncrementQuota(userId, AiFeature.AI_ASSISTANT)) {
+            return Flux.just(buildErrorEvent(
+                    "Bạn đã hết lượt sử dụng AI Assistant hôm nay. Hãy mua thêm gói để tiếp tục!"));
         }
 
-        // 1. Find or create conversation
+        // 2. Find or create conversation
         AiConversation conversation = conversationRepository
                 .findByUserId(userId)
                 .orElseGet(() -> {
@@ -107,7 +107,7 @@ public class AiChatApplicationService {
                     return conversationRepository.save(c);
                 });
 
-        // 2. Save the USER message
+        // 3. Save the USER message
         int nextSeq = messageRepository
                 .countByConversationId(conversation.getId()) + 1;
         AiMessage userMsg = AiMessage.create(
@@ -118,12 +118,12 @@ public class AiChatApplicationService {
         conversation.touchUpdatedAt();
         conversationRepository.save(conversation);
 
-        // 3. Build request body for the AI service
+        // 4. Build request body for the AI service
         Map<String, Object> body = new HashMap<>();
         body.put("prompt", message);
         body.put("threadId", conversation.getThreadId().toString());
 
-        // 4. Emit start event, then stream AI tokens
+        // 5. Emit start event, then stream AI tokens
         String startEvent = buildStartEvent(conversation);
         int assistantSeq = nextSeq + 1;
         UUID convId = conversation.getId();
@@ -352,7 +352,7 @@ public class AiChatApplicationService {
     }
 
     private String buildErrorEvent(String msg) {
-        return "{\"type\":\"error\",\"error\":\""
+        return "{\"type\":\"error\",\"message\":\""
                 + msg.replace("\"", "\\\"") + "\"}";
     }
 
@@ -362,7 +362,14 @@ public class AiChatApplicationService {
                 .role(msg.getRole().name())
                 .content(msg.getContent())
                 .sequence(msg.getSequence())
-                .createdAt(msg.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * Get the remaining AI chat quota for a user.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAiQuotaStatus(UUID userId) {
+        return quotaService.getAiQuotaStatus(userId);
     }
 }
