@@ -34,6 +34,11 @@ public class AgentProfileRepositoryImpl implements AgentProfileRepository {
     }
 
     @Override
+    public List<AgentProfile> findAllActive() {
+        return jpaRepository.findAllActive();
+    }
+
+    @Override
     public AgentProfile save(AgentProfile agentProfile) {
         return jpaRepository.save(agentProfile);
     }

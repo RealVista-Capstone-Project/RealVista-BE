@@ -32,4 +32,9 @@ public interface AgentReviewJpaRepository extends JpaRepository<AgentReview, UUI
     @Query("SELECT AVG(ar.rating) FROM AgentReview ar "
            + "WHERE ar.agentProfileId = :agentProfileId AND ar.deleted = false")
     BigDecimal calculateAverageRatingByAgentProfileId(@Param("agentProfileId") UUID agentProfileId);
+
+    /**
+     * Fetches all non-deleted reviews for a given agent profile, newest first.
+     */
+    List<AgentReview> findByAgentProfileIdAndDeletedFalseOrderByCreatedAtDesc(UUID agentProfileId);
 }
