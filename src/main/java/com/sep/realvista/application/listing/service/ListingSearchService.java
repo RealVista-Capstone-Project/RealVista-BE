@@ -67,6 +67,7 @@ public class ListingSearchService {
         static final String LOCATION = "location";
         static final String LOCATION_ID = "locationId";
         static final String USABLE_SIZE_M2 = "usableSizeM2";
+        static final String STREET_ADDRESS = "streetAddress";
         static final String PROPERTY_ID = "propertyId";
         static final String EXTRA_ATTRIBUTES = "extraAttributes";
     }
@@ -83,6 +84,7 @@ public class ListingSearchService {
 
     private static final class LocationFields {
         static final String NAME = "name";
+        static final String CODE = "code";
     }
 
     private static final String JSONB_EXTRACT_FUNCTION = "jsonb_extract_path_text";
@@ -357,11 +359,27 @@ public class ListingSearchService {
             ));
         }
 
-        // Location LIKE search
+        // Location LIKE search (Name, Code, or Street Address)
         if (criteria.getLocation() != null && !criteria.getLocation().isBlank()) {
-            predicates.add(cb.like(cb.lower(
-                propertyJoin.join(PropertyFields.LOCATION).get(LocationFields.NAME)),
-                "%" + criteria.getLocation().toLowerCase() + "%"
+            String rawLocation = criteria.getLocation().toLowerCase().trim();
+            // Normalize variants to match sample data like "Q1", "Q10", "H1"
+            String normalizedLocation = rawLocation
+                .replace("quận ", "q")
+                .replace("q.", "q")
+                .replace("huyện ", "h")
+                .replace("h.", "h")
+                .replace("thành phố ", "tp")
+                .replace("tp.", "tp")
+                .replace(" ", ""); // Remove spaces for "q 1" -> "q1"
+            
+            String nameQuery = "%" + rawLocation + "%";
+            String codeQuery = "%" + normalizedLocation + "%";
+            
+            Join<Object, Location> locationJoin = propertyJoin.join(PropertyFields.LOCATION);
+            predicates.add(cb.or(
+                cb.like(cb.lower(locationJoin.get(LocationFields.NAME)), nameQuery),
+                cb.like(cb.lower(locationJoin.get(LocationFields.CODE)), codeQuery),
+                cb.like(cb.lower(propertyJoin.get(PropertyFields.STREET_ADDRESS)), codeQuery)
             ));
         }
 

@@ -16,7 +16,7 @@ import java.util.List;
  * with full listing details fetched from PostgreSQL.
  */
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class RecommendationResponse {
@@ -36,7 +36,7 @@ public class RecommendationResponse {
     private boolean fromCache;
 
     @Data
-    @SuperBuilder
+    @SuperBuilder(toBuilder = true)
     @NoArgsConstructor
     @AllArgsConstructor
     @EqualsAndHashCode(callSuper = true)

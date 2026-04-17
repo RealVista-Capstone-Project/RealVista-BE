@@ -25,6 +25,8 @@ public class LocationInfoDTO {
     private String districtName;
     @JsonProperty("ward_name")
     private String wardName;
+    @JsonProperty("latitude")
     private BigDecimal latitude;
+    @JsonProperty("longitude")
     private BigDecimal longitude;
 }

@@ -730,4 +730,29 @@ public class BillingApplicationService {
                 .build();
     }
 
+    /**
+     * Assigns the default AI_FREE package to a user if they don't have one.
+     */
+    public void assignDefaultAiPackage(UUID userId) {
+        log.info("Assigning default AI_FREE package to user: {}", userId);
+
+        featurePackageRepository.findByCode("AI_FREE").ifPresent(pkg -> {
+            List<UserFeatureSubscription> existing = userFeatureSubscriptionRepository
+                    .findActiveByUserIdAndFeatureType(userId, FeatureType.AI_REQUEST);
+
+            if (existing.isEmpty()) {
+                UserFeatureSubscription sub = UserFeatureSubscription.builder()
+                        .userId(userId)
+                        .featurePackageId(pkg.getFeaturePackageId())
+                        .startDate(LocalDate.now())
+                        .endDate(null)
+                        .remainingQuota(pkg.getQuota())
+                        .status(UserFeatureSubscriptionStatus.ACTIVE)
+                        .build();
+                userFeatureSubscriptionRepository.save(sub);
+                log.info("Assigned default AI_FREE package to user={}", userId);
+            }
+        });
+    }
+
 }

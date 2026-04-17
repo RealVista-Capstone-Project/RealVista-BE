@@ -61,6 +61,7 @@ public class UserApplicationService {
     private final CustomerProfileRepository customerProfileRepository;
     private final EmailService emailService;
     private final OtpService otpService;
+    private final com.sep.realvista.application.billing.service.BillingApplicationService billingApplicationService;
 
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final String EMAIL_OTP_PREFIX = "email-otp:";
@@ -141,6 +142,9 @@ public class UserApplicationService {
             customerProfileRepository.save(profile);
         }
 
+        // 4. Assign default packages
+        billingApplicationService.assignDefaultAiPackage(savedUser.getUserId());
+
         return userMapper.toResponse(savedUser);
     }
 
@@ -195,6 +199,9 @@ public class UserApplicationService {
                 .isActive(true)
                 .build();
         customerProfileRepository.save(profile);
+
+        // 4. Assign default packages
+        billingApplicationService.assignDefaultAiPackage(savedUser.getUserId());
 
         return savedUser;
     }

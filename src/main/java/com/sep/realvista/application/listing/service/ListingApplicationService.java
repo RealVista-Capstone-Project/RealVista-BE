@@ -262,11 +262,70 @@ public class ListingApplicationService {
      * @return similar listings response with scores
      * @throws ResourceNotFoundException if listing not found
      */
+    /**
+     * Get similar listings based on property type, price, area, and common
+     * attributes.
+     * Returns listings enriched with user-specific bookmark status.
+     *
+     * @param listingId the listing ID to find similar listings for
+     * @param limit     maximum number of results to return
+     * @param userId    optional user ID for bookmark status
+     * @return similar listings response with user-specific data
+     */
+    @Transactional(readOnly = true)
+    public SimilarListingsResponse getSimilarListings(UUID listingId, int limit, UUID userId) {
+        // 1. Get cached similarity results
+        SimilarListingsResponse cached = self.getCachedSimilarListings(listingId, limit);
+
+        // 2. If no user or no results, return as is
+        if (userId == null || cached.getListings() == null || cached.getListings().isEmpty()) {
+            return cached;
+        }
+
+        // 3. Populate is_favorite for current user
+        List<UUID> listingIds = cached.getListings().stream()
+                .map(SimilarListingDTO::getListingId)
+                .collect(Collectors.toList());
+
+        Set<UUID> bookmarkedIds = bookmarkRepository.findBookmarkedListingIds(userId, listingIds);
+
+        List<SimilarListingDTO> enriched = cached.getListings().stream()
+                .map(dto -> {
+                    // Create a copy to avoid polluting the cache
+                    SimilarListingDTO copy = SimilarListingDTO.builder()
+                            .listingId(dto.getListingId())
+                            .slug(dto.getSlug())
+                            .name(dto.getName())
+                            .listingType(dto.getListingType())
+                            .propertyTypeName(dto.getPropertyTypeName())
+                            .price(dto.getPrice())
+                            .area(dto.getArea())
+                            .locationName(dto.getLocationName())
+                            .thumbnailUrl(dto.getThumbnailUrl())
+                            .similarityScore(dto.getSimilarityScore())
+                            .publishedAt(dto.getPublishedAt())
+                            .attributes(dto.getAttributes())
+                            .isFavorite(bookmarkedIds.contains(dto.getListingId()))
+                            .build();
+                    return copy;
+                })
+                .collect(Collectors.toList());
+
+        return SimilarListingsResponse.builder()
+                .listings(enriched)
+                .total(cached.getTotal())
+                .limit(cached.getLimit())
+                .build();
+    }
+
+    /**
+     * Internal method to get cached similarity results without user-specific data.
+     */
     @Cacheable(value = "similarListings", key = "#listingId + '_'"
             + " + T(java.lang.Math).min("
             + "T(java.lang.Math).max(1, #limit), 10)")
     @Transactional(readOnly = true)
-    public SimilarListingsResponse getSimilarListings(UUID listingId, int limit) {
+    public SimilarListingsResponse getCachedSimilarListings(UUID listingId, int limit) {
         log.info("Fetching similar listings for listingId: {}, limit: {}", listingId, limit);
         // Validate limit (clamped to [1, 10])
         int validatedLimit = Math.min(Math.max(1, limit), 10);
