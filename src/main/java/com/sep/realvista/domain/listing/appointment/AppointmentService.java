@@ -223,6 +223,12 @@ public class AppointmentService {
                 }
                 appointment.cancel(currentUserId, reason);
             }
+            case COMPLETED -> {
+                if (!isReceiver) {
+                    throw new BusinessConflictException("Only the receiver can mark an appointment as completed");
+                }
+                appointment.complete();
+            }
             default -> {
                 throw new BusinessConflictException("Invalid status update: " + newStatus);
             }
@@ -291,5 +297,16 @@ public class AppointmentService {
     @Transactional(readOnly = true)
     public List<Appointment> getAppointmentsByListingIdAndStatuses(UUID listingId, List<AppointmentStatus> statuses) {
         return appointmentRepository.findByListingIdAndStatusIn(listingId, statuses);
+    }
+
+    @Transactional(readOnly = true)
+    public Appointment getAppointmentById(UUID appointmentId) {
+        return appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Appointment", appointmentId));
+    }
+
+    @Transactional
+    public Appointment save(Appointment appointment) {
+        return appointmentRepository.save(appointment);
     }
 }
