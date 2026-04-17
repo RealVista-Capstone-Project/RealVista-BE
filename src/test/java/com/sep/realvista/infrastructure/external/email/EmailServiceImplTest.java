@@ -1,23 +1,23 @@
 package com.sep.realvista.infrastructure.external.email;
 
-import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,77 +25,81 @@ import static org.mockito.Mockito.when;
 class EmailServiceImplTest {
 
     @Mock
-    private JavaMailSender emailSender;
+    private EmailProvider emailProvider;
 
     @Mock
-    private org.thymeleaf.spring6.SpringTemplateEngine templateEngine;
+    private SpringTemplateEngine templateEngine;
 
     @InjectMocks
     private EmailServiceImpl emailService;
 
-    private final String to = "test@example.com";
-    private final String subject = "Test Subject";
-    private final String text = "Test Body";
+    private static final String FROM = "noreply@realvista.com";
+    private static final String TO = "test@example.com";
+    private static final String SUBJECT = "Test Subject";
+    private static final String TEXT = "Test Body";
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(emailService, "fromEmail", "noreply@realvista.com");
+        ReflectionTestUtils.setField(emailService, "fromEmail", FROM);
     }
 
     @Test
-    void sendSimpleMessage_shouldSendEmail() {
-        doNothing().when(emailSender).send(any(SimpleMailMessage.class));
+    void sendSimpleMessage_shouldDelegateToProvider() {
+        doNothing().when(emailProvider).sendSimple(any(), any(), any(), any());
 
-        emailService.sendSimpleMessage(to, subject, text);
+        emailService.sendSimpleMessage(TO, SUBJECT, TEXT);
 
-        verify(emailSender).send(any(SimpleMailMessage.class));
+        verify(emailProvider).sendSimple(FROM, TO, SUBJECT, TEXT);
     }
 
     @Test
-    void sendSimpleMessageAsync_shouldSendEmailAsynchronously() throws ExecutionException, InterruptedException {
-        doNothing().when(emailSender).send(any(SimpleMailMessage.class));
+    void sendSimpleMessageAsync_shouldCompleteSuccessfully() throws ExecutionException, InterruptedException {
+        doNothing().when(emailProvider).sendSimple(any(), any(), any(), any());
 
-        CompletableFuture<Void> future = emailService.sendSimpleMessageAsync(to, subject, text);
+        CompletableFuture<Void> future = emailService.sendSimpleMessageAsync(TO, SUBJECT, TEXT);
 
-        future.get(); // Wait for completion
         assertDoesNotThrow(() -> future.get());
-        verify(emailSender).send(any(SimpleMailMessage.class));
+        verify(emailProvider).sendSimple(FROM, TO, SUBJECT, TEXT);
     }
 
     @Test
-    void sendHtmlMessage_shouldSendEmail() {
-        MimeMessage mimeMessage = mock(MimeMessage.class);
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        doNothing().when(emailSender).send(any(MimeMessage.class));
+    void sendHtmlMessage_shouldDelegateToProvider() {
+        doNothing().when(emailProvider).sendHtml(any(), any(), any(), any());
 
-        emailService.sendHtmlMessage(to, subject, "<h1>Test</h1>");
+        emailService.sendHtmlMessage(TO, SUBJECT, "<h1>Test</h1>");
 
-        verify(emailSender).send(any(MimeMessage.class));
+        verify(emailProvider).sendHtml(FROM, TO, SUBJECT, "<h1>Test</h1>");
     }
 
     @Test
-    void sendHtmlMessageAsync_shouldSendEmailAsynchronously() throws ExecutionException, InterruptedException {
-        MimeMessage mimeMessage = mock(MimeMessage.class);
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        doNothing().when(emailSender).send(any(MimeMessage.class));
+    void sendHtmlMessageAsync_shouldCompleteSuccessfully() throws ExecutionException, InterruptedException {
+        doNothing().when(emailProvider).sendHtml(any(), any(), any(), any());
 
-        CompletableFuture<Void> future = emailService.sendHtmlMessageAsync(to, subject, "<h1>Test</h1>");
+        CompletableFuture<Void> future = emailService.sendHtmlMessageAsync(TO, SUBJECT, "<h1>Test</h1>");
 
-        future.get(); // Wait for completion
         assertDoesNotThrow(() -> future.get());
-        verify(emailSender).send(any(MimeMessage.class));
+        verify(emailProvider).sendHtml(FROM, TO, SUBJECT, "<h1>Test</h1>");
     }
 
     @Test
-    void sendTemplateMessage_shouldSendEmail() {
-        MimeMessage mimeMessage = mock(MimeMessage.class);
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        doNothing().when(emailSender).send(any(MimeMessage.class));
-        when(templateEngine.process(any(String.class), any(org.thymeleaf.context.Context.class))).thenReturn("<h1>Template</h1>");
+    void sendTemplateMessage_shouldRenderTemplateAndDelegateToProvider() {
+        when(templateEngine.process(eq("mail/test-template"), any(Context.class))).thenReturn("<h1>Template</h1>");
+        doNothing().when(emailProvider).sendHtml(any(), any(), any(), any());
 
-        emailService.sendTemplateMessage(to, subject, "test-template", java.util.Map.of("name", "User"));
+        emailService.sendTemplateMessage(TO, SUBJECT, "test-template", Map.of("name", "User"));
 
-        verify(emailSender).send(any(MimeMessage.class));
-        verify(templateEngine).process(any(String.class), any(org.thymeleaf.context.Context.class));
+        verify(templateEngine).process(eq("mail/test-template"), any(Context.class));
+        verify(emailProvider).sendHtml(FROM, TO, SUBJECT, "<h1>Template</h1>");
+    }
+
+    @Test
+    void sendTemplateMessageAsync_shouldCompleteSuccessfully() throws ExecutionException, InterruptedException {
+        when(templateEngine.process(eq("mail/test-template"), any(Context.class))).thenReturn("<h1>Template</h1>");
+        doNothing().when(emailProvider).sendHtml(any(), any(), any(), any());
+
+        CompletableFuture<Void> future = emailService.sendTemplateMessageAsync(TO, SUBJECT, "test-template", Map.of("name", "User"));
+
+        assertDoesNotThrow(() -> future.get());
+        verify(emailProvider).sendHtml(FROM, TO, SUBJECT, "<h1>Template</h1>");
     }
 }
