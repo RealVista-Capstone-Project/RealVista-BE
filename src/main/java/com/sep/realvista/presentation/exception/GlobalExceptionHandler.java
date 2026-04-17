@@ -6,13 +6,19 @@ import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.InsufficientQuotaException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
+import com.sep.realvista.infrastructure.service.NotificationMessageService;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -30,7 +36,11 @@ import java.util.stream.Collectors;
  */
 @RestControllerAdvice
 @Slf4j
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final NotificationMessageService notificationMessageService;
+    private final SettingPreferenceRepository settingPreferenceRepository;
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(
@@ -38,10 +48,12 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.error("Resource not found: {}", ex.getMessage());
+        String lang = getCurrentUserLanguage();
+        String message = notificationMessageService.getMessage("ERROR_RESOURCE_NOT_FOUND", lang);
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.NOT_FOUND.value())
-                .message(ex.getMessage())
+                .message(message)
                 .errorCode(ex.getErrorCode())
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -56,10 +68,12 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.error("Business conflict: {}", ex.getMessage());
+        String lang = getCurrentUserLanguage();
+        String message = notificationMessageService.getMessage("ERROR_BUSINESS_CONFLICT", lang, ex.getMessage());
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.CONFLICT.value())
-                .message(ex.getMessage())
+                .message(message)
                 .errorCode(ex.getErrorCode())
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -92,6 +106,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.error("Validation error: {}", ex.getMessage());
+        String lang = getCurrentUserLanguage();
 
         List<ErrorResponse.ValidationError> validationErrors = ex.getBindingResult()
                 .getAllErrors()
@@ -108,7 +123,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
-                .message("Validation failed")
+                .message(notificationMessageService.getMessage("ERROR_VALIDATION_FAILED", lang))
                 .errorCode("VALIDATION_ERROR")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -343,5 +358,19 @@ public class GlobalExceptionHandler {
         } else {
             return String.format("%.2f MB", bytes / (1024.0 * 1024.0));
         }
+    }
+
+    private String getCurrentUserLanguage() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof SecurityUserDetails user) {
+                return settingPreferenceRepository.findByUserId(user.getUserId())
+                        .map(com.sep.realvista.domain.user.preference.SettingPreference::getPreferredLanguage)
+                        .orElse("vi");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get current user language, defaulting to 'vi': {}", e.getMessage());
+        }
+        return "vi";
     }
 }
