@@ -10,6 +10,7 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.application.appointment.dto.BlockRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
@@ -270,5 +272,24 @@ public class AppointmentService {
 
         appointment.markAsDeleted();
         appointmentRepository.save(appointment);
+    }
+
+    @Transactional
+    public List<Appointment> cancelActiveAppointmentsByListingId(UUID listingId, UUID ownerId, String reason) {
+        List<Appointment> activeAppointments = appointmentRepository.findByListingIdAndStatusIn(
+                listingId, List.of(AppointmentStatus.PENDING, AppointmentStatus.ACCEPTED));
+        
+        for (Appointment appt : activeAppointments) {
+            appt.cancel(ownerId, reason);
+            appointmentRepository.save(appt);
+        }
+        
+        log.info("Cancelled {} active appointments for listing ID: {}", activeAppointments.size(), listingId);
+        return activeAppointments;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Appointment> getAppointmentsByListingIdAndStatuses(UUID listingId, List<AppointmentStatus> statuses) {
+        return appointmentRepository.findByListingIdAndStatusIn(listingId, statuses);
     }
 }

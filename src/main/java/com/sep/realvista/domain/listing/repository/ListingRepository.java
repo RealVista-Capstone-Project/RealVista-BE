@@ -95,4 +95,14 @@ public interface ListingRepository {
      * @return list of published listings within the window
      */
     List<Listing> findPublishedListingsPublishedBetween(LocalDateTime windowStart, LocalDateTime windowEnd);
+
+    /**
+     * Find listings by status whose updatedAt timestamp is before the given cutoff.
+     * Used by the appointment cleanup scheduler for grace period cancellation.
+     *
+     * @param status the listing status (e.g., DRAFT)
+     * @param cutoff the threshold date-time
+     * @return list of listings matching the criteria
+     */
+    List<Listing> findByStatusAndUpdatedAtBefore(ListingStatus status, LocalDateTime cutoff);
 }
