@@ -1,6 +1,7 @@
 package com.sep.realvista.application.property.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sep.realvista.domain.common.value.PriceRangeVO;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -59,4 +60,7 @@ public class UpdatePropertyRequest {
 
     @JsonProperty("status")
     private String status;
+
+    @JsonProperty("price_range")
+    private PriceRangeVO priceRange;
 }

@@ -13,6 +13,7 @@ import com.sep.realvista.domain.agent.AgentProfileRepository;
 import com.sep.realvista.domain.agent.AgentReviewRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.application.engagement.dto.SendOwnerInvitationRequest;
 import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
@@ -325,6 +326,55 @@ public class EngagementApplicationService {
         log.info("Agent proposal submitted successfully. New engagement ID: {}", saved.getEngagementId());
 
         notifyOwnerOfAgentProposal(saved, property, proposalTemplate, agentUserId);
+
+        return saved.getEngagementId();
+    }
+
+    /**
+     * Sends an owner invitation to a specific agent for a property.
+     * Creates an OWNER_INVITATION engagement with status SUBMITTED.
+     *
+     * @param ownerUserId the owner's user ID (initiator)
+     * @param request     agent ID, property ID, and optional message
+     * @return the created engagement ID
+     */
+    @Transactional
+    public UUID createOwnerInvitation(UUID ownerUserId, SendOwnerInvitationRequest request) {
+        log.info("Owner {} sending invitation to agent {} for property {}",
+                ownerUserId, request.getAgentId(), request.getPropertyId());
+
+        Property property = propertyRepository.findById(request.getPropertyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Property", request.getPropertyId()));
+
+        if (!property.getOwnerId().equals(ownerUserId)) {
+            throw new BusinessConflictException(
+                    "You do not own this property", "NOT_PROPERTY_OWNER");
+        }
+
+        AgentProfile agentProfile = agentProfileRepository.findByUserId(request.getAgentId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "AgentProfile for user", request.getAgentId()));
+
+        Map<String, Object> contentMap = new HashMap<>();
+        contentMap.put("message", request.getMessage() != null ? request.getMessage() : "");
+        if (request.getTitle() != null) {
+            contentMap.put("title", request.getTitle());
+        }
+        if (request.getOfferedCommission() != null) {
+            contentMap.put("offeredCommission", request.getOfferedCommission());
+        }
+
+        Engagement engagement = Engagement.builder()
+                .initiatorId(ownerUserId)
+                .receiverId(agentProfile.getUserId())
+                .engagementType(EngagementType.OWNER_INVITATION)
+                .propertyId(property.getPropertyId())
+                .status(EngagementStatus.SUBMITTED)
+                .content(objectMapper.valueToTree(contentMap))
+                .build();
+
+        Engagement saved = engagementRepository.save(engagement);
+        log.info("Owner invitation created. Engagement ID: {}", saved.getEngagementId());
 
         return saved.getEngagementId();
     }

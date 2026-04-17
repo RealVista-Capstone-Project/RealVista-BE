@@ -31,12 +31,19 @@ public class ListingDetailResponse {
     private UUID propertyId;
     @JsonProperty("user_id")
     private UUID userId;
+    @JsonProperty("user_type")
+    private String userType;
     @JsonProperty("listing_type")
     private ListingType listingType;
+    @JsonProperty("status")
     private ListingStatus status;
+    @JsonProperty("slug")
     private String slug;
+    @JsonProperty("name")
     private String name;
+    @JsonProperty("content")
     private String content;
+    @JsonProperty("price")
     private BigDecimal price;
     @JsonProperty("min_price")
     private BigDecimal minPrice;
@@ -54,18 +61,23 @@ public class ListingDetailResponse {
     private LocalDateTime updatedAt;
 
     // Property Information
+    @JsonProperty("property")
     private PropertyInfoDTO property;
 
     // Location Information
+    @JsonProperty("location")
     private LocationInfoDTO location;
 
     // Property Type & Category
+    @JsonProperty("property_type")
     private PropertyTypeInfoDTO propertyType;
 
     // Media (Photos, Videos, 3D Tours)
+    @JsonProperty("media")
     private List<MediaDTO> media;
 
     // Owner/Agent Information
+    @JsonProperty("agent")
     private AgentInfoDTO agent;
 
     // Property Owner Information (the actual owner of the property)
@@ -73,9 +85,11 @@ public class ListingDetailResponse {
     private AgentInfoDTO propertyOwner;
 
     // Property Attributes/Features (bedrooms, bathrooms, etc.)
+    @JsonProperty("attributes")
     private List<PropertyAttributeDTO> attributes;
 
     // Property Amenities (gym, pool, security, etc.) - dynamic based on property type
+    @JsonProperty("amenities")
     private List<AmenityDTO> amenities;
 
     // Statistics
@@ -87,6 +101,7 @@ public class ListingDetailResponse {
     private Integer total3DTours;
 
     // Cost Breakdown (for RENT listings)
+    @JsonProperty("cost_breakdown")
     private CostBreakdownDTO costBreakdown;
 
     // Bookmark status for the requesting user (null for anonymous)

@@ -36,6 +36,10 @@ public class SimilarListing {
     private BigDecimal price;
     private BigDecimal area;
     private String locationName;
+    private String streetAddress;
+    private String wardName;
+    private String districtName;
+    private String cityName;
     private String propertyTypeName;
     private String thumbnailUrl;
     private LocalDateTime publishedAt;
@@ -58,6 +62,7 @@ public class SimilarListing {
     public SimilarListing(UUID listingId, UUID propertyId, UUID propertyTypeId, UUID locationId,
                          String name, String slug, String listingType, String status,
                          BigDecimal price, BigDecimal area, String locationName,
+                         String streetAddress, String wardName, String districtName, String cityName,
                          String propertyTypeName, String thumbnailUrl, LocalDateTime publishedAt,
                          Double similarityScore) {
         this.listingId = listingId;
@@ -71,6 +76,10 @@ public class SimilarListing {
         this.price = price;
         this.area = area;
         this.locationName = locationName;
+        this.streetAddress = streetAddress;
+        this.wardName = wardName;
+        this.districtName = districtName;
+        this.cityName = cityName;
         this.propertyTypeName = propertyTypeName;
         this.thumbnailUrl = thumbnailUrl;
         this.publishedAt = publishedAt;

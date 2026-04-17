@@ -61,6 +61,7 @@ public class UserApplicationService {
     private final CustomerProfileRepository customerProfileRepository;
     private final EmailService emailService;
     private final OtpService otpService;
+    private final com.sep.realvista.application.billing.service.BillingApplicationService billingApplicationService;
 
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final String EMAIL_OTP_PREFIX = "email-otp:";
@@ -91,13 +92,25 @@ public class UserApplicationService {
         User savedUser = userRepository.save(user);
         log.info("User created successfully with ID: {}", savedUser.getUserId());
 
-        // 1. Assign Role
-        RoleCode targetRoleCode = "AGENT".equalsIgnoreCase(request.getRole()) ? RoleCode.AGENT : RoleCode.BUYER;
-        Role role = roleRepository.findByRoleCode(targetRoleCode)
-                .orElseThrow(() -> new BusinessConflictException("Role not found", "ROLE_NOT_FOUND"));
+        // 1. Assign Role(s)
+        if ("AGENT".equalsIgnoreCase(request.getRole())) {
+            // Agent role only
+            Role agentRole = roleRepository.findByRoleCode(RoleCode.AGENT)
+                    .orElseThrow(() -> new BusinessConflictException("Role AGENT not found", "ROLE_NOT_FOUND"));
+            UserRole userRole = UserRole.create(savedUser, agentRole);
+            userRoleRepository.save(userRole);
+        } else {
+            // User gets both BUYER and TENANT roles
+            Role buyerRole = roleRepository.findByRoleCode(RoleCode.BUYER)
+                    .orElseThrow(() -> new BusinessConflictException("Role BUYER not found", "ROLE_NOT_FOUND"));
+            Role tenantRole = roleRepository.findByRoleCode(RoleCode.TENANT)
+                    .orElseThrow(() -> new BusinessConflictException("Role TENANT not found", "ROLE_NOT_FOUND"));
 
-        UserRole userRole = UserRole.create(savedUser, role);
-        userRoleRepository.save(userRole);
+            UserRole buyerUserRole = UserRole.create(savedUser, buyerRole);
+            UserRole tenantUserRole = UserRole.create(savedUser, tenantRole);
+            userRoleRepository.save(buyerUserRole);
+            userRoleRepository.save(tenantUserRole);
+        }
 
         // 2. Create full true preferences
         SettingPreference preference = SettingPreference.builder()
@@ -113,7 +126,7 @@ public class UserApplicationService {
         settingPreferenceRepository.save(preference);
 
         // 3. Create default profile
-        if (targetRoleCode == RoleCode.AGENT) {
+        if ("AGENT".equalsIgnoreCase(request.getRole())) {
             AgentProfile profile = AgentProfile.builder()
                     .userId(savedUser.getUserId())
                     .rating(java.math.BigDecimal.ZERO)
@@ -128,6 +141,9 @@ public class UserApplicationService {
                     .build();
             customerProfileRepository.save(profile);
         }
+
+        // 4. Assign default packages
+        billingApplicationService.assignDefaultAiPackage(savedUser.getUserId());
 
         return userMapper.toResponse(savedUser);
     }
@@ -183,6 +199,9 @@ public class UserApplicationService {
                 .isActive(true)
                 .build();
         customerProfileRepository.save(profile);
+
+        // 4. Assign default packages
+        billingApplicationService.assignDefaultAiPackage(savedUser.getUserId());
 
         return savedUser;
     }
@@ -484,5 +503,31 @@ public class UserApplicationService {
     @Transactional(readOnly = true)
     public long emailOtpRemainingSeconds(UUID userId) {
         return otpService.remainingSeconds(EMAIL_OTP_PREFIX + userId);
+    }
+
+    /**
+     * Add OWNER role to a user if they don't already have it.
+     * Idempotent: does nothing if the user already has the OWNER role.
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public UserResponse addOwnerRole(UUID userId) {
+        log.info("Adding OWNER role to user ID: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+
+        // Skip if user already has OWNER role
+        if (userRepository.hasRole(userId, RoleCode.OWNER)) {
+            log.info("User {} already has OWNER role, skipping", userId);
+            return userMapper.toResponse(user);
+        }
+
+        Role ownerRole = roleRepository.findByRoleCode(RoleCode.OWNER)
+                .orElseThrow(() -> new BusinessConflictException("Role OWNER not found", "ROLE_NOT_FOUND"));
+
+        UserRole userRole = UserRole.create(user, ownerRole);
+        userRoleRepository.save(userRole);
+
+        log.info("OWNER role added successfully to user ID: {}", userId);
+        return userMapper.toResponse(userDomainService.getUserOrThrow(userId));
     }
 }

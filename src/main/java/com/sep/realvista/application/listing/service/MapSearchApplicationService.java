@@ -223,44 +223,44 @@ public class MapSearchApplicationService {
     }
 
     private MapSearchResponse buildEmptyResponse(MapSearchRequest request, MapBounds bounds) {
-        return MapSearchResponse.builder()
-                .content(List.of())
-                .page(request.getPage())
-                .size(request.getSize())
-                .totalElements(0L)
-                .totalPages(0)
-                .first(true)
-                .last(true)
-                .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                        .northLat(bounds.northLat())
-                        .southLat(bounds.southLat())
-                        .eastLng(bounds.eastLng())
-                        .westLng(bounds.westLng())
-                        .build())
-                .filterMetadata(buildFilterMetadata(request))
-                .build();
+        MapSearchResponse response = new MapSearchResponse();
+        response.setContent(List.of());
+        response.setPage(request.getPage());
+        response.setSize(request.getSize());
+        response.setTotalElements(0L);
+        response.setTotalPages(0);
+        response.setFirst(true);
+        response.setLast(true);
+        response.setBounds(MapSearchResponse.MapBoundsDTO.builder()
+                .northLat(bounds.northLat())
+                .southLat(bounds.southLat())
+                .eastLng(bounds.eastLng())
+                .westLng(bounds.westLng())
+                .build());
+        response.setFilterMetadata(buildFilterMetadata(request));
+        return response;
     }
 
     private MapSearchResponse buildSearchResponse(MapSearchRequest request, List<ListingSearchResponse> markers,
             Long totalCount, int pageNumber, int pageSize) {
         int totalPages = (int) Math.ceil((double) totalCount / pageSize);
 
-        return MapSearchResponse.builder()
-                .content(markers)
-                .page(pageNumber)
-                .size(pageSize)
-                .totalElements(totalCount)
-                .totalPages(totalPages)
-                .first(pageNumber == 1)
-                .last(pageNumber >= totalPages)
-                .bounds(MapSearchResponse.MapBoundsDTO.builder()
-                        .northLat(request.getNorthLat())
-                        .southLat(request.getSouthLat())
-                        .eastLng(request.getEastLng())
-                        .westLng(request.getWestLng())
-                        .build())
-                .filterMetadata(buildFilterMetadata(request))
-                .build();
+        MapSearchResponse response = new MapSearchResponse();
+        response.setContent(markers);
+        response.setPage(pageNumber);
+        response.setSize(pageSize);
+        response.setTotalElements(totalCount);
+        response.setTotalPages(totalPages);
+        response.setFirst(pageNumber == 1);
+        response.setLast(pageNumber >= totalPages);
+        response.setBounds(MapSearchResponse.MapBoundsDTO.builder()
+                .northLat(request.getNorthLat())
+                .southLat(request.getSouthLat())
+                .eastLng(request.getEastLng())
+                .westLng(request.getWestLng())
+                .build());
+        response.setFilterMetadata(buildFilterMetadata(request));
+        return response;
     }
 
     /**

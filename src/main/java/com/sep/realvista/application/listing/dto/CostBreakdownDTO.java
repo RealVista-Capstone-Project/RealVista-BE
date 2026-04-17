@@ -1,5 +1,6 @@
 package com.sep.realvista.application.listing.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,43 +16,27 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CostBreakdownDTO {
-    /**
-     * Base rental price in VND (number)
-     */
+    @JsonProperty("base_price")
     private Long basePrice;
 
-    /**
-     * Unit for base price (e.g., "đ/tháng")
-     */
+    @JsonProperty("base_price_unit")
     private String basePriceUnit;
 
-    /**
-     * List of required fees that must be paid
-     */
+    @JsonProperty("required_fees")
     private List<PropertyFeeDTO> requiredFees;
 
-    /**
-     * Subtotal of required fees in VND (number)
-     */
+    @JsonProperty("required_fees_subtotal")
     private Long requiredFeesSubtotal;
 
-    /**
-     * List of optional fees that user can choose to pay
-     */
+    @JsonProperty("optional_fees")
     private List<PropertyFeeDTO> optionalFees;
 
-    /**
-     * Subtotal of optional fees in VND (number)
-     */
+    @JsonProperty("optional_fees_subtotal")
     private Long optionalFeesSubtotal;
 
-    /**
-     * Total monthly cost including base price and required fees only in VND (number)
-     */
+    @JsonProperty("total_cost")
     private Long totalCost;
 
-    /**
-     * Disclaimer text about estimated costs
-     */
+    @JsonProperty("disclaimer")
     private String disclaimer;
 }

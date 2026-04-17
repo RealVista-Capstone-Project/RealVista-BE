@@ -17,4 +17,5 @@ public class UpdateSettingPreferenceRequest {
     private Boolean contactViaPhone;
     private Boolean hidePhoneNumber;
     private Boolean hideEmail;
+    private Boolean autoRefreshEnabled;
 }

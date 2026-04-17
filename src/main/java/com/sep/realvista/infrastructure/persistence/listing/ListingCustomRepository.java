@@ -63,6 +63,10 @@ public class ListingCustomRepository {
                         loc.parent_id as location_parent_id,
                         pt.name as property_type_name,
                         loc.name as location_name,
+                        p.street_address as street_address,
+                        loc.name as ward_name,
+                        loc_district.name as district_name,
+                        loc_city.name as city_name,
                         (SELECT pm.media_url FROM listing_medias lm
                          JOIN property_medias pm ON lm.property_media_id = pm.property_media_id
                          WHERE lm.listing_id = l.listing_id
@@ -75,6 +79,8 @@ public class ListingCustomRepository {
                     JOIN properties p ON l.property_id = p.property_id
                     JOIN property_types pt ON p.property_type_id = pt.property_type_id
                     JOIN locations loc ON p.location_id = loc.location_id
+                    LEFT JOIN locations loc_district ON loc.parent_id = loc_district.location_id
+                    LEFT JOIN locations loc_city ON loc_district.parent_id = loc_city.location_id
                     JOIN current_listing cl ON l.listing_type = cl.listing_type
                     WHERE l.status = 'PUBLISHED'
                       AND l.listing_id != CAST(:listingId AS UUID)
@@ -133,6 +139,10 @@ public class ListingCustomRepository {
                     cl.price,
                     cl.area,
                     cl.location_name,
+                    cl.street_address,
+                    cl.ward_name,
+                    cl.district_name,
+                    cl.city_name,
                     cl.property_type_name,
                     cl.thumbnail_url,
                     cl.published_at,

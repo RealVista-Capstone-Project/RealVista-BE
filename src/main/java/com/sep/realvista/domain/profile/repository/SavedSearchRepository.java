@@ -12,6 +12,7 @@ import java.util.UUID;
 @Repository
 public interface SavedSearchRepository extends JpaRepository<SavedSearch, UUID> {
     List<SavedSearch> findByProfileIdAndDeletedFalse(UUID profileId);
+    List<SavedSearch> findByProfileIdAndIsRecommendationTrueAndDeletedFalse(UUID profileId);
     Optional<SavedSearch> findBySavedSearchIdAndProfileIdAndDeletedFalse(UUID savedSearchId, UUID profileId);
 
     @Query(value = "SELECT * FROM saved_searches WHERE profile_id = :profileId "

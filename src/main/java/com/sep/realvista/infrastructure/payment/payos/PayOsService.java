@@ -36,7 +36,8 @@ public class PayOsService {
             int amount,
             String description,
             String returnUrl,
-            String cancelUrl
+            String cancelUrl,
+            long expiredAt
     ) {
         try {
             String signature = buildSignature(orderCode, amount, description, returnUrl, cancelUrl);
@@ -47,6 +48,7 @@ public class PayOsService {
             body.put("description", description);
             body.put("returnUrl", returnUrl);
             body.put("cancelUrl", cancelUrl);
+            body.put("expiredAt", expiredAt);
             body.put("signature", signature);
 
             HttpHeaders headers = new HttpHeaders();
@@ -69,6 +71,7 @@ public class PayOsService {
                     .checkoutUrl(data.path("checkoutUrl").asText())
                     .qrCode(data.path("qrCode").asText())
                     .paymentLinkId(data.path("paymentLinkId").asText())
+                    .expiredAt(data.path("expiredAt").asLong(expiredAt))
                     .build();
 
         } catch (Exception e) {

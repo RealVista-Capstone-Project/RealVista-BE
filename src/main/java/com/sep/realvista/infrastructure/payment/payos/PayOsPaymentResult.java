@@ -9,4 +9,5 @@ public class PayOsPaymentResult {
     private final String checkoutUrl;
     private final String qrCode;
     private final String paymentLinkId;
+    private final Long expiredAt;
 }

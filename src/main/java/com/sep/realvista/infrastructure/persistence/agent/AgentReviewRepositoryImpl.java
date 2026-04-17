@@ -42,4 +42,9 @@ public class AgentReviewRepositoryImpl implements AgentReviewRepository {
     public BigDecimal calculateAverageRating(UUID agentProfileId) {
         return jpaRepository.calculateAverageRatingByAgentProfileId(agentProfileId);
     }
+
+    @Override
+    public List<AgentReview> findByAgentProfileId(UUID agentProfileId) {
+        return jpaRepository.findByAgentProfileIdAndDeletedFalseOrderByCreatedAtDesc(agentProfileId);
+    }
 }

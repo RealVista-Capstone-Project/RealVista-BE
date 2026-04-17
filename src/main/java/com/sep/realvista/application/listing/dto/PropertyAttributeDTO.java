@@ -28,9 +28,12 @@ public class PropertyAttributeDTO {
     private String attributeName;
     @JsonProperty("data_type")
     private String dataType;
+    @JsonProperty("icon")
     private String icon;
+    @JsonProperty("unit")
     private String unit;
 
+    @JsonProperty("priority")
     private Integer priority;
 
     // Value fields (only one will be populated based on data_type)

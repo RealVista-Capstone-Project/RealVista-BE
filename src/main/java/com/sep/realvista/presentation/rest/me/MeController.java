@@ -100,4 +100,16 @@ public class MeController {
         UserResponse response = userApplicationService.verifyPhone(currentUser.getUserId(), request.getPhone());
         return ResponseEntity.ok(ApiResponse.success("Phone verified successfully", response));
     }
+
+    @PostMapping("/add-role")
+    @Operation(
+            summary = "Add OWNER role",
+            description = "Adds the OWNER role to the current user if not already assigned"
+    )
+    public ResponseEntity<ApiResponse<UserResponse>> addOwnerRole(Authentication authentication) {
+        controllerUtils.initializeTraceId();
+        User currentUser = controllerUtils.getCurrentUser(authentication);
+        UserResponse response = userApplicationService.addOwnerRole(currentUser.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("Owner role added successfully", response));
+    }
 }
