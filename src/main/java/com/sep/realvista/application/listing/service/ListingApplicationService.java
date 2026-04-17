@@ -28,6 +28,7 @@ import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
+import com.sep.realvista.shared.util.AddressFormatter;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
@@ -350,6 +351,11 @@ public class ListingApplicationService {
                 .price(similarListing.getPrice())
                 .area(similarListing.getArea())
                 .locationName(similarListing.getLocationName())
+                .fullAddress(AddressFormatter.formatFullAddress(
+                        similarListing.getStreetAddress(),
+                        similarListing.getWardName(),
+                        similarListing.getDistrictName(),
+                        similarListing.getCityName()))
                 .thumbnailUrl(similarListing.getThumbnailUrl())
                 .similarityScore(similarListing.getSimilarityPercentage())
                 .publishedAt(similarListing.getPublishedAt())

@@ -31,6 +31,8 @@ public class ListingDetailResponse {
     private UUID propertyId;
     @JsonProperty("user_id")
     private UUID userId;
+    @JsonProperty("user_type")
+    private String userType;
     @JsonProperty("listing_type")
     private ListingType listingType;
     private ListingStatus status;
