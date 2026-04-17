@@ -92,4 +92,12 @@ public interface EngagementRepository {
      */
     Optional<Engagement> findLatestAgentProposalEngagement(
             UUID initiatorId, UUID receiverId, UUID propertyId);
+
+    /**
+     * Finds all active (not REJECTED/CANCELLED) engagements for a property.
+     *
+     * @param propertyId the property ID
+     * @return list of active engagements
+     */
+    List<Engagement> findActiveEngagementsForProperty(UUID propertyId);
 }
