@@ -8,7 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
 import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import java.math.BigDecimal;
@@ -21,7 +20,6 @@ import java.util.List;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @Data
 @EqualsAndHashCode(callSuper = true)
-@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 public class MapSearchResponse extends PageResponse<ListingSearchResponse> {
@@ -36,7 +34,6 @@ public class MapSearchResponse extends PageResponse<ListingSearchResponse> {
      * @deprecated Use pagination fields from PageResponse instead
      */
     @Deprecated
-    @Builder.Default
     private Boolean hasMore = false;
 
     /**
