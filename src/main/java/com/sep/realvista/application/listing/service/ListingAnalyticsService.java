@@ -39,13 +39,17 @@ public class ListingAnalyticsService {
      * @param listingId the listing ID
      * @param userId    the user ID
      */
+    private static final UUID ANONYMOUS_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+
     @Async
     @Transactional
     public void recordView(UUID listingId, UUID userId) {
         try {
-            log.debug("Recording view for listing: {} by user: {}", listingId, userId);
+            UUID effectiveUserId = userId != null ? userId : ANONYMOUS_USER_ID;
+            log.debug("Recording view for listing: {} by user: {}", listingId, effectiveUserId);
 
-            Optional<ListingView> existingView = listingViewRepository.findByListingIdAndUserId(listingId, userId);
+            Optional<ListingView> existingView = listingViewRepository
+                    .findByListingIdAndUserId(listingId, effectiveUserId);
 
             if (existingView.isPresent()) {
                 ListingView view = existingView.get();
@@ -56,14 +60,15 @@ public class ListingAnalyticsService {
             } else {
                 ListingView newView = ListingView.builder()
                         .listingId(listingId)
-                        .userId(userId)
+                        .userId(effectiveUserId)
                         .viewCount(1)
                         .build();
                 listingViewRepository.save(newView);
-                log.debug("Created new view record for listing: {} by user: {}", listingId, userId);
+                log.debug("Created new view record for listing: {} by user: {}", listingId, effectiveUserId);
             }
         } catch (Exception e) {
-            log.error("Failed to record view for listing: {} by user: {}", listingId, userId, e);
+            log.error("Failed to record view for listing: {} by user: {}", 
+                    listingId, userId != null ? userId : "anonymous", e);
             // Don't rethrow - view tracking failure should not affect user experience
         }
     }
@@ -90,7 +95,7 @@ public class ListingAnalyticsService {
 
         // Get tour booking count
         long tourBookingsLong = appointmentRepository.findAll().stream()
-                .filter(appointment -> appointment.getListingId().equals(listingId))
+                .filter(appointment -> listingId.equals(appointment.getListingId()))
                 .filter(Appointment::isTour)
                 .count();
         Integer tourBookings = (int) tourBookingsLong;

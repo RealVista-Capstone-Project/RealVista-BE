@@ -150,18 +150,21 @@ public class ListingApplicationService {
      * @throws ResourceNotFoundException if listing not found
      */
     @Transactional(readOnly = true)
-    public ListingDetailResponse getListingDetail(UUID listingId, UUID userId) {
+    public ListingDetailResponse getListingDetail(UUID listingId, UUID userId, boolean recordView) {
         // Route through self (proxy) so @Cacheable on getCachedListingDetail fires correctly
         ListingDetailResponse response = self.getCachedListingDetail(listingId);
-        // Set is_favorite based on current user (not cached)
         if (userId != null) {
             boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
             response.setIsFavorite(isFavorite);
-            // Record view for analytics (async - does not slow down response)
-            listingAnalyticsService.recordView(listingId, userId);
         } else {
             response.setIsFavorite(false);
         }
+
+        // Record view for analytics (async - does not slow down response)
+        if (recordView) {
+            listingAnalyticsService.recordView(listingId, userId);
+        }
+
         return response;
     }
 
@@ -241,7 +244,7 @@ public class ListingApplicationService {
      * @throws ResourceNotFoundException if listing not found
      */
     @Transactional(readOnly = true)
-    public ListingDetailResponse getListingBySlug(String slug, UUID userId) {
+    public ListingDetailResponse getListingBySlug(String slug, UUID userId, boolean recordView) {
         log.info("Fetching listing detail for slug: {}", slug);
         // Find listing by slug (not cached, lightweight operation)
         Listing listing = listingRepository.findBySlug(slug)
@@ -250,7 +253,7 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing with slug: " + slug);
                 });
         // Delegate to getListingDetail which handles caching by listingId
-        return getListingDetail(listing.getListingId(), userId);
+        return getListingDetail(listing.getListingId(), userId, recordView);
     }
 
     /**

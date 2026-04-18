@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -273,7 +274,7 @@ class ListingControllerComponentTest {
         void getListingDetail_withValidId_shouldReturnOk() throws Exception {
                 // Arrange
                 UUID listingId = mockListingResponse.getListingId();
-                when(listingApplicationService.getListingDetail(any(UUID.class), any()))
+                when(listingApplicationService.getListingDetail(any(UUID.class), any(), anyBoolean()))
                                 .thenReturn(mockListingResponse);
 
                 // Act & Assert
@@ -309,7 +310,7 @@ class ListingControllerComponentTest {
         void getListingDetail_withNonExistentId_shouldReturnNotFound() throws Exception {
                 // Arrange
                 UUID nonExistentId = UUID.randomUUID();
-                when(listingApplicationService.getListingDetail(any(UUID.class), any()))
+                when(listingApplicationService.getListingDetail(any(UUID.class), any(), anyBoolean()))
                                 .thenThrow(new com.sep.realvista.domain.common.exception.ResourceNotFoundException(
                                                 "Listing", nonExistentId));
 
@@ -526,15 +527,15 @@ class ListingControllerComponentTest {
                 Page<ListingSearchResponse> pageResult = new PageImpl<>(List.of(searchResponse));
 
                 when(listingSearchService.search(any(ListingSearchCriteria.class), any(Pageable.class), any()))
-                        .thenReturn(pageResult);
+                                .thenReturn(pageResult);
 
                 // Act & Assert
                 mockMvc.perform(get("/api/v1/listings/search")
                                 .param("q", "test"))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.success").value(true))
-                        .andExpect(jsonPath("$.data.content").isArray())
-                        .andExpect(jsonPath("$.data.content.length()").value(1))
-                        .andExpect(jsonPath("$.data.content[0].name").value("Test Listing"));
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true))
+                                .andExpect(jsonPath("$.data.content").isArray())
+                                .andExpect(jsonPath("$.data.content.length()").value(1))
+                                .andExpect(jsonPath("$.data.content[0].name").value("Test Listing"));
         }
 }

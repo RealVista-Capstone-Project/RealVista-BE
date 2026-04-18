@@ -51,336 +51,335 @@ import java.util.UUID;
 @Slf4j
 public class ListingController {
 
-    private final ListingApplicationService listingApplicationService;
-    private final ListingSearchService listingSearchService;
+        private final ListingApplicationService listingApplicationService;
+        private final ListingSearchService listingSearchService;
 
-    @Operation(summary = "Search Listings",
-            description = "Search for published listings using various filter criteria.",
-            responses = {
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                            responseCode = "200",
-                            description = "Successfully retrieved matching listings",
-                            content = @io.swagger.v3.oas.annotations.media.Content(
-                                    mediaType = "application/json",
-                                    schema = @io.swagger.v3.oas.annotations.media.Schema(
-                                            implementation = PageResponse.class))),
-                    @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                            responseCode = "400",
-                            description = "Invalid search criteria provided",
-                            content = @io.swagger.v3.oas.annotations.media.Content)
-            })
-    @GetMapping("/search")
-    public ResponseEntity<ApiResponse<PageResponse<ListingSearchResponse>>> search(
-            @org.springdoc.core.annotations.ParameterObject ListingSearchCriteria criteria,
-            @org.springframework.data.web.PageableDefault(size = 20)
-            org.springframework.data.domain.Pageable pageable,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @Operation(summary = "Search Listings",
+                        description = "Search for published listings using various filter criteria.",
+                        responses = {
+                                        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                                                        responseCode = "200",
+                                                        description = "Successfully retrieved matching listings",
+                                                        content = @io.swagger.v3.oas.annotations.media.Content(
+                                                                mediaType = "application/json",
+                                                                schema = @io.swagger.v3.oas.annotations.media.Schema(
+                                                                        implementation = PageResponse.class))),
+                                        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                                                        responseCode = "400",
+                                                        description = "Invalid search criteria provided",
+                                                        content = @io.swagger.v3.oas.annotations.media.Content)
+                        })
+        @GetMapping("/search")
+        public ResponseEntity<ApiResponse<PageResponse<ListingSearchResponse>>> search(
+                        @org.springdoc.core.annotations.ParameterObject ListingSearchCriteria criteria,
+                        @org.springframework.data.web.PageableDefault(size = 20)
+                        org.springframework.data.domain.Pageable pageable,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Searching listings with criteria: {}", criteria);
+                log.info("Searching listings with criteria: {}", criteria);
 
-        UUID userId = userDetails != null ? userDetails.getUserId() : null;
-        org.springframework.data.domain.Page<ListingSearchResponse> results = listingSearchService.search(criteria,
-                pageable, userId);
+                UUID userId = userDetails != null ? userDetails.getUserId() : null;
+                org.springframework.data.domain.Page<ListingSearchResponse> results = listingSearchService.search(
+                                criteria,
+                                pageable, userId);
 
-        PageResponse<ListingSearchResponse> pageResponse = PageResponse.<ListingSearchResponse>builder()
-                .content(results.getContent())
-                .page(results.getNumber())
-                .size(results.getSize())
-                .totalElements(results.getTotalElements())
-                .totalPages(results.getTotalPages())
-                .first(results.isFirst())
-                .last(results.isLast())
-                .build();
+                PageResponse<ListingSearchResponse> pageResponse = PageResponse.<ListingSearchResponse>builder()
+                                .content(results.getContent())
+                                .page(results.getNumber())
+                                .size(results.getSize())
+                                .totalElements(results.getTotalElements())
+                                .totalPages(results.getTotalPages())
+                                .first(results.isFirst())
+                                .last(results.isLast())
+                                .build();
 
-        return ResponseEntity.ok(ApiResponse.success("Listings retrieved successfully", pageResponse));
-    }
+                return ResponseEntity.ok(ApiResponse.success("Listings retrieved successfully", pageResponse));
+        }
 
-    @GetMapping("/{idOrSlug}")
-    @Operation(summary = "Get listing detail by ID or slug",
-            description = "Retrieves complete listing information including media, property, "
-                    + "location, type, category, and agent/owner. "
-                    + "Accepts either UUID or SEO-friendly slug format. "
-                    + "Slug format: {slugified-name}-{short-uuid} "
-                    + "Example: luxury-2-bedroom-apartment-2qLn4Z8XooP")
-    public ResponseEntity<ApiResponse<ListingDetailResponse>> getListingDetail(
-            @PathVariable String idOrSlug,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
-        String traceId = UUID.randomUUID().toString();
-        MDC.put("traceId", traceId);
+        @GetMapping("/{idOrSlug}")
+        @Operation(summary = "Get listing detail by ID or slug",
+                        description = "Retrieves complete listing information including media, property, "
+                        + "location, type, category, and agent/owner. "
+                        + "Accepts either UUID or SEO-friendly slug format. "
+                        + "Slug format: {slugified-name}-{short-uuid} "
+                        + "Example: luxury-2-bedroom-apartment-2qLn4Z8XooP")
+        public ResponseEntity<ApiResponse<ListingDetailResponse>> getListingDetail(
+                        @PathVariable String idOrSlug,
+                        @RequestParam(defaultValue = "false") boolean recordView,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
+                String traceId = UUID.randomUUID().toString();
+                MDC.put("traceId", traceId);
 
-        try {
-            log.info("Fetching listing detail - traceId: {}, idOrSlug: {}", traceId, idOrSlug);
-
-            UUID userId = userDetails != null ? userDetails.getUserId() : null;
-            ListingDetailResponse listing;
-
-            // Try to parse as UUID first
-            try {
-                UUID id = UUID.fromString(idOrSlug);
-                listing = listingApplicationService.getListingDetail(id, userId);
-            } catch (IllegalArgumentException e) {
-                // Not a valid UUID, treat as slug
-                log.debug("Input is not a valid UUID, treating as slug: {}", idOrSlug);
                 try {
-                    listing = listingApplicationService.getListingBySlug(idOrSlug, userId);
-                } catch (Exception ex) {
-                    log.error("Failed to get listing by slug: {}", idOrSlug, ex);
-                    throw ex;
+                        log.info("Fetching listing detail - traceId: {}, idOrSlug: {}, recordView: {}", traceId,
+                                        idOrSlug, recordView);
+
+                        UUID userId = userDetails != null ? userDetails.getUserId() : null;
+                        ListingDetailResponse listing;
+
+                        // Try to parse as UUID first
+                        try {
+                                UUID id = UUID.fromString(idOrSlug);
+                                listing = listingApplicationService.getListingDetail(id, userId, recordView);
+                        } catch (IllegalArgumentException e) {
+                                // Not a valid UUID, treat as slug
+                                log.debug("Input is not a valid UUID, treating as slug: {}", idOrSlug);
+                                try {
+                                        listing = listingApplicationService.getListingBySlug(idOrSlug, userId,
+                                                        recordView);
+                                } catch (Exception ex) {
+                                        log.error("Failed to get listing by slug: {}", idOrSlug, ex);
+                                        throw ex;
+                                }
+                        }
+
+                        return ResponseEntity.ok(ApiResponse.success("Listing retrieved successfully", listing));
+                } finally {
+                        MDC.remove("traceId");
                 }
-            }
-
-            return ResponseEntity.ok(ApiResponse.success("Listing retrieved successfully", listing));
-        } finally {
-            MDC.remove("traceId");
         }
-    }
 
-    @GetMapping("/{idOrSlug}/price-history")
-    @Operation(summary = "Get listing price history",
-            description = "Retrieves the price history for a listing including all price changes "
-                    + "with calculated differences and percentages. Accepts either UUID or slug.")
-    public ResponseEntity<ApiResponse<PriceHistoryResponse>> getPriceHistory(@PathVariable String idOrSlug) {
-        String traceId = UUID.randomUUID().toString();
-        MDC.put("traceId", traceId);
+        @GetMapping("/{idOrSlug}/price-history")
+        @Operation(summary = "Get listing price history",
+                        description = "Retrieves the price history for a listing including all price changes "
+                        + "with calculated differences and percentages. Accepts either UUID or slug.")
+        public ResponseEntity<ApiResponse<PriceHistoryResponse>> getPriceHistory(@PathVariable String idOrSlug) {
+                String traceId = UUID.randomUUID().toString();
+                MDC.put("traceId", traceId);
 
-        try {
-            log.info("Fetching price history - traceId: {}, idOrSlug: {}", traceId, idOrSlug);
+                try {
+                        log.info("Fetching price history - traceId: {}, idOrSlug: {}", traceId, idOrSlug);
 
-            UUID id = parseIdOrSlug(idOrSlug);
-            PriceHistoryResponse priceHistory = listingApplicationService.getPriceHistory(id);
-            return ResponseEntity.ok(ApiResponse.success("Price history retrieved successfully", priceHistory));
-        } finally {
-            MDC.remove("traceId");
+                        UUID id = parseIdOrSlug(idOrSlug);
+                        PriceHistoryResponse priceHistory = listingApplicationService.getPriceHistory(id);
+                        return ResponseEntity
+                                        .ok(ApiResponse.success("Price history retrieved successfully", priceHistory));
+                } finally {
+                        MDC.remove("traceId");
+                }
         }
-    }
 
-    @GetMapping("/{idOrSlug}/similar")
-    @Operation(summary = "Get similar listings", description = "Retrieves listings similar to the given listing "
-            + "based on property type, price range, area, and common attributes. "
-            + "Results are sorted by similarity score (descending) "
-            + "and published date (descending). Accepts either UUID or slug.")
-    public ResponseEntity<ApiResponse<SimilarListingsResponse>> getSimilarListings(
-            @PathVariable String idOrSlug,
-            @Parameter(description = "Maximum number of results to return (default: 5, max: 10)")
-            @RequestParam(defaultValue = "5") @Min(1) @Max(10) int limit,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @GetMapping("/{idOrSlug}/similar")
+        @Operation(summary = "Get similar listings",
+                        description = "Retrieves listings similar to the given listing "
+                        + "based on property type, price range, area, and common attributes. "
+                        + "Results are sorted by similarity score (descending) "
+                        + "and published date (descending). Accepts either UUID or slug.")
+        public ResponseEntity<ApiResponse<SimilarListingsResponse>> getSimilarListings(
+                        @PathVariable String idOrSlug,
+                        @Parameter(description = "Maximum number of results to return (default: 5, max: 10)")
+                        @RequestParam(defaultValue = "5") @Min(1) @Max(10) int limit,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        String traceId = UUID.randomUUID().toString();
-        MDC.put("traceId", traceId);
+                String traceId = UUID.randomUUID().toString();
+                MDC.put("traceId", traceId);
 
-        try {
-            log.info("Fetching similar listings - traceId: {}, idOrSlug: {}, limit: {}", traceId, idOrSlug, limit);
+                try {
+                        log.info("Fetching similar listings - traceId: {}, idOrSlug: {}, limit: {}", traceId, idOrSlug,
+                                        limit);
 
-            UUID id = parseIdOrSlug(idOrSlug);
-            UUID userId = userDetails != null ? userDetails.getUserId() : null;
-            SimilarListingsResponse similarListings = listingApplicationService.getSimilarListings(id, limit, userId);
-            return ResponseEntity.ok(ApiResponse.success("Similar listings retrieved successfully", similarListings));
-        } finally {
-            MDC.remove("traceId");
+                        UUID id = parseIdOrSlug(idOrSlug);
+                        UUID userId = userDetails != null ? userDetails.getUserId() : null;
+                        SimilarListingsResponse similarListings = listingApplicationService.getSimilarListings(id,
+                                        limit, userId);
+                        return ResponseEntity.ok(ApiResponse.success("Similar listings retrieved successfully",
+                                        similarListings));
+                } finally {
+                        MDC.remove("traceId");
+                }
         }
-    }
 
-    /**
-     * Helper method to parse idOrSlug parameter to UUID.
-     * Tries to parse as UUID first, then extracts from slug if needed.
-     *
-     * @param idOrSlug either a UUID string or a slug
-     * @return UUID extracted from the input
-     * @throws IllegalArgumentException if neither UUID nor valid slug
-     */
-    private UUID parseIdOrSlug(String idOrSlug) {
-        try {
-            // Try direct UUID parsing first
-            return UUID.fromString(idOrSlug);
-        } catch (IllegalArgumentException e) {
-            // Not a UUID, extract from slug
-            return com.sep.realvista.shared.util.ShortIdUtils.extractUuidFromSlug(idOrSlug);
+        /**
+         * Helper method to parse idOrSlug parameter to UUID.
+         * Tries to parse as UUID first, then extracts from slug if needed.
+         *
+         * @param idOrSlug either a UUID string or a slug
+         * @return UUID extracted from the input
+         * @throws IllegalArgumentException if neither UUID nor valid slug
+         */
+        private UUID parseIdOrSlug(String idOrSlug) {
+                try {
+                        // Try direct UUID parsing first
+                        return UUID.fromString(idOrSlug);
+                } catch (IllegalArgumentException e) {
+                        // Not a UUID, extract from slug
+                        return com.sep.realvista.shared.util.ShortIdUtils.extractUuidFromSlug(idOrSlug);
+                }
         }
-    }
 
-    // ==================== CRUD Operations ====================
+        // ==================== CRUD Operations ====================
 
-    @PostMapping
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Create a new listing",
-            description = "Creates a new listing in DRAFT status. "
-                    + "The listing will be associated with the authenticated user.")
-    public ResponseEntity<ApiResponse<ListingResponse>> createListing(
-            @RequestBody @Valid
-            CreateListingRequest request,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @PostMapping
+        @SecurityRequirement(name = "Bearer Authentication")
+        @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "Create a new listing", description = "Creates a new listing in DRAFT status. "
+                        + "The listing will be associated with the authenticated user.")
+        public ResponseEntity<ApiResponse<ListingResponse>> createListing(
+                        @RequestBody @Valid CreateListingRequest request,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Creating listing for user: {}", userDetails.getUserId());
+                log.info("Creating listing for user: {}", userDetails.getUserId());
 
-        ListingResponse response =
-                listingApplicationService.createListing(request, userDetails.getUserId());
+                ListingResponse response = listingApplicationService.createListing(request, userDetails.getUserId());
 
-        return ResponseEntity
-                .status(org.springframework.http.HttpStatus.CREATED)
-                .body(ApiResponse.success("Listing created successfully", response));
-    }
+                return ResponseEntity
+                                .status(org.springframework.http.HttpStatus.CREATED)
+                                .body(ApiResponse.success("Listing created successfully", response));
+        }
 
-    @PutMapping("/{listingId}")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Update a listing",
-            description = "Updates an existing listing. The listing creator or property owner can update it.")
-    public ResponseEntity<ApiResponse<ListingResponse>> updateListing(
-            @PathVariable UUID listingId,
-            @RequestBody @Valid
-            UpdateListingRequest request,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @PutMapping("/{listingId}")
+        @SecurityRequirement(name = "Bearer Authentication")
+        @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "Update a listing",
+                        description = "Updates an existing listing. "
+                                        + "The listing creator or property owner can update it.")
+        public ResponseEntity<ApiResponse<ListingResponse>> updateListing(
+                        @PathVariable UUID listingId,
+                        @RequestBody @Valid UpdateListingRequest request,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Updating listing ID: {} by user: {}", listingId, userDetails.getUserId());
+                log.info("Updating listing ID: {} by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response =
-                listingApplicationService.updateListing(listingId, request, userDetails.getUserId());
+                com.sep.realvista.application.listing.dto.ListingResponse response = listingApplicationService
+                                .updateListing(listingId, request, userDetails.getUserId());
 
-        return ResponseEntity.ok(ApiResponse.success("Listing updated successfully", response));
-    }
+                return ResponseEntity.ok(ApiResponse.success("Listing updated successfully", response));
+        }
 
-    @DeleteMapping("/{listingId}")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Delete a listing",
-            description = "Soft deletes a listing. The listing creator or property owner can delete it.")
-    public ResponseEntity<ApiResponse<Void>> deleteListing(
-            @PathVariable UUID listingId,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @DeleteMapping("/{listingId}")
+        @SecurityRequirement(name = "Bearer Authentication")
+        @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "Delete a listing",
+                        description = "Soft deletes a listing. The listing creator or property owner can delete it.")
+        public ResponseEntity<ApiResponse<Void>> deleteListing(
+                        @PathVariable UUID listingId,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Deleting listing ID: {} by user: {}", listingId, userDetails.getUserId());
+                log.info("Deleting listing ID: {} by user: {}", listingId, userDetails.getUserId());
 
-        listingApplicationService.deleteListing(listingId, userDetails.getUserId());
+                listingApplicationService.deleteListing(listingId, userDetails.getUserId());
 
-        return ResponseEntity.ok(ApiResponse.success("Listing deleted successfully", null));
-    }
+                return ResponseEntity.ok(ApiResponse.success("Listing deleted successfully", null));
+        }
 
-    @GetMapping("/managed-listings")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Get managed listings",
-            description = "Retrieves listings created by the authenticated user or where the user owns the property. "
-                    + "Supports pagination, search, and sorting.")
-    public ResponseEntity<ApiResponse<PageResponse<ListingResponse>>>
-    getManagedListings(
-            @org.springdoc.core.annotations.ParameterObject ManagedListingSearchCriteria criteria,
-            @org.springframework.data.web.PageableDefault()
-            org.springframework.data.domain.Pageable pageable,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @GetMapping("/managed-listings")
+        @SecurityRequirement(name = "Bearer Authentication")
+        @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "Get managed listings",
+                        description = "Retrieves listings created by the authenticated user "
+                                        + "or where the user owns the property. "
+                        + "Supports pagination, search, and sorting.")
+        public ResponseEntity<ApiResponse<PageResponse<ListingResponse>>> getManagedListings(
+                        @org.springdoc.core.annotations.ParameterObject ManagedListingSearchCriteria criteria,
+                        @org.springframework.data.web.PageableDefault()
+                        org.springframework.data.domain.Pageable pageable,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Fetching managed listings for user: {} with criteria: {}", userDetails.getUserId(), criteria);
+                log.info("Fetching managed listings for user: {} with criteria: {}", userDetails.getUserId(), criteria);
 
-        org.springframework.data.domain.Page<ListingResponse> results =
-                listingApplicationService.getManagedListings(userDetails.getUserId(), criteria, pageable);
+                org.springframework.data.domain.Page<ListingResponse> results = listingApplicationService
+                                .getManagedListings(userDetails.getUserId(), criteria, pageable);
 
-        PageResponse<ListingResponse> pageResponse = PageResponse.<ListingResponse>builder()
-                .content(results.getContent())
-                .page(results.getNumber())
-                .size(results.getSize())
-                .totalElements(results.getTotalElements())
-                .totalPages(results.getTotalPages())
-                .first(results.isFirst())
-                .last(results.isLast())
-                .build();
+                PageResponse<ListingResponse> pageResponse = PageResponse.<ListingResponse>builder()
+                                .content(results.getContent())
+                                .page(results.getNumber())
+                                .size(results.getSize())
+                                .totalElements(results.getTotalElements())
+                                .totalPages(results.getTotalPages())
+                                .first(results.isFirst())
+                                .last(results.isLast())
+                                .build();
 
-        return ResponseEntity.ok(
-                ApiResponse.success("Listings retrieved successfully", pageResponse));
-    }
+                return ResponseEntity.ok(
+                                ApiResponse.success("Listings retrieved successfully", pageResponse));
+        }
 
-    @GetMapping("/managed-listings/summary")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Get managed listings summary",
-            description = "Retrieves counts of ALL, RENT, and SALE listings for the authenticated user.")
-    public ResponseEntity<ApiResponse<ManagedListingSummaryDTO>>
-    getManagedListingSummary(@AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @GetMapping("/managed-listings/summary")
+        @SecurityRequirement(name = "Bearer Authentication")
+        @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "Get managed listings summary",
+                        description = "Retrieves counts of ALL, RENT, and SALE listings for the authenticated user.")
+        public ResponseEntity<ApiResponse<ManagedListingSummaryDTO>> getManagedListingSummary(
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Fetching listing summary for user: {}", userDetails.getUserId());
+                log.info("Fetching listing summary for user: {}", userDetails.getUserId());
 
-        ManagedListingSummaryDTO summary =
-                listingApplicationService.getManagedListingSummary(userDetails.getUserId());
+                ManagedListingSummaryDTO summary = listingApplicationService
+                                .getManagedListingSummary(userDetails.getUserId());
 
-        return ResponseEntity.ok(
-                ApiResponse.success("Summary retrieved successfully", summary));
-    }
+                return ResponseEntity.ok(
+                                ApiResponse.success("Summary retrieved successfully", summary));
+        }
 
-    // ==================== Status Management Operations ====================
+        // ==================== Status Management Operations ====================
 
-    @PatchMapping("/{listingId}/publish")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Publish a listing",
-            description = "Changes listing status from DRAFT/PENDING to PUBLISHED. "
-                    + "The listing creator or property owner can publish. "
-                    + "Requires the associated property to be in AVAILABLE (active) status.")
-    public ResponseEntity<ApiResponse<ListingResponse>>
-    publishListing(
-            @PathVariable UUID listingId,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @PatchMapping("/{listingId}/publish")
+        @SecurityRequirement(name = "Bearer Authentication")
+        @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "Publish a listing",
+                        description = "Changes listing status from DRAFT/PENDING to PUBLISHED. "
+                        + "The listing creator or property owner can publish. "
+                        + "Requires the associated property to be in AVAILABLE (active) status.")
+        public ResponseEntity<ApiResponse<ListingResponse>> publishListing(
+                        @PathVariable UUID listingId,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Publishing listing ID: {} by user: {}", listingId, userDetails.getUserId());
+                log.info("Publishing listing ID: {} by user: {}", listingId, userDetails.getUserId());
 
-        ListingResponse response =
-                listingApplicationService.publishListing(listingId, userDetails.getUserId());
+                ListingResponse response = listingApplicationService.publishListing(listingId, userDetails.getUserId());
 
-        return ResponseEntity.ok(ApiResponse.success("Listing published successfully", response));
-    }
+                return ResponseEntity.ok(ApiResponse.success("Listing published successfully", response));
+        }
 
-    @PatchMapping("/{listingId}/unpublish")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Unpublish a listing",
-            description = "Changes listing status from PUBLISHED to DRAFT. "
-                    + "The listing creator or property owner can unpublish.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
-    unpublishListing(
-            @PathVariable UUID listingId,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @PatchMapping("/{listingId}/unpublish")
+        @SecurityRequirement(name = "Bearer Authentication")
+        @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "Unpublish a listing", description = "Changes listing status from PUBLISHED to DRAFT. "
+                        + "The listing creator or property owner can unpublish.")
+        public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> unpublishListing(
+                        @PathVariable UUID listingId,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Unpublishing listing ID: {} by user: {}", listingId, userDetails.getUserId());
+                log.info("Unpublishing listing ID: {} by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response =
-                listingApplicationService.unpublishListing(listingId, userDetails.getUserId());
+                com.sep.realvista.application.listing.dto.ListingResponse response = listingApplicationService
+                                .unpublishListing(listingId, userDetails.getUserId());
 
-        return ResponseEntity.ok(ApiResponse.success("Listing unpublished successfully", response));
-    }
+                return ResponseEntity.ok(ApiResponse.success("Listing unpublished successfully", response));
+        }
 
-    @PatchMapping("/{listingId}/mark-as-sold")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Mark listing as sold",
-            description = "Changes SALE listing status to SOLD. "
-                    + "Only applicable for SALE listings. The listing creator or property owner can mark as sold.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
-    markAsSold(
-            @PathVariable UUID listingId,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @PatchMapping("/{listingId}/mark-as-sold")
+        @SecurityRequirement(name = "Bearer Authentication")
+        @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "Mark listing as sold", description = "Changes SALE listing status to SOLD. "
+                        + "Only applicable for SALE listings. The listing creator or property owner can mark as sold.")
+        public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> markAsSold(
+                        @PathVariable UUID listingId,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Marking listing ID: {} as sold by user: {}", listingId, userDetails.getUserId());
+                log.info("Marking listing ID: {} as sold by user: {}", listingId, userDetails.getUserId());
 
-        ListingResponse response =
-                listingApplicationService.markAsSold(listingId, userDetails.getUserId());
+                ListingResponse response = listingApplicationService.markAsSold(listingId, userDetails.getUserId());
 
-        return ResponseEntity.ok(ApiResponse.success("Listing marked as sold", response));
-    }
+                return ResponseEntity.ok(ApiResponse.success("Listing marked as sold", response));
+        }
 
-    @PatchMapping("/{listingId}/mark-as-rented")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Mark listing as rented",
-            description = "Changes RENT listing status to RENTED. "
-                    + "Only applicable for RENT listings. The listing creator or property owner can mark as rented.")
-    public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>>
-    markAsRented(
-            @PathVariable UUID listingId,
-            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+        @PatchMapping("/{listingId}/mark-as-rented")
+        @SecurityRequirement(name = "Bearer Authentication")
+        @PreAuthorize("isAuthenticated()")
+        @Operation(summary = "Mark listing as rented",
+                        description = "Changes RENT listing status to RENTED. "
+                        + "Only applicable for RENT listings. "
+                        + "The listing creator or property owner can mark as rented.")
+        public ResponseEntity<ApiResponse<com.sep.realvista.application.listing.dto.ListingResponse>> markAsRented(
+                        @PathVariable UUID listingId,
+                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
 
-        log.info("Marking listing ID: {} as rented by user: {}", listingId, userDetails.getUserId());
+                log.info("Marking listing ID: {} as rented by user: {}", listingId, userDetails.getUserId());
 
-        com.sep.realvista.application.listing.dto.ListingResponse response =
-                listingApplicationService.markAsRented(listingId, userDetails.getUserId());
+                com.sep.realvista.application.listing.dto.ListingResponse response = listingApplicationService
+                                .markAsRented(listingId, userDetails.getUserId());
 
-        return ResponseEntity.ok(ApiResponse.success("Listing marked as rented", response));
-    }
+                return ResponseEntity.ok(ApiResponse.success("Listing marked as rented", response));
+        }
 }

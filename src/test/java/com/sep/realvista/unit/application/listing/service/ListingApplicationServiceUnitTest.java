@@ -320,7 +320,7 @@ class ListingApplicationServiceUnitTest {
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
-                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null);
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null, false);
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
@@ -347,7 +347,7 @@ class ListingApplicationServiceUnitTest {
                 when(listingRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
                 // Act & Assert
-                assertThatThrownBy(() -> listingApplicationService.getListingDetail(nonExistentId, null))
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(nonExistentId, null, false))
                                 .isInstanceOf(ResourceNotFoundException.class)
                                 .hasMessageContaining("Listing")
                                 .hasMessageContaining(nonExistentId.toString());
@@ -365,7 +365,7 @@ class ListingApplicationServiceUnitTest {
                 when(propertyRepository.findById(propertyId)).thenReturn(Optional.empty());
 
                 // Act & Assert
-                assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId, null))
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId, null, false))
                                 .isInstanceOf(ResourceNotFoundException.class)
                                 .hasMessageContaining("Property")
                                 .hasMessageContaining(propertyId.toString());
@@ -402,7 +402,7 @@ class ListingApplicationServiceUnitTest {
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
-                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null);
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null, false);
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
@@ -436,7 +436,7 @@ class ListingApplicationServiceUnitTest {
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
-                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null);
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null, false);
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
@@ -470,7 +470,7 @@ class ListingApplicationServiceUnitTest {
                 when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
 
                 // Act
-                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null);
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, null, false);
 
                 // Assert
                 assertThat(actualResponse).isNotNull();
@@ -850,11 +850,57 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(response);
 
                 // Act
-                listingApplicationService.getListingDetail(listingId, null);
+                listingApplicationService.getListingDetail(listingId, null, false);
 
                 // Assert
                 verify(settingPreferenceRepository).findByUserId(userId);
                 verify(listingMapper).toDetailResponseWithMediaAttributesAndAmenities(
                                 eq(testListing), anyList(), anyList(), anyList(), eq(preference));
+        }
+
+        @Test
+        @DisplayName("Should record view when recordView is true and userId is not null")
+        void getListingDetail_whenRecordViewTrue_shouldRecordView() {
+                // Arrange
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(bookmarkRepository.existsByUserIdAndListingId(userId, listingId)).thenReturn(false);
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
+                                .thenReturn(new ListingDetailResponse());
+
+                // Act
+                listingApplicationService.getListingDetail(listingId, userId, true);
+
+                // Assert
+                verify(listingAnalyticsService).recordView(listingId, userId);
+        }
+
+        @Test
+        @DisplayName("Should NOT record view when recordView is false even if userId is not null")
+        void getListingDetail_whenRecordViewFalse_shouldNotRecordView() {
+                // Arrange
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(bookmarkRepository.existsByUserIdAndListingId(userId, listingId)).thenReturn(false);
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
+                                .thenReturn(new ListingDetailResponse());
+
+                // Act
+                listingApplicationService.getListingDetail(listingId, userId, false);
+
+                // Assert
+                verify(listingAnalyticsService, never()).recordView(listingId, userId);
         }
 }
