@@ -90,7 +90,7 @@ public class ListingAnalyticsService {
 
         // Get tour booking count
         long tourBookingsLong = appointmentRepository.findAll().stream()
-                .filter(appointment -> appointment.getListingId().equals(listingId))
+                .filter(appointment -> listingId.equals(appointment.getListingId()))
                 .filter(Appointment::isTour)
                 .count();
         Integer tourBookings = (int) tourBookingsLong;
