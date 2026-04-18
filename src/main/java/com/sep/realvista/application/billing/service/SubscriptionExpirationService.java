@@ -34,6 +34,9 @@ public class SubscriptionExpirationService {
         int expiredCount = 0;
 
         for (UserFeatureSubscription sub : activeSubscriptions) {
+            if (sub.getFeaturePackage() != null && sub.getFeaturePackage().isFree()) {
+                continue;
+            }
             if (sub.getEndDate() != null && today.isAfter(sub.getEndDate())) {
                 sub.expire();
                 subscriptionRepository.save(sub);
