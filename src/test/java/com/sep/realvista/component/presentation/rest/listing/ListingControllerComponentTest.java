@@ -527,15 +527,15 @@ class ListingControllerComponentTest {
                 Page<ListingSearchResponse> pageResult = new PageImpl<>(List.of(searchResponse));
 
                 when(listingSearchService.search(any(ListingSearchCriteria.class), any(Pageable.class), any()))
-                        .thenReturn(pageResult);
+                                .thenReturn(pageResult);
 
                 // Act & Assert
                 mockMvc.perform(get("/api/v1/listings/search")
                                 .param("q", "test"))
-                        .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.success").value(true))
-                        .andExpect(jsonPath("$.data.content").isArray())
-                        .andExpect(jsonPath("$.data.content.length()").value(1))
-                        .andExpect(jsonPath("$.data.content[0].name").value("Test Listing"));
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true))
+                                .andExpect(jsonPath("$.data.content").isArray())
+                                .andExpect(jsonPath("$.data.content.length()").value(1))
+                                .andExpect(jsonPath("$.data.content[0].name").value("Test Listing"));
         }
 }
