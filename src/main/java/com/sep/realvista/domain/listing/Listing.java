@@ -134,6 +134,10 @@ public class Listing extends BaseEntity {
     @jakarta.persistence.OneToMany(fetch = FetchType.LAZY, mappedBy = "listing")
     private List<ListingBoost> boosts;
 
+    @Column(name = "has_been_published")
+    @Builder.Default
+    private Boolean hasBeenPublished = false;
+
     public void submitForReview() {
         if (this.status != ListingStatus.DRAFT) {
             throw new IllegalStateException("Only draft listings can be submitted for review");
@@ -147,6 +151,7 @@ public class Listing extends BaseEntity {
         }
         this.status = ListingStatus.PUBLISHED;
         this.publishedAt = LocalDateTime.now();
+        this.hasBeenPublished = true;
     }
 
     public void markAsSold() {
