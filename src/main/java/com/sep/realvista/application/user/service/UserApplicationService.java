@@ -143,7 +143,11 @@ public class UserApplicationService {
         }
 
         // 4. Assign default packages
-        billingApplicationService.assignDefaultAiPackage(savedUser.getUserId());
+        if ("AGENT".equalsIgnoreCase(request.getRole())) {
+            billingApplicationService.assignAllDefaultFreePackages(savedUser.getUserId());
+        } else {
+            billingApplicationService.assignDefaultAiPackage(savedUser.getUserId());
+        }
 
         return userMapper.toResponse(savedUser);
     }
@@ -526,6 +530,9 @@ public class UserApplicationService {
 
         UserRole userRole = UserRole.create(user, ownerRole);
         userRoleRepository.save(userRole);
+
+        // Assign LISTING_FREE and 3D_TOUR_FREE packages for new owner
+        billingApplicationService.assignDefaultOwnerPackages(userId);
 
         log.info("OWNER role added successfully to user ID: {}", userId);
         return userMapper.toResponse(userDomainService.getUserOrThrow(userId));
