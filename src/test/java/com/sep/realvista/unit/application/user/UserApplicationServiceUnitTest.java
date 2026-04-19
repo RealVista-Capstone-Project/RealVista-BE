@@ -90,7 +90,7 @@ public class UserApplicationServiceUnitTest {
         verify(settingPreferenceRepository, times(1)).save(any());
         verify(agentProfileRepository, times(1)).save(any());
         verify(customerProfileRepository, never()).save(any());
-        verify(billingApplicationService, times(1)).assignDefaultAiPackage(any());
+        verify(billingApplicationService, times(1)).assignAllDefaultFreePackages(any());
     }
 
     @Test
