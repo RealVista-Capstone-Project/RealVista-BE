@@ -4,6 +4,11 @@ spring:
     frontend:
       url: ${FRONTEND_URL:http://localhost:3000}
 
+  messages:
+    basename: messages
+    encoding: UTF-8
+    use-code-as-default-message: false
+
   # Mail Configuration
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}

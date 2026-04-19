@@ -123,7 +123,7 @@ public class AuthService {
             if (email == null || email.isBlank()) {
                 throw new BusinessConflictException(
                         "Email not provided by Google",
-                        "GOOGLE_EMAIL_MISSING"
+                        "ERROR_GOOGLE_EMAIL_MISSING"
                 );
             }
 
@@ -157,13 +157,13 @@ public class AuthService {
             log.error("Invalid platform or token for mobile Google authentication: {}", e.getMessage());
             throw new BusinessConflictException(
                     "Invalid authentication request: " + e.getMessage(),
-                    "INVALID_AUTH_REQUEST"
+                    "ERROR_INVALID_AUTH_REQUEST"
             );
         } catch (Exception e) {
             log.error("Mobile Google authentication failed for platform {}", request.getPlatform(), e);
             throw new BusinessConflictException(
                     "Google authentication failed: " + e.getMessage(),
-                    "GOOGLE_AUTH_FAILED"
+                    "ERROR_GOOGLE_AUTH_FAILED"
             );
         }
     }

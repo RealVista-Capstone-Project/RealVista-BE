@@ -15,6 +15,7 @@ import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.domain.user.preference.SettingPreference;
@@ -134,7 +135,9 @@ public class ListingApplicationService {
         if (!canModifyListing(listing, userId)) {
             log.error("User {} is not authorized to {} listing {} (not creator or property owner)",
                     userId, operation, listing.getListingId());
-            throw new IllegalStateException("You are not authorized to modify this listing");
+            throw new DomainException(
+                    "You are not authorized to modify this listing",
+                    "ERROR_LISTING_MODIFICATION_FORBIDDEN");
         }
     }
 
@@ -569,7 +572,7 @@ public class ListingApplicationService {
                 log.error("Cannot publish listing on create: Associated property {} is in status {}",
                         property.getPropertyId(), property.getStatus());
                 throw new BusinessConflictException("Associated property is not in active state (status: "
-                        + property.getStatus() + ")", "PROPERTY_NOT_AVAILABLE");
+                        + property.getStatus() + ")", "ERROR_PROPERTY_NOT_AVAILABLE");
             }
 
             // 2. Verify no other published listing of same type exists for this user/property
@@ -580,7 +583,7 @@ public class ListingApplicationService {
                         userId, request.getListingType(), property.getPropertyId());
                 throw new BusinessConflictException(String.format(
                         "A published listing of type %s already exists for this property and user.",
-                        request.getListingType().name()), "DUPLICATE_LISTING_PUBLISH");
+                        request.getListingType().name()), "ERROR_DUPLICATE_LISTING_PUBLISH");
             }
 
             listing.publish();
@@ -691,7 +694,7 @@ public class ListingApplicationService {
                         listingId, listing.getStatus());
                 throw new BusinessConflictException(
                         "Cannot change listing type for a listing that is Published, Sold, or Rented",
-                        "FORBIDDEN_TYPE_CHANGE");
+                        "ERROR_FORBIDDEN_TYPE_CHANGE");
             }
             listing.setListingType(request.getListingType());
         }
@@ -955,7 +958,7 @@ public class ListingApplicationService {
             log.error("Cannot publish listing {}: Associated property {} is in status {}",
                     listingId, property.getPropertyId(), property.getStatus());
             throw new BusinessConflictException("Associated property is not in active state (status: " 
-                    + property.getStatus() + ")", "PROPERTY_NOT_AVAILABLE");
+                    + property.getStatus() + ")", "ERROR_PROPERTY_NOT_AVAILABLE");
         }
 
         // Verify no other published listing of the same type exists for the listing creator and property
@@ -967,7 +970,7 @@ public class ListingApplicationService {
                     listing.getUserId(), listing.getListingType(), listing.getPropertyId());
             throw new BusinessConflictException(String.format(
                     "A published listing of type %s already exists for this property and user.",
-                    listing.getListingType().name()), "DUPLICATE_LISTING_PUBLISH");
+                    listing.getListingType().name()), "ERROR_DUPLICATE_LISTING_PUBLISH");
         }
 
         listing.publish();

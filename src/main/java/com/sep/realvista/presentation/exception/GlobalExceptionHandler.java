@@ -6,19 +6,16 @@ import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.InsufficientQuotaException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
-import com.sep.realvista.infrastructure.security.SecurityUserDetails;
-import com.sep.realvista.infrastructure.service.NotificationMessageService;
-import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -29,6 +26,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -39,8 +37,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
-    private final NotificationMessageService notificationMessageService;
-    private final SettingPreferenceRepository settingPreferenceRepository;
+    private final MessageSource messageSource;
+
+    private String msg(String key, Object... args) {
+        Locale locale = LocaleContextHolder.getLocale();
+        try {
+            return messageSource.getMessage(key, args, locale);
+        } catch (Exception e) {
+            return messageSource.getMessage(key, args, Locale.forLanguageTag("vi"));
+        }
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(
@@ -48,13 +54,11 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.error("Resource not found: {}", ex.getMessage());
-        String lang = getCurrentUserLanguage();
-        String message = notificationMessageService.getMessage("ERROR_RESOURCE_NOT_FOUND", lang);
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.NOT_FOUND.value())
-                .message(message)
-                .errorCode(ex.getErrorCode())
+                .message(msg("ERROR_RESOURCE_NOT_FOUND"))
+                .errorCode("RESOURCE_NOT_FOUND")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
                 .build();
@@ -68,12 +72,16 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.error("Business conflict: {}", ex.getMessage());
-        String lang = getCurrentUserLanguage();
-        String message = notificationMessageService.getMessage("ERROR_BUSINESS_CONFLICT", lang, ex.getMessage());
+        String localizedMsg;
+        try {
+            localizedMsg = msg(ex.getErrorCode());
+        } catch (Exception e) {
+            localizedMsg = ex.getMessage();
+        }
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.CONFLICT.value())
-                .message(message)
+                .message(localizedMsg)
                 .errorCode(ex.getErrorCode())
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -88,10 +96,16 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.error("Domain exception: {}", ex.getMessage());
+        String localizedMsg;
+        try {
+            localizedMsg = msg(ex.getErrorCode());
+        } catch (Exception e) {
+            localizedMsg = ex.getMessage();
+        }
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
-                .message(ex.getMessage())
+                .message(localizedMsg)
                 .errorCode(ex.getErrorCode())
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -106,13 +120,12 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.error("Validation error: {}", ex.getMessage());
-        String lang = getCurrentUserLanguage();
 
         List<ErrorResponse.ValidationError> validationErrors = ex.getBindingResult()
                 .getAllErrors()
                 .stream()
                 .map(error -> {
-                    String field = error instanceof FieldError fieldError 
+                    String field = error instanceof FieldError fieldError
                             ? fieldError.getField() : error.getObjectName();
                     return ErrorResponse.ValidationError.builder()
                             .field(field)
@@ -123,7 +136,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
-                .message(notificationMessageService.getMessage("ERROR_VALIDATION_FAILED", lang))
+                .message(msg("ERROR_VALIDATION_FAILED"))
                 .errorCode("VALIDATION_ERROR")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -140,18 +153,16 @@ public class GlobalExceptionHandler {
     ) {
         log.error("HTTP message not readable: {}", ex.getMessage());
 
-        String message = "Invalid request body";
+        String message = msg("ERROR_INVALID_REQUEST_BODY");
         String errorCode = "INVALID_REQUEST_BODY";
 
         // Check if it's an InvalidFormatException (e.g., invalid enum value)
         Throwable cause = ex.getCause();
         if (cause instanceof InvalidFormatException invalidFormatEx) {
-            // Check if the cause is our custom IllegalArgumentException from enum
             Throwable rootCause = invalidFormatEx.getCause();
             if (rootCause instanceof IllegalArgumentException) {
                 message = rootCause.getMessage();
             } else {
-                // Generic invalid format message
                 Object value = invalidFormatEx.getValue();
                 String fieldName = invalidFormatEx.getPath().isEmpty()
                         ? "field"
@@ -183,7 +194,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.UNAUTHORIZED.value())
-                .message("Authentication failed: " + ex.getMessage())
+                .message(msg("ERROR_AUTHENTICATION", ex.getMessage()))
                 .errorCode("AUTHENTICATION_ERROR")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -201,7 +212,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.FORBIDDEN.value())
-                .message("Access denied: " + ex.getMessage())
+                .message(msg("ERROR_ACCESS_DENIED"))
                 .errorCode("ACCESS_DENIED")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -216,10 +227,16 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.warn("Quota exhausted: {}", ex.getMessage());
+        String localizedMsg;
+        try {
+            localizedMsg = msg(ex.getErrorCode());
+        } catch (Exception e) {
+            localizedMsg = ex.getMessage();
+        }
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.CONFLICT.value())
-                .message(ex.getMessage())
+                .message(localizedMsg)
                 .errorCode(ex.getErrorCode())
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -237,7 +254,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
-                .message(ex.getMessage())
+                .message(msg("ERROR_INVALID_ARGUMENT", ex.getMessage()))
                 .errorCode("INVALID_ARGUMENT")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -255,7 +272,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
-                .message(ex.getMessage())
+                .message(msg("ERROR_ILLEGAL_STATE", ex.getMessage()))
                 .errorCode("ILLEGAL_STATE")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -271,13 +288,9 @@ public class GlobalExceptionHandler {
     ) {
         log.error("Unsupported media type: {}", ex.getMessage());
 
-        String message = String.format("Content-Type '%s' is not supported. Supported media types are: %s",
-                ex.getContentType(),
-                ex.getSupportedMediaTypes());
-
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value())
-                .message(message)
+                .message(msg("ERROR_UNSUPPORTED_MEDIA_TYPE"))
                 .errorCode("UNSUPPORTED_MEDIA_TYPE")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -295,7 +308,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .message("An unexpected error occurred. Please try again later.")
+                .message(msg("ERROR_INTERNAL"))
                 .errorCode("INTERNAL_SERVER_ERROR")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -311,11 +324,10 @@ public class GlobalExceptionHandler {
     ) {
         log.error("Type mismatch: {}", ex.getMessage());
 
-        String message = String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
-
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
-                .message(message)
+                .message(msg("ERROR_TYPE_MISMATCH", ex.getValue(), ex.getName(),
+                        ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown"))
                 .errorCode("TYPE_MISMATCH")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -334,14 +346,9 @@ public class GlobalExceptionHandler {
         long maxSize = ex.getMaxUploadSize();
         String maxSizeStr = maxSize > 0 ? formatFileSize(maxSize) : "configured limit";
 
-        String message = String.format(
-                "File size exceeds the maximum allowed size of %s. Please reduce the file size and try again.",
-                maxSizeStr
-        );
-
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.PAYLOAD_TOO_LARGE.value())
-                .message(message)
+                .message(msg("ERROR_FILE_SIZE_EXCEEDED", maxSizeStr))
                 .errorCode("FILE_SIZE_EXCEEDED")
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
@@ -358,19 +365,5 @@ public class GlobalExceptionHandler {
         } else {
             return String.format("%.2f MB", bytes / (1024.0 * 1024.0));
         }
-    }
-
-    private String getCurrentUserLanguage() {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.getPrincipal() instanceof SecurityUserDetails user) {
-                return settingPreferenceRepository.findByUserId(user.getUserId())
-                        .map(com.sep.realvista.domain.user.preference.SettingPreference::getPreferredLanguage)
-                        .orElse("vi");
-            }
-        } catch (Exception e) {
-            log.warn("Failed to get current user language, defaulting to 'vi': {}", e.getMessage());
-        }
-        return "vi";
     }
 }
