@@ -21,7 +21,7 @@ import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.domain.user.preference.SettingPreference;
-import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.domain.user.role.Role;
 import com.sep.realvista.domain.user.role.RoleCode;
 import com.sep.realvista.domain.user.role.RoleRepository;
@@ -176,12 +176,16 @@ public class UserApplicationService {
         User savedUser = userRepository.save(user);
         log.info("Google user created successfully with ID: {}", savedUser.getUserId());
 
-        // 1. Assign default BUYER Role
-        Role role = roleRepository.findByRoleCode(RoleCode.BUYER)
+        // 1. Assign default BUYER and TENANT roles
+        Role buyerRole = roleRepository.findByRoleCode(RoleCode.BUYER)
                 .orElseThrow(() -> new BusinessConflictException("Role not found: BUYER", "ROLE_NOT_FOUND"));
-        
-        UserRole userRole = UserRole.create(savedUser, role);
-        userRoleRepository.save(userRole);
+        Role tenantRole = roleRepository.findByRoleCode(RoleCode.TENANT)
+                .orElseThrow(() -> new BusinessConflictException("Role not found: TENANT", "ROLE_NOT_FOUND"));
+
+        UserRole buyerUserRole = UserRole.create(savedUser, buyerRole);
+        UserRole tenantUserRole = UserRole.create(savedUser, tenantRole);
+        userRoleRepository.save(buyerUserRole);
+        userRoleRepository.save(tenantUserRole);
 
         // 2. Create default preferences
         SettingPreference preference = SettingPreference.builder()

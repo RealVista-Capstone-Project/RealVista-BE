@@ -16,7 +16,7 @@ import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
-import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
@@ -36,6 +36,7 @@ import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
+import com.sep.realvista.application.appointment.service.AppointmentApplicationService;
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.domain.user.UserRepository;
@@ -88,15 +89,16 @@ public class ListingApplicationService {
     private final CostBreakdownService costBreakdownService;
     private final BookmarkRepository bookmarkRepository;
     private final ListingAnalyticsService listingAnalyticsService;
+    private final SettingPreferenceRepository settingPreferenceRepository;
+    private final com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
     private final NotificationApplicationService notificationApplicationService;
+    private final AppointmentApplicationService appointmentApplicationService;
     private final UserRepository userRepository;
     // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
     // ensuring @Cacheable on getCachedListingDetail is actually triggered.
     @Lazy
     @Autowired
     private ListingApplicationService self;
-
-    private final SettingPreferenceRepository settingPreferenceRepository;
 
     /**
      * Verifies if a user can modify a listing.
@@ -148,18 +150,21 @@ public class ListingApplicationService {
      * @throws ResourceNotFoundException if listing not found
      */
     @Transactional(readOnly = true)
-    public ListingDetailResponse getListingDetail(UUID listingId, UUID userId) {
+    public ListingDetailResponse getListingDetail(UUID listingId, UUID userId, boolean recordView) {
         // Route through self (proxy) so @Cacheable on getCachedListingDetail fires correctly
         ListingDetailResponse response = self.getCachedListingDetail(listingId);
-        // Set is_favorite based on current user (not cached)
         if (userId != null) {
             boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
             response.setIsFavorite(isFavorite);
-            // Record view for analytics (async - does not slow down response)
-            listingAnalyticsService.recordView(listingId, userId);
         } else {
             response.setIsFavorite(false);
         }
+
+        // Record view for analytics (async - does not slow down response)
+        if (recordView) {
+            listingAnalyticsService.recordView(listingId, userId);
+        }
+
         return response;
     }
 
@@ -239,7 +244,7 @@ public class ListingApplicationService {
      * @throws ResourceNotFoundException if listing not found
      */
     @Transactional(readOnly = true)
-    public ListingDetailResponse getListingBySlug(String slug, UUID userId) {
+    public ListingDetailResponse getListingBySlug(String slug, UUID userId, boolean recordView) {
         log.info("Fetching listing detail for slug: {}", slug);
         // Find listing by slug (not cached, lightweight operation)
         Listing listing = listingRepository.findBySlug(slug)
@@ -248,7 +253,7 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing with slug: " + slug);
                 });
         // Delegate to getListingDetail which handles caching by listingId
-        return getListingDetail(listing.getListingId(), userId);
+        return getListingDetail(listing.getListingId(), userId, recordView);
     }
 
     /**
@@ -1000,6 +1005,9 @@ public class ListingApplicationService {
         listing.unpublish();
         Listing updatedListing = listingRepository.save(listing);
 
+        // Notify bookers about temporary unpublishing
+        appointmentApplicationService.notifyUnpublishedListing(updatedListing);
+
         log.info("Successfully unpublished listing ID: {}", listingId);
 
         return listingMapper.toListingResponse(updatedListing);
@@ -1026,7 +1034,11 @@ public class ListingApplicationService {
 
         listing.markAsSold();
         
-        // Synchronize all other listings and the property
+        // 1. Cancel all active appointments
+        String reason = "Bất động sản không còn trống (đã bán/cho thuê).";
+        appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
+
+        // 2. Synchronize all other listings and the property
         closeAllListingsAndProperty(listing, PropertyStatus.SOLD);
 
         Listing updatedListing = listingRepository.save(listing);
@@ -1046,7 +1058,11 @@ public class ListingApplicationService {
 
         listing.markAsRented();
 
-        // Synchronize all other listings and the property
+        // 1. Cancel all active appointments
+        String reason = "Bất động sản không còn trống (đã bán/cho thuê).";
+        appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
+
+        // 2. Synchronize all other listings and the property
         closeAllListingsAndProperty(listing, PropertyStatus.RENTED);
 
         Listing updatedListing = listingRepository.save(listing);
@@ -1097,6 +1113,11 @@ public class ListingApplicationService {
                     l.markAsRented();
                 }
                 listingRepository.save(l);
+
+                // Trigger immediate appointment cancellation for closed listings
+                String cancellationReason = "Property no longer available (sold/rented).";
+                appointmentApplicationService.cancelActiveAppointmentsByListingId(
+                        l.getListingId(), property.getOwnerId(), cancellationReason);
             }
         }
 
@@ -1109,48 +1130,42 @@ public class ListingApplicationService {
         log.info("Starting closing notifications for property {} - Status: {} | Recipients: {}",
                 property.getPropertyId(), status, userIds.size());
 
-        String event = status == PropertyStatus.SOLD ? "sold" : "rented";
         EventType eventType = status == PropertyStatus.SOLD
                 ? EventType.LISTING_SOLD : EventType.LISTING_RENTED;
 
-        String title = String.format("Property at %s has been %s",
-                property.getStreetAddress(), event);
-        String baseMessage = String.format("The property at %s has been officially marked as %s. "
-                + "Any related active listings have been closed.",
-                property.getStreetAddress(), event.toUpperCase());
-
         for (UUID userId : userIds) {
             try {
-                String notificationMessage = baseMessage;
-                // Custom message for the property owner
-                if (userId.equals(property.getOwnerId())) {
-                    if (!triggeringListing.getUserId().equals(property.getOwnerId())) {
-                        notificationMessage = String.format("The property at %s has been successfully %s "
-                                + "by your agent. Please remember to review and update the transaction "
-                                + "status with the respective agent.",
-                                property.getStreetAddress(), event);
-                    } else {
-                        notificationMessage = String.format("Your property at %s has been officially marked as %s. "
-                                + "Any related active listings have been closed.",
-                                property.getStreetAddress(), event.toUpperCase());
-                    }
-                }
+                String lang = getLanguageForUser(userId);
+                String title = notificationMessageService.getMessage(
+                        status == PropertyStatus.SOLD ? "PROPERTY_SOLD_TITLE" : "PROPERTY_RENTED_TITLE", lang);
+                String message = notificationMessageService.getMessage(
+                        status == PropertyStatus.SOLD ? "PROPERTY_SOLD_MESSAGE" : "PROPERTY_RENTED_MESSAGE", 
+                        lang, property.getStreetAddress());
 
-                final String finalMessage = notificationMessage;
-                userRepository.findById(userId).ifPresent(user -> notificationApplicationService
-                        .sendNotification(SendNotificationRequest.builder()
-                        .userId(user.getUserId())
-                        .userEmail(user.getEmail().getValue())
-                        .title(title)
-                        .message(finalMessage)
-                        .eventType(eventType)
-                        .entityType(EntityType.PROPERTY)
-                        .entityId(property.getPropertyId())
-                        .build()));
+                userRepository.findById(userId).ifPresent(user -> {
+                    notificationApplicationService.sendNotification(SendNotificationRequest.builder()
+                            .userId(user.getUserId())
+                            .userEmail(user.getEmail().getValue())
+                            .title(title)
+                            .message(message)
+                            .eventType(eventType)
+                            .entityType(EntityType.PROPERTY)
+                            .entityId(property.getPropertyId())
+                            .build());
+                });
             } catch (Exception e) {
                 log.error("Failed to send closing notification to user {}: {}",
                         userId, e.getMessage());
             }
         }
+    }
+
+    private String getLanguageForUser(UUID userId) {
+        if (userId == null) {
+            return "vi";
+        }
+        return settingPreferenceRepository.findByUserId(userId)
+                .map(com.sep.realvista.domain.user.preference.SettingPreference::getPreferredLanguage)
+                .orElse("vi");
     }
 }

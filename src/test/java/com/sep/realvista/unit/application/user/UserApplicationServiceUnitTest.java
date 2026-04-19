@@ -11,7 +11,7 @@ import com.sep.realvista.domain.profile.repository.CustomerProfileRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import com.sep.realvista.domain.user.UserRepository;
-import com.sep.realvista.domain.user.preference.repository.SettingPreferenceRepository;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.domain.user.role.Role;
 import com.sep.realvista.domain.user.role.RoleCode;
 import com.sep.realvista.domain.user.role.RoleRepository;

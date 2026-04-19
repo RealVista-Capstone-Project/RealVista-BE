@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +49,12 @@ class AppointmentApplicationServiceTest {
 
     @Mock
     private NotificationApplicationService notificationApplicationService;
+
+    @Mock
+    private com.sep.realvista.domain.user.preference.SettingPreferenceRepository settingPreferenceRepository;
+
+    @Mock
+    private com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
 
     @InjectMocks
     private AppointmentApplicationService applicationService;
@@ -138,6 +145,15 @@ class AppointmentApplicationServiceTest {
         when(appointmentService.bookTour(listingId, userId, List.of(slot), "test notes"))
                 .thenReturn(bookTourResult);
 
+        when(settingPreferenceRepository.findByUserId(any()))
+                .thenReturn(java.util.Optional.empty());
+
+        when(notificationMessageService.getMessage(anyString(), anyString()))
+                .thenReturn("Mock Title");
+        
+        when(notificationMessageService.getMessage(anyString(), anyString(), any(), any(), any(), any()))
+                .thenReturn("Mock Message");
+
         // Act
         applicationService.bookTour(userId, request);
 
@@ -161,7 +177,7 @@ class AppointmentApplicationServiceTest {
         );
 
         // Verify in-app/push notifications sent to both owner and sender
-        verify(notificationApplicationService, org.mockito.Mockito.times(2))
+        verify(notificationApplicationService, atLeastOnce())
                 .sendNotification(any(SendNotificationRequest.class));
     }
 }

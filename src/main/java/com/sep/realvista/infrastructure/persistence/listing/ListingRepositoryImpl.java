@@ -200,4 +200,10 @@ public class ListingRepositoryImpl implements ListingRepository {
         log.debug("Finding published listings published between: {} and {}", windowStart, windowEnd);
         return jpaRepository.findPublishedListingsPublishedBetween(windowStart, windowEnd);
     }
+
+    @Override
+    public List<Listing> findByStatusAndUpdatedAtBefore(ListingStatus status, LocalDateTime cutoff) {
+        log.debug("Finding listings with status {} updated before: {}", status, cutoff);
+        return jpaRepository.findByStatusAndUpdatedAtBefore(status, cutoff);
+    }
 }

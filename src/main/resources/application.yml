@@ -205,16 +205,16 @@ docusign:
 # Values in .env (PAYOS_CLIENT_ID, etc.) override only when referenced below with ${...}.
 payment:
   payos:
-    client-id: ${PAYOS_CLIENT_ID}
-    api-key: ${PAYOS_API_KEY}
-    checksum-key: ${PAYOS_CHECKSUM_KEY}
+    client-id: ${PAYOS_CLIENT_ID:}
+    api-key: ${PAYOS_API_KEY:}
+    checksum-key: ${PAYOS_CHECKSUM_KEY:}
     api-url: ${PAYOS_API_URL:https://api-merchant.payos.vn}
   vnpay:
-    tmn-code: ${VNPAY_TMN_CODE}
-    hash-secret: ${VNPAY_HASH_SECRET}
+    tmn-code: ${VNPAY_TMN_CODE:}
+    hash-secret: ${VNPAY_HASH_SECRET:}
     pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
     # Must match Return URL on VNPay merchant (register this exact URL, including query).
-    return-url: "${VNPAY_RETURN_URL:http://localhost:3000/vi/subscribe}"
+    return-url: "${VNPAY_RETURN_URL:}"
 
 # ── RabbitMQ STOMP Relay Configuration ──
 # Used by WebSocketConfig.configureMessageBroker (STOMP broker relay).
@@ -224,3 +224,11 @@ rabbitmq:
     port: ${RABBITMQ_STOMP_PORT:61613}
     login: ${RABBITMQ_STOMP_LOGIN:guest}
     passcode: ${RABBITMQ_STOMP_PASSCODE:guest}
+
+# Email provider selection: smtp (default) or sendgrid
+email:
+  provider: ${EMAIL_PROVIDER:smtp}
+
+# SendGrid configuration (required when email.provider=sendgrid)
+sendgrid:
+  api-key: ${SENDGRID_API_KEY:}

@@ -10,5 +10,7 @@ public interface SettingPreferenceJpaRepository extends JpaRepository<SettingPre
 
     Optional<SettingPreference> findByUserId(UUID userId);
 
+    java.util.List<SettingPreference> findByUserIdIn(java.util.Collection<UUID> userIds);
+
     boolean existsByUserId(UUID userId);
 }
