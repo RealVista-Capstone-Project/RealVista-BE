@@ -571,8 +571,11 @@ public class ListingApplicationService {
             if (property.getStatus() != PropertyStatus.AVAILABLE) {
                 log.error("Cannot publish listing on create: Associated property {} is in status {}",
                         property.getPropertyId(), property.getStatus());
-                throw new BusinessConflictException("Associated property is not in active state (status: "
-                        + property.getStatus() + ")", "ERROR_PROPERTY_NOT_AVAILABLE");
+                throw new BusinessConflictException(
+                        "Associated property is not in active state (status: " + property.getStatus() + ")", 
+                        "ERROR_PROPERTY_NOT_AVAILABLE",
+                        new Object[]{property.getStatus()}
+                );
             }
 
             // 2. Verify no other published listing of same type exists for this user/property

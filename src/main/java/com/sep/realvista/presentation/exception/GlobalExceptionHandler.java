@@ -74,7 +74,7 @@ public class GlobalExceptionHandler {
         log.error("Business conflict: {}", ex.getMessage());
         String localizedMsg;
         try {
-            localizedMsg = msg(ex.getErrorCode());
+            localizedMsg = msg(ex.getErrorCode(), ex.getArgs() != null ? ex.getArgs() : new Object[0]);
         } catch (Exception e) {
             localizedMsg = ex.getMessage();
         }
@@ -98,7 +98,7 @@ public class GlobalExceptionHandler {
         log.error("Domain exception: {}", ex.getMessage());
         String localizedMsg;
         try {
-            localizedMsg = msg(ex.getErrorCode());
+            localizedMsg = msg(ex.getErrorCode(), ex.getArgs() != null ? ex.getArgs() : new Object[0]);
         } catch (Exception e) {
             localizedMsg = ex.getMessage();
         }

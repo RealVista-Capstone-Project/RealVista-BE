@@ -253,7 +253,8 @@ public class UserApplicationService {
                     if (!existing.getUserId().equals(userId)) {
                         throw new BusinessConflictException(
                                 "Email already exists: " + normalizedEmail,
-                                "ERROR_EMAIL_ALREADY_EXISTS"
+                                "ERROR_EMAIL_ALREADY_EXISTS",
+                                new Object[]{normalizedEmail}
                         );
                     }
                 });
@@ -448,7 +449,8 @@ public class UserApplicationService {
                 if (!existing.getUserId().equals(userId)) {
                     throw new BusinessConflictException(
                             "Email already exists: " + normalizedEmail,
-                            "ERROR_EMAIL_ALREADY_EXISTS"
+                            "ERROR_EMAIL_ALREADY_EXISTS",
+                            new Object[]{normalizedEmail}
                     );
                 }
             });

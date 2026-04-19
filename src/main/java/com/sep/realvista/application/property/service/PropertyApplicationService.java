@@ -673,20 +673,22 @@ public class PropertyApplicationService {
         if (systemStatuses.contains(property.getStatus())) {
             throw new DomainException(
                     "Cannot manually change status of a property with system-managed status: "
-                    + property.getStatus(), "ERROR_PROPERTY_INVALID_STATUS_TRANSITION");
+                    + property.getStatus(), "ERROR_PROPERTY_INVALID_STATUS_TRANSITION",
+                    new Object[]{property.getStatus(), status});
         }
 
         PropertyStatus newStatus;
         try {
             newStatus = PropertyStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new DomainException("Invalid property status: " + status, "ERROR_PROPERTY_INVALID_STATUS");
+            throw new DomainException("Invalid property status: " + status,
+                    "ERROR_PROPERTY_INVALID_STATUS", new Object[]{status});
         }
 
         if (systemStatuses.contains(newStatus)) {
             throw new DomainException(
                     "Cannot manually set a property to system-managed status: " + newStatus,
-                    "ERROR_PROPERTY_INVALID_STATUS");
+                    "ERROR_PROPERTY_INVALID_STATUS", new Object[]{newStatus});
         }
 
         property.updateStatus(newStatus);
