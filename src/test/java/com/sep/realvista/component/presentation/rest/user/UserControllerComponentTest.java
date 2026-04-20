@@ -263,5 +263,27 @@ class UserControllerComponentTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("SUSPENDED"));
     }
+
+    @Test
+    @DisplayName("Should return 200 OK when banning user")
+    void banUser_shouldReturnOk() throws Exception {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        UserStatus status = UserStatus.BANNED;
+        UserResponse bannedResponse = UserResponse.builder()
+                .userId(userId)
+                .email("banned@example.com")
+                .status(status)
+                .build();
+
+        when(userApplicationService.banUser(userId)).thenReturn(bannedResponse);
+
+        // Act & Assert
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/users/{userId}/ban", userId))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("BANNED"));
+    }
 }
 

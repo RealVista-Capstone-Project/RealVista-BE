@@ -31,6 +31,8 @@ import com.sep.realvista.domain.engagement.EngagementStatus;
 import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
+import com.sep.realvista.domain.billing.subscription.UserFeatureSubscription;
+import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubscriptionRepository;
 import com.sep.realvista.infrastructure.security.PasswordService;
 import org.springframework.data.domain.PageImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -88,6 +90,8 @@ public class UserApplicationServiceUnitTest {
     private EngagementRepository engagementRepository;
     @Mock
     private AgentProposalRepository agentProposalRepository;
+    @Mock
+    private UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
 
     @InjectMocks
     private UserApplicationService userApplicationService;
@@ -215,5 +219,71 @@ public class UserApplicationServiceUnitTest {
         
         verify(proposal).setAsDraft();
         verify(agentProposalRepository).save(proposal);
+    }
+
+    @Test
+    void banUser_shouldCascadeCleanup() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        User user = spy(User.builder().userId(userId).status(com.sep.realvista.domain.user.UserStatus.ACTIVE).build());
+
+        UUID propertyId = UUID.randomUUID();
+        Property property = spy(Property.builder().propertyId(propertyId).build());
+
+        UUID listingId = UUID.randomUUID();
+        Listing listing = spy(Listing.builder().listingId(listingId).status(com.sep.realvista.domain.listing.ListingStatus.PUBLISHED).build());
+
+        Appointment appointment = spy(Appointment.builder().build());
+        ListingBoost boost = spy(ListingBoost.builder().build());
+        Engagement engagement = spy(Engagement.builder().status(EngagementStatus.SUBMITTED).build());
+        AgentProposal proposal = spy(AgentProposal.builder()
+                .status(com.sep.realvista.domain.engagement.proposal.AgentProposalStatus.ACTIVE).build());
+        UserFeatureSubscription subscription = spy(UserFeatureSubscription.builder().build());
+
+        when(userDomainService.getUserOrThrow(userId)).thenReturn(user);
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        when(propertyRepository.findByOwnerId(userId)).thenReturn(List.of(property));
+        when(listingRepository.findByUserIdOrPropertyOwnerId(userId)).thenReturn(List.of(listing));
+
+        when(appointmentRepository.findByListingIdInAndStatusIn(anyList(), anyList()))
+                .thenReturn(List.of(appointment));
+        when(listingBoostRepository.findActiveByListingIds(anyList()))
+                .thenReturn(List.of(boost));
+
+        when(engagementRepository.findByInitiatorId(userId)).thenReturn(List.of(engagement));
+        when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList()))
+                .thenReturn(Collections.emptyList());
+
+        when(agentProposalRepository.findByUserId(eq(userId), any())).thenReturn(new PageImpl<>(List.of(proposal)));
+        when(userFeatureSubscriptionRepository.findAllActiveByUserId(userId)).thenReturn(List.of(subscription));
+
+        // Act
+        userApplicationService.banUser(userId);
+
+        // Assert
+        verify(user).ban();
+        verify(userRepository).save(user);
+
+        verify(property).updateStatus(PropertyStatus.DRAFT);
+        verify(propertyRepository).saveAll(anyList());
+
+        verify(listing).unpublish();
+        verify(listingRepository).saveAll(anyList());
+
+        verify(appointment).cancel(eq(userId), eq("Owner account banned"));
+        verify(appointmentRepository).saveAll(anyList());
+
+        verify(boost).cancel();
+        verify(listingBoostRepository).save(boost);
+
+        verify(engagement).cancel(eq("User account banned"));
+        verify(engagementRepository).save(engagement);
+
+        verify(proposal).setAsDraft();
+        verify(agentProposalRepository).save(proposal);
+
+        verify(subscription).cancel();
+        verify(userFeatureSubscriptionRepository).save(subscription);
     }
 }

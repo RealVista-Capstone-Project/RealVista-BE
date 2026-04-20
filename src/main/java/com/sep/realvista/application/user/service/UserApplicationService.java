@@ -44,6 +44,7 @@ import com.sep.realvista.domain.engagement.EngagementStatus;
 import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
+import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubscriptionRepository;
 import com.sep.realvista.infrastructure.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -92,6 +93,7 @@ public class UserApplicationService {
     private final ListingBoostRepository listingBoostRepository;
     private final EngagementRepository engagementRepository;
     private final AgentProposalRepository agentProposalRepository;
+    private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
 
     /**
      * Get paginated list of users with search and filters (Admin only).
@@ -347,6 +349,12 @@ public class UserApplicationService {
         log.info("Activating user ID: {}", userId);
 
         User user = userDomainService.getUserOrThrow(userId);
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new BusinessConflictException(
+                    "Không thể kích hoạt tài khoản đã bị khóa vĩnh viễn",
+                    "CANNOT_ACTIVATE_BANNED_USER"
+            );
+        }
         user.activate();
 
         User activatedUser = userRepository.save(user);
@@ -363,9 +371,39 @@ public class UserApplicationService {
         log.info("Suspending user ID and cascading cleanup: {}", userId);
 
         User user = userDomainService.getUserOrThrow(userId);
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new BusinessConflictException(
+                    "Không thể đình chỉ tài khoản đã bị khóa vĩnh viễn",
+                    "CANNOT_SUSPEND_BANNED_USER"
+            );
+        }
         user.suspend();
         User suspendedUser = userRepository.save(user);
 
+        performCascadingCleanup(userId, false);
+
+        log.info("User {} suspension cascade completed successfully", userId);
+        return userMapper.toResponse(suspendedUser);
+    }
+
+    /**
+     * Ban user account permanently with cascading cleanup of all associated entities.
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public UserResponse banUser(UUID userId) {
+        log.info("Banning user ID and cascading cleanup: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+        user.ban();
+        User bannedUser = userRepository.save(user);
+
+        performCascadingCleanup(userId, true);
+
+        log.info("User {} ban cascade completed successfully", userId);
+        return userMapper.toResponse(bannedUser);
+    }
+
+    private void performCascadingCleanup(UUID userId, boolean isBan) {
         // 1. Fetch properties owned by user
         List<Property> properties = propertyRepository.findByOwnerId(userId);
         List<UUID> propertyIds = properties.stream().map(Property::getPropertyId).collect(Collectors.toList());
@@ -376,14 +414,14 @@ public class UserApplicationService {
 
         // 3. Update properties to DRAFT
         if (!properties.isEmpty()) {
-            log.info("Suspension cascade: moving {} properties to DRAFT for user {}", properties.size(), userId);
+            log.info("Cleanup cascade: moving {} properties to DRAFT for user {}", properties.size(), userId);
             properties.forEach(p -> p.updateStatus(PropertyStatus.DRAFT));
             propertyRepository.saveAll(properties);
         }
 
         // 4. Update listings to DRAFT (unpublish)
         if (!listings.isEmpty()) {
-            log.info("Suspension cascade: unpublishing {} listings for user {}", listings.size(), userId);
+            log.info("Cleanup cascade: unpublishing {} listings for user {}", listings.size(), userId);
             listings.forEach(Listing::unpublish);
             listingRepository.saveAll(listings);
         }
@@ -396,15 +434,15 @@ public class UserApplicationService {
                     List.of(AppointmentStatus.PENDING, AppointmentStatus.ACCEPTED)
             );
             if (!appointments.isEmpty()) {
-                log.info("Suspension cascade: cancelling {} appointments", appointments.size());
-                appointments.forEach(a -> a.cancel(userId, "Owner account suspended"));
+                log.info("Cleanup cascade: cancelling {} appointments", appointments.size());
+                appointments.forEach(a -> a.cancel(userId, isBan ? "Owner account banned" : "Owner account suspended"));
                 appointmentRepository.saveAll(appointments);
             }
 
             // Cancel ListingBoosts
             List<ListingBoost> boosts = listingBoostRepository.findActiveByListingIds(listingIds);
             if (!boosts.isEmpty()) {
-                log.info("Suspension cascade: cancelling {} listing boosts", boosts.size());
+                log.info("Cleanup cascade: cancelling {} listing boosts", boosts.size());
                 boosts.forEach(ListingBoost::cancel);
                 boosts.forEach(listingBoostRepository::save);
             }
@@ -423,8 +461,8 @@ public class UserApplicationService {
                 .toList();
 
         if (!toCancel.isEmpty()) {
-            log.info("Suspension cascade: cancelling {} pending/accepted engagements", toCancel.size());
-            toCancel.forEach(e -> e.cancel("User account suspended"));
+            log.info("Cleanup cascade: cancelling {} pending/accepted engagements", toCancel.size());
+            toCancel.forEach(e -> e.cancel(isBan ? "User account banned" : "User account suspended"));
             toCancel.forEach(engagementRepository::save);
         }
 
@@ -435,13 +473,22 @@ public class UserApplicationService {
                 .filter(p -> p.getStatus() == com.sep.realvista.domain.engagement.proposal.AgentProposalStatus.ACTIVE)
                 .toList();
         if (!activeProposals.isEmpty()) {
-            log.info("Suspension cascade: reverting {} agent proposal templates to DRAFT", activeProposals.size());
+            log.info("Cleanup cascade: reverting {} agent proposal templates to DRAFT", activeProposals.size());
             activeProposals.forEach(AgentProposal::setAsDraft);
             activeProposals.forEach(agentProposalRepository::save);
         }
 
-        log.info("User {} suspension cascade completed successfully", userId);
-        return userMapper.toResponse(suspendedUser);
+        // 8. Cancel Subscriptions (Only for Ban)
+        if (isBan) {
+            List<com.sep.realvista.domain.billing.subscription.UserFeatureSubscription> activeSubs =
+                    userFeatureSubscriptionRepository.findAllActiveByUserId(userId);
+            if (!activeSubs.isEmpty()) {
+                log.info("Cleanup cascade: cancelling {} active subscriptions for banned user {}",
+                        activeSubs.size(), userId);
+                activeSubs.forEach(com.sep.realvista.domain.billing.subscription.UserFeatureSubscription::cancel);
+                activeSubs.forEach(userFeatureSubscriptionRepository::save);
+            }
+        }
     }
 
     /**

@@ -203,7 +203,10 @@ public class AuthService {
     private void checkUserStatus(User user) {
         if (user.getStatus() == UserStatus.SUSPENDED) {
             log.warn("Login attempt for suspended user: {}", user.getEmail().getValue());
-            throw new AccountStatusException("Your account has been suspended. Please contact support.", "ACCOUNT_SUSPENDED");
+            throw new AccountStatusException(
+                    "Your account has been suspended. Please contact support.",
+                    "ACCOUNT_SUSPENDED"
+            );
         }
         if (user.getStatus() == UserStatus.BANNED) {
             log.warn("Login attempt for banned user: {}", user.getEmail().getValue());

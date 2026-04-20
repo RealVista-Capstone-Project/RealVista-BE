@@ -165,6 +165,19 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("User suspended successfully", user));
     }
 
+    @PutMapping("/{id}/ban")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Ban user", description = "Permanently bans a user account (Admin only)")
+    public ResponseEntity<ApiResponse<UserResponse>> banUser(@PathVariable UUID id) {
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        log.info("Banning user - traceId: {}, userId: {}", traceId, id);
+
+        UserResponse user = userApplicationService.banUser(id);
+        return ResponseEntity.ok(ApiResponse.success("User banned successfully", user));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
     @Operation(summary = "Delete user", description = "Soft deletes a user account")
