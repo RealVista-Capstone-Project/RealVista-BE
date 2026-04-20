@@ -422,7 +422,9 @@ public class UserApplicationService {
         // 4. Update listings to DRAFT (unpublish)
         if (!listings.isEmpty()) {
             log.info("Cleanup cascade: unpublishing {} listings for user {}", listings.size(), userId);
-            listings.forEach(Listing::unpublish);
+            listings.stream()
+                    .filter(Listing::isActive)
+                    .forEach(Listing::unpublish);
             listingRepository.saveAll(listings);
         }
 

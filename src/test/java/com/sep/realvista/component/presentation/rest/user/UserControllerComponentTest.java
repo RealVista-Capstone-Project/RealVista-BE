@@ -285,5 +285,25 @@ class UserControllerComponentTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("BANNED"));
     }
+
+    /**
+     * Test Case: Suspend user when service throws IllegalStateException
+     * Expected: 400 Bad Request with ILLEGAL_STATE error code
+     */
+    @Test
+    @DisplayName("Should return 400 Bad Request when suspension fails due to illegal state")
+    void suspendUser_whenIllegalState_shouldReturnBadRequest() throws Exception {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        when(userApplicationService.suspendUser(userId))
+                .thenThrow(new IllegalStateException("Only published listings can be unpublished"));
+
+        // Act & Assert
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/users/{userId}/suspend", userId))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error_code").value("ILLEGAL_STATE"))
+                .andExpect(jsonPath("$.message").value("Only published listings can be unpublished"));
+    }
 }
 

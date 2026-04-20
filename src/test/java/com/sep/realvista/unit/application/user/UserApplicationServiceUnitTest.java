@@ -222,6 +222,40 @@ public class UserApplicationServiceUnitTest {
     }
 
     @Test
+    void suspendUser_withMixedListingStatuses_shouldOnlyUnpublishPublishedOnes() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        User user = spy(User.builder().userId(userId).status(com.sep.realvista.domain.user.UserStatus.ACTIVE).build());
+
+        // One published listing
+        Listing publishedListing = spy(Listing.builder()
+                .listingId(UUID.randomUUID())
+                .status(com.sep.realvista.domain.listing.ListingStatus.PUBLISHED)
+                .build());
+        // One draft listing (should be ignored by Listing::unpublish)
+        Listing draftListing = spy(Listing.builder()
+                .listingId(UUID.randomUUID())
+                .status(com.sep.realvista.domain.listing.ListingStatus.DRAFT)
+                .build());
+
+        when(userDomainService.getUserOrThrow(userId)).thenReturn(user);
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(propertyRepository.findByOwnerId(userId)).thenReturn(Collections.emptyList());
+        when(listingRepository.findByUserIdOrPropertyOwnerId(userId)).thenReturn(List.of(publishedListing, draftListing));
+        when(engagementRepository.findByInitiatorId(userId)).thenReturn(Collections.emptyList());
+        when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList())).thenReturn(Collections.emptyList());
+        when(agentProposalRepository.findByUserId(eq(userId), any())).thenReturn(new PageImpl<>(Collections.emptyList()));
+
+        // Act
+        userApplicationService.suspendUser(userId);
+
+        // Assert
+        verify(publishedListing, times(1)).unpublish();
+        verify(draftListing, never()).unpublish();
+        verify(listingRepository).saveAll(anyList());
+    }
+
+    @Test
     void banUser_shouldCascadeCleanup() {
         // Arrange
         UUID userId = UUID.randomUUID();
