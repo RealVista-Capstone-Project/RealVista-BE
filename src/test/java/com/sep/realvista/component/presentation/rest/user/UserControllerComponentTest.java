@@ -238,5 +238,30 @@ class UserControllerComponentTest {
                 .andExpect(jsonPath("$.data.content[0].email").value("test@example.com"))
                 .andExpect(jsonPath("$.data.content[0].full_name").value("John Doe"));
     }
+    /**
+     * Test Case: Suspend user
+     * Expected: 200 OK with suspended user data
+     */
+    @Test
+    @DisplayName("Should return 200 OK when suspending user")
+    void suspendUser_shouldReturnOk() throws Exception {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        UserStatus status = UserStatus.SUSPENDED;
+        UserResponse suspendedResponse = UserResponse.builder()
+                .userId(userId)
+                .email("suspended@example.com")
+                .status(status)
+                .build();
+
+        when(userApplicationService.suspendUser(userId)).thenReturn(suspendedResponse);
+
+        // Act & Assert
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/users/{userId}/suspend", userId))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("SUSPENDED"));
+    }
 }
 

@@ -29,6 +29,21 @@ import com.sep.realvista.domain.user.role.RoleCode;
 import com.sep.realvista.domain.user.role.RoleRepository;
 import com.sep.realvista.domain.user.role.UserRole;
 import com.sep.realvista.domain.user.role.UserRoleRepository;
+import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.PropertyStatus;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
+import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.listing.appointment.Appointment;
+import com.sep.realvista.domain.listing.appointment.AppointmentStatus;
+import com.sep.realvista.domain.listing.repository.AppointmentRepository;
+import com.sep.realvista.domain.billing.boost.ListingBoost;
+import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
+import com.sep.realvista.domain.engagement.Engagement;
+import com.sep.realvista.domain.engagement.EngagementStatus;
+import com.sep.realvista.domain.engagement.EngagementRepository;
+import com.sep.realvista.domain.engagement.proposal.AgentProposal;
+import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
 import com.sep.realvista.infrastructure.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +59,10 @@ import java.util.Map;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.stream.Collectors;
 
 /**
  * Application Service for User operations.
@@ -67,6 +86,12 @@ public class UserApplicationService {
     private final EmailService emailService;
     private final OtpService otpService;
     private final com.sep.realvista.application.billing.service.BillingApplicationService billingApplicationService;
+    private final ListingRepository listingRepository;
+    private final PropertyRepository propertyRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final ListingBoostRepository listingBoostRepository;
+    private final EngagementRepository engagementRepository;
+    private final AgentProposalRepository agentProposalRepository;
 
     /**
      * Get paginated list of users with search and filters (Admin only).
@@ -85,8 +110,6 @@ public class UserApplicationService {
 
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final String EMAIL_OTP_PREFIX = "email-otp:";
-    private static final String EMAIL_OTP_TARGET_PREFIX = "email-otp-target:";
-
     /**
      * Create a new user.
      */
@@ -333,18 +356,91 @@ public class UserApplicationService {
     }
 
     /**
-     * Suspend user account.
+     * Suspend user account with cascading cleanup of their properties and listings.
      */
     @CacheEvict(value = "users", key = "#userId")
     public UserResponse suspendUser(UUID userId) {
-        log.info("Suspending user ID: {}", userId);
+        log.info("Suspending user ID and cascading cleanup: {}", userId);
 
         User user = userDomainService.getUserOrThrow(userId);
         user.suspend();
-
         User suspendedUser = userRepository.save(user);
-        log.info("User suspended successfully: {}", userId);
 
+        // 1. Fetch properties owned by user
+        List<Property> properties = propertyRepository.findByOwnerId(userId);
+        List<UUID> propertyIds = properties.stream().map(Property::getPropertyId).collect(Collectors.toList());
+
+        // 2. Fetch listings created by user or for user's properties
+        List<Listing> listings = listingRepository.findByUserIdOrPropertyOwnerId(userId);
+        List<UUID> listingIds = listings.stream().map(Listing::getListingId).collect(Collectors.toList());
+
+        // 3. Update properties to DRAFT
+        if (!properties.isEmpty()) {
+            log.info("Suspension cascade: moving {} properties to DRAFT for user {}", properties.size(), userId);
+            properties.forEach(p -> p.updateStatus(PropertyStatus.DRAFT));
+            propertyRepository.saveAll(properties);
+        }
+
+        // 4. Update listings to DRAFT (unpublish)
+        if (!listings.isEmpty()) {
+            log.info("Suspension cascade: unpublishing {} listings for user {}", listings.size(), userId);
+            listings.forEach(Listing::unpublish);
+            listingRepository.saveAll(listings);
+        }
+
+        // 5. Cascade cleanup from listings
+        if (!listingIds.isEmpty()) {
+            // Cancel Appointments
+            List<Appointment> appointments = appointmentRepository.findByListingIdInAndStatusIn(
+                    listingIds,
+                    List.of(AppointmentStatus.PENDING, AppointmentStatus.ACCEPTED)
+            );
+            if (!appointments.isEmpty()) {
+                log.info("Suspension cascade: cancelling {} appointments", appointments.size());
+                appointments.forEach(a -> a.cancel(userId, "Owner account suspended"));
+                appointmentRepository.saveAll(appointments);
+            }
+
+            // Cancel ListingBoosts
+            List<ListingBoost> boosts = listingBoostRepository.findActiveByListingIds(listingIds);
+            if (!boosts.isEmpty()) {
+                log.info("Suspension cascade: cancelling {} listing boosts", boosts.size());
+                boosts.forEach(ListingBoost::cancel);
+                boosts.forEach(listingBoostRepository::save);
+            }
+        }
+
+        // 6. Cancel Engagements (linked to user OR drafted property/listing)
+        List<Engagement> initiatorEngagements = engagementRepository.findByInitiatorId(userId);
+        List<Engagement> relatedEngagements = engagementRepository
+                .findByListingIdInOrPropertyIdIn(listingIds, propertyIds);
+
+        Set<Engagement> allEngagements = new HashSet<>(initiatorEngagements);
+        allEngagements.addAll(relatedEngagements);
+
+        List<Engagement> toCancel = allEngagements.stream()
+                .filter(e -> e.getStatus() == EngagementStatus.SUBMITTED || e.getStatus() == EngagementStatus.ACCEPTED)
+                .toList();
+
+        if (!toCancel.isEmpty()) {
+            log.info("Suspension cascade: cancelling {} pending/accepted engagements", toCancel.size());
+            toCancel.forEach(e -> e.cancel("User account suspended"));
+            toCancel.forEach(engagementRepository::save);
+        }
+
+        // 7. Revert Agent Proposal Templates to DRAFT
+        List<AgentProposal> proposals = agentProposalRepository
+                .findByUserId(userId, org.springframework.data.domain.Pageable.unpaged()).getContent();
+        List<AgentProposal> activeProposals = proposals.stream()
+                .filter(p -> p.getStatus() == com.sep.realvista.domain.engagement.proposal.AgentProposalStatus.ACTIVE)
+                .toList();
+        if (!activeProposals.isEmpty()) {
+            log.info("Suspension cascade: reverting {} agent proposal templates to DRAFT", activeProposals.size());
+            activeProposals.forEach(AgentProposal::setAsDraft);
+            activeProposals.forEach(agentProposalRepository::save);
+        }
+
+        log.info("User {} suspension cascade completed successfully", userId);
         return userMapper.toResponse(suspendedUser);
     }
 

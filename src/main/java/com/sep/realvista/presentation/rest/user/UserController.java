@@ -95,6 +95,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
     @Operation(summary = "Get user by ID", description = "Retrieves user details by ID")
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();
