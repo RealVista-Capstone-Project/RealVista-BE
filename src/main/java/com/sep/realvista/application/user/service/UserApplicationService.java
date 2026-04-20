@@ -6,9 +6,11 @@ import com.sep.realvista.application.user.dto.ChangePasswordRequest;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UpdateMeRequest;
 import com.sep.realvista.application.user.dto.UpdateUserRequest;
+import com.sep.realvista.application.user.dto.UserFilterRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.dto.UserSearchResponse;
 import com.sep.realvista.application.user.mapper.UserMapper;
+import com.sep.realvista.infrastructure.persistence.user.UserSpecification;
 import com.sep.realvista.domain.agent.AgentProfile;
 import com.sep.realvista.domain.agent.repository.AgentProfileRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
@@ -32,6 +34,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +67,21 @@ public class UserApplicationService {
     private final EmailService emailService;
     private final OtpService otpService;
     private final com.sep.realvista.application.billing.service.BillingApplicationService billingApplicationService;
+
+    /**
+     * Get paginated list of users with search and filters (Admin only).
+     */
+    @Transactional(readOnly = true)
+    public Page<UserResponse> getPagedUsers(UserFilterRequest filter, Pageable pageable) {
+        log.info("Fetching paginated users with filter: {}", filter);
+        Specification<User> spec = UserSpecification.filterBy(
+                filter.getSearch(),
+                filter.getStatus(),
+                filter.getRole()
+        );
+        Page<User> users = userRepository.findAll(spec, pageable);
+        return users.map(userMapper::toResponse);
+    }
 
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final String EMAIL_OTP_PREFIX = "email-otp:";

@@ -2,6 +2,7 @@ package com.sep.realvista.component.presentation.rest.user;
 
 import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
+import com.sep.realvista.application.user.dto.UserFilterRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.user.UserStatus;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -208,6 +211,32 @@ class UserControllerComponentTest {
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error_code").value("VALIDATION_ERROR"));
+    }
+
+    /**
+     * Test Case: Get paginated users
+     * Expected: 200 OK with paged results
+     */
+    @Test
+    @DisplayName("Should return 200 OK when getting paginated users")
+    void getPagedUsers_shouldReturnPagedUsers() throws Exception {
+        // Arrange: Mock service behavior
+        java.util.List<UserResponse> users = java.util.List.of(mockUserResponse);
+        org.springframework.data.domain.Page<UserResponse> pagedResponse = new PageImpl<>(users);
+        
+        when(userApplicationService.getPagedUsers(any(UserFilterRequest.class), any(Pageable.class)))
+                .thenReturn(pagedResponse);
+
+        // Act & Assert: Perform request and verify response
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/users")
+                        .param("search", "John")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].email").value("test@example.com"))
+                .andExpect(jsonPath("$.data.content[0].full_name").value("John Doe"));
     }
 }
 
