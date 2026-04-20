@@ -11,6 +11,8 @@ import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.UserStatus;
+import com.sep.realvista.domain.user.exception.AccountStatusException;
 import com.sep.realvista.domain.user.exception.UserNotFoundException;
 import com.sep.realvista.infrastructure.security.oauth2.GoogleTokenVerifier;
 import lombok.RequiredArgsConstructor;
@@ -57,15 +59,18 @@ public class AuthService {
         String identifier = loginByEmail ? request.getEmail() : request.getPhone();
         log.debug("Authenticating user with {}: {}", loginByEmail ? "email" : "phone", identifier);
 
-        // Step 1: Authenticate user credentials
-        Authentication authentication = authenticateUser(identifier, request.getPassword());
-
-        // Step 2: Retrieve user details for role mapping
+        // Step 1: Check if user exists and their account status BEFORE authentication
+        // This avoids password hashing for blocked accounts and returns specific error codes
         User user = loginByEmail
                 ? userRepository.findByEmailValue(identifier)
                         .orElseThrow(() -> new UserNotFoundException(identifier))
                 : userRepository.findByPhone(identifier)
                         .orElseThrow(() -> new UserNotFoundException(identifier));
+
+        checkUserStatus(user);
+
+        // Step 2: Authenticate user credentials
+        Authentication authentication = authenticateUser(identifier, request.getPassword());
 
         // Step 3: Generate JWT token with roles in claims
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
@@ -130,6 +135,9 @@ public class AuthService {
             // Step 3: Find or create user
             User user = findOrCreateGoogleUser(email, firstName, lastName, avatarUrl);
 
+            // Step 3.5: Check account status
+            checkUserStatus(user);
+
             // Step 4: Generate JWT token with roles in claims
             java.util.List<String> roles = user.getUserRoles().stream()
                     .filter(ur -> ur.getRole() != null)
@@ -189,6 +197,20 @@ public class AuthService {
         } catch (Exception e) {
             log.error("Authentication failed for identifier: {}", identifier, e);
             throw e;
+        }
+    }
+
+    private void checkUserStatus(User user) {
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            log.warn("Login attempt for suspended user: {}", user.getEmail().getValue());
+            throw new AccountStatusException(
+                    "Your account has been suspended. Please contact support.",
+                    "ACCOUNT_SUSPENDED"
+            );
+        }
+        if (user.getStatus() == UserStatus.BANNED) {
+            log.warn("Login attempt for banned user: {}", user.getEmail().getValue());
+            throw new AccountStatusException("Your account has been permanently banned.", "ACCOUNT_BANNED");
         }
     }
 }

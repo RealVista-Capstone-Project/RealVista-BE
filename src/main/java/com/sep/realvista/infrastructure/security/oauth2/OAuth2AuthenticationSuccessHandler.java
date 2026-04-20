@@ -2,6 +2,7 @@ package com.sep.realvista.infrastructure.security.oauth2;
 
 import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.infrastructure.constants.SecurityConstants;
 import jakarta.servlet.http.HttpServletRequest;
@@ -69,6 +70,20 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             // Find or create user and ensure roles are initialized
             User user = userApplicationService.processOAuth2User(email, firstName, lastName, avatarUrl);
+
+            // Check account status
+            if (user.getStatus() == UserStatus.SUSPENDED) {
+                log.warn("OAuth2 login attempt for suspended user: {}", email);
+                String errorUrl = buildErrorRedirectUrl(SecurityConstants.OAuth2.ERROR_ACCOUNT_SUSPENDED);
+                response.sendRedirect(errorUrl);
+                return;
+            }
+            if (user.getStatus() == UserStatus.BANNED) {
+                log.warn("OAuth2 login attempt for banned user: {}", email);
+                String errorUrl = buildErrorRedirectUrl(SecurityConstants.OAuth2.ERROR_ACCOUNT_BANNED);
+                response.sendRedirect(errorUrl);
+                return;
+            }
 
             // Extract roles from user
             List<String> roles = user.getUserRoles().stream()

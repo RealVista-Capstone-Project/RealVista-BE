@@ -5,6 +5,9 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.role.RoleCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -20,6 +23,11 @@ import java.util.UUID;
 public class UserRepositoryImpl implements UserRepository {
 
     private final UserJpaRepository jpaRepository;
+    
+    @Override
+    public Page<User> findAll(Specification<User> spec, Pageable pageable) {
+        return jpaRepository.findAll(spec, pageable);
+    }
 
     @Override
     public User save(User user) {

@@ -14,13 +14,9 @@ import java.util.UUID;
  */
 public interface EngagementRepository {
 
-    /**
-     * Saves an engagement.
-     *
-     * @param engagement the engagement to save
-     * @return the saved engagement
-     */
     Engagement save(Engagement engagement);
+
+    List<Engagement> saveAll(List<Engagement> engagements);
 
     /**
      * Finds an engagement by ID.
@@ -100,4 +96,13 @@ public interface EngagementRepository {
      * @return list of active engagements
      */
     List<Engagement> findActiveEngagementsForProperty(UUID propertyId);
+
+    /**
+     * Finds engagements associated with any of the listing IDs or property IDs.
+     *
+     * @param listingIds list of listing IDs
+     * @param propertyIds list of property IDs
+     * @return list of engagements
+     */
+    List<Engagement> findByListingIdInOrPropertyIdIn(List<UUID> listingIds, List<UUID> propertyIds);
 }
