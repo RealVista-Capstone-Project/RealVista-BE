@@ -169,7 +169,7 @@ public class User extends BaseEntity {
     }
 
     public boolean isActive() {
-        return this.status == UserStatus.ACTIVE;
+        return this.status == UserStatus.ACTIVE || this.status == UserStatus.VERIFIED;
     }
 
     public boolean isEmailVerified() {

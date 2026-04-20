@@ -93,6 +93,8 @@ public final class SecurityConstants {
     // Error types
     public static final String ERROR_NO_EMAIL = "no_email";
     public static final String ERROR_AUTH_FAILED = "auth_failed";
+    public static final String ERROR_ACCOUNT_SUSPENDED = "account_suspended";
+    public static final String ERROR_ACCOUNT_BANNED = "account_banned";
 
     private OAuth2() {
       throw new AssertionError("Cannot instantiate constants class");
