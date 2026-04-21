@@ -72,6 +72,10 @@ public class AgentProposal extends BaseEntity {
     public void archive() {
         this.status = AgentProposalStatus.ARCHIVED;
     }
+
+    public void cancel() {
+        this.status = AgentProposalStatus.CANCELLED;
+    }
     
     public void setAsDraft() {
         this.status = AgentProposalStatus.DRAFT;

@@ -11,6 +11,7 @@ import java.util.UUID;
 public interface PropertyRepository {
 
     Property save(Property property);
+    List<Property> saveAll(List<Property> properties);
 
     Optional<Property> findById(UUID id);
 

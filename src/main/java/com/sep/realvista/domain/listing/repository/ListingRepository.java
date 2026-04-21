@@ -18,6 +18,8 @@ public interface ListingRepository {
 
     Listing save(Listing listing);
 
+    List<Listing> saveAll(List<Listing> listings);
+
     Optional<Listing> findById(UUID id);
 
     Optional<Listing> findBySlug(String slug);

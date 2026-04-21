@@ -35,6 +35,11 @@ public class EngagementRepositoryImpl implements EngagementRepository {
     }
 
     @Override
+    public List<Engagement> saveAll(List<Engagement> engagements) {
+        return jpaRepository.saveAll(engagements);
+    }
+
+    @Override
     public Optional<Engagement> findById(UUID id) {
         return jpaRepository.findById(id);
     }
@@ -80,5 +85,10 @@ public class EngagementRepositoryImpl implements EngagementRepository {
     @Override
     public List<Engagement> findActiveEngagementsForProperty(UUID propertyId) {
         return jpaRepository.findActiveEngagementsForProperty(propertyId);
+    }
+
+    @Override
+    public List<Engagement> findByListingIdInOrPropertyIdIn(List<UUID> listingIds, List<UUID> propertyIds) {
+        return jpaRepository.findByListingIdInOrPropertyIdInAndDeletedFalse(listingIds, propertyIds);
     }
 }
