@@ -6,6 +6,10 @@ import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.InsufficientQuotaException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.infrastructure.security.SecurityUserDetails;
+import com.sep.realvista.infrastructure.service.NotificationMessageService;
+import com.sep.realvista.domain.user.exception.AccountStatusException;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -192,10 +199,39 @@ public class GlobalExceptionHandler {
     ) {
         log.error("Authentication error: {}", ex.getMessage());
 
+        String errorCode = "AUTHENTICATION_ERROR";
+        String message = "Authentication failed: " + ex.getMessage();
+
+        if (ex instanceof LockedException) {
+            errorCode = "ACCOUNT_LOCKED";
+            message = "Your account is locked. Please contact support.";
+        } else if (ex instanceof DisabledException) {
+            errorCode = "ACCOUNT_DISABLED";
+            message = "Your account is disabled. Please check your email for activation.";
+        }
+
         ErrorResponse error = ErrorResponse.builder()
                 .status(HttpStatus.UNAUTHORIZED.value())
-                .message(msg("ERROR_AUTHENTICATION", ex.getMessage()))
-                .errorCode("AUTHENTICATION_ERROR")
+                .message(message)
+                .errorCode(errorCode)
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+    
+    @ExceptionHandler(AccountStatusException.class)
+    public ResponseEntity<ErrorResponse> handleAccountStatusException(
+            AccountStatusException ex,
+            HttpServletRequest request
+    ) {
+        log.error("Account status error: {} - {}", ex.getErrorCode(), ex.getMessage());
+
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .message(ex.getMessage())
+                .errorCode(ex.getErrorCode())
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
                 .build();

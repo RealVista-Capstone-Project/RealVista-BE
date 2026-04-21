@@ -243,4 +243,6 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
             ORDER BY e.updatedAt DESC
             """)
     List<Engagement> findActiveEngagementsForProperty(@Param("propertyId") UUID propertyId);
+
+    List<Engagement> findByListingIdInOrPropertyIdInAndDeletedFalse(List<UUID> listingIds, List<UUID> propertyIds);
 }

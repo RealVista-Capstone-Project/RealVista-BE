@@ -24,6 +24,11 @@ public class PropertyRepositoryImpl implements PropertyRepository {
     }
 
     @Override
+    public List<Property> saveAll(List<Property> properties) {
+        return jpaRepository.saveAll(properties);
+    }
+
+    @Override
     public Optional<Property> findById(UUID id) {
         return jpaRepository.findActiveById(id);
     }

@@ -43,6 +43,11 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
+    public List<Listing> saveAll(List<Listing> listings) {
+        return jpaRepository.saveAll(listings);
+    }
+
+    @Override
     public Optional<Listing> findById(UUID id) {
         return jpaRepository.findActiveById(id);
     }
