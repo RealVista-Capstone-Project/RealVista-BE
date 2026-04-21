@@ -55,8 +55,8 @@ SELECT
         ELSE (11500000000 + floor(random() * 36500000000)) -- SALE: 11.5B-48B
     END,
     NOW(), NOW(), FALSE,
-    'nha-pho-' || lower(right(cl.property_id::text, 8)),
-    'Nhà phố chính chủ ' || right(cl.property_id::text, 8) || ' - Vị trí trung tâm'
+    'nha-rieng-' || lower(right(cl.property_id::text, 8)),
+    'Nhà riêng chính chủ ' || right(cl.property_id::text, 8) || ' - Không gian yên tĩnh'
 FROM correlated_listings cl;
 
 -- VILLAS (a31*)
@@ -85,29 +85,39 @@ SELECT
     'Biệt thự sân vườn ' || right(cl.property_id::text, 8) || ' - Chính chủ sang nhượng'
 FROM correlated_listings cl;
 
--- LAND RESIDENTIAL (a41*)
-INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
-SELECT 
-    (md5(p.property_id::text || p.owner_id::text))::uuid,
-    p.property_id,
-    p.owner_id,
-    'SALE',
-    'PUBLISHED',
-    (7500000000 + floor(random() * 42500000000)), -- SALE: 7.5B-50B
-    NOW(), NOW(), FALSE,
-    'dat-nen-' || lower(right(p.property_id::text, 8)),
-    'Lô đất thổ cư ' || right(p.property_id::text, 8) || ' - Sổ hồng chính chủ'
-FROM properties p
-WHERE p.property_id::text LIKE 'a4100000%' AND p.deleted = FALSE
-AND NOT EXISTS (SELECT 1 FROM property_agents pa WHERE pa.property_id = p.property_id AND pa.deleted = FALSE);
-
--- SHOPHOUSE RESO (a51*)
+-- TOWNHOUSE (a41*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
 WITH correlated_listings AS (
     SELECT 
         p.property_id,
         p.owner_id,
-        CASE WHEN (random() > 0.5) THEN 'RENT' ELSE 'SALE' END as l_type
+        CASE WHEN (random() > 0.8) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM properties p
+    WHERE p.property_id::text LIKE 'a4100000%' AND p.deleted = FALSE
+    AND NOT EXISTS (SELECT 1 FROM property_agents pa WHERE pa.property_id = p.property_id AND pa.deleted = FALSE)
+)
+SELECT 
+    (md5(cl.property_id::text || cl.owner_id::text))::uuid,
+    cl.property_id,
+    cl.owner_id,
+    cl.l_type,
+    'PUBLISHED',
+    CASE 
+        WHEN cl.l_type = 'RENT' THEN (40000000 + floor(random() * 95000000)) -- RENT: 40M-135M
+        ELSE (17500000000 + floor(random() * 32500000000)) -- SALE: 17.5B-50B
+    END,
+    NOW(), NOW(), FALSE,
+    'nha-pho-' || lower(right(cl.property_id::text, 8)),
+    'Nhà phố hiện đại ' || right(cl.property_id::text, 8) || ' - Chính chủ cần bán/cho thuê'
+FROM correlated_listings cl;
+
+-- PENTHOUSE (a51*)
+INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        p.property_id,
+        p.owner_id,
+        CASE WHEN (random() > 0.8) THEN 'RENT' ELSE 'SALE' END as l_type
     FROM properties p
     WHERE p.property_id::text LIKE 'a5100000%' AND p.deleted = FALSE
     AND NOT EXISTS (SELECT 1 FROM property_agents pa WHERE pa.property_id = p.property_id AND pa.deleted = FALSE)
@@ -119,21 +129,21 @@ SELECT
     cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN cl.l_type = 'RENT' THEN (55000000 + floor(random() * 135000000)) -- RENT: 55M-190M
-        ELSE (19000000000 + floor(random() * 51000000000)) -- SALE: 19B-70B
+        WHEN cl.l_type = 'RENT' THEN (140000000 + floor(random() * 260000000)) -- RENT: 140M-400M
+        ELSE (42000000000 + floor(random() * 108000000000)) -- SALE: 42B-150B
     END,
     NOW(), NOW(), FALSE,
-    'shophouse-' || lower(right(cl.property_id::text, 8)),
-    'Shophouse thương mại ' || right(cl.property_id::text, 8) || ' - Kinh doanh đắc địa'
+    'penthouse-' || lower(right(cl.property_id::text, 8)),
+    'Penthouse đẳng cấp ' || right(cl.property_id::text, 8) || ' - View triệu đô, chính chủ'
 FROM correlated_listings cl;
 
--- TOWNHOUSE (a61*)
+-- STUDIO / SERVICED APARTMENT (a61*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
 WITH correlated_listings AS (
     SELECT 
         p.property_id,
         p.owner_id,
-        CASE WHEN (random() > 0.7) THEN 'RENT' ELSE 'SALE' END as l_type
+        CASE WHEN (random() > 0.1) THEN 'RENT' ELSE 'SALE' END as l_type
     FROM properties p
     WHERE p.property_id::text LIKE 'a6100000%' AND p.deleted = FALSE
     AND NOT EXISTS (SELECT 1 FROM property_agents pa WHERE pa.property_id = p.property_id AND pa.deleted = FALSE)
@@ -145,12 +155,12 @@ SELECT
     cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN cl.l_type = 'RENT' THEN (32000000 + floor(random() * 68000000)) -- RENT: 32M-100M
-        ELSE (8500000000 + floor(random() * 26500000000)) -- SALE: 8.5B-35B
+        WHEN cl.l_type = 'RENT' THEN (10000000 + floor(random() * 20000000)) -- RENT: 10M-30M
+        ELSE (2400000000 + floor(random() * 4600000000)) -- SALE: 2.4B-7B
     END,
     NOW(), NOW(), FALSE,
-    'nha-lien-ke-' || lower(right(cl.property_id::text, 8)),
-    'Nhà phố hiện đại ' || right(cl.property_id::text, 8) || ' - Chính chủ đăng tin'
+    'studio-' || lower(right(cl.property_id::text, 8)),
+    'Căn hộ Studio tiện nghi ' || right(cl.property_id::text, 8) || ' - Full nội thất, chính chủ'
 FROM correlated_listings cl;
 
 
@@ -268,6 +278,32 @@ FROM properties p
 WHERE p.property_id::text LIKE 'c6100000%' AND p.deleted = FALSE
 AND NOT EXISTS (SELECT 1 FROM property_agents pa WHERE pa.property_id = p.property_id AND pa.deleted = FALSE);
 
+-- RESTAURANT (c51*)
+INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        p.property_id,
+        p.owner_id,
+        CASE WHEN (random() > 0.5) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM properties p
+    WHERE p.property_id::text LIKE 'c5100000%' AND p.deleted = FALSE
+    AND NOT EXISTS (SELECT 1 FROM property_agents pa WHERE pa.property_id = p.property_id AND pa.deleted = FALSE)
+)
+SELECT 
+    (md5(cl.property_id::text || cl.owner_id::text))::uuid,
+    cl.property_id,
+    cl.owner_id,
+    cl.l_type,
+    'PUBLISHED',
+    CASE 
+        WHEN cl.l_type = 'RENT' THEN (45000000 + floor(random() * 155000000)) -- RENT: 45M-200M
+        ELSE (17000000000 + floor(random() * 41000000000)) -- SALE: 17B-58B
+    END,
+    NOW(), NOW(), FALSE,
+    'nha-hang-' || lower(right(cl.property_id::text, 8)),
+    'Mặt bằng nhà hàng ' || right(cl.property_id::text, 8) || ' - Chính chủ sang nhượng'
+FROM correlated_listings cl;
+
 
 -- ============================================================================
 -- 3. INDUSTRIAL & LAND LISTINGS (V20 Properties)
@@ -340,6 +376,22 @@ SELECT
     'xuong-sx-' || lower(right(cl.property_id::text, 8)),
     'Xưởng sản xuất nhỏ ' || right(cl.property_id::text, 8) || ' - Chính chủ'
 FROM correlated_listings cl;
+
+-- LOGISTICS CENTER (a74*)
+INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+SELECT 
+    (md5(p.property_id::text || p.owner_id::text))::uuid,
+    p.property_id,
+    p.owner_id,
+    'SALE',
+    'PUBLISHED',
+    (140000000000 + floor(random() * 460000000000)), -- SALE: 140B-600B
+    NOW(), NOW(), FALSE,
+    'logistics-' || lower(right(p.property_id::text, 8)),
+    'Trung tâm Logistics ' || right(p.property_id::text, 8) || ' - Chính chủ chuyển nhượng'
+FROM properties p
+WHERE p.property_id::text LIKE 'a7400000%' AND p.deleted = FALSE
+AND NOT EXISTS (SELECT 1 FROM property_agents pa WHERE pa.property_id = p.property_id AND pa.deleted = FALSE);
 
 -- LAND RESIDENTIAL V20 (a75*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)

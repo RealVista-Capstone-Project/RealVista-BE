@@ -21,10 +21,14 @@ FROM (
                 l2.name || ' - Cơ hội kinh doanh đắc địa tại ' || p.street_address || ', ' || loc.name || '. Với diện tích ' || p.usable_size_m2 || 
                 ' m2, mặt bằng hội tụ đầy đủ các yếu tố thuận lợi về vị trí, giao thông và tệp khách hàng tiềm năng. ' ||
                 'Pháp lý hoàn thiện, hỗ trợ tối đa doanh nghiệp vận hành.'
-            ELSE 
+            WHEN pt.code IN ('WAREHOUSE', 'FACTORY', 'WORKSHOP', 'LOGISTICS') THEN
                 'Hệ thống ' || l2.name || ' tọa lạc tại vị trí chiến lược thuộc ' || loc.name || '. Tổng diện tích sử dụng ' || p.usable_size_m2 || 
                 ' m2, thiết kế đạt chuẩn công nghiệp với hệ thống điện 3 pha, cấp thoát nước và lộ giới xe container ra vào dễ dàng. ' ||
                 'Đây là lựa chọn hàng đầu cho các doanh nghiệp kho bãi, nhà xưởng.'
+            ELSE 
+                l2.name || ' tại ' || loc.name || '. Mảnh đất đắc địa với diện tích ' || p.usable_size_m2 || ' m2, ' ||
+                'thế đất bằng phẳng, phong thủy tốt, phù hợp cho nhiều mục đích sử dụng từ xây dựng nhà ở đến đầu tư dự án. ' ||
+                'Khu vực tiềm năng tăng giá cao, hạ tầng xung quanh đang hoàn thiện đồng bộ. Sổ hồng chính chủ, pháp lý minh bạch.'
         END as description
     FROM listings l2
     JOIN properties p ON l2.property_id = p.property_id
