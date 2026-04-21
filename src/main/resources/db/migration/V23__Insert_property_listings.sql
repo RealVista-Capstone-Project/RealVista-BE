@@ -10,57 +10,78 @@
 
 -- APARTMENTS (a11*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.7) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'a1100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid as listing_id,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.7) THEN 'RENT' ELSE 'SALE' END as listing_type_val,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.7) THEN (25000000 + floor(random() * 45000000)) -- RENT: 25M-70M
+        WHEN cl.l_type = 'RENT' THEN (25000000 + floor(random() * 45000000)) -- RENT: 25M-70M
         ELSE (3500000000 + floor(random() * 12000000000)) -- SALE: 3.5B-15.5B
-    END as price_val,
+    END,
     NOW(), NOW(), FALSE,
-    'luxury-apt-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Luxury Apartment @ ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' - Premium Lifestyle'
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'a1100000%' AND pa.deleted = FALSE;
+    'luxury-apt-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Luxury Apartment @ ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Premium Lifestyle'
+FROM correlated_listings cl;
 
 -- HOUSES (a21*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.8) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'a2100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.8) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.8) THEN (40000000 + floor(random() * 80000000)) -- RENT: 40M-120M
+        WHEN cl.l_type = 'RENT' THEN (40000000 + floor(random() * 80000000)) -- RENT: 40M-120M
         ELSE (12000000000 + floor(random() * 38000000000)) -- SALE: 12B-50B
     END,
     NOW(), NOW(), FALSE,
-    'town-house-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Exclusive Townhouse - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' | Central HCMC'
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'a2100000%' AND pa.deleted = FALSE;
+    'town-house-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Exclusive Townhouse - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' | Central HCMC'
+FROM correlated_listings cl;
 
 -- VILLAS (a31*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.85) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'a3100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.85) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.85) THEN (120000000 + floor(random() * 380000000)) -- RENT: 120M-500M
+        WHEN cl.l_type = 'RENT' THEN (120000000 + floor(random() * 380000000)) -- RENT: 120M-500M
         ELSE (55000000000 + floor(random() * 245000000000)) -- SALE: 55B-300B
     END,
     NOW(), NOW(), FALSE,
-    'royal-villa-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Royal Waterfront Villa - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' Heritage Edition'
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'a3100000%' AND pa.deleted = FALSE;
+    'royal-villa-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Royal Waterfront Villa - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' Heritage Edition'
+FROM correlated_listings cl;
 
 -- LAND RESIDENTIAL (a41*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
@@ -79,39 +100,53 @@ WHERE pa.property_id::text LIKE 'a4100000%' AND pa.deleted = FALSE;
 
 -- SHOPHOUSE RESO (a51*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.5) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'a5100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.5) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.5) THEN (60000000 + floor(random() * 140000000)) -- RENT: 60M-200M
+        WHEN cl.l_type = 'RENT' THEN (60000000 + floor(random() * 140000000)) -- RENT: 60M-200M
         ELSE (20000000000 + floor(random() * 55000000000)) -- SALE: 20B-75B
     END,
     NOW(), NOW(), FALSE,
-    'urban-shophouse-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Business Hub Shophouse - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'a5100000%' AND pa.deleted = FALSE;
+    'urban-shophouse-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Business Hub Shophouse - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+FROM correlated_listings cl;
 
 -- TOWNHOUSE (a61*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.7) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'a6100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.7) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.7) THEN (35000000 + floor(random() * 65000000)) -- RENT: 35M-100M
+        WHEN cl.l_type = 'RENT' THEN (35000000 + floor(random() * 65000000)) -- RENT: 35M-100M
         ELSE (9000000000 + floor(random() * 26000000000)) -- SALE: 9B-35B
     END,
     NOW(), NOW(), FALSE,
-    'modern-townhouse-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Modern Townhouse - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' Heritage Row'
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'a6100000%' AND pa.deleted = FALSE;
+    'modern-townhouse-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Modern Townhouse - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' Heritage Row'
+FROM correlated_listings cl;
 
 
 -- ============================================================================
@@ -120,57 +155,78 @@ WHERE pa.property_id::text LIKE 'a6100000%' AND pa.deleted = FALSE;
 
 -- OFFICE (c11*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.2) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'c1100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.2) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.2) THEN (50000000 + floor(random() * 450000000)) -- RENT: 50M-500M
+        WHEN cl.l_type = 'RENT' THEN (50000000 + floor(random() * 450000000)) -- RENT: 50M-500M
         ELSE (45000000000 + floor(random() * 155000000000)) -- SALE: 45B-200B
     END,
     NOW(), NOW(), FALSE,
-    'grade-a-office-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Grade A Office Space - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'c1100000%' AND pa.deleted = FALSE;
+    'grade-a-office-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Grade A Office Space - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+FROM correlated_listings cl;
 
 -- SHOPHOUSE COM (c21*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.4) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'c2100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.4) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.4) THEN (80000000 + floor(random() * 220000000)) -- RENT: 80M-300M
+        WHEN cl.l_type = 'RENT' THEN (80000000 + floor(random() * 220000000)) -- RENT: 80M-300M
         ELSE (35000000000 + floor(random() * 85000000000)) -- SALE: 35B-120B
     END,
     NOW(), NOW(), FALSE,
-    'com-shophouse-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Prime Commercial Shophouse - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'c2100000%' AND pa.deleted = FALSE;
+    'com-shophouse-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Prime Commercial Shophouse - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+FROM correlated_listings cl;
 
 -- RETAIL (c31*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.3) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'c3100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.3) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.3) THEN (40000000 + floor(random() * 160000000)) -- RENT: 40M-200M
+        WHEN cl.l_type = 'RENT' THEN (40000000 + floor(random() * 160000000)) -- RENT: 40M-200M
         ELSE (25000000000 + floor(random() * 75000000000)) -- SALE: 25B-100B
     END,
     NOW(), NOW(), FALSE,
-    'retail-space-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'High Visibility Retail - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'c3100000%' AND pa.deleted = FALSE;
+    'retail-space-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'High Visibility Retail - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+FROM correlated_listings cl;
 
 -- MALL (c41*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
@@ -189,21 +245,28 @@ WHERE pa.property_id::text LIKE 'c4100000%' AND pa.deleted = FALSE;
 
 -- RESTAURANT (c51*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.5) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'c5100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.5) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.5) THEN (50000000 + floor(random() * 150000000)) -- RENT: 50M-200M
+        WHEN cl.l_type = 'RENT' THEN (50000000 + floor(random() * 150000000)) -- RENT: 50M-200M
         ELSE (18000000000 + floor(random() * 42000000000)) -- SALE: 18B-60B
     END,
     NOW(), NOW(), FALSE,
-    'restaurant-ops-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Premium Restaurant Space - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'c5100000%' AND pa.deleted = FALSE;
+    'restaurant-ops-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Premium Restaurant Space - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+FROM correlated_listings cl;
 
 -- HOTEL (c61*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
@@ -227,21 +290,28 @@ WHERE pa.property_id::text LIKE 'c6100000%' AND pa.deleted = FALSE;
 
 -- WAREHOUSE (a71*) - Note: V20 uses a71* prefix
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.2) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'a7100000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.2) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.2) THEN (100000000 + floor(random() * 400000000)) -- RENT: 100M-500M
+        WHEN cl.l_type = 'RENT' THEN (100000000 + floor(random() * 400000000)) -- RENT: 100M-500M
         ELSE (45000000000 + floor(random() * 105000000000)) -- SALE: 45B-150B
     END,
     NOW(), NOW(), FALSE,
-    'log-warehouse-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Modern Warehouse Hub - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'a7100000%' AND pa.deleted = FALSE;
+    'log-warehouse-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Modern Warehouse Hub - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+FROM correlated_listings cl;
 
 -- FACTORY (a72*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
@@ -260,21 +330,28 @@ WHERE pa.property_id::text LIKE 'a7200000%' AND pa.deleted = FALSE;
 
 -- WORKSHOP (a73*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
+WITH correlated_listings AS (
+    SELECT 
+        pa.property_id,
+        pa.agent_id,
+        CASE WHEN (random() > 0.5) THEN 'RENT' ELSE 'SALE' END as l_type
+    FROM property_agents pa
+    WHERE pa.property_id::text LIKE 'a7300000%' AND pa.deleted = FALSE
+)
 SELECT 
-    (md5(pa.property_id::text || pa.agent_id::text))::uuid,
-    pa.property_id,
-    pa.agent_id,
-    CASE WHEN (random() > 0.5) THEN 'RENT' ELSE 'SALE' END,
+    (md5(cl.property_id::text || cl.agent_id::text))::uuid,
+    cl.property_id,
+    cl.agent_id,
+    cl.l_type,
     'PUBLISHED',
     CASE 
-        WHEN (random() > 0.5) THEN (40000000 + floor(random() * 80000000)) -- RENT: 40M-120M
+        WHEN cl.l_type = 'RENT' THEN (40000000 + floor(random() * 80000000)) -- RENT: 40M-120M
         ELSE (15000000000 + floor(random() * 35000000000)) -- SALE: 15B-50B
     END,
     NOW(), NOW(), FALSE,
-    'workshop-space-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Industrial Workshop - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
-FROM property_agents pa
-WHERE pa.property_id::text LIKE 'a7300000%' AND pa.deleted = FALSE;
+    'workshop-space-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Industrial Workshop - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+FROM correlated_listings cl;
 
 -- LOGISTICS CENTER (a74*)
 INSERT INTO listings (listing_id, property_id, user_id, listing_type, status, price, created_at, updated_at, deleted, slug, name)
