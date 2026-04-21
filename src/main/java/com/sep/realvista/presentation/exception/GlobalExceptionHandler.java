@@ -6,10 +6,8 @@ import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.InsufficientQuotaException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
-import com.sep.realvista.infrastructure.security.SecurityUserDetails;
-import com.sep.realvista.infrastructure.service.NotificationMessageService;
 import com.sep.realvista.domain.user.exception.AccountStatusException;
-import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
+
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +19,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
-import org.springframework.security.core.Authentication;
+
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;

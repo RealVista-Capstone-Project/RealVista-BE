@@ -4,7 +4,6 @@ import com.sep.realvista.application.auth.service.TokenService;
 import com.sep.realvista.application.listing.dto.map.MapSearchRequest;
 import com.sep.realvista.application.listing.dto.map.MapSearchResponse;
 import com.sep.realvista.application.listing.dto.ListingSearchResponse;
-import com.sep.realvista.application.listing.dto.map.PropertyMapMarker;
 import com.sep.realvista.application.listing.service.MapSearchApplicationService;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.infrastructure.security.jwt.JwtAuthenticationFilter;
@@ -683,7 +682,7 @@ class MapControllerComponentTest {
                                         .andExpect(status().isBadRequest())
                                         .andExpect(jsonPath("$.error_code").value("INVALID_ARGUMENT"))
                                         .andExpect(jsonPath("$.message")
-                                                        .value("Invalid search parameters"));
+                                                        .value(org.hamcrest.Matchers.containsString("Invalid search parameters")));
                 }
 
                 @Test

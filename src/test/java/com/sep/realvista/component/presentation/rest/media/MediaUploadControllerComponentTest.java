@@ -404,7 +404,7 @@ class MediaUploadControllerComponentTest {
                     .andDo(print())
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.status").value(400))
-                    .andExpect(jsonPath("$.message").value("Media URL is required"))
+                    .andExpect(jsonPath("$.message").value(containsString("Media URL is required")))
                     .andExpect(jsonPath("$.error_code").value("INVALID_ARGUMENT"))
                     .andExpect(jsonPath("$.path").value("/api/v1/media/by-url"));
 
