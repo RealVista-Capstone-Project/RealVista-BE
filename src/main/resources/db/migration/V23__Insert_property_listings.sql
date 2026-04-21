@@ -29,8 +29,8 @@ SELECT
         ELSE (3500000000 + floor(random() * 12000000000)) -- SALE: 3.5B-15.5B
     END,
     NOW(), NOW(), FALSE,
-    'luxury-apt-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Luxury Apartment @ ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Premium Lifestyle'
+    'can-ho-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Căn hộ cao cấp ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Tiện ích đẳng cấp'
 FROM correlated_listings cl;
 
 -- HOUSES (a21*)
@@ -54,8 +54,8 @@ SELECT
         ELSE (12000000000 + floor(random() * 38000000000)) -- SALE: 12B-50B
     END,
     NOW(), NOW(), FALSE,
-    'town-house-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Exclusive Townhouse - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' | Central HCMC'
+    'nha-pho-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Nhà phố liền kề ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Vị trí trung tâm'
 FROM correlated_listings cl;
 
 -- VILLAS (a31*)
@@ -79,8 +79,8 @@ SELECT
         ELSE (55000000000 + floor(random() * 245000000000)) -- SALE: 55B-300B
     END,
     NOW(), NOW(), FALSE,
-    'royal-villa-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Royal Waterfront Villa - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' Heritage Edition'
+    'biet-thu-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Biệt thự sân vườn ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Nghỉ dưỡng thượng lưu'
 FROM correlated_listings cl;
 
 -- LAND RESIDENTIAL (a41*)
@@ -93,8 +93,8 @@ SELECT
     'PUBLISHED',
     (8000000000 + floor(random() * 42000000000)), -- SALE: 8B-50B
     NOW(), NOW(), FALSE,
-    'prime-land-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Prime Residential Land - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' (Pink Book)'
+    'dat-nen-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
+    'Đất nền thổ cư ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' - Sổ hồng riêng'
 FROM property_agents pa
 WHERE pa.property_id::text LIKE 'a4100000%' AND pa.deleted = FALSE;
 
@@ -119,8 +119,8 @@ SELECT
         ELSE (20000000000 + floor(random() * 55000000000)) -- SALE: 20B-75B
     END,
     NOW(), NOW(), FALSE,
-    'urban-shophouse-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Business Hub Shophouse - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+    'shophouse-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Shophouse thương mại ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Kinh doanh đắc địa'
 FROM correlated_listings cl;
 
 -- TOWNHOUSE (a61*)
@@ -144,8 +144,8 @@ SELECT
         ELSE (9000000000 + floor(random() * 26000000000)) -- SALE: 9B-35B
     END,
     NOW(), NOW(), FALSE,
-    'modern-townhouse-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Modern Townhouse - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' Heritage Row'
+    'nha-lien-ke-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Nhà phố hiện đại ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Khu dân cư trí thức'
 FROM correlated_listings cl;
 
 
@@ -174,8 +174,8 @@ SELECT
         ELSE (45000000000 + floor(random() * 155000000000)) -- SALE: 45B-200B
     END,
     NOW(), NOW(), FALSE,
-    'grade-a-office-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Grade A Office Space - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+    'van-phong-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Văn phòng hạng A ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Tiêu chuẩn quốc tế'
 FROM correlated_listings cl;
 
 -- SHOPHOUSE COM (c21*)
@@ -199,8 +199,8 @@ SELECT
         ELSE (35000000000 + floor(random() * 85000000000)) -- SALE: 35B-120B
     END,
     NOW(), NOW(), FALSE,
-    'com-shophouse-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Prime Commercial Shophouse - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+    'shophouse-tm-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Shophouse kinh doanh ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Vị trí đắc địa'
 FROM correlated_listings cl;
 
 -- RETAIL (c31*)
@@ -224,8 +224,8 @@ SELECT
         ELSE (25000000000 + floor(random() * 75000000000)) -- SALE: 25B-100B
     END,
     NOW(), NOW(), FALSE,
-    'retail-space-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'High Visibility Retail - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+    'mat-bang-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Mặt bằng kinh doanh ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Vị trí vàng'
 FROM correlated_listings cl;
 
 -- MALL (c41*)
@@ -238,8 +238,8 @@ SELECT
     'PUBLISHED',
     (350000000000 + floor(random() * 650000000000)), -- SALE: 350B-1000B
     NOW(), NOW(), FALSE,
-    'mega-mall-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Shopping Mall Complex - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' Asset'
+    'tttm-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
+    'Mặt bằng Trung tâm Thương mại ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
 FROM property_agents pa
 WHERE pa.property_id::text LIKE 'c4100000%' AND pa.deleted = FALSE;
 
@@ -264,8 +264,8 @@ SELECT
         ELSE (18000000000 + floor(random() * 42000000000)) -- SALE: 18B-60B
     END,
     NOW(), NOW(), FALSE,
-    'restaurant-ops-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Premium Restaurant Space - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+    'nha-hang-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Mặt bằng nhà hàng ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Hạ tầng hoàn thiện'
 FROM correlated_listings cl;
 
 -- HOTEL (c61*)
@@ -278,8 +278,8 @@ SELECT
     'PUBLISHED',
     (150000000000 + floor(random() * 850000000000)), -- SALE: 150B-1000B
     NOW(), NOW(), FALSE,
-    'grand-hotel-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Luxury Hotel Property - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
+    'khach-san-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
+    'Khách sạn cao cấp ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' - Vị trí du lịch'
 FROM property_agents pa
 WHERE pa.property_id::text LIKE 'c6100000%' AND pa.deleted = FALSE;
 
@@ -309,8 +309,8 @@ SELECT
         ELSE (45000000000 + floor(random() * 105000000000)) -- SALE: 45B-150B
     END,
     NOW(), NOW(), FALSE,
-    'log-warehouse-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Modern Warehouse Hub - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+    'kho-bai-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Hệ thống kho bãi ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Giao thông thuận tiện'
 FROM correlated_listings cl;
 
 -- FACTORY (a72*)
@@ -323,8 +323,8 @@ SELECT
     'PUBLISHED',
     (85000000000 + floor(random() * 215000000000)), -- SALE: 85B-300B
     NOW(), NOW(), FALSE,
-    'smart-factory-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Smart Manufacturing Plant - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
+    'nha-xuong-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
+    'Nhà máy sản xuất ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' - Tiêu chuẩn hiện đại'
 FROM property_agents pa
 WHERE pa.property_id::text LIKE 'a7200000%' AND pa.deleted = FALSE;
 
@@ -349,8 +349,8 @@ SELECT
         ELSE (15000000000 + floor(random() * 35000000000)) -- SALE: 15B-50B
     END,
     NOW(), NOW(), FALSE,
-    'workshop-space-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
-    'Industrial Workshop - ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)
+    'xuong-sx-' || lower(right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4)),
+    'Xưởng sản xuất nhỏ ' || right(cl.property_id::text, 8) || '-' || right(cl.agent_id::text, 4) || ' - Điện 3 pha'
 FROM correlated_listings cl;
 
 -- LOGISTICS CENTER (a74*)
@@ -363,8 +363,8 @@ SELECT
     'PUBLISHED',
     (150000000000 + floor(random() * 450000000000)), -- SALE: 150B-600B
     NOW(), NOW(), FALSE,
-    'log-center-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Full-Service Logistics Hub - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
+    'logistics-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
+    'Trung tâm Logistics ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' - Kết nối cảng'
 FROM property_agents pa
 WHERE pa.property_id::text LIKE 'a7400000%' AND pa.deleted = FALSE;
 
@@ -378,8 +378,8 @@ SELECT
     'PUBLISHED',
     (12000000000 + floor(random() * 48000000000)), -- SALE: 12B-60B
     NOW(), NOW(), FALSE,
-    'res-land-v20-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Exclusive Residential Lot - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
+    'dat-tho-cu-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
+    'Lô đất thổ cư ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' - Khu dân cư hiện hữu'
 FROM property_agents pa
 WHERE pa.property_id::text LIKE 'a7500000%' AND pa.deleted = FALSE;
 
@@ -393,8 +393,8 @@ SELECT
     'PUBLISHED',
     (25000000000 + floor(random() * 75000000000)), -- SALE: 25B-100B
     NOW(), NOW(), FALSE,
-    'com-land-v20-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Commercial Development Land - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
+    'dat-tm-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
+    'Quỹ đất thương mại ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' - Đa chức năng'
 FROM property_agents pa
 WHERE pa.property_id::text LIKE 'a7600000%' AND pa.deleted = FALSE;
 
@@ -408,8 +408,8 @@ SELECT
     'PUBLISHED',
     (20000000000 + floor(random() * 60000000000)), -- SALE: 20B-80B
     NOW(), NOW(), FALSE,
-    'ind-land-v20-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Industrial Zoned Land - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
+    'dat-kcn-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
+    'Đất quy hoạch công nghiệp ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' - Hạ tầng đồng bộ'
 FROM property_agents pa
 WHERE pa.property_id::text LIKE 'a7700000%' AND pa.deleted = FALSE;
 
@@ -423,7 +423,7 @@ SELECT
     'PUBLISHED',
     (5000000000 + floor(random() * 25000000000)), -- SALE: 5B-30B
     NOW(), NOW(), FALSE,
-    'agr-land-v20-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
-    'Agricultural Garden Land - ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)
+    'dat-vuon-' || lower(right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4)),
+    'Đất vườn nông nghiệp ' || right(pa.property_id::text, 8) || '-' || right(pa.agent_id::text, 4) || ' - Tiềm năng đầu tư'
 FROM property_agents pa
 WHERE pa.property_id::text LIKE 'a7800000%' AND pa.deleted = FALSE;
