@@ -48,6 +48,7 @@ import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubsc
 import com.sep.realvista.infrastructure.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -561,10 +562,10 @@ public class UserApplicationService {
                 .orElseGet(() -> createGoogleUser(email, firstName, lastName, avatarUrl));
 
         // Eagerly initialize roles while session is open
-        user.getUserRoles().size();
+        Hibernate.initialize(user.getUserRoles());
         user.getUserRoles().forEach(ur -> {
             if (ur.getRole() != null) {
-                ur.getRole().getRoleCode();
+                Hibernate.initialize(ur.getRole());
             }
         });
 
