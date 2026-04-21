@@ -112,6 +112,7 @@ public class UserApplicationService {
 
     private static final int OTP_EXPIRY_MINUTES = 5;
     private static final String EMAIL_OTP_PREFIX = "email-otp:";
+    private static final String PENDING_EMAIL_PREFIX = "pending-email:";
     /**
      * Create a new user.
      */
@@ -294,19 +295,17 @@ public class UserApplicationService {
         log.info("Updating me profile for ID: {}", userId);
 
         User user = userDomainService.getUserOrThrow(userId);
+        // Email must not be changed via PATCH /me — only through send-email-otp + verify-email.
+        // Otherwise a client could persist a new address without completing OTP verification.
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
             String currentEmail = user.getEmail() != null ? user.getEmail().getValue() : null;
             if (!Objects.equals(currentEmail, normalizedEmail)) {
-                userRepository.findByEmailValue(normalizedEmail).ifPresent(existing -> {
-                    if (!existing.getUserId().equals(userId)) {
-                        throw new BusinessConflictException(
-                                "Email already exists: " + normalizedEmail,
-                                "EMAIL_ALREADY_EXISTS"
-                        );
-                    }
-                });
-                user.updateEmail(normalizedEmail);
+                throw new BusinessConflictException(
+                        "Email can only be changed after verification. Use POST /api/v1/me/send-email-otp "
+                                + "and POST /api/v1/me/verify-email.",
+                        "EMAIL_CHANGE_REQUIRES_VERIFICATION"
+                );
             }
         }
         user.updateProfile(request.getFirstName(), request.getLastName(), request.getAvatarUrl());
@@ -601,18 +600,21 @@ public class UserApplicationService {
 
     /**
      * Generate a 6-digit OTP and send it to the provided email address.
-     * If the email differs from the user's current email, update it first
-     * (which also resets emailVerifiedAt so the new address must be verified).
+     * <p>
+     * The user's email is NOT updated here — it is only stashed as a "pending email"
+     * in the OTP cache. The email record in the database is changed only after the
+     * user successfully submits the matching OTP via {@link #verifyEmail(UUID, String)}.
+     * This prevents an unverified email from silently replacing the user's real address
+     * if they abandon the flow.
      */
-    @CacheEvict(value = "users", key = "#userId")
     public void sendEmailOtp(UUID userId, String targetEmail) {
         User user = userDomainService.getUserOrThrow(userId);
 
         String normalizedEmail = targetEmail.trim().toLowerCase(Locale.ROOT);
 
-        // Update email on the user record if it has changed
         String currentEmail = user.getEmail() != null ? user.getEmail().getValue() : null;
-        if (!normalizedEmail.equals(currentEmail)) {
+        boolean isChange = !normalizedEmail.equals(currentEmail);
+        if (isChange) {
             userRepository.findByEmailValue(normalizedEmail).ifPresent(existing -> {
                 if (!existing.getUserId().equals(userId)) {
                     throw new BusinessConflictException(
@@ -621,9 +623,12 @@ public class UserApplicationService {
                     );
                 }
             });
-            user.updateEmail(normalizedEmail);
-            userRepository.save(user);
         }
+
+        // Stash the target email so we can commit it after OTP verification.
+        // If the address is unchanged (re-verification), we still store it so the
+        // verify step can idempotently detect "no-op" vs "update".
+        otpService.store(PENDING_EMAIL_PREFIX + userId, normalizedEmail, OTP_EXPIRY_MINUTES);
 
         String otp = otpService.generateAndStore(EMAIL_OTP_PREFIX + userId, OTP_EXPIRY_MINUTES);
         String fullName = user.getFullName();
@@ -637,11 +642,13 @@ public class UserApplicationService {
                         "expiryMinutes", OTP_EXPIRY_MINUTES
                 )
         );
-        log.info("Email OTP sent to {} for user {}", normalizedEmail, userId);
+        log.info("Email OTP sent to {} for user {} (pendingChange={})", normalizedEmail, userId, isChange);
     }
 
     /**
-     * Verify the email OTP and stamp emailVerifiedAt.
+     * Verify the email OTP. Only on a valid OTP do we commit the pending email
+     * change (if any) and stamp {@code emailVerifiedAt}. If the OTP is invalid or
+     * expired, the user's email remains unchanged.
      */
     @CacheEvict(value = "users", key = "#userId")
     public UserResponse verifyEmail(UUID userId, String otp) {
@@ -649,6 +656,26 @@ public class UserApplicationService {
             throw new BusinessConflictException("OTP không hợp lệ hoặc đã hết hạn", "INVALID_OTP");
         }
         User user = userDomainService.getUserOrThrow(userId);
+
+        String pendingEmail = otpService.get(PENDING_EMAIL_PREFIX + userId);
+        if (pendingEmail != null && !pendingEmail.isBlank()) {
+            String currentEmail = user.getEmail() != null ? user.getEmail().getValue() : null;
+            if (!pendingEmail.equals(currentEmail)) {
+                // Re-check uniqueness at commit time: another user may have claimed
+                // this address between sendOtp and verify.
+                userRepository.findByEmailValue(pendingEmail).ifPresent(existing -> {
+                    if (!existing.getUserId().equals(userId)) {
+                        throw new BusinessConflictException(
+                                "Email already exists: " + pendingEmail,
+                                "EMAIL_ALREADY_EXISTS"
+                        );
+                    }
+                });
+                user.updateEmail(pendingEmail);
+            }
+            otpService.remove(PENDING_EMAIL_PREFIX + userId);
+        }
+
         user.verifyEmail();
         User saved = userRepository.save(user);
         log.info("Email verified for user {}", userId);

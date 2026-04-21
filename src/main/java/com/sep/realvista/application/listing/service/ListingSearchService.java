@@ -295,14 +295,14 @@ public class ListingSearchService {
                 cb.equal(lbHot.get("deleted"), false)
             ));
 
-        // Subquery for AGENT role
+        // Subquery for AGENT role (correlate on listing.user_id — avoids outer join through root.get("user"))
         Subquery<Long> agentSub = query.subquery(Long.class);
         Root<com.sep.realvista.domain.user.User> u = agentSub.from(com.sep.realvista.domain.user.User.class);
         var ur = u.join("userRoles");
         var r = ur.join("role");
         agentSub.select(cb.count(u))
             .where(cb.and(
-                cb.equal(u.get("userId"), root.get("user").get("userId")),
+                cb.equal(u.get("userId"), root.get("userId")),
                 cb.equal(r.get("roleCode"), RoleCode.AGENT)
             ));
 
@@ -535,7 +535,14 @@ public class ListingSearchService {
                     );
                 predicates.add(cb.exists(subquery));
             } else {
-                // Text attribute — exact match
+                // Text attribute — case-insensitive exact match (trimmed).
+                // Handles mixed casing (e.g. filter "BẮC" vs stored "bẮC") while keeping
+                // strict equality semantics so values like "Tây Bắc" don't accidentally
+                // match "Tây" or "Bắc".
+                String normalizedValue = value.trim().toLowerCase();
+                if (normalizedValue.isEmpty()) {
+                    return;
+                }
                 Subquery<Integer> subquery = query.subquery(Integer.class);
                 Root<PropertyAttributeValue> pavRoot = subquery.from(PropertyAttributeValue.class);
                 Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
@@ -543,7 +550,7 @@ public class ListingSearchService {
                     .where(
                         cb.equal(pavRoot.get("propertyId"), root.get("propertyId")),
                         cb.equal(cb.upper(paJoin.get("code")), upperCode),
-                        cb.equal(pavRoot.get("valueText"), value),
+                        cb.equal(cb.lower(cb.trim(pavRoot.get("valueText"))), normalizedValue),
                         cb.isFalse(pavRoot.get("deleted"))
                     );
                 predicates.add(cb.exists(subquery));
