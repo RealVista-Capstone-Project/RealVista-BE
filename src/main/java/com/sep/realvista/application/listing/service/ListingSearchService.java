@@ -85,6 +85,7 @@ public class ListingSearchService {
     private static final class LocationFields {
         static final String NAME = "name";
         static final String CODE = "code";
+        static final String PARENT = "parent";
     }
 
     private static final String JSONB_EXTRACT_FUNCTION = "jsonb_extract_path_text";
@@ -359,28 +360,49 @@ public class ListingSearchService {
             ));
         }
 
-        // Location LIKE search (Name, Code, or Street Address)
+        // Location LIKE search (Name, Code, Street Address, District name, City name)
+        // Splits by comma or before Vietnamese admin keywords (phường, quận, huyện, ...)
+        // "113 Phường 1" → ["113", "Phường 1"], "612, quận 1" → ["612", "quận 1"]
+        // Each token must match at least one field (AND between tokens, OR within a token)
         if (criteria.getLocation() != null && !criteria.getLocation().isBlank()) {
-            String rawLocation = criteria.getLocation().toLowerCase().trim();
-            // Normalize variants to match sample data like "Q1", "Q10", "H1"
-            String normalizedLocation = rawLocation
-                .replace("quận ", "q")
-                .replace("q.", "q")
-                .replace("huyện ", "h")
-                .replace("h.", "h")
-                .replace("thành phố ", "tp")
-                .replace("tp.", "tp")
-                .replace(" ", ""); // Remove spaces for "q 1" -> "q1"
-            
-            String nameQuery = "%" + rawLocation + "%";
-            String codeQuery = "%" + normalizedLocation + "%";
-            
             Join<Object, Location> locationJoin = propertyJoin.join(PropertyFields.LOCATION);
-            predicates.add(cb.or(
-                cb.like(cb.lower(locationJoin.get(LocationFields.NAME)), nameQuery),
-                cb.like(cb.lower(locationJoin.get(LocationFields.CODE)), codeQuery),
-                cb.like(cb.lower(propertyJoin.get(PropertyFields.STREET_ADDRESS)), codeQuery)
-            ));
+            Join<Location, Location> districtJoin = locationJoin.join(LocationFields.PARENT,
+                    jakarta.persistence.criteria.JoinType.LEFT);
+            Join<Location, Location> cityJoin = districtJoin.join(LocationFields.PARENT,
+                    jakarta.persistence.criteria.JoinType.LEFT);
+
+            // Split by comma, or before Vietnamese administrative keywords
+            String[] tokens = criteria.getLocation().toLowerCase().trim()
+                    .split("\\s*,\\s*|\\s+(?=(?:phường|quận|huyện|thành phố|thị trấn|thị xã|xã)\\b)");
+
+            for (String token : tokens) {
+                if (token.isBlank()) {
+                    continue;
+                }
+                String trimmed = token.trim();
+                // Normalize Vietnamese abbreviations for code matching
+                String normalized = trimmed
+                    .replace("quận ", "q")
+                    .replace("q.", "q")
+                    .replace("huyện ", "h")
+                    .replace("h.", "h")
+                    .replace("thành phố ", "tp")
+                    .replace("tp.", "tp")
+                    .replace(" ", "");
+
+                String nameQuery = "%" + trimmed + "%";
+                String codeQuery = "%" + normalized + "%";
+
+                predicates.add(cb.or(
+                    cb.like(cb.lower(locationJoin.get(LocationFields.NAME)), nameQuery),
+                    cb.like(cb.lower(locationJoin.get(LocationFields.CODE)), codeQuery),
+                    cb.like(cb.lower(propertyJoin.get(PropertyFields.STREET_ADDRESS)), nameQuery),
+                    cb.like(cb.lower(districtJoin.get(LocationFields.NAME)), nameQuery),
+                    cb.like(cb.lower(districtJoin.get(LocationFields.CODE)), codeQuery),
+                    cb.like(cb.lower(cityJoin.get(LocationFields.NAME)), nameQuery),
+                    cb.like(cb.lower(cityJoin.get(LocationFields.CODE)), codeQuery)
+                ));
+            }
         }
 
         // Location ID hierarchical
