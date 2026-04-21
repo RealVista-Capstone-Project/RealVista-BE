@@ -29,6 +29,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -153,9 +154,9 @@ class SavedSearchServiceUnitTest {
     @Test
     @DisplayName("getMySavedSearches should return list")
     void getMySavedSearches_whenProfileExists_shouldReturnList() {
-        when(customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(userId))
-                .thenReturn(Optional.of(mockProfile));
-        when(savedSearchRepository.findByProfileIdAndDeletedFalse(profileId))
+        when(customerProfileRepository.findAllByUserIdAndDeletedFalse(userId))
+                .thenReturn(List.of(mockProfile));
+        when(savedSearchRepository.findByProfileIdInAndDeletedFalse(eq(List.of(profileId))))
                 .thenReturn(List.of(mockSavedSearch));
         when(savedSearchMapper.toDto(mockSavedSearch)).thenReturn(mockDto);
 
@@ -168,9 +169,9 @@ class SavedSearchServiceUnitTest {
     @Test
     @DisplayName("deleteSavedSearch should mark as deleted")
     void deleteSavedSearch_whenValid_shouldMarkAsDeleted() {
-        when(customerProfileRepository.findByUserIdAndIsActiveTrueAndDeletedFalse(userId))
-                .thenReturn(Optional.of(mockProfile));
-        when(savedSearchRepository.findBySavedSearchIdAndProfileIdAndDeletedFalse(savedSearchId, profileId))
+        when(customerProfileRepository.findAllByUserIdAndDeletedFalse(userId))
+                .thenReturn(List.of(mockProfile));
+        when(savedSearchRepository.findById(savedSearchId))
                 .thenReturn(Optional.of(mockSavedSearch));
 
         savedSearchService.deleteSavedSearch(savedSearchId, userId);
