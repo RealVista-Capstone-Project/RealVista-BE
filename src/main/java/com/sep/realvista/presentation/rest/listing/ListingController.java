@@ -74,7 +74,22 @@ public class ListingController {
                         @org.springdoc.core.annotations.ParameterObject ListingSearchCriteria criteria,
                         @org.springframework.data.web.PageableDefault(size = 20)
                         org.springframework.data.domain.Pageable pageable,
-                        @AuthenticationPrincipal SecurityUserDetails userDetails) {
+                        @AuthenticationPrincipal SecurityUserDetails userDetails,
+                        @org.springframework.web.bind.annotation.RequestParam(required = false)
+                        java.util.Map<String, String> allParams) {
+
+                // Extract attr_* params as dynamic attributes (e.g. attr_bathrooms=4:)
+                if (allParams != null) {
+                        java.util.Map<String, String> dynAttrs = new java.util.LinkedHashMap<>();
+                        allParams.forEach((key, value) -> {
+                                if (key.startsWith("attr_") && value != null && !value.isBlank()) {
+                                        dynAttrs.put(key.substring(5).toUpperCase(), value);
+                                }
+                        });
+                        if (!dynAttrs.isEmpty()) {
+                                criteria.setDynamicAttributes(dynAttrs);
+                        }
+                }
 
                 log.info("Searching listings with criteria: {}", criteria);
 

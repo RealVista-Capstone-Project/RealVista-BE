@@ -53,6 +53,19 @@ public class LocationApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public List<LocationResponseDTO> getAllDistricts() {
+        log.info("Fetching all districts");
+        return locationRepository.findByTypeOrderByNameAsc(LocationType.DISTRICT)
+                .stream()
+                .map(location -> LocationResponseDTO.builder()
+                        .locationId(location.getLocationId())
+                        .code(location.getCode())
+                        .name(location.getName())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<DistrictLocationResponse> getAllDistrictsWithWards() {
         log.debug("Fetching all districts with wards for internal AI service");
 

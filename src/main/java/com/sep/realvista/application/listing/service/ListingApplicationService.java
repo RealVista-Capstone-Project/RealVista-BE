@@ -15,7 +15,11 @@ import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.common.exception.InsufficientQuotaException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.billing.subscription.FeatureType;
+import com.sep.realvista.domain.billing.subscription.UserFeatureSubscription;
+import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubscriptionRepository;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.listing.Listing;
@@ -94,6 +98,7 @@ public class ListingApplicationService {
     private final NotificationApplicationService notificationApplicationService;
     private final AppointmentApplicationService appointmentApplicationService;
     private final UserRepository userRepository;
+    private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
     // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
     // ensuring @Cacheable on getCachedListingDetail is actually triggered.
     @Lazy
@@ -583,6 +588,7 @@ public class ListingApplicationService {
                         request.getListingType().name()), "DUPLICATE_LISTING_PUBLISH");
             }
 
+            consumeListingQuotaIfFirstPublish(listing, userId);
             listing.publish();
         }
 
@@ -970,12 +976,28 @@ public class ListingApplicationService {
                     listing.getListingType().name()), "DUPLICATE_LISTING_PUBLISH");
         }
 
+        boolean isFirstPublish = !Boolean.TRUE.equals(listing.getHasBeenPublished());
+        if (isFirstPublish) {
+            consumeListingQuotaIfFirstPublish(listing, userId);
+        }
         listing.publish();
         Listing updatedListing = listingRepository.save(listing);
 
         log.info("Successfully published listing ID: {}", listingId);
 
         return listingMapper.toListingResponse(updatedListing);
+    }
+
+    private void consumeListingQuotaIfFirstPublish(Listing listing, UUID userId) {
+        UserFeatureSubscription sub = userFeatureSubscriptionRepository
+                .findActiveByUserIdAndFeatureTypeForUpdate(userId, FeatureType.LISTING)
+                .stream()
+                .filter(UserFeatureSubscription::isUsable)
+                .findFirst()
+                .orElseThrow(() -> new InsufficientQuotaException(
+                        "No active listing subscription with available quota"));
+        sub.useQuota(1);
+        userFeatureSubscriptionRepository.save(sub);
     }
 
     /**

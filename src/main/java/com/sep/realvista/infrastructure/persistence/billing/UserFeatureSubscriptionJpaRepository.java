@@ -27,11 +27,12 @@ public interface UserFeatureSubscriptionJpaRepository extends JpaRepository<User
         AND ufs.deleted = false
         AND fp.featureType = :featureType
         AND (ufs.endDate IS NULL OR ufs.endDate >= CURRENT_DATE)
+        ORDER BY fp.price DESC
         """)
     List<UserFeatureSubscription> findActiveByUserIdAndFeatureType(
-            @Param("userId") UUID userId, 
+            @Param("userId") UUID userId,
             @Param("featureType") FeatureType featureType);
-    
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT ufs FROM UserFeatureSubscription ufs
@@ -41,6 +42,7 @@ public interface UserFeatureSubscriptionJpaRepository extends JpaRepository<User
         AND ufs.deleted = false
         AND fp.featureType = :featureType
         AND (ufs.endDate IS NULL OR ufs.endDate >= CURRENT_DATE)
+        ORDER BY fp.price DESC
         """)
     List<UserFeatureSubscription> findActiveByUserIdAndFeatureTypeForUpdate(
             @Param("userId") UUID userId,
@@ -58,6 +60,7 @@ public interface UserFeatureSubscriptionJpaRepository extends JpaRepository<User
 
     @Query("""
         SELECT ufs FROM UserFeatureSubscription ufs
+        JOIN FETCH ufs.featurePackage
         WHERE ufs.status = :status
         AND ufs.deleted = false
         """)

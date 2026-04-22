@@ -45,6 +45,9 @@ public class PropertyAttributeRange extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String label;
 
+    @Column(name = "search_value", length = 200)
+    private String searchValue;
+
     @Column(name = "min_value", precision = 12, scale = 2)
     private BigDecimal minValue;
 

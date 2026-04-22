@@ -252,7 +252,14 @@ public class BillingApplicationService {
         Map<String, Object> data = (Map<String, Object>) payload.get("data");
 
         if (data == null) {
-            log.warn("PayOS webhook received with no data");
+            log.info("PayOS webhook: no data (test/confirmation webhook)");
+            return;
+        }
+
+        // PayOS sends a confirmation webhook with orderCode=0 when verifying the URL
+        Object orderCodeObj = data.get("orderCode");
+        if (orderCodeObj == null || "0".equals(orderCodeObj.toString())) {
+            log.info("PayOS webhook: confirmation/test webhook received (orderCode={})", orderCodeObj);
             return;
         }
 
@@ -262,7 +269,7 @@ public class BillingApplicationService {
         }
 
         String code = (String) payload.get("code");
-        long orderCode = Long.parseLong(data.get("orderCode").toString());
+        long orderCode = Long.parseLong(orderCodeObj.toString());
 
         checkoutOrderRepository.findByOrderCode(orderCode).ifPresentOrElse(order -> {
             if ("00".equals(code)) {
@@ -271,6 +278,45 @@ public class BillingApplicationService {
                 log.info("PayOS payment failed for orderCode={}", orderCode);
             }
         }, () -> log.warn("PayOS webhook: no checkout order found for orderCode={}", orderCode));
+    }
+
+    // -------------------------------------------------------------------------
+    // VNPay IPN (server-to-server)
+    // -------------------------------------------------------------------------
+
+    @Transactional
+    public Map<String, String> handleVnPayIpn(Map<String, String> params) {
+        if (!vnPayService.verifyReturnSignature(params)) {
+            log.warn("VNPay IPN signature mismatch");
+            return Map.of("RspCode", "97", "Message", "Invalid Checksum");
+        }
+
+        String txnRef = params.get("vnp_TxnRef");
+        String responseCode = params.get("vnp_ResponseCode");
+
+        try {
+            UUID checkoutOrderId = UUID.fromString(txnRef);
+            return checkoutOrderRepository.findById(checkoutOrderId).map(order -> {
+                if (transactionRepository.findByOrderCode(order.getOrderCode()).isPresent()) {
+                    log.info("VNPay IPN: order already confirmed ref={}", txnRef);
+                    return Map.of("RspCode", "02", "Message", "Order already confirmed");
+                }
+                if (vnPayService.isSuccess(responseCode)) {
+                    completeCheckoutOrder(order);
+                    log.info("VNPay IPN: payment success ref={}", txnRef);
+                    return Map.of("RspCode", "00", "Message", "Confirm Success");
+                } else {
+                    log.info("VNPay IPN: payment failed ref={}, code={}", txnRef, responseCode);
+                    return Map.of("RspCode", "00", "Message", "Confirm Success");
+                }
+            }).orElseGet(() -> {
+                log.warn("VNPay IPN: order not found ref={}", txnRef);
+                return Map.of("RspCode", "01", "Message", "Order not found");
+            });
+        } catch (IllegalArgumentException e) {
+            log.warn("VNPay IPN: invalid txnRef={}", txnRef);
+            return Map.of("RspCode", "99", "Message", "Unknown error");
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -290,7 +336,9 @@ public class BillingApplicationService {
             UUID checkoutOrderId = UUID.fromString(txnRef);
             return checkoutOrderRepository.findById(checkoutOrderId).map(order -> {
                 if (vnPayService.isSuccess(responseCode)) {
-                    completeCheckoutOrder(order);
+                    if (transactionRepository.findByOrderCode(order.getOrderCode()).isEmpty()) {
+                        completeCheckoutOrder(order);
+                    }
                     return frontendUrl + "/vi/subscribe?payment=success";
                 } else {
                     return frontendUrl + "/vi/subscribe?payment=failed";
@@ -465,19 +513,25 @@ public class BillingApplicationService {
 
     @Transactional(readOnly = true)
     public List<ActiveFeatureSubscriptionResponse> getMyFeatureSubscriptions(UUID userId) {
-        return userFeatureSubscriptionRepository.findAllActiveByUserId(userId).stream()
+        List<ActiveFeatureSubscriptionResponse> responses = userFeatureSubscriptionRepository
+                .findAllActiveByUserId(userId).stream()
                 .filter(UserFeatureSubscription::isUsable)
                 .map(this::toActiveFeatureSubscriptionResponse)
                 .collect(Collectors.toList());
+        enrichQuotaWithFreeBaseline(responses);
+        return responses;
     }
 
     @Transactional(readOnly = true)
     public List<ActiveFeatureSubscriptionResponse> getMyFeatureSubscriptionsByType(
             UUID userId, FeatureType featureType) {
-        return userFeatureSubscriptionRepository.findActiveByUserIdAndFeatureType(userId, featureType).stream()
+        List<ActiveFeatureSubscriptionResponse> responses = userFeatureSubscriptionRepository
+                .findActiveByUserIdAndFeatureType(userId, featureType).stream()
                 .filter(UserFeatureSubscription::isUsable)
                 .map(this::toActiveFeatureSubscriptionResponse)
                 .collect(Collectors.toList());
+        enrichQuotaWithFreeBaseline(responses);
+        return responses;
     }
 
     private ActiveFeatureSubscriptionResponse toActiveFeatureSubscriptionResponse(UserFeatureSubscription sub) {
@@ -499,6 +553,32 @@ public class BillingApplicationService {
                 .endDate(sub.getEndDate())
                 .status(sub.getStatus().name())
                 .build();
+    }
+
+    private void enrichQuotaWithFreeBaseline(List<ActiveFeatureSubscriptionResponse> responses) {
+        Map<String, List<ActiveFeatureSubscriptionResponse>> byType = responses.stream()
+                .collect(Collectors.groupingBy(ActiveFeatureSubscriptionResponse::getFeatureType));
+
+        for (List<ActiveFeatureSubscriptionResponse> group : byType.values()) {
+            ActiveFeatureSubscriptionResponse freeSub = null;
+            ActiveFeatureSubscriptionResponse paidSub = null;
+
+            for (ActiveFeatureSubscriptionResponse r : group) {
+                if (r.getTierLevel() == 0) {
+                    freeSub = r;
+                } else if (paidSub == null || r.getTierLevel() > paidSub.getTierLevel()) {
+                    paidSub = r;
+                }
+            }
+
+            if (freeSub != null && paidSub != null) {
+                if (!paidSub.isUnlimited()
+                        && freeSub.getRemainingQuota() != null && paidSub.getRemainingQuota() != null) {
+                    paidSub.setRemainingQuota(paidSub.getRemainingQuota() + freeSub.getRemainingQuota());
+                }
+                responses.remove(freeSub);
+            }
+        }
     }
 
     /**
@@ -598,7 +678,8 @@ public class BillingApplicationService {
         List<UserFeatureSubscription> existing = userFeatureSubscriptionRepository
                 .findActiveByUserIdAndFeatureType(userId, featureType);
         for (UserFeatureSubscription sub : existing) {
-            if (sub.getStatus() == UserFeatureSubscriptionStatus.ACTIVE) {
+            if (sub.getStatus() == UserFeatureSubscriptionStatus.ACTIVE
+                    && !sub.getFeaturePackage().isFree()) {
                 sub.cancel();
                 userFeatureSubscriptionRepository.save(sub);
             }
@@ -734,13 +815,34 @@ public class BillingApplicationService {
      * Assigns the default AI_FREE package to a user if they don't have one.
      */
     public void assignDefaultAiPackage(UUID userId) {
-        log.info("Assigning default AI_FREE package to user: {}", userId);
+        assignDefaultFreePackage(userId, "AI_FREE", FeatureType.AI_REQUEST);
+    }
 
-        featurePackageRepository.findByCode("AI_FREE").ifPresent(pkg -> {
+    /**
+     * Assigns LISTING_FREE and 3D_TOUR_FREE packages to a user (called when user becomes OWNER/AGENT).
+     */
+    public void assignDefaultOwnerPackages(UUID userId) {
+        assignDefaultFreePackage(userId, "LISTING_FREE", FeatureType.LISTING);
+        assignDefaultFreePackage(userId, "3D_TOUR_FREE", FeatureType._3D_TOUR);
+    }
+
+    /**
+     * Assigns all 3 free packages to a user (AI_FREE, LISTING_FREE, 3D_TOUR_FREE).
+     */
+    public void assignAllDefaultFreePackages(UUID userId) {
+        assignDefaultAiPackage(userId);
+        assignDefaultOwnerPackages(userId);
+    }
+
+    private void assignDefaultFreePackage(UUID userId, String packageCode, FeatureType featureType) {
+        log.info("Assigning default {} package to user: {}", packageCode, userId);
+
+        featurePackageRepository.findByCode(packageCode).ifPresent(pkg -> {
             List<UserFeatureSubscription> existing = userFeatureSubscriptionRepository
-                    .findActiveByUserIdAndFeatureType(userId, FeatureType.AI_REQUEST);
+                    .findActiveByUserIdAndFeatureType(userId, featureType);
 
-            if (existing.isEmpty()) {
+            if (existing.stream().noneMatch(s -> s.getFeaturePackage() != null
+                    && s.getFeaturePackage().isFree())) {
                 UserFeatureSubscription sub = UserFeatureSubscription.builder()
                         .userId(userId)
                         .featurePackageId(pkg.getFeaturePackageId())
@@ -750,7 +852,7 @@ public class BillingApplicationService {
                         .status(UserFeatureSubscriptionStatus.ACTIVE)
                         .build();
                 userFeatureSubscriptionRepository.save(sub);
-                log.info("Assigned default AI_FREE package to user={}", userId);
+                log.info("Assigned default {} package to user={}", packageCode, userId);
             }
         });
     }

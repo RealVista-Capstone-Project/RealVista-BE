@@ -74,6 +74,8 @@ class ListingSearchServiceIntegrationTest {
     private PropertyCategory residentialCategory;
     private PropertyAttribute bedroomsAttribute;
     private PropertyAttribute bathroomsAttribute;
+    private PropertyAttribute directionAttribute;
+    private PropertyAttribute hasPoolAttribute;
     private Listing listing1;
     private Listing listing2;
     private User testUser;
@@ -156,9 +158,26 @@ class ListingSearchServiceIntegrationTest {
                 .unit("rooms")
                 .build();
         entityManager.persist(bathroomsAttribute);
+
+        directionAttribute = PropertyAttribute.builder()
+                .name("Direction")
+                .code("DIRECTION")
+                .dataType(AttributeDataType.TEXT)
+                .isSearchable(true)
+                .build();
+        entityManager.persist(directionAttribute);
+
+        hasPoolAttribute = PropertyAttribute.builder()
+                .name("Has Pool")
+                .code("HASPOOL")
+                .dataType(AttributeDataType.BOOLEAN)
+                .isSearchable(true)
+                .build();
+        entityManager.persist(hasPoolAttribute);
         entityManager.flush();
 
         // Property 1: Apartment with 2 beds, 2 baths, 100m2, South facing, Has Pool
+        // Intentionally store direction with mixed casing to verify case-insensitive filtering
         Map<String, Object> extraAttrs1 = new HashMap<>();
         extraAttrs1.put("direction", "South");
         extraAttrs1.put("hasPool", "true");
@@ -166,9 +185,12 @@ class ListingSearchServiceIntegrationTest {
         Property property1 = createProperty("123 Main St", 100.0, apartmentType, extraAttrs1);
         createAttributeValue(property1, bedroomsAttribute, 2);
         createAttributeValue(property1, bathroomsAttribute, 2);
+        createTextAttributeValue(property1, directionAttribute, "South");
+        createBooleanAttributeValue(property1, hasPoolAttribute, true);
         listing1 = createListing(property1, "Luxury Apt", 2000.0);
         
         // Property 2: Apartment with 3 beds, 2 baths, 150m2, North facing, No Pool
+        // Store "nORth" (mixed casing) to exercise case-insensitive text search
         Map<String, Object> extraAttrs2 = new HashMap<>();
         extraAttrs2.put("direction", "North");
         extraAttrs2.put("hasPool", "false");
@@ -176,6 +198,8 @@ class ListingSearchServiceIntegrationTest {
         Property property2 = createProperty("456 High St", 150.0, apartmentType, extraAttrs2);
         createAttributeValue(property2, bedroomsAttribute, 3);
         createAttributeValue(property2, bathroomsAttribute, 2);
+        createTextAttributeValue(property2, directionAttribute, "nORth");
+        createBooleanAttributeValue(property2, hasPoolAttribute, false);
         listing2 = createListing(property2, "Spacious Apt", 3000.0);
         
         entityManager.flush();
@@ -208,6 +232,28 @@ class ListingSearchServiceIntegrationTest {
                 .propertyAttributeId(attribute.getPropertyAttributeId())
                 .propertyAttribute(attribute)
                 .valueNumber(BigDecimal.valueOf(value))
+                .build();
+        entityManager.persist(pav);
+    }
+
+    private void createTextAttributeValue(Property property, PropertyAttribute attribute, String value) {
+        PropertyAttributeValue pav = PropertyAttributeValue.builder()
+                .propertyId(property.getPropertyId())
+                .property(property)
+                .propertyAttributeId(attribute.getPropertyAttributeId())
+                .propertyAttribute(attribute)
+                .valueText(value)
+                .build();
+        entityManager.persist(pav);
+    }
+
+    private void createBooleanAttributeValue(Property property, PropertyAttribute attribute, boolean value) {
+        PropertyAttributeValue pav = PropertyAttributeValue.builder()
+                .propertyId(property.getPropertyId())
+                .property(property)
+                .propertyAttributeId(attribute.getPropertyAttributeId())
+                .propertyAttribute(attribute)
+                .valueBoolean(value)
                 .build();
         entityManager.persist(pav);
     }
@@ -263,6 +309,23 @@ class ListingSearchServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("PRIORITY sort (Buy page default) should not fail")
+    void search_prioritySort_shouldReturnListings() {
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .sortBy("PRIORITY")
+                .build();
+
+        Page<ListingSearchResponse> result = listingSearchService.search(
+                criteria,
+                PageRequest.of(0, 10),
+                null
+        );
+
+        assertThat(result.getContent()).hasSize(2);
+    }
+
+    @Test
     void search_dynamicAttribute_text_shouldReturnMatchingListings() {
         Map<String, String> dynamicFilters = new HashMap<>();
         dynamicFilters.put("direction", "South");
@@ -280,6 +343,76 @@ class ListingSearchServiceIntegrationTest {
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getListingId()).isEqualTo(listing1.getListingId());
+    }
+
+    @Test
+    @DisplayName("Text attribute filter should be case-insensitive")
+    void search_dynamicAttribute_text_shouldBeCaseInsensitive() {
+        // Property 1 stored with "South", filter value is lowercase "south"
+        Map<String, String> dynamicFilters = new HashMap<>();
+        dynamicFilters.put("direction", "south");
+
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .dynamicAttributes(dynamicFilters)
+                .build();
+
+        Page<ListingSearchResponse> result = listingSearchService.search(
+                criteria,
+                PageRequest.of(0, 10),
+                null
+        );
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getListingId()).isEqualTo(listing1.getListingId());
+    }
+
+    @Test
+    @DisplayName("Text attribute filter should ignore leading/trailing whitespace")
+    void search_dynamicAttribute_text_shouldIgnoreWhitespace() {
+        Map<String, String> dynamicFilters = new HashMap<>();
+        dynamicFilters.put("direction", "  NORTH  ");
+
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .dynamicAttributes(dynamicFilters)
+                .build();
+
+        Page<ListingSearchResponse> result = listingSearchService.search(
+                criteria,
+                PageRequest.of(0, 10),
+                null
+        );
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getListingId()).isEqualTo(listing2.getListingId());
+    }
+
+    @Test
+    @DisplayName("Text filter should NOT match compound values with overlapping substrings")
+    void search_dynamicAttribute_text_shouldNotMatchSubstring() {
+        // Property storing "Tây Bắc" must NOT be returned when filter is "Bắc" or "Tây"
+        Property p3 = createProperty("789 Boulevard", 80.0, apartmentType, new HashMap<>());
+        createTextAttributeValue(p3, directionAttribute, "Tây Bắc");
+        createListing(p3, "Third Apt", 1800.0);
+        entityManager.flush();
+
+        Map<String, String> dynamicFilters = new HashMap<>();
+        dynamicFilters.put("direction", "Bắc");
+
+        ListingSearchCriteria criteria = ListingSearchCriteria.builder()
+                .listingType("RENT")
+                .dynamicAttributes(dynamicFilters)
+                .build();
+
+        Page<ListingSearchResponse> result = listingSearchService.search(
+                criteria,
+                PageRequest.of(0, 10),
+                null
+        );
+
+        // None of the listings store exactly "Bắc" → must be empty
+        assertThat(result.getContent()).isEmpty();
     }
 
     @Test

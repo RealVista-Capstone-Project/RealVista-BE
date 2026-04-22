@@ -16,6 +16,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class SavedSearchDto {
     private UUID savedSearchId;
+    private UUID profileId;
     private SearchType searchType;
     private Map<String, Object> criteria;
     private String boardId;
