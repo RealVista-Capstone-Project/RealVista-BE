@@ -28,6 +28,7 @@ import com.sep.realvista.domain.billing.transaction.Transaction;
 import com.sep.realvista.domain.billing.transaction.TransactionRepository;
 import com.sep.realvista.domain.billing.transaction.TransactionType;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.infrastructure.payment.payos.PayOsPaymentRequestInfo;
 import com.sep.realvista.infrastructure.payment.payos.PayOsPaymentResult;
@@ -395,7 +396,9 @@ public class BillingApplicationService {
             throw new ResourceNotFoundException("Checkout order not found");
         }
         if (order.getPaymentMethod() != PaymentMethod.PAYOS) {
-            throw new IllegalArgumentException("Only PayOS checkout orders can be synced from PayOS");
+            throw new DomainException(
+                    "Only PayOS checkout orders can be synced from PayOS",
+                    "ERROR_BILLING_PAYOS_ORDER_ONLY");
         }
 
         PayOsPaymentRequestInfo info = payOsService.fetchPaymentRequestByOrderCode(order.getOrderCode());
@@ -456,7 +459,9 @@ public class BillingApplicationService {
             throw new ResourceNotFoundException("Transaction not found");
         }
         if (txn.getPaymentMethod() != PaymentMethod.PAYOS) {
-            throw new IllegalArgumentException("Only PayOS transactions can be synced from PayOS");
+            throw new DomainException(
+                    "Only PayOS transactions can be synced from PayOS",
+                    "ERROR_BILLING_PAYOS_TRANSACTION_ONLY");
         }
         if (txn.getPaymentStatus() != PaymentStatus.PENDING) {
             return toTransactionStatusResponse(txn);
@@ -591,7 +596,9 @@ public class BillingApplicationService {
             throw new ResourceNotFoundException("Subscription not found");
         }
         if (sub.getStatus() != UserFeatureSubscriptionStatus.ACTIVE) {
-            throw new BusinessConflictException("Gói không còn ở trạng thái hoạt động.", "SUBSCRIPTION_NOT_ACTIVE");
+            throw new BusinessConflictException(
+                    "Gói không còn ở trạng thái hoạt động.",
+                    "ERROR_SUBSCRIPTION_NOT_ACTIVE");
         }
         sub.cancel();
         userFeatureSubscriptionRepository.save(sub);
@@ -670,7 +677,7 @@ public class BillingApplicationService {
         if (newTier < maxTier) {
             throw new BusinessConflictException(
                     "Bạn đang dùng gói cấp cao hơn. Không thể mua hoặc hạ xuống gói cấp thấp hơn.",
-                    "SUBSCRIPTION_DOWNGRADE_BLOCKED");
+                    "ERROR_SUBSCRIPTION_DOWNGRADE_BLOCKED");
         }
     }
 

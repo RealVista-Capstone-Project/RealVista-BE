@@ -13,6 +13,7 @@ import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
 import com.sep.realvista.application.property.mapper.PropertyMapper;
 import com.sep.realvista.domain.agent.PropertyAgent;
 import com.sep.realvista.domain.agent.PropertyAgentRepository;
+import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
 import com.sep.realvista.domain.property.Property;
@@ -86,7 +87,7 @@ public class PropertyApplicationService {
         if (auth != null && auth.getPrincipal() instanceof SecurityUserDetails userDetails) {
             return userDetails.getUserId();
         }
-        throw new IllegalStateException("Current user not found in security context");
+        throw new DomainException("Current user not found in security context", "ERROR_USER_NOT_IN_SECURITY_CONTEXT");
     }
 
     private void applyOwnerContactForAgentView(
@@ -174,7 +175,9 @@ public class PropertyApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
 
         if (!property.getOwnerId().equals(ownerId)) {
-            throw new IllegalArgumentException("User is not authorized to update this property");
+            throw new DomainException(
+                    "User is not authorized to update this property",
+                    "ERROR_PROPERTY_UPDATE_NOT_AUTHORIZED");
         }
 
         // Update basic fields
@@ -555,7 +558,7 @@ public class PropertyApplicationService {
 
     private UUID resolvePropertyTypeId(String propertyTypeCode) {
         if (propertyTypeCode == null || propertyTypeCode.isBlank()) {
-            throw new IllegalArgumentException("Property type code is required");
+            throw new DomainException("Property type code is required", "ERROR_PROPERTY_TYPE_CODE_REQUIRED");
         }
 
         // Try parsing as UUID first (backward compatibility)
@@ -637,7 +640,9 @@ public class PropertyApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
 
         if (!propertyAgentRepository.existsByPropertyIdAndAgentId(propertyId, agentId)) {
-            throw new IllegalArgumentException("User is not authorized to verify this property");
+            throw new DomainException(
+                    "User is not authorized to verify this property",
+                    "ERROR_PROPERTY_VERIFY_NOT_AUTHORIZED");
         }
 
         property.verifyByAgent();
@@ -657,28 +662,33 @@ public class PropertyApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
 
         if (!property.getOwnerId().equals(currentUserId)) {
-            throw new IllegalArgumentException("Only the property owner can update the status");
+            throw new DomainException(
+                    "Only the property owner can update the status",
+                    "ERROR_PROPERTY_STATUS_OWNER_ONLY");
         }
 
         Set<PropertyStatus> systemStatuses = Set.of(
                 PropertyStatus.PENDING, PropertyStatus.VERIFIED, PropertyStatus.REJECTED);
 
         if (systemStatuses.contains(property.getStatus())) {
-            throw new IllegalArgumentException(
+            throw new DomainException(
                     "Cannot manually change status of a property with system-managed status: "
-                    + property.getStatus());
+                    + property.getStatus(), "ERROR_PROPERTY_INVALID_STATUS_TRANSITION",
+                    new Object[]{property.getStatus(), status});
         }
 
         PropertyStatus newStatus;
         try {
             newStatus = PropertyStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid property status: " + status);
+            throw new DomainException("Invalid property status: " + status,
+                    "ERROR_PROPERTY_INVALID_STATUS", new Object[]{status});
         }
 
         if (systemStatuses.contains(newStatus)) {
-            throw new IllegalArgumentException(
-                    "Cannot manually set a property to system-managed status: " + newStatus);
+            throw new DomainException(
+                    "Cannot manually set a property to system-managed status: " + newStatus,
+                    "ERROR_PROPERTY_INVALID_STATUS", new Object[]{newStatus});
         }
 
         property.updateStatus(newStatus);
@@ -697,7 +707,9 @@ public class PropertyApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
 
         if (!property.getOwnerId().equals(currentUserId)) {
-            throw new IllegalArgumentException("Only the property owner can delete this property");
+            throw new DomainException(
+                    "Only the property owner can delete this property",
+                    "ERROR_PROPERTY_DELETE_OWNER_ONLY");
         }
 
         property.markAsDeleted();

@@ -143,15 +143,15 @@ public class UserApplicationService {
         if ("AGENT".equalsIgnoreCase(request.getRole())) {
             // Agent role only
             Role agentRole = roleRepository.findByRoleCode(RoleCode.AGENT)
-                    .orElseThrow(() -> new BusinessConflictException("Role AGENT not found", "ROLE_NOT_FOUND"));
+                    .orElseThrow(() -> new BusinessConflictException("Role AGENT not found", "ERROR_ROLE_NOT_FOUND"));
             UserRole userRole = UserRole.create(savedUser, agentRole);
             userRoleRepository.save(userRole);
         } else {
             // User gets both BUYER and TENANT roles
             Role buyerRole = roleRepository.findByRoleCode(RoleCode.BUYER)
-                    .orElseThrow(() -> new BusinessConflictException("Role BUYER not found", "ROLE_NOT_FOUND"));
+                    .orElseThrow(() -> new BusinessConflictException("Role BUYER not found", "ERROR_ROLE_NOT_FOUND"));
             Role tenantRole = roleRepository.findByRoleCode(RoleCode.TENANT)
-                    .orElseThrow(() -> new BusinessConflictException("Role TENANT not found", "ROLE_NOT_FOUND"));
+                    .orElseThrow(() -> new BusinessConflictException("Role TENANT not found", "ERROR_ROLE_NOT_FOUND"));
 
             UserRole buyerUserRole = UserRole.create(savedUser, buyerRole);
             UserRole tenantUserRole = UserRole.create(savedUser, tenantRole);
@@ -225,9 +225,9 @@ public class UserApplicationService {
 
         // 1. Assign default BUYER and TENANT roles
         Role buyerRole = roleRepository.findByRoleCode(RoleCode.BUYER)
-                .orElseThrow(() -> new BusinessConflictException("Role not found: BUYER", "ROLE_NOT_FOUND"));
+                .orElseThrow(() -> new BusinessConflictException("Role not found: BUYER", "ERROR_ROLE_NOT_FOUND"));
         Role tenantRole = roleRepository.findByRoleCode(RoleCode.TENANT)
-                .orElseThrow(() -> new BusinessConflictException("Role not found: TENANT", "ROLE_NOT_FOUND"));
+                .orElseThrow(() -> new BusinessConflictException("Role not found: TENANT", "ERROR_ROLE_NOT_FOUND"));
 
         UserRole buyerUserRole = UserRole.create(savedUser, buyerRole);
         UserRole tenantUserRole = UserRole.create(savedUser, tenantRole);
@@ -302,11 +302,16 @@ public class UserApplicationService {
             String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
             String currentEmail = user.getEmail() != null ? user.getEmail().getValue() : null;
             if (!Objects.equals(currentEmail, normalizedEmail)) {
-                throw new BusinessConflictException(
-                        "Email can only be changed after verification. Use POST /api/v1/me/send-email-otp "
-                                + "and POST /api/v1/me/verify-email.",
-                        "EMAIL_CHANGE_REQUIRES_VERIFICATION"
-                );
+                userRepository.findByEmailValue(normalizedEmail).ifPresent(existing -> {
+                    if (!existing.getUserId().equals(userId)) {
+                        throw new BusinessConflictException(
+                                "Email already exists: " + normalizedEmail,
+                                "ERROR_EMAIL_ALREADY_EXISTS",
+                                new Object[]{normalizedEmail}
+                        );
+                    }
+                });
+                user.updateEmail(normalizedEmail);
             }
         }
         user.updateProfile(request.getFirstName(), request.getLastName(), request.getAvatarUrl());
@@ -334,7 +339,7 @@ public class UserApplicationService {
 
         // Verify current password
         if (!passwordService.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            throw new BusinessConflictException("Current password is incorrect", "INVALID_CURRENT_PASSWORD");
+            throw new BusinessConflictException("Current password is incorrect", "ERROR_INVALID_CURRENT_PASSWORD");
         }
 
         // Update password
@@ -620,7 +625,8 @@ public class UserApplicationService {
                 if (!existing.getUserId().equals(userId)) {
                     throw new BusinessConflictException(
                             "Email already exists: " + normalizedEmail,
-                            "EMAIL_ALREADY_EXISTS"
+                            "ERROR_EMAIL_ALREADY_EXISTS",
+                            new Object[]{normalizedEmail}
                     );
                 }
             });
@@ -654,7 +660,7 @@ public class UserApplicationService {
     @CacheEvict(value = "users", key = "#userId")
     public UserResponse verifyEmail(UUID userId, String otp) {
         if (!otpService.verify(EMAIL_OTP_PREFIX + userId, otp)) {
-            throw new BusinessConflictException("OTP không hợp lệ hoặc đã hết hạn", "INVALID_OTP");
+            throw new BusinessConflictException("OTP không hợp lệ hoặc đã hết hạn", "ERROR_INVALID_OTP");
         }
         User user = userDomainService.getUserOrThrow(userId);
 
@@ -723,7 +729,7 @@ public class UserApplicationService {
         }
 
         Role ownerRole = roleRepository.findByRoleCode(RoleCode.OWNER)
-                .orElseThrow(() -> new BusinessConflictException("Role OWNER not found", "ROLE_NOT_FOUND"));
+                .orElseThrow(() -> new BusinessConflictException("Role OWNER not found", "ERROR_ROLE_NOT_FOUND"));
 
         UserRole userRole = UserRole.create(user, ownerRole);
         userRoleRepository.save(userRole);
