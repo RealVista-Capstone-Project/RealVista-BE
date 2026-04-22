@@ -35,6 +35,7 @@ public class SavedSearchMapper {
 
         return SavedSearchDto.builder()
                 .savedSearchId(entity.getSavedSearchId())
+                .profileId(entity.getProfileId())
                 .searchType(entity.getSearchType())
                 .criteria(parsedCriteria)
                 .boardId(entity.getBoardId())

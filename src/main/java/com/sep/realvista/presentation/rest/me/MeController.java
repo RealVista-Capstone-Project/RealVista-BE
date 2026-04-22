@@ -61,8 +61,9 @@ public class MeController {
     @PostMapping("/send-email-otp")
     @Operation(
             summary = "Send email OTP",
-            description = "Sends a 6-digit OTP to the provided email; "
-                    + "updates user's email if changed"
+            description = "Sends a 6-digit OTP to the provided email. The user's stored email is "
+                    + "NOT changed here — the target address is only committed after a successful "
+                    + "call to /me/verify-email with the matching OTP."
     )
     public ResponseEntity<ApiResponse<Map<String, Object>>> sendEmailOtp(
             Authentication authentication,

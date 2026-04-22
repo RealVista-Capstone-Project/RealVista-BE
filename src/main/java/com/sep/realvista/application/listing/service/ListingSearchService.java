@@ -4,10 +4,13 @@ import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.MediaType;
+import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationRepository;
@@ -85,16 +88,8 @@ public class ListingSearchService {
     private static final class LocationFields {
         static final String NAME = "name";
         static final String CODE = "code";
+        static final String PARENT = "parent";
     }
-
-    private static final String JSONB_EXTRACT_FUNCTION = "jsonb_extract_path_text";
-
-    /**
-     * Attribute codes that represent numeric quantities and should use >= (min) semantics
-     * when passed via dynamicAttributes. Clients pass e.g. {"BEDROOMS": "2"} to mean
-     * "at least 2 bedrooms".
-     */
-    private static final Set<String> NUMERIC_MIN_ATTRIBUTE_CODES = Set.of("BEDROOMS", "BATHROOMS");
 
     @Transactional(readOnly = true)
     public Page<ListingSearchResponse> search(ListingSearchCriteria criteria, Pageable pageable, UUID userId) {
@@ -258,7 +253,7 @@ public class ListingSearchService {
             applyPrioritySorting(criteria, root, query, cb);
 
             // Add standard filters
-            addStandardFilters(criteria, root, cb, predicates);
+            addStandardFilters(criteria, root, query, cb, predicates);
 
             // Add dynamic attributes
             addDynamicAttributeFilters(criteria, root, query, cb, predicates);
@@ -300,14 +295,14 @@ public class ListingSearchService {
                 cb.equal(lbHot.get("deleted"), false)
             ));
 
-        // Subquery for AGENT role
+        // Subquery for AGENT role (correlate on listing.user_id — avoids outer join through root.get("user"))
         Subquery<Long> agentSub = query.subquery(Long.class);
         Root<com.sep.realvista.domain.user.User> u = agentSub.from(com.sep.realvista.domain.user.User.class);
         var ur = u.join("userRoles");
         var r = ur.join("role");
         agentSub.select(cb.count(u))
             .where(cb.and(
-                cb.equal(u.get("userId"), root.get("user").get("userId")),
+                cb.equal(u.get("userId"), root.get("userId")),
                 cb.equal(r.get("roleCode"), RoleCode.AGENT)
             ));
 
@@ -324,6 +319,7 @@ public class ListingSearchService {
     }
 
     private void addStandardFilters(ListingSearchCriteria criteria, Root<Listing> root,
+                                    jakarta.persistence.criteria.CriteriaQuery<?> query,
                                     jakarta.persistence.criteria.CriteriaBuilder cb,
                                     List<Predicate> predicates) {
         // Only search published listings
@@ -359,28 +355,49 @@ public class ListingSearchService {
             ));
         }
 
-        // Location LIKE search (Name, Code, or Street Address)
+        // Location LIKE search (Name, Code, Street Address, District name, City name)
+        // Splits by comma or before Vietnamese admin keywords (phường, quận, huyện, ...)
+        // "113 Phường 1" → ["113", "Phường 1"], "612, quận 1" → ["612", "quận 1"]
+        // Each token must match at least one field (AND between tokens, OR within a token)
         if (criteria.getLocation() != null && !criteria.getLocation().isBlank()) {
-            String rawLocation = criteria.getLocation().toLowerCase().trim();
-            // Normalize variants to match sample data like "Q1", "Q10", "H1"
-            String normalizedLocation = rawLocation
-                .replace("quận ", "q")
-                .replace("q.", "q")
-                .replace("huyện ", "h")
-                .replace("h.", "h")
-                .replace("thành phố ", "tp")
-                .replace("tp.", "tp")
-                .replace(" ", ""); // Remove spaces for "q 1" -> "q1"
-            
-            String nameQuery = "%" + rawLocation + "%";
-            String codeQuery = "%" + normalizedLocation + "%";
-            
             Join<Object, Location> locationJoin = propertyJoin.join(PropertyFields.LOCATION);
-            predicates.add(cb.or(
-                cb.like(cb.lower(locationJoin.get(LocationFields.NAME)), nameQuery),
-                cb.like(cb.lower(locationJoin.get(LocationFields.CODE)), codeQuery),
-                cb.like(cb.lower(propertyJoin.get(PropertyFields.STREET_ADDRESS)), codeQuery)
-            ));
+            Join<Location, Location> districtJoin = locationJoin.join(LocationFields.PARENT,
+                    jakarta.persistence.criteria.JoinType.LEFT);
+            Join<Location, Location> cityJoin = districtJoin.join(LocationFields.PARENT,
+                    jakarta.persistence.criteria.JoinType.LEFT);
+
+            // Split by comma, or before Vietnamese administrative keywords
+            String[] tokens = criteria.getLocation().toLowerCase().trim()
+                    .split("\\s*,\\s*|\\s+(?=(?:phường|quận|huyện|thành phố|thị trấn|thị xã|xã)\\b)");
+
+            for (String token : tokens) {
+                if (token.isBlank()) {
+                    continue;
+                }
+                String trimmed = token.trim();
+                // Normalize Vietnamese abbreviations for code matching
+                String normalized = trimmed
+                    .replace("quận ", "q")
+                    .replace("q.", "q")
+                    .replace("huyện ", "h")
+                    .replace("h.", "h")
+                    .replace("thành phố ", "tp")
+                    .replace("tp.", "tp")
+                    .replace(" ", "");
+
+                String nameQuery = "%" + trimmed + "%";
+                String codeQuery = "%" + normalized + "%";
+
+                predicates.add(cb.or(
+                    cb.like(cb.lower(locationJoin.get(LocationFields.NAME)), nameQuery),
+                    cb.like(cb.lower(locationJoin.get(LocationFields.CODE)), codeQuery),
+                    cb.like(cb.lower(propertyJoin.get(PropertyFields.STREET_ADDRESS)), nameQuery),
+                    cb.like(cb.lower(districtJoin.get(LocationFields.NAME)), nameQuery),
+                    cb.like(cb.lower(districtJoin.get(LocationFields.CODE)), codeQuery),
+                    cb.like(cb.lower(cityJoin.get(LocationFields.NAME)), nameQuery),
+                    cb.like(cb.lower(cityJoin.get(LocationFields.CODE)), codeQuery)
+                ));
+            }
         }
 
         // Location ID hierarchical
@@ -408,6 +425,34 @@ public class ListingSearchService {
             predicates.add(cb.lessThanOrEqualTo(propertyJoin.get(PropertyFields.USABLE_SIZE_M2),
                     criteria.getMaxArea()));
         }
+
+        // Has Video filter
+        if (Boolean.TRUE.equals(criteria.getHasVideo())) {
+            Subquery<Long> videoSub = query.subquery(Long.class);
+            Root<ListingMedia> lmRoot = videoSub.from(ListingMedia.class);
+            Join<ListingMedia, PropertyMedia> pmJoin = lmRoot.join("propertyMedia");
+            videoSub.select(cb.count(lmRoot))
+                .where(cb.and(
+                    cb.equal(lmRoot.get("listingId"), root.get("listingId")),
+                    cb.equal(pmJoin.get("mediaType"), MediaType.VIDEO),
+                    cb.isFalse(lmRoot.get("deleted"))
+                ));
+            predicates.add(cb.greaterThan(videoSub, 0L));
+        }
+
+        // Has 3D filter
+        if (Boolean.TRUE.equals(criteria.getHas3D())) {
+            Subquery<Long> threeDSub = query.subquery(Long.class);
+            Root<ListingMedia> lmRoot3d = threeDSub.from(ListingMedia.class);
+            Join<ListingMedia, PropertyMedia> pmJoin3d = lmRoot3d.join("propertyMedia");
+            threeDSub.select(cb.count(lmRoot3d))
+                .where(cb.and(
+                    cb.equal(lmRoot3d.get("listingId"), root.get("listingId")),
+                    cb.equal(pmJoin3d.get("mediaType"), MediaType.THREE_D),
+                    cb.isFalse(lmRoot3d.get("deleted"))
+                ));
+            predicates.add(cb.greaterThan(threeDSub, 0L));
+        }
     }
 
     private void addDynamicAttributeFilters(ListingSearchCriteria criteria, Root<Listing> root,
@@ -418,35 +463,107 @@ public class ListingSearchService {
             return;
         }
 
-        Join<Object, Object> propertyJoin = root.join(ListingFields.PROPERTY);
-
+        // Use correlated EXISTS subqueries keyed on listing.propertyId — avoids a duplicate
+        // JOIN to the properties table (addStandardFilters already created one).
         criteria.getDynamicAttributes().forEach((code, value) -> {
             if (value == null || value.isBlank()) {
                 return;
             }
 
-            if (NUMERIC_MIN_ATTRIBUTE_CODES.contains(code.toUpperCase())) {
+            String upperCode = code.toUpperCase();
+
+            // Range format "min:max" — property attribute number value must be between min and max
+            if (value.contains(":")) {
+                String[] parts = value.split(":", 2);
                 try {
-                    java.math.BigDecimal minValue = new java.math.BigDecimal(value);
-                    Subquery<UUID> subquery = query.subquery(UUID.class);
+                    java.math.BigDecimal minVal = parts[0].isBlank()
+                            ? null : new java.math.BigDecimal(parts[0].trim());
+                    java.math.BigDecimal maxVal = parts[1].isBlank()
+                            ? null : new java.math.BigDecimal(parts[1].trim());
+                    if (minVal == null && maxVal == null) {
+                        return;
+                    }
+                    Subquery<Integer> subquery = query.subquery(Integer.class);
                     Root<PropertyAttributeValue> pavRoot = subquery.from(PropertyAttributeValue.class);
                     Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
-                    subquery.select(pavRoot.get("propertyId"))
+                    List<jakarta.persistence.criteria.Predicate> subPreds = new ArrayList<>();
+                    subPreds.add(cb.equal(pavRoot.get("propertyId"), root.get("propertyId")));
+                    subPreds.add(cb.equal(cb.upper(paJoin.get("code")), upperCode));
+                    if (minVal != null) {
+                        subPreds.add(cb.greaterThanOrEqualTo(pavRoot.get("valueNumber"), minVal));
+                    }
+                    if (maxVal != null) {
+                        subPreds.add(cb.lessThanOrEqualTo(pavRoot.get("valueNumber"), maxVal));
+                    }
+                    subPreds.add(cb.isFalse(pavRoot.get("deleted")));
+                    subquery.select(cb.literal(1))
+                        .where(subPreds.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                    predicates.add(cb.exists(subquery));
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid range value for attribute {}: {}", code, value);
+                }
+            } else if (isNumericValue(value)) {
+                // Plain number — use >= semantics (minimum value)
+                try {
+                    java.math.BigDecimal minValue = new java.math.BigDecimal(value);
+                    Subquery<Integer> subquery = query.subquery(Integer.class);
+                    Root<PropertyAttributeValue> pavRoot = subquery.from(PropertyAttributeValue.class);
+                    Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
+                    subquery.select(cb.literal(1))
                         .where(
-                            cb.equal(paJoin.get("code"), code.toUpperCase()),
-                            cb.greaterThanOrEqualTo(pavRoot.get("valueNumber"), minValue)
+                            cb.equal(pavRoot.get("propertyId"), root.get("propertyId")),
+                            cb.equal(cb.upper(paJoin.get("code")), upperCode),
+                            cb.greaterThanOrEqualTo(pavRoot.get("valueNumber"), minValue),
+                            cb.isFalse(pavRoot.get("deleted"))
                         );
-                    predicates.add(propertyJoin.get(PropertyFields.PROPERTY_ID).in(subquery));
+                    predicates.add(cb.exists(subquery));
                 } catch (NumberFormatException e) {
                     log.warn("Invalid numeric value for attribute {}: {}", code, value);
                 }
+            } else if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+                // Boolean attribute
+                Boolean boolVal = Boolean.parseBoolean(value);
+                Subquery<Integer> subquery = query.subquery(Integer.class);
+                Root<PropertyAttributeValue> pavRoot = subquery.from(PropertyAttributeValue.class);
+                Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
+                subquery.select(cb.literal(1))
+                    .where(
+                        cb.equal(pavRoot.get("propertyId"), root.get("propertyId")),
+                        cb.equal(cb.upper(paJoin.get("code")), upperCode),
+                        cb.equal(pavRoot.get("valueBoolean"), boolVal),
+                        cb.isFalse(pavRoot.get("deleted"))
+                    );
+                predicates.add(cb.exists(subquery));
             } else {
-                predicates.add(cb.equal(
-                    cb.function(JSONB_EXTRACT_FUNCTION, String.class,
-                        propertyJoin.get(PropertyFields.EXTRA_ATTRIBUTES), cb.literal(code)),
-                    value
-                ));
+                // Text attribute — case-insensitive exact match (trimmed).
+                // Handles mixed casing (e.g. filter "BẮC" vs stored "bẮC") while keeping
+                // strict equality semantics so values like "Tây Bắc" don't accidentally
+                // match "Tây" or "Bắc".
+                String normalizedValue = value.trim().toLowerCase();
+                if (normalizedValue.isEmpty()) {
+                    return;
+                }
+                Subquery<Integer> subquery = query.subquery(Integer.class);
+                Root<PropertyAttributeValue> pavRoot = subquery.from(PropertyAttributeValue.class);
+                Join<Object, Object> paJoin = pavRoot.join("propertyAttribute");
+                subquery.select(cb.literal(1))
+                    .where(
+                        cb.equal(pavRoot.get("propertyId"), root.get("propertyId")),
+                        cb.equal(cb.upper(paJoin.get("code")), upperCode),
+                        cb.equal(cb.lower(cb.trim(pavRoot.get("valueText"))), normalizedValue),
+                        cb.isFalse(pavRoot.get("deleted"))
+                    );
+                predicates.add(cb.exists(subquery));
             }
         });
+    }
+
+    private boolean isNumericValue(String value) {
+        try {
+            new java.math.BigDecimal(value);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 }

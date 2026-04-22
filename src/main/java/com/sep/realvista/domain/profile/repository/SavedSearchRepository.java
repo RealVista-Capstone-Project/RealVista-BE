@@ -12,6 +12,7 @@ import java.util.UUID;
 @Repository
 public interface SavedSearchRepository extends JpaRepository<SavedSearch, UUID> {
     List<SavedSearch> findByProfileIdAndDeletedFalse(UUID profileId);
+    List<SavedSearch> findByProfileIdInAndDeletedFalse(List<UUID> profileIds);
     List<SavedSearch> findByProfileIdAndIsRecommendationTrueAndDeletedFalse(UUID profileId);
     Optional<SavedSearch> findBySavedSearchIdAndProfileIdAndDeletedFalse(UUID savedSearchId, UUID profileId);
 

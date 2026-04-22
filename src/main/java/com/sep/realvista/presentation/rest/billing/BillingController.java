@@ -248,6 +248,18 @@ public class BillingController {
     }
 
     // -------------------------------------------------------------------------
+    // VNPay IPN (server-to-server notification from VNPay)
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/webhook/vnpay")
+    @Operation(summary = "VNPay IPN webhook", description = "Server-to-server payment notification from VNPay")
+    public ResponseEntity<Map<String, String>> vnPayIpn(@RequestParam Map<String, String> params) {
+        log.info("VNPay IPN received, responseCode={}", params.get("vnp_ResponseCode"));
+        Map<String, String> result = billingService.handleVnPayIpn(params);
+        return ResponseEntity.ok(result);
+    }
+
+    // -------------------------------------------------------------------------
     // VNPay return URL (public — browser redirect from VNPay)
     // -------------------------------------------------------------------------
 
