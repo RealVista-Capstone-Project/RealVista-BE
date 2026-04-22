@@ -1054,14 +1054,14 @@ public class ListingApplicationService {
 
         verifyListingModificationAuthorization(listing, userId, "mark as sold");
 
-        listing.markAsSold();
+        listing.markAsSold(userId);
         
         // 1. Cancel all active appointments
         String reason = "Bất động sản không còn trống (đã bán/cho thuê).";
         appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
 
         // 2. Synchronize all other listings and the property
-        closeAllListingsAndProperty(listing, PropertyStatus.SOLD);
+        closeAllListingsAndProperty(listing, PropertyStatus.SOLD, userId);
 
         Listing updatedListing = listingRepository.save(listing);
         log.info("Successfully marked listing ID: {} and all related listings as sold", listingId);
@@ -1078,14 +1078,14 @@ public class ListingApplicationService {
 
         verifyListingModificationAuthorization(listing, userId, "mark as rented");
 
-        listing.markAsRented();
+        listing.markAsRented(userId);
 
         // 1. Cancel all active appointments
         String reason = "Bất động sản không còn trống (đã bán/cho thuê).";
         appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
 
         // 2. Synchronize all other listings and the property
-        closeAllListingsAndProperty(listing, PropertyStatus.RENTED);
+        closeAllListingsAndProperty(listing, PropertyStatus.RENTED, userId);
 
         Listing updatedListing = listingRepository.save(listing);
         log.info("Successfully marked listing ID: {} and all related listings as rented", listingId);
@@ -1093,7 +1093,8 @@ public class ListingApplicationService {
         return listingMapper.toListingResponse(updatedListing);
     }
 
-    private void closeAllListingsAndProperty(Listing triggeringListing, PropertyStatus targetPropertyStatus) {
+    private void closeAllListingsAndProperty(Listing triggeringListing, PropertyStatus targetPropertyStatus,
+            UUID closedByUserId) {
         UUID propertyId = triggeringListing.getPropertyId();
         // 1. Update the property status
         Property property = propertyRepository.findById(propertyId)
@@ -1130,9 +1131,9 @@ public class ListingApplicationService {
                 usersToNotify.add(l.getUserId());
 
                 if (l.getListingType() == ListingType.SALE) {
-                    l.markAsSold();
+                    l.markAsSold(closedByUserId);
                 } else if (l.getListingType() == ListingType.RENT) {
-                    l.markAsRented();
+                    l.markAsRented(closedByUserId);
                 }
                 listingRepository.save(l);
 
