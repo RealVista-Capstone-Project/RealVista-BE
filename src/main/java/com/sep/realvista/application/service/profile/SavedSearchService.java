@@ -81,14 +81,17 @@ public class SavedSearchService {
 
     @Transactional(readOnly = true)
     public List<SavedSearchDto> getMySavedSearches(UUID userId) {
-        Optional<CustomerProfile> profileOpt = customerProfileRepository
-                .findByUserIdAndIsActiveTrueAndDeletedFalse(userId);
-        if (profileOpt.isEmpty()) {
+        List<CustomerProfile> profiles = customerProfileRepository
+                .findAllByUserIdAndDeletedFalse(userId);
+        if (profiles.isEmpty()) {
             return List.of();
         }
-        CustomerProfile profile = profileOpt.get();
 
-        return savedSearchRepository.findByProfileIdAndDeletedFalse(profile.getCustomerProfileId())
+        List<UUID> profileIds = profiles.stream()
+                .map(CustomerProfile::getCustomerProfileId)
+                .toList();
+
+        return savedSearchRepository.findByProfileIdInAndDeletedFalse(profileIds)
                 .stream()
                 .map(savedSearchMapper::toDto)
                 .toList();
@@ -96,15 +99,18 @@ public class SavedSearchService {
 
     @Transactional
     public void deleteSavedSearch(UUID savedSearchId, UUID userId) {
-        Optional<CustomerProfile> profileOpt = customerProfileRepository
-                .findByUserIdAndIsActiveTrueAndDeletedFalse(userId);
-        if (profileOpt.isEmpty()) {
+        List<CustomerProfile> profiles = customerProfileRepository
+                .findAllByUserIdAndDeletedFalse(userId);
+        if (profiles.isEmpty()) {
             throw new ResourceNotFoundException("Profile", userId);
         }
-        CustomerProfile profile = profileOpt.get();
 
-        SavedSearch savedSearch = savedSearchRepository
-                .findBySavedSearchIdAndProfileIdAndDeletedFalse(savedSearchId, profile.getCustomerProfileId())
+        List<UUID> profileIds = profiles.stream()
+                .map(CustomerProfile::getCustomerProfileId)
+                .toList();
+
+        SavedSearch savedSearch = savedSearchRepository.findById(savedSearchId)
+                .filter(s -> Boolean.FALSE.equals(s.getDeleted()) && profileIds.contains(s.getProfileId()))
                 .orElseThrow(() -> new ResourceNotFoundException("Saved Search", savedSearchId));
 
         savedSearch.markAsDeleted();

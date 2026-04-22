@@ -36,6 +36,14 @@ public class LocationController {
         return ResponseEntity.ok(ApiResponse.success("Cities retrieved successfully", cities));
     }
 
+    @GetMapping("/districts")
+    @Operation(summary = "Get all districts", description = "Returns all locations of type DISTRICT across all cities")
+    public ResponseEntity<ApiResponse<List<LocationResponseDTO>>> getAllDistricts() {
+        log.info("REST request to get all districts");
+        List<LocationResponseDTO> districts = locationApplicationService.getAllDistricts();
+        return ResponseEntity.ok(ApiResponse.success("Districts retrieved successfully", districts));
+    }
+
     @GetMapping("/{parentId}/children")
     @Operation(
             summary = "Get children locations by parent ID",

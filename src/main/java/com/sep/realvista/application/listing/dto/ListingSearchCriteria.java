@@ -20,4 +20,6 @@ public class ListingSearchCriteria {
     private Double maxArea;
     private String sortBy;
     private Map<String, String> dynamicAttributes;
+    private Boolean hasVideo;
+    private Boolean has3D;
 }
