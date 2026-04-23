@@ -4,4 +4,4 @@
 -- Actual value: NOW() - 14 days + 3 minutes  →  expires in ~3 minutes from seed time.
 UPDATE listings
 SET published_at = NOW() - INTERVAL '14 days' + INTERVAL '3 minutes'
-WHERE listing_id = '71cea53a-bff0-b29b-3a9e-9e041c3d0524';
+WHERE listing_id = (SELECT listing_id FROM listings WHERE property_id = 'a1100000-0000-0000-0000-000000000010' LIMIT 1);
