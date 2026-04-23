@@ -1,4 +1,4 @@
--- V116__Add_Unique_Avatar_To_Agents_And_Owners.sql
+-- V119__Add_Unique_Avatar_To_Agents_And_Owners.sql
 -- Assigns unique Unsplash portrait images to all OWNER and AGENT users.
 
 WITH photo_list AS (
