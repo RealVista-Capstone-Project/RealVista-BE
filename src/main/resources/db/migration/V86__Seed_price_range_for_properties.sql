@@ -3,6 +3,10 @@
 -- Seed price_range JSONB data for all existing properties that have no price yet.
 -- Prices are in full VND (e.g. 10000000 = 10 triệu VND).
 -- Format: {"rent": {"min": <number>, "max": <number>}, "buy": {"min": <number>, "max": <number>}}
+--
+-- IMPORTANT: Only rows with price_range IS NULL are updated. Do NOT add UUID pattern
+-- predicates (e.g. a7%/c%): demo properties use a7100000-* IDs; re-running or fresh
+-- installs would overwrite user-edited / API-set ranges for those properties.
 
 UPDATE properties
 SET price_range = CASE property_type_id
@@ -106,5 +110,5 @@ SET price_range = CASE property_type_id
     ELSE price_range
 
 END
-WHERE (price_range IS NULL OR property_id::text LIKE 'a7%' OR property_id::text LIKE 'c%')
+WHERE price_range IS NULL
   AND deleted = FALSE;
