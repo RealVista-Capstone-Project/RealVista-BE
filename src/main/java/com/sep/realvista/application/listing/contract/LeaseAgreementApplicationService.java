@@ -88,7 +88,10 @@ public class LeaseAgreementApplicationService {
     // 2. Validate property is available for leasing
     if (!property.isAvailable()) {
       throw new BusinessConflictException(
-          "Property is not available for leasing. Current status: " + property.getStatus());
+          "Property is not available for leasing. Current status: " + property.getStatus(),
+          "ERROR_LEASE_PROPERTY_NOT_AVAILABLE",
+          new Object[]{property.getStatus()}
+      );
     }
 
     // 3. Validate no active lease already exists for this property
@@ -96,7 +99,7 @@ public class LeaseAgreementApplicationService {
         .findActiveLeasesByPropertyId(request.getPropertyId());
     if (!activeLeases.isEmpty()) {
       throw new BusinessConflictException(
-          "An active lease already exists for this property.");
+          "An active lease already exists for this property.", "ERROR_LEASE_ACTIVE_EXISTS");
     }
 
     // 4. Build and save
@@ -199,7 +202,7 @@ public class LeaseAgreementApplicationService {
     if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
       throw new BusinessConflictException(
           "Lease must be in PENDING_LANDLORD status to send renter for signing. "
-              + "Current status: " + lease.getStatus());
+              + "Current status: " + lease.getStatus(), "ERROR_LEASE_INVALID_STATUS_FOR_LANDLORD");
     }
 
     User renter = findUserOrThrow(lease.getRenterId());
@@ -267,10 +270,13 @@ public class LeaseAgreementApplicationService {
 
     if (lease.getStatus() != LeaseStatus.PENDING_RENTER) {
       throw new BusinessConflictException(
-          "Lease must be in PENDING_RENTER status. Current status: " + lease.getStatus());
+          "Lease must be in PENDING_RENTER status. Current status: " + lease.getStatus(),
+          "ERROR_LEASE_INVALID_STATUS_FOR_RENTER");
     }
     if (lease.getDocusignEnvelopeId() == null || !docuSignService.isAvailable()) {
-      throw new BusinessConflictException("DocuSign is not available or envelope was not created.");
+      throw new BusinessConflictException(
+          "DocuSign is not available or envelope was not created.",
+          "ERROR_LEASE_DOCUSIGN_UNAVAILABLE");
     }
 
     User renter = findUserOrThrow(lease.getRenterId());
@@ -304,7 +310,8 @@ public class LeaseAgreementApplicationService {
 
     if (lease.getStatus() != LeaseStatus.DRAFT) {
       throw new BusinessConflictException(
-          "Lease must be in DRAFT status to send for signing. Current status: " + lease.getStatus());
+          "Lease must be in DRAFT status to send for signing. Current status: " + lease.getStatus(),
+          "ERROR_LEASE_INVALID_STATUS_FOR_DRAFT");
     }
 
     User landlord = findUserOrThrow(lease.getLandlordId());
@@ -367,7 +374,8 @@ public class LeaseAgreementApplicationService {
       // PDF-upload flow: download document and create envelope
       if (lease.getLeaseDocumentUrl() == null || lease.getLeaseDocumentUrl().isBlank()) {
         throw new BusinessConflictException(
-            "Lease document URL is required before sending for signing. Upload the lease PDF first.");
+            "Lease document URL is required before sending for signing. Upload the lease PDF first.",
+            "ERROR_LEASE_DOCUMENT_URL_REQUIRED");
       }
 
       byte[] documentBytes = downloadDocument(lease.getLeaseDocumentUrl());
@@ -409,10 +417,13 @@ public class LeaseAgreementApplicationService {
 
     if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
       throw new BusinessConflictException(
-          "Lease must be in PENDING_LANDLORD status. Current status: " + lease.getStatus());
+          "Lease must be in PENDING_LANDLORD status. Current status: " + lease.getStatus(),
+          "ERROR_LEASE_INVALID_STATUS_FOR_LANDLORD");
     }
     if (lease.getDocusignEnvelopeId() == null || !docuSignService.isAvailable()) {
-      throw new BusinessConflictException("DocuSign is not available or envelope was not created.");
+      throw new BusinessConflictException(
+          "DocuSign is not available or envelope was not created.",
+          "ERROR_LEASE_DOCUSIGN_UNAVAILABLE");
     }
 
     User landlord = findUserOrThrow(lease.getLandlordId());
@@ -495,7 +506,7 @@ public class LeaseAgreementApplicationService {
     if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
       throw new BusinessConflictException(
           "Lease must be in PENDING_LANDLORD status to confirm landlord signing. "
-              + "Current status: " + lease.getStatus());
+              + "Current status: " + lease.getStatus(), "ERROR_LEASE_INVALID_STATUS_FOR_LANDLORD");
     }
 
     lease.submitToRenter();
@@ -530,7 +541,9 @@ public class LeaseAgreementApplicationService {
     // Ownership check — caller must be the landlord of THIS lease
     UUID callerId = getCurrentUserId();
     if (!lease.getLandlordId().equals(callerId)) {
-      throw new BusinessConflictException("Only the landlord of this lease can terminate it.");
+      throw new BusinessConflictException(
+          "Only the landlord of this lease can terminate it.",
+          "ERROR_LEASE_TERMINATE_LANDLORD_ONLY");
     }
 
     String reason = (request != null) ? request.getReason() : null;
@@ -582,7 +595,9 @@ public class LeaseAgreementApplicationService {
     if (auth != null && auth.getPrincipal() instanceof SecurityUserDetails userDetails) {
       return userDetails.getUserId();
     }
-    throw new BusinessConflictException("Authenticated user not found in security context.");
+    throw new BusinessConflictException(
+        "Authenticated user not found in security context.",
+        "ERROR_USER_NOT_IN_SECURITY_CONTEXT");
   }
 
   /**
@@ -594,7 +609,7 @@ public class LeaseAgreementApplicationService {
       return restTemplate.getForObject(documentUrl, byte[].class);
     } catch (Exception e) {
       throw new BusinessConflictException(
-          "Failed to download lease document from URL: " + documentUrl);
+          "Failed to download lease document from URL: " + documentUrl, "ERROR_LEASE_DOCUMENT_DOWNLOAD_FAILED");
     }
   }
 

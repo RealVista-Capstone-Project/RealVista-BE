@@ -6,6 +6,7 @@ import com.sep.realvista.application.engagement.dto.ApplyAgentProposalRequest;
 import com.sep.realvista.application.engagement.mapper.AgentProposalMapper;
 import com.sep.realvista.domain.agent.AgentProfileRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
@@ -45,7 +46,9 @@ public class AgentProposalApplicationService {
                 ? request.getStatus()
                 : AgentProposalStatus.ACTIVE;
         if (targetStatus == AgentProposalStatus.ARCHIVED) {
-            throw new IllegalArgumentException("Cannot create a proposal in ARCHIVED status");
+            throw new DomainException(
+                    "Cannot create a proposal in ARCHIVED status",
+                    "ERROR_PROPOSAL_CANNOT_CREATE_ARCHIVED");
         }
         boolean draft = targetStatus == AgentProposalStatus.DRAFT;
         validateApplyRequest(request, draft);
@@ -56,7 +59,7 @@ public class AgentProposalApplicationService {
         if (agentProposalRepository.existsByUserIdAndTitle(userId, title)) {
             throw new BusinessConflictException(
                     "You already have a proposal with this title",
-                    "DUPLICATE_PROPOSAL_TITLE");
+                    "ERROR_DUPLICATE_PROPOSAL_TITLE");
         }
 
         String pitch = request.getPitchContent() != null ? request.getPitchContent() : "";
@@ -94,7 +97,7 @@ public class AgentProposalApplicationService {
         if (agentProposalRepository.existsByUserIdAndTitleExcludingId(userId, title, proposalId)) {
             throw new BusinessConflictException(
                     "You already have a proposal with this title",
-                    "DUPLICATE_PROPOSAL_TITLE");
+                    "ERROR_DUPLICATE_PROPOSAL_TITLE");
         }
 
         String pitch = request.getPitchContent() != null ? request.getPitchContent() : "";
@@ -129,11 +132,15 @@ public class AgentProposalApplicationService {
 
     private static boolean isDraft(UUID userId, ApplyAgentProposalRequest request, AgentProposal proposal) {
         if (!proposal.getUserId().equals(userId)) {
-            throw new SecurityException("You do not have permission to modify this proposal");
+            throw new DomainException(
+                    "You do not have permission to modify this proposal",
+                    "ERROR_PROPOSAL_MODIFY_FORBIDDEN");
         }
 
         if (request.getStatus() == AgentProposalStatus.ARCHIVED) {
-            throw new IllegalArgumentException("Use archive endpoint to archive a proposal");
+            throw new DomainException(
+                    "Use archive endpoint to archive a proposal",
+                    "ERROR_PROPOSAL_USE_ARCHIVE_ENDPOINT");
         }
 
         AgentProposalStatus effectiveStatus = request.getStatus() != null
@@ -175,7 +182,9 @@ public class AgentProposalApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("AgentProposal", proposalId));
 
         if (!proposal.getUserId().equals(userId)) {
-            throw new SecurityException("You do not have permission to modify this proposal");
+            throw new DomainException(
+                    "You do not have permission to modify this proposal",
+                    "ERROR_PROPOSAL_MODIFY_FORBIDDEN");
         }
         proposal.archive();
         agentProposalRepository.save(proposal);
@@ -183,17 +192,17 @@ public class AgentProposalApplicationService {
 
     private void validateApplyRequest(ApplyAgentProposalRequest request, boolean draft) {
         if (request.getTitle() == null) {
-            throw new IllegalArgumentException("Title is required");
+            throw new DomainException("Title is required", "ERROR_PROPOSAL_TITLE_REQUIRED");
         }
         String title = request.getTitle().trim();
         if (title.isEmpty()) {
-            throw new IllegalArgumentException("Title is required");
+            throw new DomainException("Title is required", "ERROR_PROPOSAL_TITLE_REQUIRED");
         }
         if (title.length() > 100) {
-            throw new IllegalArgumentException("Title must not exceed 100 characters");
+            throw new DomainException("Title must not exceed 100 characters", "ERROR_PROPOSAL_TITLE_TOO_LONG");
         }
         if (!draft && title.length() < 5) {
-            throw new IllegalArgumentException("Title must be at least 5 characters");
+            throw new DomainException("Title must be at least 5 characters", "ERROR_PROPOSAL_TITLE_TOO_SHORT");
         }
         if (draft) {
             validateOptionalCommission(request.getCommissionRate());
@@ -201,30 +210,38 @@ public class AgentProposalApplicationService {
         } else {
             BigDecimal cr = request.getCommissionRate();
             if (cr == null) {
-                throw new IllegalArgumentException("Commission rate is required");
+                throw new DomainException("Commission rate is required", "ERROR_PROPOSAL_COMMISSION_REQUIRED");
             }
             if (cr.compareTo(BigDecimal.ZERO) <= 0 || cr.compareTo(new BigDecimal("100")) > 0) {
-                throw new IllegalArgumentException("Commission rate must be greater than 0 and at most 100");
+                throw new DomainException(
+                        "Commission rate must be greater than 0 and at most 100",
+                        "ERROR_PROPOSAL_COMMISSION_RANGE");
             }
             Integer ey = request.getExperienceYears();
             if (ey == null) {
-                throw new IllegalArgumentException("Experience years is required");
+                throw new DomainException("Experience years is required", "ERROR_PROPOSAL_EXPERIENCE_REQUIRED");
             }
             if (ey < 0 || ey > 60) {
-                throw new IllegalArgumentException("Experience years must be between 0 and 60");
+                throw new DomainException(
+                        "Experience years must be between 0 and 60",
+                        "ERROR_PROPOSAL_EXPERIENCE_RANGE");
             }
             String pitch = request.getPitchContent();
             if (pitch == null || pitch.trim().isEmpty()) {
-                throw new IllegalArgumentException("Pitch content is required");
+                throw new DomainException("Pitch content is required", "ERROR_PROPOSAL_PITCH_REQUIRED");
             }
             if (pitch.trim().length() < 50) {
-                throw new IllegalArgumentException("Pitch content must be at least 50 characters");
+                throw new DomainException(
+                        "Pitch content must be at least 50 characters",
+                        "ERROR_PROPOSAL_PITCH_TOO_SHORT");
             }
             if (pitch.length() > 2000) {
-                throw new IllegalArgumentException("Pitch content must not exceed 2000 characters");
+                throw new DomainException(
+                        "Pitch content must not exceed 2000 characters",
+                        "ERROR_PROPOSAL_PITCH_TOO_LONG");
             }
             if (request.getSpecialty() == null || request.getSpecialty().isBlank()) {
-                throw new IllegalArgumentException("Specialty is required");
+                throw new DomainException("Specialty is required", "ERROR_PROPOSAL_SPECIALTY_REQUIRED");
             }
         }
         validatePriceRangeMap(request.getPriceRange());
@@ -235,7 +252,7 @@ public class AgentProposalApplicationService {
             return;
         }
         if (cr.compareTo(BigDecimal.ZERO) < 0 || cr.compareTo(new BigDecimal("100")) > 0) {
-            throw new IllegalArgumentException("Commission rate must be between 0 and 100");
+            throw new DomainException("Commission rate must be between 0 and 100", "ERROR_PROPOSAL_COMMISSION_RANGE");
         }
     }
 
@@ -244,7 +261,7 @@ public class AgentProposalApplicationService {
             return;
         }
         if (ey < 0 || ey > 60) {
-            throw new IllegalArgumentException("Experience years must be between 0 and 60");
+            throw new DomainException("Experience years must be between 0 and 60", "ERROR_PROPOSAL_EXPERIENCE_RANGE");
         }
     }
 
@@ -270,8 +287,9 @@ public class AgentProposalApplicationService {
         int min = toInt(band.get("min"), 0);
         int max = toInt(band.get("max"), 0);
         if (min > 0 && max > 0 && min > max) {
-            throw new IllegalArgumentException(
-                    "Minimum price cannot be greater than maximum price (" + label + ")");
+            throw new DomainException(
+                    "Minimum price cannot be greater than maximum price (" + label + ")",
+                    "ERROR_PROPOSAL_PRICE_RANGE_INVALID");
         }
     }
 

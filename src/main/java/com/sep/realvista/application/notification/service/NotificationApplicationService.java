@@ -13,6 +13,7 @@ import com.sep.realvista.domain.user.notification.EventType;
 import com.sep.realvista.domain.user.notification.Notification;
 import com.sep.realvista.domain.user.notification.NotificationChannel;
 import com.sep.realvista.domain.user.notification.NotificationRepository;
+import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import lombok.RequiredArgsConstructor;
@@ -124,10 +125,12 @@ public class NotificationApplicationService {
     /** Mark a single notification as read. */
     public void markAsRead(UUID notificationId, UUID userId) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+                .orElseThrow(() -> new DomainException(
+                        "Notification not found: " + notificationId,
+                        "ERROR_NOTIFICATION_NOT_FOUND"));
 
         if (!notification.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("Notification does not belong to this user");
+            throw new DomainException("Notification does not belong to this user", "ERROR_NOTIFICATION_NOT_OWNED");
         }
 
         notification.markAsRead();
@@ -142,10 +145,12 @@ public class NotificationApplicationService {
     /** Soft-delete a notification (sets deleted = true via BaseEntity.markAsDeleted()). */
     public void deleteNotification(UUID notificationId, UUID userId) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+                .orElseThrow(() -> new DomainException(
+                        "Notification not found: " + notificationId,
+                        "ERROR_NOTIFICATION_NOT_FOUND"));
 
         if (!notification.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("Notification does not belong to this user");
+            throw new DomainException("Notification does not belong to this user", "ERROR_NOTIFICATION_NOT_OWNED");
         }
 
         notification.markAsDeleted();

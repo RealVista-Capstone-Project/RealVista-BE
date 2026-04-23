@@ -151,7 +151,8 @@ public class AppointmentService {
                     .anyMatch(appt -> appt.getStartTime().isBefore(slotEnd) && appt.getEndTime().isAfter(slot));
 
             if (hasConflict) {
-                throw new BusinessConflictException("Slot " + slot + " to " + slotEnd + " is already booked");
+                throw new BusinessConflictException(
+                    "Slot " + slot + " to " + slotEnd + " is already booked", "SLOT_ALREADY_BOOKED");
             }
         }
 

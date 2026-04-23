@@ -117,7 +117,7 @@ public class EngagementApplicationService {
                 engagementStatus = EngagementStatus.valueOf(status.toUpperCase());
             } catch (IllegalArgumentException e) {
                 throw new BusinessConflictException(
-                        "Invalid engagement status: " + status, "INVALID_STATUS");
+                        "Invalid engagement status: " + status, "ERROR_INVALID_STATUS");
             }
             engagementPage = engagementRepository.findHiredAgentEngagements(
                     ownerId, engagementStatus, normalizedSearch, pageable);
@@ -288,7 +288,7 @@ public class EngagementApplicationService {
         if (!proposalTemplate.getUserId().equals(agentUserId)) {
             throw new BusinessConflictException(
                     "You do not own this proposal template",
-                    "PROPOSAL_TEMPLATE_NOT_OWNED");
+                    "ERROR_PROPOSAL_TEMPLATE_NOT_OWNED");
         }
 
         // 2. Fetch and validate target property
@@ -299,7 +299,19 @@ public class EngagementApplicationService {
         if (property.getOwnerId().equals(agentUserId)) {
             throw new BusinessConflictException(
                     "You cannot submit a proposal to your own property",
-                    "CANNOT_PROPOSE_TO_SELF");
+                    "ERROR_CANNOT_PROPOSE_TO_SELF");
+        }
+
+        // 3. Check if agent already has an active proposal for this property
+        boolean hasActiveProposal = engagementRepository
+                .findActiveEngagementsForProperty(request.getPropertyId())
+                .stream()
+                .anyMatch(e -> e.getInitiatorId().equals(agentUserId)
+                        && e.getEngagementType() == EngagementType.AGENT_PROPOSAL);
+        if (hasActiveProposal) {
+            throw new BusinessConflictException(
+                    "You already have an active proposal for this property",
+                    "ERROR_PROPOSAL_ALREADY_ACTIVE");
         }
 
         Map<String, Object> contentMap = new HashMap<>();
@@ -348,7 +360,7 @@ public class EngagementApplicationService {
 
         if (!property.getOwnerId().equals(ownerUserId)) {
             throw new BusinessConflictException(
-                    "You do not own this property", "NOT_PROPERTY_OWNER");
+                    "You do not own this property", "ERROR_NOT_PROPERTY_OWNER");
         }
 
         AgentProfile agentProfile = agentProfileRepository.findByUserId(request.getAgentId())
@@ -530,7 +542,7 @@ public class EngagementApplicationService {
         if (!engagement.getReceiverId().equals(userId)) {
             throw new BusinessConflictException(
                     "You are not authorized to accept this engagement",
-                    "ENGAGEMENT_NOT_AUTHORIZED");
+                    "ERROR_ENGAGEMENT_NOT_AUTHORIZED");
         }
 
         engagement.accept();
@@ -562,7 +574,7 @@ public class EngagementApplicationService {
         if (!engagement.getReceiverId().equals(userId)) {
             throw new BusinessConflictException(
                     "You are not authorized to reject this engagement",
-                    "ENGAGEMENT_NOT_AUTHORIZED");
+                    "ERROR_ENGAGEMENT_NOT_AUTHORIZED");
         }
 
         engagement.reject();
@@ -743,7 +755,7 @@ public class EngagementApplicationService {
         if (!isOwner) {
             throw new BusinessConflictException(
                     "You are not authorized to manage this engagement",
-                    "ENGAGEMENT_NOT_OWNED");
+                    "ERROR_ENGAGEMENT_NOT_OWNED");
         }
     }
 
@@ -756,7 +768,7 @@ public class EngagementApplicationService {
         if (!isParticipant) {
             throw new BusinessConflictException(
                     "You are not authorized to manage this engagement",
-                    "ENGAGEMENT_NOT_AUTHORIZED");
+                    "ERROR_ENGAGEMENT_NOT_AUTHORIZED");
         }
     }
 
