@@ -39,9 +39,9 @@ VALUES (
 INSERT INTO users (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440003',
-    'Jane',
-    'Smith',
-    'Jane Smith Realty',
+    'Hoài',
+    'Lê Thị',
+    'Lê Thị Hoài Realty',
     '$2a$12$X6MuTOu3YaJfl6m31ZY/4OuOxfKkrG1okySzhCq6Idk60hH6rGoK2',
     'verified@realvista.com',
     '+84901000003',
@@ -55,9 +55,9 @@ VALUES (
 INSERT INTO users (user_id, first_name, last_name, business_name, password_hash, email, phone, status, created_at, updated_at, deleted)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440004',
-    'Bob',
-    'Wilson',
-    'Wilson Estates',
+    'Đồng',
+    'Phạm Văn',
+    'Phạm Văn Đồng Estates',
     '$2a$12$X6MuTOu3YaJfl6m31ZY/4OuOxfKkrG1okySzhCq6Idk60hH6rGoK2',
     'suspended@realvista.com',
     '+84901000004',
