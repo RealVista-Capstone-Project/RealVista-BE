@@ -4,6 +4,9 @@ import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationRepository;
 import com.sep.realvista.domain.property.location.LocationType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -67,5 +70,15 @@ public class LocationRepositoryImpl implements LocationRepository {
     @Override
     public List<Location> findContainingLocations(java.math.BigDecimal lat, java.math.BigDecimal lng) {
         return jpaRepository.findContainingLocations(lat, lng);
+    }
+
+    @Override
+    public Location save(Location location) {
+        return jpaRepository.save(location);
+    }
+
+    @Override
+    public Page<Location> findAll(Specification<Location> spec, Pageable pageable) {
+        return jpaRepository.findAll(spec, pageable);
     }
 }

@@ -135,6 +135,11 @@ realvista:
     api-url: ${MARBLE_API_URL:https://api.worldlabs.ai/marble/v1}
     api-key: ${MARBLE_API_KEY:}
 
+# ── Google Maps Configuration ──
+google:
+  maps:
+    api-key: ${GOOGLE_MAPS_API_KEY:}
+
 # Actuator Configuration
 management:
   endpoints:
