@@ -67,4 +67,26 @@ public class BoostPackage extends BaseEntity {
     public void deactivate() {
         this.isActive = false;
     }
+
+    public void update(String name, String description, Integer featuredQuota,
+                       Integer hotBadgeQuota, Integer durationDays, java.math.BigDecimal price) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (featuredQuota != null) {
+            this.featuredQuota = featuredQuota;
+        }
+        if (hotBadgeQuota != null) {
+            this.hotBadgeQuota = hotBadgeQuota;
+        }
+        if (durationDays != null) {
+            this.durationDays = durationDays;
+        }
+        if (price != null) {
+            this.price = price;
+        }
+    }
 }

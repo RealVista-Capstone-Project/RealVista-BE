@@ -79,4 +79,23 @@ public class FeaturePackage extends BaseEntity {
     public void deactivate() {
         this.isActive = false;
     }
+
+    public void update(String name, String description, Integer quota,
+                       Integer durationDays, java.math.BigDecimal price) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (quota != null) {
+            this.quota = quota;
+        }
+        if (durationDays != null) {
+            this.durationDays = durationDays;
+        }
+        if (price != null) {
+            this.price = price;
+        }
+    }
 }

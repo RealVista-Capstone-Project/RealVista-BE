@@ -15,4 +15,6 @@ public interface UserListingBoostPackageRepository {
     List<UserListingBoostPackage> findAllActiveByUserId(UUID userId);
 
     List<UserListingBoostPackage> findByUserIdAndStatus(UUID userId, UserListingBoostPackageStatus status);
+
+    long countActiveByBoostPackageId(UUID boostPackageId);
 }

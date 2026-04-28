@@ -66,4 +66,8 @@ public interface UserFeatureSubscriptionJpaRepository extends JpaRepository<User
         """)
     List<UserFeatureSubscription> findByStatusAndNotDeleted(
             @Param("status") UserFeatureSubscriptionStatus status);
+
+    @Query("SELECT COUNT(ufs) FROM UserFeatureSubscription ufs "
+            + "WHERE ufs.featurePackageId = :id AND ufs.status = 'ACTIVE' AND ufs.deleted = false")
+    long countActiveByFeaturePackageId(@Param("id") UUID id);
 }
