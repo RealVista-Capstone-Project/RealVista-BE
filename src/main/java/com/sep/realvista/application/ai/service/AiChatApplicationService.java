@@ -4,14 +4,28 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.ai.dto.AiChatMessageResponse;
-import com.sep.realvista.domain.billing.subscription.AiFeature;
 import com.sep.realvista.application.ai.dto.AiConversationMessagesResponse;
+import com.sep.realvista.application.listing.dto.AmenityDTO;
+import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.mapper.ListingMapper;
+import com.sep.realvista.domain.billing.subscription.AiFeature;
 import com.sep.realvista.domain.aichat.AiConversation;
 import com.sep.realvista.domain.aichat.AiConversationRepository;
 import com.sep.realvista.domain.aichat.AiMessage;
 import com.sep.realvista.domain.aichat.AiMessageRepository;
 import com.sep.realvista.domain.aichat.AiMessageRole;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.amenity.PropertyAmenity;
+import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
+import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.property.location.Location;
+import com.sep.realvista.domain.property.location.LocationType;
+import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
+import com.sep.realvista.domain.property.repository.PropertyRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -24,10 +38,14 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -46,6 +64,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AiChatApplicationService {
 
     private static final ParameterizedTypeReference<
@@ -55,28 +74,16 @@ public class AiChatApplicationService {
     private final WebClient aiWebClient;
     private final AiQuotaApplicationService quotaService;
     private final ObjectMapper objectMapper;
-    private final String serviceApiKey;
+    @Value("${realvista.ai.api-key:}")
+    private String serviceApiKey;
     private final AiConversationRepository conversationRepository;
     private final AiMessageRepository messageRepository;
     private final AiChatPersistenceHelper persistenceHelper;
-
-    public AiChatApplicationService(
-            WebClient aiWebClient,
-            AiQuotaApplicationService quotaService,
-            ObjectMapper objectMapper,
-            @Value("${realvista.ai.api-key:}") String serviceApiKey,
-            AiConversationRepository conversationRepository,
-            AiMessageRepository messageRepository,
-            AiChatPersistenceHelper persistenceHelper
-    ) {
-        this.aiWebClient = aiWebClient;
-        this.quotaService = quotaService;
-        this.objectMapper = objectMapper;
-        this.serviceApiKey = serviceApiKey;
-        this.conversationRepository = conversationRepository;
-        this.messageRepository = messageRepository;
-        this.persistenceHelper = persistenceHelper;
-    }
+    private final ListingRepository listingRepository;
+    private final PropertyRepository propertyRepository;
+    private final PropertyAttributeValueRepository propertyAttributeValueRepository;
+    private final PropertyAmenityRepository propertyAmenityRepository;
+    private final ListingMapper listingMapper;
 
     /**
      * Stream an AI chat response, persisting both the user message
@@ -86,6 +93,7 @@ public class AiChatApplicationService {
      */
     @Transactional
     public Flux<String> streamChat(String message,
+                                   UUID listingId,
                                    UUID userId,
                                    String userName,
                                    String userRoles) {
@@ -118,9 +126,18 @@ public class AiChatApplicationService {
         conversation.touchUpdatedAt();
         conversationRepository.save(conversation);
 
-        // 4. Build request body for the AI service
+        // 4. Build request body for the AI service (enrich prompt when listing context is present)
+        String prompt = message;
+        if (listingId != null) {
+            String listingContext = buildListingContextBlock(listingId);
+            if (!listingContext.isBlank()) {
+                prompt = listingContext + "\n\nCâu hỏi: " + message;
+            }
+        }
+        prompt = prompt + "\n\nYêu cầu bắt buộc: Luôn trả lời hoàn toàn bằng tiếng Việt.";
+
         Map<String, Object> body = new HashMap<>();
-        body.put("prompt", message);
+        body.put("prompt", prompt);
         body.put("threadId", conversation.getThreadId().toString());
 
         // 5. Emit start event, then stream AI tokens
@@ -246,6 +263,127 @@ public class AiChatApplicationService {
     }
 
     // ── private helpers ─────────────────────────────────────────
+
+    /**
+     * Builds the same Vietnamese listing context block previously assembled on the FE,
+     * so the NestJS agent prompt shape stays compatible with its system instructions.
+     *
+     * @return non-blank context, or empty string if the listing cannot be loaded
+     */
+    private String buildListingContextBlock(UUID listingId) {
+        try {
+            Optional<Listing> listingOpt = listingRepository.findById(listingId);
+            if (listingOpt.isEmpty()) {
+                return "";
+            }
+            Listing listing = listingOpt.get();
+            Optional<Property> propertyOpt = propertyRepository.findById(listing.getPropertyId());
+            if (propertyOpt.isEmpty()) {
+                return "";
+            }
+            Property property = propertyOpt.get();
+
+            List<PropertyAttributeValue> attributeValues =
+                    propertyAttributeValueRepository.findByPropertyIdWithAttribute(
+                            property.getPropertyId());
+            List<PropertyAmenity> propertyAmenities =
+                    propertyAmenityRepository.findByPropertyIdWithAmenity(
+                            property.getPropertyId());
+
+            String attributes = listingMapper.toAttributeList(attributeValues).stream()
+                    .map(this::formatAttributeLine)
+                    .filter(s -> !s.isBlank())
+                    .collect(Collectors.joining("\n"));
+
+            String amenities = listingMapper.toAmenityList(propertyAmenities).stream()
+                    .map(this::formatAmenityLine)
+                    .filter(s -> !s.isBlank())
+                    .collect(Collectors.joining("\n"));
+
+            String districtCity = formatDistrictCity(property.getLocation());
+            String propertyTypeName = property.getPropertyType() != null
+                    ? Objects.toString(property.getPropertyType().getName(), "")
+                    : "";
+            String priceStr = listing.getPrice() != null
+                    ? listing.getPrice().toPlainString()
+                    : "";
+            String desc = property.getDescriptions() != null ? property.getDescriptions() : "";
+
+            String land = formatAreaM2(property.getLandSizeM2());
+            String usable = formatAreaM2(property.getUsableSizeM2());
+            String dimensions = formatDimensionsM(property.getWidthM(), property.getLengthM());
+
+            return String.join("\n",
+                    "[THÔNG TIN BẤT ĐỘNG SẢN ĐANG XEM]",
+                    "- ID: " + listing.getListingId(),
+                    "- Tên: " + Objects.toString(listing.getName(), ""),
+                    "- Giá: " + priceStr + " VND",
+                    "- Loại hình: " + listing.getListingType().name() + " (" + propertyTypeName + ")",
+                    "- Địa chỉ: " + districtCity,
+                    "- Diện tích đất: " + land + " m2",
+                    "- Diện tích sử dụng: " + usable + " m2",
+                    "- Kích thước: " + dimensions,
+                    "- Mô tả: " + desc,
+                    "",
+                    "[THUỘC TÍNH]",
+                    attributes,
+                    "",
+                    "[TIỆN ÍCH]",
+                    amenities
+            ).trim();
+        } catch (Exception ex) {
+            log.warn("Failed to build listing context for listingId={}: {}",
+                    listingId, ex.getMessage());
+            return "";
+        }
+    }
+
+    private String formatAttributeLine(PropertyAttributeDTO a) {
+        if (a == null || a.getAttributeName() == null) {
+            return "";
+        }
+        String dv = a.getDisplayValue();
+        return "- " + a.getAttributeName() + ": " + Objects.toString(dv, "");
+    }
+
+    private String formatAmenityLine(AmenityDTO a) {
+        if (a == null || a.getAmenityName() == null) {
+            return "";
+        }
+        return "- " + a.getAmenityName();
+    }
+
+    /**
+     * Resolves district and city names from a ward (or lower) location by walking parents,
+     * matching {@link ListingMapper#mapLocationInfo}.
+     */
+    private String formatDistrictCity(Location location) {
+        if (location == null) {
+            return ", ";
+        }
+        Map<LocationType, String> locationNames = new HashMap<>();
+        Location current = location;
+        while (current != null) {
+            locationNames.put(current.getType(), current.getName());
+            current = current.getParent();
+        }
+        String district = locationNames.getOrDefault(LocationType.DISTRICT, "");
+        String city = locationNames.getOrDefault(LocationType.CITY, "");
+        return district + ", " + city;
+    }
+
+    private static String formatAreaM2(BigDecimal value) {
+        if (value == null) {
+            return "";
+        }
+        return value.stripTrailingZeros().toPlainString();
+    }
+
+    private static String formatDimensionsM(BigDecimal widthM, BigDecimal lengthM) {
+        String w = widthM != null ? widthM.stripTrailingZeros().toPlainString() : "";
+        String l = lengthM != null ? lengthM.stripTrailingZeros().toPlainString() : "";
+        return w + "m x " + l + "m";
+    }
 
     /**
      * Processes a single SSE event from the NestJS AI service
