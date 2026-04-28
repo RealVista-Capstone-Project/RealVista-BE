@@ -56,4 +56,9 @@ public class ListingBoostRepositoryImpl implements ListingBoostRepository {
         }
         return jpa.findAllActiveByListingIds(listingIds, ListingBoostStatus.ACTIVE, now);
     }
+
+    @Override
+    public long countActiveByBoostPackageId(UUID boostPackageId) {
+        return jpa.countActiveByBoostPackageId(boostPackageId);
+    }
 }
