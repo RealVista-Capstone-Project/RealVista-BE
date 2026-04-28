@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * Request DTO for AI chat conversations.
  * The backend manages threadId internally — callers only send a message.
@@ -28,4 +30,11 @@ public class AiChatRequest {
     @NotBlank(message = "Message is required")
     @Size(max = 2000, message = "Message must not exceed 2000 characters")
     private String message;
+
+    @Schema(
+            description = "Optional listing UUID when chatting from a listing detail page",
+            example = "550e8400-e29b-41d4-a716-446655440000",
+            nullable = true
+    )
+    private UUID listingId;
 }
