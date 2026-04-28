@@ -15,7 +15,7 @@ public class UpdateFeaturePackageRequest {
 
     private String description;
 
-    @Min(value = 1, message = "Quota must be positive")
+    @Min(value = -1, message = "Quota must be -1 (unlimited) or positive")
     private Integer quota;
 
     @Min(value = -1, message = "Duration days must be -1 (no expiration) or positive")
