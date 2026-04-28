@@ -541,8 +541,11 @@ public class BillingApplicationService {
 
     private ActiveFeatureSubscriptionResponse toActiveFeatureSubscriptionResponse(UserFeatureSubscription sub) {
         FeaturePackage pkg = sub.getFeaturePackage();
-        Integer quotaLimit = null;
-        if (pkg != null && !pkg.isUnlimited()) {
+        // Use originalQuota (snapshotted at checkout) so admin updates to the package
+        // never retroactively change what the user sees as their quota limit.
+        Integer quotaLimit = sub.getOriginalQuota();
+        if (quotaLimit == null && pkg != null && !pkg.isUnlimited()) {
+            // Fallback for rows created before the originalQuota column existed
             quotaLimit = pkg.getQuota();
         }
         return ActiveFeatureSubscriptionResponse.builder()
@@ -720,6 +723,7 @@ public class BillingApplicationService {
                     .startDate(LocalDate.now())
                     .endDate(endDate)
                     .remainingQuota(remainingQuota)
+                    .originalQuota(remainingQuota)
                     .status(UserFeatureSubscriptionStatus.ACTIVE)
                     .build();
 
@@ -856,6 +860,7 @@ public class BillingApplicationService {
                         .startDate(LocalDate.now())
                         .endDate(null)
                         .remainingQuota(pkg.getQuota())
+                        .originalQuota(pkg.getQuota())
                         .status(UserFeatureSubscriptionStatus.ACTIVE)
                         .build();
                 userFeatureSubscriptionRepository.save(sub);
