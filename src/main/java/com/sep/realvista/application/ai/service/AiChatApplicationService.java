@@ -7,7 +7,10 @@ import com.sep.realvista.application.ai.dto.AiChatMessageResponse;
 import com.sep.realvista.application.ai.dto.AiConversationMessagesResponse;
 import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.SimilarListingDTO;
+import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
+import com.sep.realvista.application.listing.service.ListingApplicationService;
 import com.sep.realvista.domain.billing.subscription.AiFeature;
 import com.sep.realvista.domain.aichat.AiConversation;
 import com.sep.realvista.domain.aichat.AiConversationRepository;
@@ -45,6 +48,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -84,6 +88,7 @@ public class AiChatApplicationService {
     private final PropertyAttributeValueRepository propertyAttributeValueRepository;
     private final PropertyAmenityRepository propertyAmenityRepository;
     private final ListingMapper listingMapper;
+    private final ListingApplicationService listingApplicationService;
 
     /**
      * Stream an AI chat response, persisting both the user message
@@ -132,6 +137,12 @@ public class AiChatApplicationService {
             String listingContext = buildListingContextBlock(listingId);
             if (!listingContext.isBlank()) {
                 prompt = listingContext + "\n\nCâu hỏi: " + message;
+            }
+            if (isCompareIntent(message)) {
+                String similarListingsContext = buildSimilarListingsContextBlock(listingId, userId);
+                if (!similarListingsContext.isBlank()) {
+                    prompt = prompt + "\n\n" + similarListingsContext;
+                }
             }
         }
         prompt = prompt + "\n\nYêu cầu bắt buộc: Luôn trả lời hoàn toàn bằng tiếng Việt.";
@@ -336,6 +347,100 @@ public class AiChatApplicationService {
                     listingId, ex.getMessage());
             return "";
         }
+    }
+
+    /**
+     * For Template D compare intent, preload a compact similar listings block from the core service.
+     * This block is additive and optional. If anything fails, we simply skip it to preserve legacy flow.
+     */
+    private String buildSimilarListingsContextBlock(UUID listingId, UUID userId) {
+        try {
+            SimilarListingsResponse response = listingApplicationService.getSimilarListings(listingId, 5, userId);
+            if (response == null || response.getListings() == null || response.getListings().isEmpty()) {
+                return "";
+            }
+
+            String listingLines = response.getListings().stream()
+                    .limit(5)
+                    .map(this::formatSimilarListingLine)
+                    .filter(s -> !s.isBlank())
+                    .collect(Collectors.joining("\n"));
+
+            if (listingLines.isBlank()) {
+                return "";
+            }
+
+            return String.join("\n",
+                    "[DANH SÁCH TIN TƯƠNG TỰ TỪ HỆ THỐNG]",
+                    listingLines
+            );
+        } catch (Exception ex) {
+            log.warn("Failed to preload similar listings for listingId={}: {}",
+                    listingId, ex.getMessage());
+            return "";
+        }
+    }
+
+    private String formatSimilarListingLine(SimilarListingDTO listing) {
+        if (listing == null || listing.getListingId() == null) {
+            return "";
+        }
+        String id = listing.getListingId().toString();
+        String name = Objects.toString(listing.getName(), "");
+        String price = listing.getPrice() != null ? listing.getPrice().toPlainString() + " VND" : "";
+        String area = listing.getArea() != null
+                ? listing.getArea().stripTrailingZeros().toPlainString() + " m2"
+                : "";
+        String address = Objects.toString(listing.getFullAddress(), "");
+        if (address.isBlank()) {
+            address = Objects.toString(listing.getLocationName(), "");
+        }
+        String attrs = formatSimilarListingAttributes(listing.getAttributes());
+        String similarity = listing.getSimilarityScore() != null
+                ? listing.getSimilarityScore() + "%"
+                : "";
+
+        return String.join(" | ",
+                "- ID: " + id,
+                "Tên: " + name,
+                "Giá: " + price,
+                "Diện tích: " + area,
+                "Địa chỉ: " + address,
+                "Thuộc tính: " + attrs,
+                "Độ tương đồng: " + similarity
+        );
+    }
+
+    private String formatSimilarListingAttributes(List<PropertyAttributeDTO> attrs) {
+        if (attrs == null || attrs.isEmpty()) {
+            return "";
+        }
+        return attrs.stream()
+                .map(this::formatAttributeInline)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(", "));
+    }
+
+    private String formatAttributeInline(PropertyAttributeDTO a) {
+        if (a == null || a.getAttributeName() == null) {
+            return "";
+        }
+        String value = Objects.toString(a.getDisplayValue(), "").trim();
+        if (value.isBlank()) {
+            return "";
+        }
+        return a.getAttributeName().trim() + ": " + value;
+    }
+
+    private boolean isCompareIntent(String message) {
+        if (message == null || message.isBlank()) {
+            return false;
+        }
+        String normalized = message.toLowerCase(Locale.ROOT);
+        return normalized.contains("so sánh")
+                || normalized.contains("so sanh")
+                || normalized.contains("similar")
+                || normalized.contains("compare");
     }
 
     private String formatAttributeLine(PropertyAttributeDTO a) {
