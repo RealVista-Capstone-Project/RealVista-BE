@@ -543,10 +543,15 @@ public class BillingApplicationService {
         FeaturePackage pkg = sub.getFeaturePackage();
         // Use originalQuota (snapshotted at checkout) so admin updates to the package
         // never retroactively change what the user sees as their quota limit.
-        Integer quotaLimit = sub.getOriginalQuota();
-        if (quotaLimit == null && pkg != null && !pkg.isUnlimited()) {
-            // Fallback for rows created before the originalQuota column existed
-            quotaLimit = pkg.getQuota();
+        // -1 means unlimited. For legacy rows with null originalQuota, fall back to
+        // remainingQuota, never the live package quota.
+        Integer originalQuota = sub.getOriginalQuota();
+        boolean unlimited = originalQuota != null
+                ? originalQuota == -1
+                : sub.getRemainingQuota() == null;
+        Integer quotaLimit = unlimited ? null : originalQuota;
+        if (quotaLimit == null && !unlimited) {
+            quotaLimit = sub.getRemainingQuota();
         }
         return ActiveFeatureSubscriptionResponse.builder()
                 .subscriptionId(sub.getUserFeatureSubscriptionId())
@@ -555,7 +560,7 @@ public class BillingApplicationService {
                 .featureType(pkg != null ? pkg.getFeatureType().toDbValue() : "")
                 .quotaLimit(quotaLimit)
                 .remainingQuota(sub.getRemainingQuota())
-                .unlimited(pkg != null && pkg.isUnlimited())
+                .unlimited(unlimited)
                 .tierLevel(FeaturePackageTierHelper.tierLevel(pkg))
                 .startDate(sub.getStartDate())
                 .endDate(sub.getEndDate())
@@ -619,14 +624,24 @@ public class BillingApplicationService {
 
     private ActiveBoostPackageResponse toActiveBoostPackageResponse(UserListingBoostPackage boost) {
         BoostPackage pkg = boost.getBoostPackage();
+        // Use originalFeaturedQuota/originalHotBadgeQuota (snapshotted at checkout)
+        // so admin updates to the package never retroactively affect existing boosts.
+        Integer originalFeatured = boost.getOriginalFeaturedQuota();
+        Integer originalHotBadge = boost.getOriginalHotBadgeQuota();
+        if (originalFeatured == null) {
+            originalFeatured = pkg != null ? pkg.getFeaturedQuota() : null;
+        }
+        if (originalHotBadge == null) {
+            originalHotBadge = pkg != null ? pkg.getHotBadgeQuota() : null;
+        }
         return ActiveBoostPackageResponse.builder()
-                .boostPackageId(pkg.getBoostPackageId())
-                .code(pkg.getCode())
-                .name(pkg.getName())
-                .description(pkg.getDescription())
-                .featuredQuota(pkg.getFeaturedQuota())
-                .hotBadgeQuota(pkg.getHotBadgeQuota())
-                .durationDays(pkg.getDurationDays())
+                .boostPackageId(pkg != null ? pkg.getBoostPackageId() : null)
+                .code(pkg != null ? pkg.getCode() : "")
+                .name(pkg != null ? pkg.getName() : "")
+                .description(pkg != null ? pkg.getDescription() : "")
+                .featuredQuota(originalFeatured)
+                .hotBadgeQuota(originalHotBadge)
+                .durationDays(pkg != null ? pkg.getDurationDays() : null)
                 .startDate(boost.getStartDate())
                 .endDate(boost.getEndDate())
                 .remainingFeaturedQuota(boost.getRemainingFeaturedQuota())
@@ -723,7 +738,7 @@ public class BillingApplicationService {
                     .startDate(LocalDate.now())
                     .endDate(endDate)
                     .remainingQuota(remainingQuota)
-                    .originalQuota(remainingQuota)
+                    .originalQuota(pkg.getQuota())
                     .status(UserFeatureSubscriptionStatus.ACTIVE)
                     .build();
 
@@ -746,6 +761,8 @@ public class BillingApplicationService {
                     .endDate(endDate)
                     .remainingFeaturedQuota(pkg.getFeaturedQuota())
                     .remainingHotBadgeQuota(pkg.getHotBadgeQuota())
+                    .originalFeaturedQuota(pkg.getFeaturedQuota())
+                    .originalHotBadgeQuota(pkg.getHotBadgeQuota())
                     .status(UserListingBoostPackageStatus.ACTIVE)
                     .build();
 
