@@ -480,7 +480,11 @@ public interface ListingMapper {
                 .content(listing.getContent())
                 .publishedAt(listing.getPublishedAt())
                 .createdAt(listing.getCreatedAt())
-                .updatedAt(listing.getUpdatedAt());
+                .updatedAt(listing.getUpdatedAt())
+                .soldByUserId(listing.getSoldByUserId())
+                .soldAt(listing.getSoldAt())
+                .rentedByUserId(listing.getRentedByUserId())
+                .rentedAt(listing.getRentedAt());
 
         // Add address fields from property and location
         if (listing.getProperty() != null) {

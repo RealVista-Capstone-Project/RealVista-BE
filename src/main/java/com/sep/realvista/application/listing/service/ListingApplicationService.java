@@ -1065,14 +1065,14 @@ public class ListingApplicationService {
 
         verifyListingModificationAuthorization(listing, userId, "mark as sold");
 
-        listing.markAsSold();
+        listing.markAsSold(userId);
         
         // 1. Cancel all active appointments
         String reason = "Bất động sản không còn trống (đã bán/cho thuê).";
         appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
 
         // 2. Synchronize all other listings and the property
-        closeAllListingsAndProperty(listing, PropertyStatus.SOLD);
+        closeAllListingsAndProperty(listing, PropertyStatus.SOLD, userId);
 
         Listing updatedListing = listingRepository.save(listing);
         syncEngagementListingIdForAgentClose(updatedListing, userId);
@@ -1090,14 +1090,14 @@ public class ListingApplicationService {
 
         verifyListingModificationAuthorization(listing, userId, "mark as rented");
 
-        listing.markAsRented();
+        listing.markAsRented(userId);
 
         // 1. Cancel all active appointments
         String reason = "Bất động sản không còn trống (đã bán/cho thuê).";
         appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
 
         // 2. Synchronize all other listings and the property
-        closeAllListingsAndProperty(listing, PropertyStatus.RENTED);
+        closeAllListingsAndProperty(listing, PropertyStatus.RENTED, userId);
 
         Listing updatedListing = listingRepository.save(listing);
         syncEngagementListingIdForAgentClose(updatedListing, userId);
@@ -1128,7 +1128,7 @@ public class ListingApplicationService {
                 continue;
             }
             EngagementStatus status = engagement.getStatus();
-            if (status != EngagementStatus.ACCEPTED) {
+            if (status != EngagementStatus.ACCEPTED && status != EngagementStatus.FINISHED) {
                 continue;
             }
             EngagementType type = engagement.getEngagementType();
@@ -1144,7 +1144,8 @@ public class ListingApplicationService {
         }
     }
 
-    private void closeAllListingsAndProperty(Listing triggeringListing, PropertyStatus targetPropertyStatus) {
+    private void closeAllListingsAndProperty(Listing triggeringListing, PropertyStatus targetPropertyStatus,
+            UUID closedByUserId) {
         UUID propertyId = triggeringListing.getPropertyId();
         // 1. Update the property status
         Property property = propertyRepository.findById(propertyId)
@@ -1157,7 +1158,9 @@ public class ListingApplicationService {
         }
         propertyRepository.save(property);
 
-        // 2. Synchronize all associated listings of the same type
+        // 2. Synchronize all associated published listings, regardless of listing type.
+        // If the property is sold, related RENT listings must also become SOLD because
+        // the property is no longer available for rent.
         List<Listing> listings = listingRepository.findByPropertyId(propertyId);
         Set<UUID> usersToNotify = new HashSet<>();
         
@@ -1173,17 +1176,14 @@ public class ListingApplicationService {
                 continue;
             }
 
-            // Only close listings that have the same type as the triggering listing
-            if (l.getListingType() == triggeringListing.getListingType()
-                    && l.getStatus() == ListingStatus.PUBLISHED) {
-                
+            if (l.getStatus() == ListingStatus.PUBLISHED) {
                 // Keep track of users whose listings were actually updated
                 usersToNotify.add(l.getUserId());
 
-                if (l.getListingType() == ListingType.SALE) {
-                    l.markAsSold();
-                } else if (l.getListingType() == ListingType.RENT) {
-                    l.markAsRented();
+                if (targetPropertyStatus == PropertyStatus.SOLD) {
+                    l.markAsSoldDueToPropertyClosure(closedByUserId);
+                } else if (targetPropertyStatus == PropertyStatus.RENTED) {
+                    l.markAsRentedDueToPropertyClosure(closedByUserId);
                 }
                 listingRepository.save(l);
 
