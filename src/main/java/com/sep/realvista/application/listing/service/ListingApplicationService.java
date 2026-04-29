@@ -1106,6 +1106,44 @@ public class ListingApplicationService {
         return listingMapper.toListingResponse(updatedListing);
     }
 
+    /**
+     * When the listing creator marks sold/rented, attach this listing to hired engagements
+     * for the same property and agent. Skipped when the actor is only the property owner.
+     */
+    private void syncEngagementListingIdForAgentClose(Listing listing, UUID actorUserId) {
+        if (!actorUserId.equals(listing.getUserId())) {
+            return;
+        }
+        UUID propertyId = listing.getPropertyId();
+        if (propertyId == null) {
+            return;
+        }
+        List<Engagement> engagements = engagementRepository.findByListingIdInOrPropertyIdIn(
+                Collections.emptyList(), List.of(propertyId));
+        UUID listingId = listing.getListingId();
+        UUID agentUserId = listing.getUserId();
+
+        for (Engagement engagement : engagements) {
+            if (engagement.getPropertyId() == null || !propertyId.equals(engagement.getPropertyId())) {
+                continue;
+            }
+            EngagementStatus status = engagement.getStatus();
+            if (status != EngagementStatus.ACCEPTED && status != EngagementStatus.FINISHED) {
+                continue;
+            }
+            EngagementType type = engagement.getEngagementType();
+            boolean agentMatches = (type == EngagementType.AGENT_PROPOSAL
+                    && agentUserId.equals(engagement.getInitiatorId()))
+                    || (type == EngagementType.OWNER_INVITATION
+                            && agentUserId.equals(engagement.getReceiverId()));
+            if (!agentMatches) {
+                continue;
+            }
+            engagement.linkToListing(listingId);
+            engagementRepository.save(engagement);
+        }
+    }
+
     private void closeAllListingsAndProperty(Listing triggeringListing, PropertyStatus targetPropertyStatus,
             UUID closedByUserId) {
         UUID propertyId = triggeringListing.getPropertyId();
