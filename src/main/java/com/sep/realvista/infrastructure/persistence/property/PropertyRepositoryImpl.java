@@ -7,10 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.math.BigDecimal;
 
 @Repository
 @RequiredArgsConstructor
@@ -91,6 +91,14 @@ public class PropertyRepositoryImpl implements PropertyRepository {
     @Override
     public List<Property> searchByAddress(String address) {
         return jpaRepository.searchByAddress(address);
+    }
+
+    @Override
+    public long countByLocationIds(List<UUID> locationIds) {
+        if (locationIds == null || locationIds.isEmpty()) {
+            return 0;
+        }
+        return jpaRepository.countByLocationIds(locationIds);
     }
 
     @Override

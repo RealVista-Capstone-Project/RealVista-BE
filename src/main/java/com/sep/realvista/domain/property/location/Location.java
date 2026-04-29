@@ -21,13 +21,17 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
+import java.util.Locale;
 import java.util.UUID;
 
 @Entity
 @Table(name = "locations", indexes = {
         @Index(name = "idx_location_parent", columnList = "parent_id"),
         @Index(name = "idx_location_type", columnList = "type"),
-        @Index(name = "idx_location_code", columnList = "code")
+        @Index(name = "idx_location_code", columnList = "code"),
+        @Index(name = "idx_location_status", columnList = "status"),
+        @Index(name = "idx_location_sort", columnList = "sort_order")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -57,6 +61,18 @@ public class Location extends BaseEntity {
 
     @Column(length = 50)
     private String code;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private LocationStatus status = LocationStatus.ACTIVE;
+
+    @Column(name = "sort_order", nullable = false)
+    @Builder.Default
+    private Integer sortOrder = 0;
+
+    @Column(name = "normalized_name", length = 150)
+    private String normalizedName;
 
     @Column(name = "north_lat", nullable = false, precision = 9, scale = 6)
     private BigDecimal northLat;
@@ -92,10 +108,41 @@ public class Location extends BaseEntity {
     public void update(String name, String code) {
         if (name != null && !name.isBlank()) {
             this.name = name;
+            this.normalizedName = normalizeText(name);
         }
         if (code != null) {
             this.code = code;
         }
+    }
+
+    public void updateSortOrder(Integer sortOrder) {
+        if (sortOrder != null) {
+            this.sortOrder = sortOrder;
+        }
+    }
+
+    public void activate() {
+        this.status = LocationStatus.ACTIVE;
+        restore();
+    }
+
+    public void archive() {
+        this.status = LocationStatus.ARCHIVED;
+    }
+
+    public void initializeNormalizedName() {
+        this.normalizedName = normalizeText(this.name);
+    }
+
+    private static String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replace('Đ', 'D')
+                .replace('đ', 'd');
+        return normalized.toLowerCase(Locale.ROOT);
     }
 
     public void updateBounds(BigDecimal northLat, BigDecimal southLat, 

@@ -14,8 +14,8 @@ import java.util.Map;
  * Calls Google Maps Geocoding API to resolve a human-readable address into
  * a geographic bounding box (viewport).
  *
- * <p>If the API call fails or returns no results, all coordinates default to 0.0
- * so that the Location entity's NOT NULL constraint is satisfied.</p>
+ * <p>If the API call fails or returns no results, all coordinates default to 0.0.
+ * Callers must decide whether default bounds are acceptable.</p>
  */
 @Slf4j
 @Service
@@ -72,6 +72,17 @@ public class GeocodingService {
 
             if (response == null) {
                 log.warn("Geocoding API returned null for address: {}", addressQuery);
+                return BoundingBox.zero();
+            }
+
+            String status = response.get("status") instanceof String value ? value : null;
+            if (!"OK".equals(status)) {
+                Object errorMessage = response.get("error_message");
+                log.warn(
+                        "Geocoding API failed for address '{}': status={}, error_message={}",
+                        addressQuery,
+                        status,
+                        errorMessage);
                 return BoundingBox.zero();
             }
 
