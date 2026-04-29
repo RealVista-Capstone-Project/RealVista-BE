@@ -23,4 +23,6 @@ public interface ListingBoostRepository {
     List<ListingBoost> findActiveByListingIds(List<UUID> listingIds);
 
     List<ListingBoost> findAllActiveByListingIds(List<UUID> listingIds, LocalDate now);
+
+    long countActiveByBoostPackageId(UUID boostPackageId);
 }

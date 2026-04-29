@@ -33,4 +33,8 @@ public interface ListingBoostJpaRepository extends JpaRepository<ListingBoost, U
             @Param("listingIds") List<UUID> listingIds,
             @Param("status") ListingBoostStatus status,
             @Param("now") LocalDate now);
+
+    @Query("SELECT COUNT(lb) FROM ListingBoost lb "
+            + "WHERE lb.boostPackageId = :id AND lb.status = 'ACTIVE' AND lb.deleted = false")
+    long countActiveByBoostPackageId(@Param("id") UUID id);
 }

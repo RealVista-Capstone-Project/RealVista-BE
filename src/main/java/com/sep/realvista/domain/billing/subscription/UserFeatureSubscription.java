@@ -64,6 +64,9 @@ public class UserFeatureSubscription extends BaseEntity {
     @Column(name = "remaining_quota")
     private Integer remainingQuota;
 
+    @Column(name = "original_quota")
+    private Integer originalQuota;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

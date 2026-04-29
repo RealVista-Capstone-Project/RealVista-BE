@@ -35,4 +35,9 @@ public class UserListingBoostPackageRepositoryImpl implements UserListingBoostPa
     public List<UserListingBoostPackage> findByUserIdAndStatus(UUID userId, UserListingBoostPackageStatus status) {
         return jpa.findByUserIdAndStatusAndDeletedFalse(userId, status);
     }
+
+    @Override
+    public long countActiveByBoostPackageId(UUID boostPackageId) {
+        return jpa.countActiveByBoostPackageId(boostPackageId);
+    }
 }

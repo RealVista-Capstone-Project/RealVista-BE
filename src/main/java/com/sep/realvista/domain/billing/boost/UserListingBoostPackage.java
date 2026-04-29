@@ -67,6 +67,12 @@ public class UserListingBoostPackage extends BaseEntity {
     @Column(name = "remaining_hot_badge_quota")
     private Integer remainingHotBadgeQuota;
 
+    @Column(name = "original_featured_quota")
+    private Integer originalFeaturedQuota;
+
+    @Column(name = "original_hot_badge_quota")
+    private Integer originalHotBadgeQuota;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
