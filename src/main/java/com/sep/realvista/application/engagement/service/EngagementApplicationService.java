@@ -412,7 +412,7 @@ public class EngagementApplicationService {
                 .receiverId(agentId)
                 .engagementType(EngagementType.AGENT_CREATED_PROPERTY_LINK)
                 .propertyId(propertyId)
-                .status(EngagementStatus.SUBMITTED)
+                .status(EngagementStatus.ACCEPTED)
                 .content(objectMapper.valueToTree(contentMap))
                 .build();
 
