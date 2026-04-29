@@ -1,5 +1,6 @@
 package com.sep.realvista.unit.application.listing.service;
 
+import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.PriceChangeType;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
@@ -10,6 +11,11 @@ import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.application.listing.service.CostBreakdownService;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubscriptionRepository;
+import com.sep.realvista.domain.engagement.Engagement;
+import com.sep.realvista.domain.engagement.EngagementRepository;
+import com.sep.realvista.domain.engagement.EngagementStatus;
+import com.sep.realvista.domain.engagement.EngagementType;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.ListingStatus;
@@ -20,6 +26,7 @@ import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.Amenity;
 import com.sep.realvista.domain.property.amenity.AmenityType;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
@@ -111,6 +118,12 @@ class ListingApplicationServiceUnitTest {
 
         @Mock
         private com.sep.realvista.application.appointment.service.AppointmentApplicationService appointmentApplicationService;
+
+        @Mock
+        private UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
+
+        @Mock
+        private EngagementRepository engagementRepository;
 
         @InjectMocks
         private ListingApplicationService listingApplicationService;
@@ -902,5 +915,129 @@ class ListingApplicationServiceUnitTest {
 
                 // Assert
                 verify(listingAnalyticsService, never()).recordView(listingId, userId);
+        }
+
+        @Test
+        @DisplayName("markAsSold: listing creator closes — ACCEPTED AGENT_PROPOSAL gets listing_id")
+        void markAsSold_whenActorIsListingCreator_shouldSyncEngagementListingId() {
+                UUID agentId = UUID.randomUUID();
+                UUID ownerId = UUID.randomUUID();
+                Listing saleListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(agentId)
+                                .listingType(ListingType.SALE)
+                                .status(ListingStatus.PUBLISHED)
+                                .slug("sale-slug")
+                                .name("Sale Listing")
+                                .price(new BigDecimal("100000"))
+                                .isNegotiable(false)
+                                .build();
+
+                Property property = Property.builder()
+                                .propertyId(propertyId)
+                                .ownerId(ownerId)
+                                .streetAddress("1 Agent St")
+                                .latitude(new BigDecimal("10.0"))
+                                .longitude(new BigDecimal("106.0"))
+                                .landSizeM2(BigDecimal.ONE)
+                                .usableSizeM2(BigDecimal.ONE)
+                                .descriptions("desc")
+                                .status(PropertyStatus.AVAILABLE)
+                                .build();
+
+                Engagement engagement = Engagement.builder()
+                                .engagementId(UUID.randomUUID())
+                                .initiatorId(agentId)
+                                .receiverId(ownerId)
+                                .engagementType(EngagementType.AGENT_PROPOSAL)
+                                .propertyId(propertyId)
+                                .status(EngagementStatus.ACCEPTED)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(saleListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
+                when(listingRepository.findByPropertyId(propertyId)).thenReturn(Collections.emptyList());
+                when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList()))
+                                .thenReturn(List.of(engagement));
+                when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(listingMapper.toListingResponse(any(Listing.class)))
+                                .thenAnswer(invocation -> {
+                                        Listing l = invocation.getArgument(0);
+                                        return ListingResponse.builder()
+                                                        .listingId(l.getListingId())
+                                                        .propertyId(l.getPropertyId())
+                                                        .userId(l.getUserId())
+                                                        .listingType(l.getListingType())
+                                                        .status(l.getStatus())
+                                                        .build();
+                                });
+
+                listingApplicationService.markAsSold(listingId, agentId);
+
+                assertThat(engagement.getListingId()).isEqualTo(listingId);
+                verify(engagementRepository).save(engagement);
+        }
+
+        @Test
+        @DisplayName("markAsSold: property owner closes agent listing — engagement listing_id unchanged")
+        void markAsSold_whenActorIsOwnerOnly_shouldNotSyncEngagementListingId() {
+                UUID agentId = UUID.randomUUID();
+                UUID ownerId = UUID.randomUUID();
+                Listing saleListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(agentId)
+                                .listingType(ListingType.SALE)
+                                .status(ListingStatus.PUBLISHED)
+                                .slug("sale-slug")
+                                .name("Sale Listing")
+                                .price(new BigDecimal("100000"))
+                                .isNegotiable(false)
+                                .build();
+
+                Property property = Property.builder()
+                                .propertyId(propertyId)
+                                .ownerId(ownerId)
+                                .streetAddress("1 Agent St")
+                                .latitude(new BigDecimal("10.0"))
+                                .longitude(new BigDecimal("106.0"))
+                                .landSizeM2(BigDecimal.ONE)
+                                .usableSizeM2(BigDecimal.ONE)
+                                .descriptions("desc")
+                                .status(PropertyStatus.AVAILABLE)
+                                .build();
+
+                Engagement engagement = Engagement.builder()
+                                .engagementId(UUID.randomUUID())
+                                .initiatorId(agentId)
+                                .receiverId(ownerId)
+                                .engagementType(EngagementType.AGENT_PROPOSAL)
+                                .propertyId(propertyId)
+                                .status(EngagementStatus.ACCEPTED)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(saleListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(property));
+                when(listingRepository.findByPropertyId(propertyId)).thenReturn(Collections.emptyList());
+                when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList()))
+                                .thenReturn(List.of(engagement));
+                when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(listingMapper.toListingResponse(any(Listing.class)))
+                                .thenAnswer(invocation -> {
+                                        Listing l = invocation.getArgument(0);
+                                        return ListingResponse.builder()
+                                                        .listingId(l.getListingId())
+                                                        .propertyId(l.getPropertyId())
+                                                        .userId(l.getUserId())
+                                                        .listingType(l.getListingType())
+                                                        .status(l.getStatus())
+                                                        .build();
+                                });
+
+                listingApplicationService.markAsSold(listingId, ownerId);
+
+                assertThat(engagement.getListingId()).isNull();
+                verify(engagementRepository, never()).save(any(Engagement.class));
         }
 }
