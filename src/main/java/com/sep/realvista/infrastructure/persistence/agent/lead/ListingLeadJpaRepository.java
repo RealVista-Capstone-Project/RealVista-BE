@@ -42,6 +42,7 @@ public interface ListingLeadJpaRepository extends JpaRepository<ListingLead, UUI
             WHERE l.agentId = :agentId
               AND l.deleted = false
               AND (:status IS NULL OR l.status = :status)
+              AND (:listingId IS NULL OR l.listingId = :listingId)
               AND l.createdAt >= :from
               AND l.createdAt < :toExclusive
               AND (
@@ -64,17 +65,19 @@ public interface ListingLeadJpaRepository extends JpaRepository<ListingLead, UUI
               )
             """)
     Page<ListingLead> findAllByAgentIdWithFilters(@Param("agentId") UUID agentId,
-                                                    @Param("status") LeadStatus status,
-                                                    @Param("from") LocalDateTime from,
-                                                    @Param("toExclusive") LocalDateTime toExclusive,
-                                                    @Param("query") String query,
-                                                    Pageable pageable);
+                                                     @Param("status") LeadStatus status,
+                                                     @Param("from") LocalDateTime from,
+                                                     @Param("toExclusive") LocalDateTime toExclusive,
+                                                     @Param("listingId") UUID listingId,
+                                                     @Param("query") String query,
+                                                     Pageable pageable);
 
     @Query("""
             SELECT COUNT(l) FROM ListingLead l
             WHERE l.agentId = :agentId
               AND l.deleted = false
               AND (:status IS NULL OR l.status = :status)
+              AND (:listingId IS NULL OR l.listingId = :listingId)
               AND l.createdAt >= :from
               AND l.createdAt < :toExclusive
               AND (
@@ -97,15 +100,17 @@ public interface ListingLeadJpaRepository extends JpaRepository<ListingLead, UUI
               )
             """)
     long countByAgentIdWithFilters(@Param("agentId") UUID agentId,
-                                    @Param("status") LeadStatus status,
-                                    @Param("from") LocalDateTime from,
-                                    @Param("toExclusive") LocalDateTime toExclusive,
-                                    @Param("query") String query);
+                                     @Param("status") LeadStatus status,
+                                     @Param("from") LocalDateTime from,
+                                     @Param("toExclusive") LocalDateTime toExclusive,
+                                     @Param("listingId") UUID listingId,
+                                     @Param("query") String query);
 
     @Query("""
             SELECT l.source, COUNT(l) FROM ListingLead l
             WHERE l.agentId = :agentId
               AND l.deleted = false
+              AND (:listingId IS NULL OR l.listingId = :listingId)
               AND l.createdAt >= :from
               AND l.createdAt < :toExclusive
               AND (
@@ -131,5 +136,6 @@ public interface ListingLeadJpaRepository extends JpaRepository<ListingLead, UUI
     List<Object[]> countBySourceWithFilters(@Param("agentId") UUID agentId,
                                             @Param("from") LocalDateTime from,
                                             @Param("toExclusive") LocalDateTime toExclusive,
+                                            @Param("listingId") UUID listingId,
                                             @Param("query") String query);
 }

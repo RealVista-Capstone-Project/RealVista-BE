@@ -52,8 +52,9 @@ public class LeadApplicationService {
     private final LeadMapper leadMapper;
 
     @Transactional(readOnly = true)
+    @SuppressWarnings("checkstyle:ParameterNumber")
     public PageResponse<LeadResponse> getLeads(UUID agentId, LeadStatus status, LocalDate from, LocalDate to,
-                                               String query, int page, int size) {
+                                               UUID listingId, String query, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         DateBounds bounds = toBounds(from, to);
         String normalizedQuery = normalizeQuery(query);
@@ -63,6 +64,7 @@ public class LeadApplicationService {
                 status,
                 bounds.from(),
                 bounds.toExclusive(),
+                listingId,
                 normalizedQuery,
                 pageable
         );
@@ -90,22 +92,22 @@ public class LeadApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public LeadSummaryResponse getSummary(UUID agentId, LocalDate from, LocalDate to, String query) {
+    public LeadSummaryResponse getSummary(UUID agentId, LocalDate from, LocalDate to, UUID listingId, String query) {
         DateBounds current = toBounds(from, to);
         DateBounds previous = toPreviousBounds(current);
         String normalizedQuery = normalizeQuery(query);
 
         long totalLeads = leadRepository.countByAgentIdWithFilters(
-                agentId, null, current.from(), current.toExclusive(), normalizedQuery);
+                agentId, null, current.from(), current.toExclusive(), listingId, normalizedQuery);
         long closedLeads = leadRepository.countByAgentIdWithFilters(
-                agentId, LeadStatus.CLOSED, current.from(), current.toExclusive(), normalizedQuery);
+                agentId, LeadStatus.CLOSED, current.from(), current.toExclusive(), listingId, normalizedQuery);
         long previousTotalLeads = leadRepository.countByAgentIdWithFilters(
-                agentId, null, previous.from(), previous.toExclusive(), normalizedQuery);
+                agentId, null, previous.from(), previous.toExclusive(), listingId, normalizedQuery);
         long previousClosedLeads = leadRepository.countByAgentIdWithFilters(
-                agentId, LeadStatus.CLOSED, previous.from(), previous.toExclusive(), normalizedQuery);
+                agentId, LeadStatus.CLOSED, previous.from(), previous.toExclusive(), listingId, normalizedQuery);
 
         List<Object[]> sourceCounts = leadRepository.countBySourceWithFilters(
-                agentId, current.from(), current.toExclusive(), normalizedQuery);
+                agentId, current.from(), current.toExclusive(), listingId, normalizedQuery);
         List<LeadSourceSummaryResponse> bySource = Arrays.stream(LeadSource.values())
                 .map(source -> LeadSourceSummaryResponse.builder()
                         .source(source)
@@ -133,6 +135,7 @@ public class LeadApplicationService {
                 .phone(req.getPhone())
                 .source(req.getSource())
                 .budget(req.getBudget())
+                .status(req.getStatus() != null ? req.getStatus() : LeadStatus.NEW)
                 .priority(req.getPriority() != null ? req.getPriority() : LeadPriority.MEDIUM)
                 .build();
 

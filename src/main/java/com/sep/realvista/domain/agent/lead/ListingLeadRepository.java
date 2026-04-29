@@ -21,11 +21,12 @@ public interface ListingLeadRepository {
     Page<ListingLead> findAllByAgentIdAndStatus(UUID agentId, LeadStatus status, Pageable pageable);
 
     Page<ListingLead> findAllByAgentIdWithFilters(UUID agentId, LeadStatus status, LocalDateTime from,
-                                                   LocalDateTime toExclusive, String query, Pageable pageable);
+                                                   LocalDateTime toExclusive, UUID listingId, String query,
+                                                   Pageable pageable);
 
     long countByAgentIdWithFilters(UUID agentId, LeadStatus status, LocalDateTime from,
-                                   LocalDateTime toExclusive, String query);
+                                   LocalDateTime toExclusive, UUID listingId, String query);
 
     List<Object[]> countBySourceWithFilters(UUID agentId, LocalDateTime from, LocalDateTime toExclusive,
-                                            String query);
+                                            UUID listingId, String query);
 }

@@ -46,20 +46,21 @@ public class ListingLeadRepositoryImpl implements ListingLeadRepository {
 
     @Override
     public Page<ListingLead> findAllByAgentIdWithFilters(UUID agentId, LeadStatus status, LocalDateTime from,
-                                                          LocalDateTime toExclusive, String query,
-                                                          Pageable pageable) {
-        return jpaRepository.findAllByAgentIdWithFilters(agentId, status, from, toExclusive, query, pageable);
+                                                           LocalDateTime toExclusive, UUID listingId,
+                                                           String query, Pageable pageable) {
+        return jpaRepository.findAllByAgentIdWithFilters(
+                agentId, status, from, toExclusive, listingId, query, pageable);
     }
 
     @Override
     public long countByAgentIdWithFilters(UUID agentId, LeadStatus status, LocalDateTime from,
-                                           LocalDateTime toExclusive, String query) {
-        return jpaRepository.countByAgentIdWithFilters(agentId, status, from, toExclusive, query);
+                                            LocalDateTime toExclusive, UUID listingId, String query) {
+        return jpaRepository.countByAgentIdWithFilters(agentId, status, from, toExclusive, listingId, query);
     }
 
     @Override
     public List<Object[]> countBySourceWithFilters(UUID agentId, LocalDateTime from, LocalDateTime toExclusive,
-                                                   String query) {
-        return jpaRepository.countBySourceWithFilters(agentId, from, toExclusive, query);
+                                                    UUID listingId, String query) {
+        return jpaRepository.countBySourceWithFilters(agentId, from, toExclusive, listingId, query);
     }
 }

@@ -50,17 +50,20 @@ public class LeadController {
 
     @GetMapping
     @Operation(summary = "List leads", description = "Returns paginated leads owned by the authenticated agent.")
+    @SuppressWarnings("checkstyle:ParameterNumber")
     public ResponseEntity<ApiResponse<PageResponse<LeadResponse>>> getLeads(
             @AuthenticationPrincipal SecurityUserDetails userDetails,
             @RequestParam(required = false) LeadStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) UUID listingId,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         UUID agentId = userDetails.getUserId();
-        PageResponse<LeadResponse> result = leadApplicationService.getLeads(agentId, status, from, to, q, page, size);
+        PageResponse<LeadResponse> result = leadApplicationService.getLeads(
+                agentId, status, from, to, listingId, q, page, size);
         return ResponseEntity.ok(ApiResponse.success("Leads retrieved successfully", result));
     }
 
@@ -70,10 +73,11 @@ public class LeadController {
             @AuthenticationPrincipal SecurityUserDetails userDetails,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) UUID listingId,
             @RequestParam(required = false) String q
     ) {
         UUID agentId = userDetails.getUserId();
-        LeadSummaryResponse result = leadApplicationService.getSummary(agentId, from, to, q);
+        LeadSummaryResponse result = leadApplicationService.getSummary(agentId, from, to, listingId, q);
         return ResponseEntity.ok(ApiResponse.success("Lead summary retrieved successfully", result));
     }
 
