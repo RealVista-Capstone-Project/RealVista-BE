@@ -78,8 +78,8 @@ public class AgentReviewApplicationService {
                     "INVALID_ENGAGEMENT_STATUS");
         }
 
-        // 4. Validate engagement has a listing_id
-        if (engagement.getListingId() == null) {
+        // 4. Validate engagement has a listing_id or a property_id
+        if (engagement.getListingId() == null && engagement.getPropertyId() == null) {
             throw new BusinessConflictException(
                     "Cannot submit review: this engagement has no associated listing",
                     "ENGAGEMENT_NO_LISTING");
