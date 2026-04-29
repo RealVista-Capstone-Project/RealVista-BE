@@ -1121,7 +1121,7 @@ class EngagementApplicationServiceTest {
             assertThat(saved.getReceiverId()).isEqualTo(testAgentId);
             assertThat(saved.getPropertyId()).isEqualTo(testPropertyId);
             assertThat(saved.getEngagementType()).isEqualTo(EngagementType.AGENT_CREATED_PROPERTY_LINK);
-            assertThat(saved.getStatus()).isEqualTo(EngagementStatus.SUBMITTED);
+            assertThat(saved.getStatus()).isEqualTo(EngagementStatus.ACCEPTED);
         }
     }
 }
