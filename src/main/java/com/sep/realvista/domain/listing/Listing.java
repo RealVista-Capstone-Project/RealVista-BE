@@ -194,6 +194,34 @@ public class Listing extends BaseEntity {
         this.rentedAt = LocalDateTime.now();
     }
 
+    /**
+     * Close this listing because the underlying property was sold.
+     * This intentionally does not enforce listing type so associated RENT listings
+     * are also closed as SOLD when the property is no longer available.
+     */
+    public void markAsSoldDueToPropertyClosure(UUID closedByUserId) {
+        if (this.status != ListingStatus.PUBLISHED) {
+            throw new IllegalStateException("Only published listings can be marked as sold");
+        }
+        this.status = ListingStatus.SOLD;
+        this.soldByUserId = closedByUserId;
+        this.soldAt = LocalDateTime.now();
+    }
+
+    /**
+     * Close this listing because the underlying property was rented.
+     * This intentionally does not enforce listing type so all associated listings
+     * are closed consistently when the property is no longer available.
+     */
+    public void markAsRentedDueToPropertyClosure(UUID closedByUserId) {
+        if (this.status != ListingStatus.PUBLISHED) {
+            throw new IllegalStateException("Only published listings can be marked as rented");
+        }
+        this.status = ListingStatus.RENTED;
+        this.rentedByUserId = closedByUserId;
+        this.rentedAt = LocalDateTime.now();
+    }
+
     public void expire() {
         if (this.status != ListingStatus.PUBLISHED) {
             throw new IllegalStateException("Only published listings can be expired");

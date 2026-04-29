@@ -1113,7 +1113,9 @@ public class ListingApplicationService {
         }
         propertyRepository.save(property);
 
-        // 2. Synchronize all associated listings of the same type
+        // 2. Synchronize all associated published listings, regardless of listing type.
+        // If the property is sold, related RENT listings must also become SOLD because
+        // the property is no longer available for rent.
         List<Listing> listings = listingRepository.findByPropertyId(propertyId);
         Set<UUID> usersToNotify = new HashSet<>();
         
@@ -1129,17 +1131,14 @@ public class ListingApplicationService {
                 continue;
             }
 
-            // Only close listings that have the same type as the triggering listing
-            if (l.getListingType() == triggeringListing.getListingType()
-                    && l.getStatus() == ListingStatus.PUBLISHED) {
-                
+            if (l.getStatus() == ListingStatus.PUBLISHED) {
                 // Keep track of users whose listings were actually updated
                 usersToNotify.add(l.getUserId());
 
-                if (l.getListingType() == ListingType.SALE) {
-                    l.markAsSold(closedByUserId);
-                } else if (l.getListingType() == ListingType.RENT) {
-                    l.markAsRented(closedByUserId);
+                if (targetPropertyStatus == PropertyStatus.SOLD) {
+                    l.markAsSoldDueToPropertyClosure(closedByUserId);
+                } else if (targetPropertyStatus == PropertyStatus.RENTED) {
+                    l.markAsRentedDueToPropertyClosure(closedByUserId);
                 }
                 listingRepository.save(l);
 

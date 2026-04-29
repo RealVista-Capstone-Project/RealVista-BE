@@ -903,4 +903,52 @@ class ListingApplicationServiceUnitTest {
                 // Assert
                 verify(listingAnalyticsService, never()).recordView(listingId, userId);
         }
+
+        @Test
+        @DisplayName("Should mark published rent listing as sold when same property sale listing is sold")
+        void markAsSold_shouldClosePublishedRentListingsAsSoldForSameProperty() {
+                // Arrange
+                Listing saleListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.SALE)
+                                .status(ListingStatus.PUBLISHED)
+                                .slug("sale-listing-slug")
+                                .name("Sale Listing")
+                                .price(new BigDecimal("500000.00"))
+                                .isNegotiable(false)
+                                .build();
+
+                UUID rentListingId = UUID.randomUUID();
+                UUID rentUserId = UUID.randomUUID();
+                Listing rentListing = Listing.builder()
+                                .listingId(rentListingId)
+                                .propertyId(propertyId)
+                                .userId(rentUserId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.PUBLISHED)
+                                .slug("rent-listing-slug")
+                                .name("Rent Listing")
+                                .price(new BigDecimal("2500.00"))
+                                .isNegotiable(false)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(saleListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingRepository.findByPropertyId(propertyId)).thenReturn(List.of(saleListing, rentListing));
+                when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+                // Act
+                listingApplicationService.markAsSold(listingId, userId);
+
+                // Assert
+                assertThat(saleListing.getStatus()).isEqualTo(ListingStatus.SOLD);
+                assertThat(rentListing.getStatus()).isEqualTo(ListingStatus.SOLD);
+                assertThat(rentListing.getSoldByUserId()).isEqualTo(userId);
+                assertThat(rentListing.getSoldAt()).isNotNull();
+                verify(listingRepository).save(rentListing);
+                verify(appointmentApplicationService).cancelActiveAppointmentsByListingId(
+                                eq(rentListingId), eq(testProperty.getOwnerId()), anyString());
+        }
 }
