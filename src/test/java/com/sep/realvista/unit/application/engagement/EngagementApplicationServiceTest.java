@@ -1080,4 +1080,48 @@ class EngagementApplicationServiceTest {
             verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
     }
+
+    @Nested
+    @DisplayName("createAgentCreatedPropertyLink")
+    class CreateAgentCreatedPropertyLink {
+
+        @Test
+        @DisplayName("Should create owner-to-agent engagement with dedicated type")
+        void shouldCreateOwnerToAgentEngagementWithDedicatedType() {
+            UUID createdEngagementId = UUID.randomUUID();
+            UUID testPropertyId = UUID.randomUUID();
+            UUID testOwnerId = UUID.randomUUID();
+            UUID testAgentId = UUID.randomUUID();
+
+            when(objectMapper.valueToTree(any()))
+                    .thenReturn(NullNode.getInstance());
+            when(engagementRepository.save(any(Engagement.class)))
+                    .thenAnswer(invocation -> {
+                        Engagement input = invocation.getArgument(0);
+                        return Engagement.builder()
+                                .engagementId(createdEngagementId)
+                                .initiatorId(input.getInitiatorId())
+                                .receiverId(input.getReceiverId())
+                                .engagementType(input.getEngagementType())
+                                .propertyId(input.getPropertyId())
+                                .status(input.getStatus())
+                                .content(input.getContent())
+                                .build();
+                    });
+
+            UUID result = engagementApplicationService
+                    .createAgentCreatedPropertyLink(testPropertyId, testOwnerId, testAgentId);
+
+            assertThat(result).isEqualTo(createdEngagementId);
+
+            ArgumentCaptor<Engagement> engagementCaptor = ArgumentCaptor.forClass(Engagement.class);
+            verify(engagementRepository).save(engagementCaptor.capture());
+            Engagement saved = engagementCaptor.getValue();
+            assertThat(saved.getInitiatorId()).isEqualTo(testOwnerId);
+            assertThat(saved.getReceiverId()).isEqualTo(testAgentId);
+            assertThat(saved.getPropertyId()).isEqualTo(testPropertyId);
+            assertThat(saved.getEngagementType()).isEqualTo(EngagementType.AGENT_CREATED_PROPERTY_LINK);
+            assertThat(saved.getStatus()).isEqualTo(EngagementStatus.SUBMITTED);
+        }
+    }
 }

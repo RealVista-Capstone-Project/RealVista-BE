@@ -3,5 +3,6 @@ package com.sep.realvista.domain.engagement;
 public enum EngagementType {
     AGENT_PROPOSAL,
     TENANT_APPLICATION,
-    OWNER_INVITATION
+    OWNER_INVITATION,
+    AGENT_CREATED_PROPERTY_LINK
 }
