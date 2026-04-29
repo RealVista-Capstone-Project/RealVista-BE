@@ -86,6 +86,9 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
             + "WHERE LOWER(p.streetAddress) LIKE LOWER(CONCAT('%', :address, '%')) AND p.deleted = false")
     List<Property> searchByAddress(@Param("address") String address);
 
+    @Query("SELECT COUNT(p) FROM Property p WHERE p.locationId IN :locationIds AND p.deleted = false")
+    long countByLocationIds(@Param("locationIds") List<UUID> locationIds);
+
     /**
      * Finds AVAILABLE properties not already assigned to the given agent,
      * with optional keyword, propertyType, and location filters.

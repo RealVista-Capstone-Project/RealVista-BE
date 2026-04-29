@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -117,5 +118,23 @@ public class LocationController {
         LocationResponseDTO updated = locationApplicationService.updateLocation(id, req);
         return ResponseEntity.ok(ApiResponse.success("Location updated successfully", updated));
     }
-}
 
+    @PatchMapping("/api/v1/admin/locations/{id}/archive")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: archive a location")
+    public ResponseEntity<ApiResponse<LocationResponseDTO>> archiveLocation(@PathVariable UUID id) {
+        log.info("Admin REST request to archive location id={}", id);
+        LocationResponseDTO archived = locationApplicationService.archiveLocation(id);
+        return ResponseEntity.ok(ApiResponse.success("Location archived successfully", archived));
+    }
+
+    @PatchMapping("/api/v1/admin/locations/{id}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: activate a location")
+    public ResponseEntity<ApiResponse<LocationResponseDTO>> activateLocation(@PathVariable UUID id) {
+        log.info("Admin REST request to activate location id={}", id);
+        LocationResponseDTO activated = locationApplicationService.activateLocation(id);
+        return ResponseEntity.ok(ApiResponse.success("Location activated successfully", activated));
+    }
+
+}

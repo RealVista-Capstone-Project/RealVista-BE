@@ -1,5 +1,6 @@
 package com.sep.realvista.application.location.dto;
 
+import com.sep.realvista.domain.property.location.LocationStatus;
 import com.sep.realvista.domain.property.location.LocationType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,4 +17,5 @@ public class AdminLocationListRequest {
     private String search;
     private LocationType level;
     private UUID parentId;
+    private LocationStatus status;
 }
