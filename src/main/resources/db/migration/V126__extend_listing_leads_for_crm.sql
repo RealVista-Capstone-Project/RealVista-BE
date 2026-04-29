@@ -1,4 +1,4 @@
--- V120: Extend listing_leads and lead_notes for CRM pipeline feature
+-- V126: Extend listing_leads and lead_notes for CRM pipeline feature
 -- Adds free-text contact info, new status values, source column,
 -- and agent_id to lead_notes for note authorship tracking.
 
