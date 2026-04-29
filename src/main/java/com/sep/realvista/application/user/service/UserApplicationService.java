@@ -593,6 +593,7 @@ public class UserApplicationService {
                 .fullName(user.getFullName())
                 .maskedPhone(maskPhone(user.getPhone()))
                 .phone(user.getPhone())
+                .avatarUrl(user.getAvatarUrl())
                 .build();
     }
 

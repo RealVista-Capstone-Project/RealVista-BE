@@ -46,9 +46,13 @@ public class LeadNote extends BaseEntity {
     @JoinColumn(name = "listing_lead_id", insertable = false, updatable = false)
     private ListingLead listingLead;
 
+    @Column(name = "agent_id")
+    private UUID agentId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "note_type", nullable = false, length = 20)
-    private NoteType noteType;
+    @Builder.Default
+    private NoteType noteType = NoteType.NOTE;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
@@ -56,6 +60,10 @@ public class LeadNote extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_at_time", length = 20)
+    private LeadStatus statusAtTime;
 
     public void updateContent(String content) {
         this.content = content;

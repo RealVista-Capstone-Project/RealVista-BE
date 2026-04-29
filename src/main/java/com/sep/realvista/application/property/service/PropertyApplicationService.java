@@ -33,6 +33,7 @@ import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
+import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.application.listing.dto.ListingSummaryDTO;
 import com.sep.realvista.domain.listing.ListingStatus;
@@ -53,8 +54,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -314,7 +317,9 @@ public class PropertyApplicationService {
             List<PropertyAmenity> amenities =
                     propertyAmenityRepository.findByPropertyIdWithAmenity(propId);
 
-            return propertyMapper.toSummaryResponse(property, media, attributes, amenities);
+            PropertySummaryResponse summary = propertyMapper.toSummaryResponse(property, media, attributes, amenities);
+            applySoldByInfo(summary, property);
+            return summary;
         }).collect(Collectors.toList());
 
         return PageResponse.<PropertySummaryResponse>builder()
@@ -326,6 +331,31 @@ public class PropertyApplicationService {
                 .first(propertiesPage.isFirst())
                 .last(propertiesPage.isLast())
                 .build();
+    }
+
+    private void applySoldByInfo(PropertySummaryResponse summary, Property property) {
+        if (summary == null || property == null || property.getStatus() != PropertyStatus.SOLD) {
+            return;
+        }
+
+        List<Listing> listings = listingRepository.findByPropertyId(property.getPropertyId());
+        Optional<Listing> soldListing = listings.stream()
+                .filter(l -> l.getStatus() == ListingStatus.SOLD && l.getSoldByUserId() != null)
+                .max(Comparator.comparing(Listing::getSoldAt, Comparator.nullsLast(Comparator.naturalOrder())));
+
+        if (soldListing.isEmpty()) {
+            return;
+        }
+
+        UUID soldByUserId = soldListing.get().getSoldByUserId();
+        summary.setSoldByUserId(soldByUserId);
+        summary.setSoldAt(soldListing.get().getSoldAt());
+        summary.setSoldByRole(soldByUserId.equals(property.getOwnerId()) ? "OWNER" : "AGENT");
+
+        userRepository.findById(soldByUserId).ifPresent(user -> {
+            summary.setSoldByName(user.getFullName());
+            summary.setSoldByPhone(user.getPhone());
+        });
     }
 
     @Transactional(readOnly = true)

@@ -20,4 +20,5 @@ public class UserSearchResponse {
     private String fullName;
     private String maskedPhone;
     private String phone;
+    private String avatarUrl;
 }

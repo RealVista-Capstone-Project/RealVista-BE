@@ -138,6 +138,22 @@ public class Listing extends BaseEntity {
     @Builder.Default
     private Boolean hasBeenPublished = false;
 
+    /** The user (agent or owner) who closed the sale. Populated when status = SOLD. */
+    @Column(name = "sold_by_user_id")
+    private UUID soldByUserId;
+
+    /** Timestamp when the listing was marked as sold. */
+    @Column(name = "sold_at")
+    private LocalDateTime soldAt;
+
+    /** The user (agent or owner) who closed the rental. Populated when status = RENTED. */
+    @Column(name = "rented_by_user_id")
+    private UUID rentedByUserId;
+
+    /** Timestamp when the listing was marked as rented. */
+    @Column(name = "rented_at")
+    private LocalDateTime rentedAt;
+
     public void submitForReview() {
         if (this.status != ListingStatus.DRAFT) {
             throw new IllegalStateException("Only draft listings can be submitted for review");
@@ -154,7 +170,7 @@ public class Listing extends BaseEntity {
         this.hasBeenPublished = true;
     }
 
-    public void markAsSold() {
+    public void markAsSold(UUID closedByUserId) {
         if (this.listingType != ListingType.SALE) {
             throw new IllegalStateException("Only sale listings can be marked as sold");
         }
@@ -162,9 +178,11 @@ public class Listing extends BaseEntity {
             throw new IllegalStateException("Only published listings can be marked as sold");
         }
         this.status = ListingStatus.SOLD;
+        this.soldByUserId = closedByUserId;
+        this.soldAt = LocalDateTime.now();
     }
 
-    public void markAsRented() {
+    public void markAsRented(UUID closedByUserId) {
         if (this.listingType != ListingType.RENT) {
             throw new IllegalStateException("Only rent listings can be marked as rented");
         }
@@ -172,6 +190,36 @@ public class Listing extends BaseEntity {
             throw new IllegalStateException("Only published listings can be marked as rented");
         }
         this.status = ListingStatus.RENTED;
+        this.rentedByUserId = closedByUserId;
+        this.rentedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Close this listing because the underlying property was sold.
+     * This intentionally does not enforce listing type so associated RENT listings
+     * are also closed as SOLD when the property is no longer available.
+     */
+    public void markAsSoldDueToPropertyClosure(UUID closedByUserId) {
+        if (this.status != ListingStatus.PUBLISHED) {
+            throw new IllegalStateException("Only published listings can be marked as sold");
+        }
+        this.status = ListingStatus.SOLD;
+        this.soldByUserId = closedByUserId;
+        this.soldAt = LocalDateTime.now();
+    }
+
+    /**
+     * Close this listing because the underlying property was rented.
+     * This intentionally does not enforce listing type so all associated listings
+     * are closed consistently when the property is no longer available.
+     */
+    public void markAsRentedDueToPropertyClosure(UUID closedByUserId) {
+        if (this.status != ListingStatus.PUBLISHED) {
+            throw new IllegalStateException("Only published listings can be marked as rented");
+        }
+        this.status = ListingStatus.RENTED;
+        this.rentedByUserId = closedByUserId;
+        this.rentedAt = LocalDateTime.now();
     }
 
     public void expire() {

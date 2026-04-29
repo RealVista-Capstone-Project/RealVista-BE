@@ -3,13 +3,14 @@ package com.sep.realvista.infrastructure.persistence.property.location;
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface LocationJpaRepository extends JpaRepository<Location, UUID> {
+public interface LocationJpaRepository extends JpaRepository<Location, UUID>, JpaSpecificationExecutor<Location> {
 
     List<Location> findByTypeOrderByNameAsc(LocationType type);
 

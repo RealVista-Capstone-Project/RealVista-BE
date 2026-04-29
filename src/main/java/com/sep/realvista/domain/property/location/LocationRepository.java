@@ -1,5 +1,8 @@
 package com.sep.realvista.domain.property.location;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -47,4 +50,8 @@ public interface LocationRepository {
 
     List<Location> findContainingLocations(@Param("lat") java.math.BigDecimal lat,
                                            @Param("lng") java.math.BigDecimal lng);
+
+    Location save(Location location);
+
+    Page<Location> findAll(Specification<Location> spec, Pageable pageable);
 }
