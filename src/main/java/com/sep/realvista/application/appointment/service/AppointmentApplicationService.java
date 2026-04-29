@@ -2,6 +2,7 @@ package com.sep.realvista.application.appointment.service;
 
 import com.sep.realvista.application.appointment.dto.BookTourRequest;
 import com.sep.realvista.application.appointment.dto.AppointmentResponse;
+import com.sep.realvista.application.appointment.dto.AppointmentSummaryResponse;
 import com.sep.realvista.application.appointment.dto.SyncBlocksRequest;
 import com.sep.realvista.application.appointment.dto.UpdateAppointmentStatusRequest;
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
@@ -257,6 +258,37 @@ public class AppointmentApplicationService {
         return appointments.stream()
                 .map(appt -> mapToResponse(appt, userId))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public AppointmentSummaryResponse getAppointmentSummary(UUID userId, LocalDateTime start, LocalDateTime end) {
+        List<Appointment> appointments = appointmentService.getAppointmentsByUserId(userId, start, end, null);
+        LocalDateTime now = LocalDateTime.now();
+
+        long pendingAppointments = appointments.stream().filter(a -> a.getStatus() == AppointmentStatus.PENDING).count();
+        long acceptedAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.ACCEPTED).count();
+        long rejectedAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.REJECTED).count();
+        long canceledAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.CANCELED).count();
+        long completedAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.COMPLETED).count();
+        long upcomingAppointments = appointments.stream()
+                .filter(a -> a.getStartTime() != null
+                        && a.getStartTime().isAfter(now)
+                        && (a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.ACCEPTED))
+                .count();
+
+        return AppointmentSummaryResponse.builder()
+                .totalAppointments(appointments.size())
+                .pendingAppointments(pendingAppointments)
+                .acceptedAppointments(acceptedAppointments)
+                .rejectedAppointments(rejectedAppointments)
+                .canceledAppointments(canceledAppointments)
+                .completedAppointments(completedAppointments)
+                .upcomingAppointments(upcomingAppointments)
+                .build();
     }
 
     public AppointmentResponse updateAppointmentStatus(UUID userId, UUID appointmentId,

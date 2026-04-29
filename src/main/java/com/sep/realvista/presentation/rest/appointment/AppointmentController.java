@@ -1,6 +1,7 @@
 package com.sep.realvista.presentation.rest.appointment;
 
 import com.sep.realvista.application.appointment.dto.AppointmentResponse;
+import com.sep.realvista.application.appointment.dto.AppointmentSummaryResponse;
 import com.sep.realvista.application.appointment.dto.BookTourRequest;
 import com.sep.realvista.application.appointment.dto.UpdateAppointmentStatusRequest;
 import com.sep.realvista.application.appointment.dto.SyncBlocksRequest;
@@ -125,6 +126,38 @@ public class AppointmentController {
                                         currentUser.getUserId());
                         return ResponseEntity
                                         .ok(ApiResponse.success("Appointments retrieved successfully", appointments));
+                } finally {
+                        MDC.remove("traceId");
+                }
+        }
+
+        @GetMapping("/summary")
+        @Operation(summary = "Get appointment summary", description = "Retrieves aggregate appointment metrics"
+                        + " for the current user within an optional date range")
+        public ResponseEntity<ApiResponse<AppointmentSummaryResponse>> getAppointmentSummary(
+                        @RequestParam(name = "start_date", required = false)
+                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                        @RequestParam(name = "end_date", required = false)
+                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                        @AuthenticationPrincipal SecurityUserDetails currentUser) {
+                String traceId = UUID.randomUUID().toString();
+                MDC.put("traceId", traceId);
+                try {
+                        log.info("Request to get appointment summary - traceId: {}, userId: {}, startDate: {},"
+                                        + " endDate: {}", traceId, currentUser.getUserId(), startDate, endDate);
+
+                        LocalDateTime startDateTime = startDate != null
+                                        ? startDate.atStartOfDay()
+                                        : LocalDateTime.now().minusDays(30);
+                        LocalDateTime endDateTime = endDate != null
+                                        ? endDate.atTime(LocalTime.MAX)
+                                        : LocalDateTime.now().plusDays(30);
+
+                        AppointmentSummaryResponse summary = appointmentApplicationService.getAppointmentSummary(
+                                        currentUser.getUserId(), startDateTime, endDateTime);
+
+                        return ResponseEntity.ok(
+                                        ApiResponse.success("Appointment summary retrieved successfully", summary));
                 } finally {
                         MDC.remove("traceId");
                 }
