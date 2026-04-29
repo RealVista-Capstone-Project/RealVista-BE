@@ -45,8 +45,18 @@ public class AiQuotaApplicationService {
             return false;
         }
 
-        // Unlimited check
-        if (pkg.isUnlimited()) {
+        // Use originalQuota (snapshotted at checkout) so admin updates to the package
+        // quota never retroactively affect existing subscriptions.
+        // -1 means unlimited. For legacy rows with null originalQuota, fall back to
+        // remainingQuota, never the live package quota.
+        Integer quotaLimit = activeSub.getOriginalQuota();
+        if (quotaLimit != null && quotaLimit == -1) {
+            return true;
+        }
+        if (quotaLimit == null) {
+            quotaLimit = activeSub.getRemainingQuota();
+        }
+        if (quotaLimit == null) {
             return true;
         }
 
@@ -62,10 +72,10 @@ public class AiQuotaApplicationService {
                         .usageCount(0)
                         .build());
 
-        // 3. Check against package quota
-        if (usage.getUsageCount() >= pkg.getQuota()) {
+        // 3. Check against snapshotted quota limit
+        if (usage.getUsageCount() >= quotaLimit) {
             log.info("Quota exceeded for user={}, feature={}, usage={}, limit={}",
-                    userId, feature, usage.getUsageCount(), pkg.getQuota());
+                    userId, feature, usage.getUsageCount(), quotaLimit);
             return false;
         }
 
@@ -105,11 +115,19 @@ public class AiQuotaApplicationService {
             return status;
         }
 
-        status.put("hasSubscription", true);
-        status.put("isUnlimited", pkg.isUnlimited());
-        status.put("limit", pkg.getQuota());
+        // Use originalQuota (snapshotted at checkout) — same logic as checkAndIncrementQuota.
+        // Never use live package quota for active subscriptions.
+        Integer quotaLimit = activeSub.getOriginalQuota();
+        if (quotaLimit == null) {
+            quotaLimit = activeSub.getRemainingQuota();
+        }
+        boolean unlimited = quotaLimit == null || quotaLimit == -1;
 
-        if (pkg.isUnlimited()) {
+        status.put("hasSubscription", true);
+        status.put("isUnlimited", unlimited);
+        status.put("limit", unlimited ? -1 : quotaLimit);
+
+        if (unlimited) {
             status.put("remaining", -1);
         } else {
             // Get today's usage
@@ -118,8 +136,8 @@ public class AiQuotaApplicationService {
                     userId, AiFeature.AI_ASSISTANT, today, today)
                     .map(AiFeatureUsage::getUsageCount)
                     .orElse(0);
-            
-            status.put("remaining", Math.max(0, pkg.getQuota() - usageCount));
+
+            status.put("remaining", Math.max(0, quotaLimit - usageCount));
         }
 
         return status;

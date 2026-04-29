@@ -57,4 +57,9 @@ public class UserFeatureSubscriptionRepositoryImpl implements UserFeatureSubscri
     public List<UserFeatureSubscription> findByStatus(UserFeatureSubscriptionStatus status) {
         return jpa.findByStatusAndNotDeleted(status);
     }
+
+    @Override
+    public long countActiveByFeaturePackageId(UUID featurePackageId) {
+        return jpa.countActiveByFeaturePackageId(featurePackageId);
+    }
 }
