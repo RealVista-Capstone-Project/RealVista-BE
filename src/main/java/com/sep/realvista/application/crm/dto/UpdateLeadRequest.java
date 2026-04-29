@@ -1,6 +1,7 @@
 package com.sep.realvista.application.crm.dto;
 
 import com.sep.realvista.domain.agent.lead.LeadSource;
+import com.sep.realvista.domain.agent.lead.LeadPriority;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -22,4 +23,5 @@ public class UpdateLeadRequest {
 
     private UUID listingId;
     private BigDecimal budget;
+    private LeadPriority priority;
 }

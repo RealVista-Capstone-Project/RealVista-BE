@@ -6,6 +6,7 @@ import com.sep.realvista.application.crm.dto.AddLeadNoteRequest;
 import com.sep.realvista.application.crm.dto.CreateLeadRequest;
 import com.sep.realvista.application.crm.dto.LeadNoteResponse;
 import com.sep.realvista.application.crm.dto.LeadResponse;
+import com.sep.realvista.application.crm.dto.LeadSummaryResponse;
 import com.sep.realvista.application.crm.dto.UpdateLeadRequest;
 import com.sep.realvista.application.crm.dto.UpdateLeadStatusRequest;
 import com.sep.realvista.application.crm.service.LeadApplicationService;
@@ -17,6 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -50,12 +53,28 @@ public class LeadController {
     public ResponseEntity<ApiResponse<PageResponse<LeadResponse>>> getLeads(
             @AuthenticationPrincipal SecurityUserDetails userDetails,
             @RequestParam(required = false) LeadStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         UUID agentId = userDetails.getUserId();
-        PageResponse<LeadResponse> result = leadApplicationService.getLeads(agentId, status, page, size);
+        PageResponse<LeadResponse> result = leadApplicationService.getLeads(agentId, status, from, to, q, page, size);
         return ResponseEntity.ok(ApiResponse.success("Leads retrieved successfully", result));
+    }
+
+    @GetMapping("/summary")
+    @Operation(summary = "Lead summary", description = "Returns CRM lead metrics for the authenticated agent.")
+    public ResponseEntity<ApiResponse<LeadSummaryResponse>> getSummary(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String q
+    ) {
+        UUID agentId = userDetails.getUserId();
+        LeadSummaryResponse result = leadApplicationService.getSummary(agentId, from, to, q);
+        return ResponseEntity.ok(ApiResponse.success("Lead summary retrieved successfully", result));
     }
 
     @PostMapping

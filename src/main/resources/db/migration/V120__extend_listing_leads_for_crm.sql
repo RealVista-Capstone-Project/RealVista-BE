@@ -1,4 +1,4 @@
--- V106: Extend listing_leads and lead_notes for CRM pipeline feature
+-- V120: Extend listing_leads and lead_notes for CRM pipeline feature
 -- Adds free-text contact info, new status values, source column,
 -- and agent_id to lead_notes for note authorship tracking.
 
@@ -18,17 +18,17 @@ ALTER TABLE listing_leads
 ALTER TABLE listing_leads
     ALTER COLUMN buyer_id DROP NOT NULL;
 
--- 4. Re-add CHECK constraint with CRM statuses
-ALTER TABLE listing_leads
-    ADD CONSTRAINT chk_lead_status
-        CHECK (status IN ('NEW','CONSULTING','TOUR_SCHEDULED','TOURED','NEGOTIATING','CLOSED','NOT_POTENTIAL'));
-
--- 5. Migrate existing rows: map old statuses to closest CRM equivalent
+-- 4. Migrate existing rows: map old statuses to closest CRM equivalent
 UPDATE listing_leads SET status = 'NEW'         WHERE status = 'NEW';
 UPDATE listing_leads SET status = 'CONSULTING'  WHERE status = 'CONTACTED';
 UPDATE listing_leads SET status = 'NEGOTIATING' WHERE status = 'QUALIFIED';
 UPDATE listing_leads SET status = 'NEGOTIATING' WHERE status = 'NEGOTIATING';
 UPDATE listing_leads SET status = 'CLOSED'      WHERE status IN ('CLOSED_WON', 'CLOSED_LOST');
+
+-- 5. Re-add CHECK constraint with CRM statuses
+ALTER TABLE listing_leads
+    ADD CONSTRAINT chk_lead_status
+        CHECK (status IN ('NEW','CONSULTING','TOUR_SCHEDULED','TOURED','NEGOTIATING','CLOSED','NOT_POTENTIAL'));
 
 -- 6. Add agent_id to lead_notes (who wrote the note)
 ALTER TABLE lead_notes

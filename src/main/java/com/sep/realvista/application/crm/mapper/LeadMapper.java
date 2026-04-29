@@ -11,6 +11,8 @@ import org.mapstruct.Mapping;
 public interface LeadMapper {
 
     @Mapping(target = "notes", ignore = true)
+    @Mapping(target = "listingName", ignore = true)
+    @Mapping(target = "buyerAvatarUrl", ignore = true)
     LeadResponse toResponse(ListingLead lead);
 
     LeadNoteResponse toNoteResponse(LeadNote note);

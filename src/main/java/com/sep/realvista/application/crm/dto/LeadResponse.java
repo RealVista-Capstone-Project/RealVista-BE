@@ -22,7 +22,9 @@ public class LeadResponse {
     private UUID listingLeadId;
     private UUID agentId;
     private UUID listingId;
+    private String listingName;
     private UUID buyerId;
+    private String buyerAvatarUrl;
     private String fullName;
     private String email;
     private String phone;
