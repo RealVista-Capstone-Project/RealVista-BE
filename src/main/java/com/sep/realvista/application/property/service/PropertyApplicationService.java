@@ -11,6 +11,7 @@ import com.sep.realvista.application.property.dto.PropertySearchCriteria;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
 import com.sep.realvista.application.property.mapper.PropertyMapper;
+import com.sep.realvista.application.engagement.service.EngagementApplicationService;
 import com.sep.realvista.domain.agent.PropertyAgent;
 import com.sep.realvista.domain.agent.PropertyAgentRepository;
 import com.sep.realvista.domain.common.exception.DomainException;
@@ -84,6 +85,7 @@ public class PropertyApplicationService {
     private final EntityManager entityManager;
     private final AgentProposalRepository agentProposalRepository;
     private final SettingPreferenceRepository settingPreferenceRepository;
+    private final EngagementApplicationService engagementApplicationService;
 
     private UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -155,6 +157,7 @@ public class PropertyApplicationService {
                     .agentId(currentUserId)
                     .build();
             propertyAgentRepository.save(propertyAgent);
+            engagementApplicationService.createAgentCreatedPropertyLink(propertyId, ownerId, currentUserId);
             log.info("PropertyAgent link created for agent {} and property {}", currentUserId, propertyId);
         }
 

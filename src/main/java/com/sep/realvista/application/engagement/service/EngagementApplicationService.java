@@ -391,6 +391,36 @@ public class EngagementApplicationService {
         return saved.getEngagementId();
     }
 
+    /**
+     * Creates a system-generated owner-to-agent engagement when an agent creates
+     * a property on behalf of an owner.
+     *
+     * @param propertyId property that was created
+     * @param ownerId    owner of the property (engagement initiator)
+     * @param agentId    agent who created the property (engagement receiver)
+     * @return created engagement ID
+     */
+    public UUID createAgentCreatedPropertyLink(UUID propertyId, UUID ownerId, UUID agentId) {
+        log.info("Creating agent-created-property engagement for property {} (owner {}, agent {})",
+                propertyId, ownerId, agentId);
+
+        Map<String, Object> contentMap = new HashMap<>();
+        contentMap.put("message", "Auto-created when agent submitted property for owner");
+
+        Engagement engagement = Engagement.builder()
+                .initiatorId(ownerId)
+                .receiverId(agentId)
+                .engagementType(EngagementType.AGENT_CREATED_PROPERTY_LINK)
+                .propertyId(propertyId)
+                .status(EngagementStatus.ACCEPTED)
+                .content(objectMapper.valueToTree(contentMap))
+                .build();
+
+        Engagement saved = engagementRepository.save(engagement);
+        log.info("Agent-created-property engagement created. Engagement ID: {}", saved.getEngagementId());
+        return saved.getEngagementId();
+    }
+
     private void notifyOwnerOfAgentProposal(
             Engagement saved,
             Property property,
