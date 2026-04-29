@@ -43,7 +43,10 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
           (e.engagementType = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
            AND e.receiverId = :ownerId)
           OR
-          (e.engagementType = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+          (e.engagementType IN (
+               com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION,
+               com.sep.realvista.domain.engagement.EngagementType.AGENT_CREATED_PROPERTY_LINK
+           )
            AND e.initiatorId = :ownerId)
       )
       AND (:search IS NULL OR :search = '' OR
@@ -53,8 +56,10 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
                COALESCE(i.lastName, '')))
                LIKE LOWER(CONCAT('%', :search, '%')))
           OR
-          (e.engagementType
-           = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+          (e.engagementType IN (
+               com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION,
+               com.sep.realvista.domain.engagement.EngagementType.AGENT_CREATED_PROPERTY_LINK
+           )
            AND LOWER(CONCAT(COALESCE(r.firstName, ''), ' ',
                COALESCE(r.lastName, '')))
                LIKE LOWER(CONCAT('%', :search, '%')))
@@ -70,8 +75,10 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
            = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
            AND e.receiverId = :ownerId)
           OR
-          (e.engagementType
-           = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+          (e.engagementType IN (
+               com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION,
+               com.sep.realvista.domain.engagement.EngagementType.AGENT_CREATED_PROPERTY_LINK
+           )
            AND e.initiatorId = :ownerId)
       )
       AND (:search IS NULL OR :search = '' OR
@@ -81,8 +88,10 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
                COALESCE(i.lastName, '')))
                LIKE LOWER(CONCAT('%', :search, '%')))
           OR
-          (e.engagementType
-           = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+          (e.engagementType IN (
+               com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION,
+               com.sep.realvista.domain.engagement.EngagementType.AGENT_CREATED_PROPERTY_LINK
+           )
            AND LOWER(CONCAT(COALESCE(r.firstName, ''), ' ',
                COALESCE(r.lastName, '')))
                LIKE LOWER(CONCAT('%', :search, '%')))
@@ -112,7 +121,10 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
           (e.engagementType = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
            AND e.receiverId = :ownerId)
           OR
-          (e.engagementType = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+          (e.engagementType IN (
+               com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION,
+               com.sep.realvista.domain.engagement.EngagementType.AGENT_CREATED_PROPERTY_LINK
+           )
            AND e.initiatorId = :ownerId)
       )
       AND (:search IS NULL OR :search = '' OR
@@ -122,8 +134,10 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
                COALESCE(i.lastName, '')))
                LIKE LOWER(CONCAT('%', :search, '%')))
           OR
-          (e.engagementType
-           = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+          (e.engagementType IN (
+               com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION,
+               com.sep.realvista.domain.engagement.EngagementType.AGENT_CREATED_PROPERTY_LINK
+           )
            AND LOWER(CONCAT(COALESCE(r.firstName, ''), ' ',
                COALESCE(r.lastName, '')))
                LIKE LOWER(CONCAT('%', :search, '%')))
@@ -139,8 +153,10 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
            = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
            AND e.receiverId = :ownerId)
           OR
-          (e.engagementType
-           = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+          (e.engagementType IN (
+               com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION,
+               com.sep.realvista.domain.engagement.EngagementType.AGENT_CREATED_PROPERTY_LINK
+           )
            AND e.initiatorId = :ownerId)
       )
       AND (:search IS NULL OR :search = '' OR
@@ -150,8 +166,10 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
                COALESCE(i.lastName, '')))
                LIKE LOWER(CONCAT('%', :search, '%')))
           OR
-          (e.engagementType
-           = com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+          (e.engagementType IN (
+               com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION,
+               com.sep.realvista.domain.engagement.EngagementType.AGENT_CREATED_PROPERTY_LINK
+           )
            AND LOWER(CONCAT(COALESCE(r.firstName, ''), ' ',
                COALESCE(r.lastName, '')))
                LIKE LOWER(CONCAT('%', :search, '%')))
@@ -235,7 +253,8 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
             AND e.deleted = false
             AND e.engagementType IN (
                 com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL,
-                com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION
+                com.sep.realvista.domain.engagement.EngagementType.OWNER_INVITATION,
+                com.sep.realvista.domain.engagement.EngagementType.AGENT_CREATED_PROPERTY_LINK
             )
             AND e.status NOT IN (
                 com.sep.realvista.domain.engagement.EngagementStatus.REJECTED,
