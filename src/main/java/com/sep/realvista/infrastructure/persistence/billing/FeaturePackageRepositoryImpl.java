@@ -17,8 +17,18 @@ public class FeaturePackageRepositoryImpl implements FeaturePackageRepository {
     private final FeaturePackageJpaRepository jpa;
 
     @Override
+    public FeaturePackage save(FeaturePackage featurePackage) {
+        return jpa.save(featurePackage);
+    }
+
+    @Override
     public List<FeaturePackage> findAllActive() {
         return jpa.findByIsActiveTrueAndDeletedFalse();
+    }
+
+    @Override
+    public List<FeaturePackage> findAllIncludingInactive() {
+        return jpa.findByDeletedFalse();
     }
 
     @Override
@@ -34,5 +44,10 @@ public class FeaturePackageRepositoryImpl implements FeaturePackageRepository {
     @Override
     public Optional<FeaturePackage> findById(UUID id) {
         return jpa.findById(id);
+    }
+
+    @Override
+    public long countActiveByFeaturePackageId(UUID featurePackageId) {
+        return jpa.countActiveSubscriptionsByPackageId(featurePackageId);
     }
 }

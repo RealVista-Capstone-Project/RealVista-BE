@@ -92,6 +92,7 @@ public class AiChatController {
 
         Flux<String> stream = aiChatService.streamChat(
                 request.getMessage(),
+                request.getListingId(),
                 principal.getUserId(),
                 principal.getUsername(),
                 roles

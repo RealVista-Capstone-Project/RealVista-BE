@@ -172,7 +172,8 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
             AND e.engagementType = com.sep.realvista.domain.engagement.EngagementType.AGENT_PROPOSAL
             AND e.status NOT IN (
                 com.sep.realvista.domain.engagement.EngagementStatus.REJECTED,
-                com.sep.realvista.domain.engagement.EngagementStatus.CANCELLED
+                com.sep.realvista.domain.engagement.EngagementStatus.CANCELLED,
+                com.sep.realvista.domain.engagement.EngagementStatus.FINISHED
             )
             AND e.deleted = false
             AND e.propertyId IS NOT NULL
@@ -238,7 +239,8 @@ public interface EngagementJpaRepository extends JpaRepository<Engagement, UUID>
             )
             AND e.status NOT IN (
                 com.sep.realvista.domain.engagement.EngagementStatus.REJECTED,
-                com.sep.realvista.domain.engagement.EngagementStatus.CANCELLED
+                com.sep.realvista.domain.engagement.EngagementStatus.CANCELLED,
+                com.sep.realvista.domain.engagement.EngagementStatus.FINISHED
             )
             ORDER BY e.updatedAt DESC
             """)

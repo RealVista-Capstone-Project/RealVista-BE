@@ -21,6 +21,10 @@ import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.billing.subscription.FeatureType;
 import com.sep.realvista.domain.billing.subscription.UserFeatureSubscription;
 import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubscriptionRepository;
+import com.sep.realvista.domain.engagement.Engagement;
+import com.sep.realvista.domain.engagement.EngagementRepository;
+import com.sep.realvista.domain.engagement.EngagementStatus;
+import com.sep.realvista.domain.engagement.EngagementType;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.listing.Listing;
@@ -100,6 +104,7 @@ public class ListingApplicationService {
     private final AppointmentApplicationService appointmentApplicationService;
     private final UserRepository userRepository;
     private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
+    private final EngagementRepository engagementRepository;
     // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
     // ensuring @Cacheable on getCachedListingDetail is actually triggered.
     @Lazy
@@ -1070,6 +1075,7 @@ public class ListingApplicationService {
         closeAllListingsAndProperty(listing, PropertyStatus.SOLD);
 
         Listing updatedListing = listingRepository.save(listing);
+        syncEngagementListingIdForAgentClose(updatedListing, userId);
         log.info("Successfully marked listing ID: {} and all related listings as sold", listingId);
 
         return listingMapper.toListingResponse(updatedListing);
@@ -1094,9 +1100,48 @@ public class ListingApplicationService {
         closeAllListingsAndProperty(listing, PropertyStatus.RENTED);
 
         Listing updatedListing = listingRepository.save(listing);
+        syncEngagementListingIdForAgentClose(updatedListing, userId);
         log.info("Successfully marked listing ID: {} and all related listings as rented", listingId);
 
         return listingMapper.toListingResponse(updatedListing);
+    }
+
+    /**
+     * When the listing creator marks sold/rented, attach this listing to hired engagements
+     * for the same property and agent. Skipped when the actor is only the property owner.
+     */
+    private void syncEngagementListingIdForAgentClose(Listing listing, UUID actorUserId) {
+        if (!actorUserId.equals(listing.getUserId())) {
+            return;
+        }
+        UUID propertyId = listing.getPropertyId();
+        if (propertyId == null) {
+            return;
+        }
+        List<Engagement> engagements = engagementRepository.findByListingIdInOrPropertyIdIn(
+                Collections.emptyList(), List.of(propertyId));
+        UUID listingId = listing.getListingId();
+        UUID agentUserId = listing.getUserId();
+
+        for (Engagement engagement : engagements) {
+            if (engagement.getPropertyId() == null || !propertyId.equals(engagement.getPropertyId())) {
+                continue;
+            }
+            EngagementStatus status = engagement.getStatus();
+            if (status != EngagementStatus.ACCEPTED) {
+                continue;
+            }
+            EngagementType type = engagement.getEngagementType();
+            boolean agentMatches = (type == EngagementType.AGENT_PROPOSAL
+                    && agentUserId.equals(engagement.getInitiatorId()))
+                    || (type == EngagementType.OWNER_INVITATION
+                            && agentUserId.equals(engagement.getReceiverId()));
+            if (!agentMatches) {
+                continue;
+            }
+            engagement.linkToListing(listingId);
+            engagementRepository.save(engagement);
+        }
     }
 
     private void closeAllListingsAndProperty(Listing triggeringListing, PropertyStatus targetPropertyStatus) {
@@ -1151,6 +1196,7 @@ public class ListingApplicationService {
 
         // 3. Dispatch notifications
         sendClosingNotifications(property, triggeringListing, usersToNotify, targetPropertyStatus);
+        sendOwnerEngagementReviewReminder(property, targetPropertyStatus);
     }
 
     private void sendClosingNotifications(Property property, Listing triggeringListing, Set<UUID> userIds,
@@ -1186,6 +1232,73 @@ public class ListingApplicationService {
                         userId, e.getMessage());
             }
         }
+    }
+
+    private void sendOwnerEngagementReviewReminder(Property property, PropertyStatus status) {
+        UUID ownerId = property.getOwnerId();
+        if (ownerId == null) {
+            return;
+        }
+
+        List<Engagement> engagements = engagementRepository.findByListingIdInOrPropertyIdIn(
+                Collections.emptyList(), List.of(property.getPropertyId()));
+
+        long actionableCount = engagements.stream()
+                .filter(engagement -> engagement.getStatus() == EngagementStatus.ACCEPTED)
+                .count();
+
+        if (actionableCount == 0) {
+            return;
+        }
+
+        userRepository.findById(ownerId).ifPresent(owner -> {
+            if (owner.getEmail() == null || owner.getEmail().getValue() == null
+                    || owner.getEmail().getValue().isBlank()) {
+                return;
+            }
+            try {
+                String lang = getLanguageForUser(ownerId);
+                String title = notificationMessageService.getMessage(
+                        "OWNER_ENGAGEMENT_REVIEW_REMINDER_TITLE", lang);
+                String message = notificationMessageService.getMessage(
+                        "OWNER_ENGAGEMENT_REVIEW_REMINDER_MESSAGE",
+                        lang,
+                        property.getStreetAddress() != null ? property.getStreetAddress() : "—",
+                        getStatusLabelForReminder(status, lang),
+                        actionableCount);
+
+                Map<String, String> metadata = Map.of(
+                        "property_id", property.getPropertyId().toString(),
+                        "source", "listing_closed",
+                        "target_path", "/dashboard/manage-agent",
+                        "engagement_count", String.valueOf(actionableCount));
+
+                notificationApplicationService.sendNotification(SendNotificationRequest.builder()
+                        .userId(owner.getUserId())
+                        .userEmail(owner.getEmail().getValue())
+                        .title(title)
+                        .message(message)
+                        .eventType(EventType.OWNER_ENGAGEMENT_REVIEW_REMINDER)
+                        .entityType(EntityType.PROPERTY)
+                        .entityId(property.getPropertyId())
+                        .metadata(metadata)
+                        .build());
+            } catch (Exception e) {
+                log.error("Failed to send owner engagement reminder for property {}: {}",
+                        property.getPropertyId(), e.getMessage());
+            }
+        });
+    }
+
+    private String getStatusLabelForReminder(PropertyStatus status, String lang) {
+        boolean isEn = "en".equalsIgnoreCase(lang);
+        if (status == PropertyStatus.SOLD) {
+            return isEn ? "sold" : "đã bán";
+        }
+        if (status == PropertyStatus.RENTED) {
+            return isEn ? "rented" : "đã cho thuê";
+        }
+        return isEn ? "closed" : "đã đóng";
     }
 
     private String getLanguageForUser(UUID userId) {
