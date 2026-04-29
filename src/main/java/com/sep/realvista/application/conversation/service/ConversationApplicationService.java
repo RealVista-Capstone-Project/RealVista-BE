@@ -1,5 +1,7 @@
 package com.sep.realvista.application.conversation.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.conversation.dto.CursorBasedPaginationMetadata;
 import com.sep.realvista.application.conversation.dto.SenderInfo;
 import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
@@ -10,14 +12,20 @@ import com.sep.realvista.application.conversation.dto.response.MessageResponse;
 import com.sep.realvista.application.conversation.dto.response.SendMessageResponse;
 import com.sep.realvista.application.conversation.mapper.ConversationMapper;
 import com.sep.realvista.application.conversation.mapper.MessageMapper;
+import com.sep.realvista.domain.agent.lead.LeadPriority;
+import com.sep.realvista.domain.agent.lead.LeadSource;
+import com.sep.realvista.domain.agent.lead.ListingLead;
+import com.sep.realvista.domain.agent.lead.ListingLeadRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.conversation.Conversation;
 import com.sep.realvista.domain.conversation.ConversationDomainService;
 import com.sep.realvista.domain.conversation.ConversationRepository;
 import com.sep.realvista.domain.conversation.Message;
 import com.sep.realvista.domain.conversation.MessageRepository;
+import com.sep.realvista.domain.conversation.MessageType;
 import com.sep.realvista.domain.conversation.UserConversation;
 import com.sep.realvista.domain.conversation.UserConversationRepository;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +63,9 @@ public class ConversationApplicationService {
     private final ConversationDomainService conversationDomainService;
     private final ConversationMapper conversationMapper;
     private final MessageMapper messageMapper;
+    private final ListingRepository listingRepository;
+    private final ListingLeadRepository leadRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * Get all conversations for the authenticated user.
@@ -312,7 +323,7 @@ public class ConversationApplicationService {
 
         // Validate sender and recipient
         User sender = userDomainService.getUserOrThrow(senderId);
-        userDomainService.getUserOrThrow(request.getRecipientUserId());
+        User recipient = userDomainService.getUserOrThrow(request.getRecipientUserId());
 
         // Prevent self-messaging
         // TODO: Consider allowing self-messaging for notes in future
@@ -358,6 +369,8 @@ public class ConversationApplicationService {
         // Save message
         Message savedMessage = messageRepository.save(message);
 
+        createChatLeadIfMissing(sender, recipient, request, conversationId);
+
         log.info("Message sent successfully - messageId: {}, conversationId: {}, created: {}",
                 savedMessage.getMessageId(), conversationId, conversationCreated);
 
@@ -374,6 +387,46 @@ public class ConversationApplicationService {
                 .createdAt(savedMessage.getCreatedAt())
                 .conversationCreated(conversationCreated)
                 .build();
+    }
+
+    private void createChatLeadIfMissing(User sender, User recipient, SendMessageRequest request, UUID conversationId) {
+        if (request.getMessageType() != MessageType.LISTING_CARD) {
+            return;
+        }
+
+        Optional<UUID> listingId = extractListingId(request.getMetadata());
+        if (listingId.isEmpty()) {
+            return;
+        }
+
+        listingRepository.findById(listingId.get())
+                .filter(listing -> listing.getUserId().equals(recipient.getUserId()))
+                .ifPresent(listing -> leadRepository.findByAgentIdAndBuyerIdAndListingId(
+                        recipient.getUserId(), sender.getUserId(), listing.getListingId())
+                        .orElseGet(() -> leadRepository.save(ListingLead.builder()
+                                .agentId(recipient.getUserId())
+                                .listingId(listing.getListingId())
+                                .buyerId(sender.getUserId())
+                                .conversationId(conversationId)
+                                .fullName(sender.getFullName())
+                                .email(sender.getEmail() != null ? sender.getEmail().getValue() : null)
+                                .phone(sender.getPhone())
+                                .source(LeadSource.CHAT)
+                                .priority(LeadPriority.MEDIUM)
+                                .build())));
+    }
+
+    private Optional<UUID> extractListingId(String metadata) {
+        try {
+            JsonNode idNode = objectMapper.readTree(metadata).get("id");
+            if (idNode == null || idNode.asText().isBlank()) {
+                return Optional.empty();
+            }
+            return Optional.of(UUID.fromString(idNode.asText()));
+        } catch (Exception e) {
+            log.warn("Could not extract listing id from message metadata: {}", e.getMessage());
+            return Optional.empty();
+        }
     }
     /**
      * Creates a conversation between two users, or returns the existing one if it already exists.

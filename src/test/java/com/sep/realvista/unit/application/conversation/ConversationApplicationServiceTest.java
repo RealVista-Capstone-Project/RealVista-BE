@@ -1,5 +1,7 @@
 package com.sep.realvista.unit.application.conversation;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.conversation.dto.SenderInfo;
 import com.sep.realvista.application.conversation.dto.request.SendMessageRequest;
 import com.sep.realvista.application.conversation.dto.response.ConversationResponse;
@@ -9,6 +11,9 @@ import com.sep.realvista.application.conversation.dto.response.SendMessageRespon
 import com.sep.realvista.application.conversation.mapper.ConversationMapper;
 import com.sep.realvista.application.conversation.mapper.MessageMapper;
 import com.sep.realvista.application.conversation.service.ConversationApplicationService;
+import com.sep.realvista.domain.agent.lead.LeadSource;
+import com.sep.realvista.domain.agent.lead.ListingLead;
+import com.sep.realvista.domain.agent.lead.ListingLeadRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.conversation.Conversation;
@@ -19,6 +24,8 @@ import com.sep.realvista.domain.conversation.MessageRepository;
 import com.sep.realvista.domain.conversation.MessageType;
 import com.sep.realvista.domain.conversation.UserConversation;
 import com.sep.realvista.domain.conversation.UserConversationRepository;
+import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserDomainService;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +33,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -72,6 +80,15 @@ class ConversationApplicationServiceTest {
 
     @Mock
     private MessageMapper messageMapper;
+
+    @Mock
+    private ListingRepository listingRepository;
+
+    @Mock
+    private ListingLeadRepository leadRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private ConversationApplicationService conversationApplicationService;
@@ -707,9 +724,10 @@ class ConversationApplicationServiceTest {
 
         @Test
         @DisplayName("Should send LISTING_CARD message with metadata")
-        void shouldSendListingCardMessageWithMetadata() {
+        void shouldSendListingCardMessageWithMetadata() throws Exception {
             // Arrange
-            String metadata = "{\"listing_id\":\"123\"}";
+            UUID listingId = UUID.randomUUID();
+            String metadata = "{\"id\":\"" + listingId + "\"}";
             SendMessageRequest request = SendMessageRequest.builder()
                     .recipientUserId(userId2)
                     .messageType(MessageType.LISTING_CARD)
@@ -718,6 +736,11 @@ class ConversationApplicationServiceTest {
 
             ConversationDomainService.ConversationResult conversationResult =
                     new ConversationDomainService.ConversationResult(conversation, false);
+            Listing listing = Listing.builder()
+                    .listingId(listingId)
+                    .userId(userId2)
+                    .build();
+            JsonNode rootNode = new ObjectMapper().readTree(metadata);
 
             when(userDomainService.getUserOrThrow(userId1)).thenReturn(user1);
             when(userDomainService.getUserOrThrow(userId2)).thenReturn(user2);
@@ -725,6 +748,12 @@ class ConversationApplicationServiceTest {
                     .thenReturn(conversationResult);
             when(messageRepository.save(any(Message.class))).thenReturn(message);
             when(messageMapper.toSenderInfo(user1)).thenReturn(createSenderInfo());
+            when(objectMapper.readTree(metadata)).thenReturn(rootNode);
+            when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
+            when(leadRepository.findByAgentIdAndBuyerIdAndListingId(userId2, userId1, listingId))
+                    .thenReturn(Optional.empty());
+            when(leadRepository.save(any(ListingLead.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
 
             // Act
             SendMessageResponse result = conversationApplicationService
@@ -734,6 +763,14 @@ class ConversationApplicationServiceTest {
             assertThat(result).isNotNull();
             verify(conversationDomainService).validateMessageContent(
                     MessageType.LISTING_CARD, null, metadata);
+            ArgumentCaptor<ListingLead> leadCaptor = ArgumentCaptor.forClass(ListingLead.class);
+            verify(leadRepository).save(leadCaptor.capture());
+            ListingLead lead = leadCaptor.getValue();
+            assertThat(lead.getAgentId()).isEqualTo(userId2);
+            assertThat(lead.getBuyerId()).isEqualTo(userId1);
+            assertThat(lead.getListingId()).isEqualTo(listingId);
+            assertThat(lead.getConversationId()).isEqualTo(conversationId);
+            assertThat(lead.getSource()).isEqualTo(LeadSource.CHAT);
         }
 
         @Test

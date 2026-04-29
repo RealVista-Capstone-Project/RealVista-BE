@@ -17,4 +17,7 @@ public class LocationResponseDTO {
     private UUID locationId;
     private String code;
     private String name;
+    @JsonProperty("parent_id")
+    private UUID parentId;
+    private String level;
 }
