@@ -5,6 +5,9 @@ import com.sep.realvista.application.appointment.service.AppointmentApplicationS
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.EmailService;
+import com.sep.realvista.domain.agent.lead.LeadSource;
+import com.sep.realvista.domain.agent.lead.ListingLead;
+import com.sep.realvista.domain.agent.lead.ListingLeadRepository;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingType;
@@ -17,6 +20,7 @@ import com.sep.realvista.domain.user.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,6 +48,9 @@ class AppointmentApplicationServiceTest {
 
     @Mock
     private AppointmentService appointmentService;
+
+    @Mock
+    private ListingLeadRepository leadRepository;
 
     @Mock
     private EmailService emailService;
@@ -144,6 +152,10 @@ class AppointmentApplicationServiceTest {
 
         when(appointmentService.bookTour(listingId, userId, List.of(slot), "test notes"))
                 .thenReturn(bookTourResult);
+        when(leadRepository.findByAgentIdAndBuyerIdAndListingId(ownerId, userId, listingId))
+                .thenReturn(Optional.empty());
+        when(leadRepository.save(any(ListingLead.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         when(settingPreferenceRepository.findByUserId(any()))
                 .thenReturn(java.util.Optional.empty());
@@ -159,6 +171,15 @@ class AppointmentApplicationServiceTest {
 
         // Assert
         verify(appointmentService).bookTour(listingId, userId, List.of(slot), "test notes");
+        ArgumentCaptor<ListingLead> leadCaptor = ArgumentCaptor.forClass(ListingLead.class);
+        verify(leadRepository).save(leadCaptor.capture());
+        ListingLead lead = leadCaptor.getValue();
+        assertThat(lead.getAgentId()).isEqualTo(ownerId);
+        assertThat(lead.getBuyerId()).isEqualTo(userId);
+        assertThat(lead.getListingId()).isEqualTo(listingId);
+        assertThat(lead.getSource()).isEqualTo(LeadSource.TOUR);
+        assertThat(lead.getFullName()).isEqualTo("Sender");
+        assertThat(lead.getEmail()).isEqualTo("sender@test.com");
 
         // Verify confirmation email sent to sender
         verify(emailService).sendTemplateMessageAsync(

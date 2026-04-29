@@ -86,6 +86,18 @@ public class ListingResponse {
     @JsonProperty("content")
     private String content;
 
+    @JsonProperty("sold_by_user_id")
+    private UUID soldByUserId;
+
+    @JsonProperty("sold_at")
+    private LocalDateTime soldAt;
+
+    @JsonProperty("rented_by_user_id")
+    private UUID rentedByUserId;
+
+    @JsonProperty("rented_at")
+    private LocalDateTime rentedAt;
+
     @JsonProperty("full_address")
     public String getFullAddress() {
         return AddressFormatter.formatFullAddress(streetAddress, wardName, districtName, cityName);

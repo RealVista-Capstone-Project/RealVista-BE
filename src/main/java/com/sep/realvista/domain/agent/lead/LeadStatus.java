@@ -2,9 +2,10 @@ package com.sep.realvista.domain.agent.lead;
 
 public enum LeadStatus {
     NEW,
-    CONTACTED,
-    QUALIFIED,
+    CONSULTING,
+    TOUR_SCHEDULED,
+    TOURED,
     NEGOTIATING,
-    CLOSED_WON,
-    CLOSED_LOST
+    CLOSED,
+    NOT_POTENTIAL
 }

@@ -14,6 +14,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -79,4 +80,19 @@ public class PropertySummaryResponse {
 
     @JsonProperty("price_range")
     private PriceRangeVO priceRange;
+
+    @JsonProperty("sold_by_user_id")
+    private UUID soldByUserId;
+
+    @JsonProperty("sold_by_name")
+    private String soldByName;
+
+    @JsonProperty("sold_by_phone")
+    private String soldByPhone;
+
+    @JsonProperty("sold_by_role")
+    private String soldByRole;
+
+    @JsonProperty("sold_at")
+    private LocalDateTime soldAt;
 }

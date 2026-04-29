@@ -7,6 +7,10 @@ import com.sep.realvista.application.appointment.dto.UpdateAppointmentStatusRequ
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.EmailService;
+import com.sep.realvista.domain.agent.lead.LeadPriority;
+import com.sep.realvista.domain.agent.lead.LeadSource;
+import com.sep.realvista.domain.agent.lead.ListingLead;
+import com.sep.realvista.domain.agent.lead.ListingLeadRepository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.appointment.Appointment;
 import com.sep.realvista.domain.listing.appointment.AppointmentService;
@@ -40,6 +44,7 @@ import java.util.stream.Collectors;
 public class AppointmentApplicationService {
 
     private final AppointmentService appointmentService;
+    private final ListingLeadRepository leadRepository;
     private final EmailService emailService;
     private final NotificationApplicationService notificationApplicationService;
     private final com.sep.realvista.domain.user.preference.SettingPreferenceRepository settingPreferenceRepository;
@@ -66,8 +71,28 @@ public class AppointmentApplicationService {
                 request.getSelectedSlots(),
                 request.getNotes());
 
+        createTourLeadIfMissing(result);
         sendTourBookingEmails(result);
         sendTourBookingNotifications(result);
+    }
+
+    private void createTourLeadIfMissing(BookTourResult result) {
+        Listing listing = result.listing();
+        User sender = result.sender();
+        User owner = result.owner();
+
+        leadRepository.findByAgentIdAndBuyerIdAndListingId(
+                owner.getUserId(), sender.getUserId(), listing.getListingId())
+                .orElseGet(() -> leadRepository.save(ListingLead.builder()
+                        .agentId(owner.getUserId())
+                        .listingId(listing.getListingId())
+                        .buyerId(sender.getUserId())
+                        .fullName(sender.getFullName())
+                        .email(sender.getEmail() != null ? sender.getEmail().getValue() : null)
+                        .phone(sender.getPhone())
+                        .source(LeadSource.TOUR)
+                        .priority(LeadPriority.MEDIUM)
+                        .build()));
     }
 
     private void sendTourBookingEmails(BookTourResult result) {

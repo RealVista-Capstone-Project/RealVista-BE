@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -47,18 +48,36 @@ public class ListingLead extends BaseEntity {
     @Column(name = "agent_id", nullable = false)
     private UUID agentId;
 
-    @Column(name = "listing_id", nullable = false)
+    @Column(name = "listing_id")
     private UUID listingId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "listing_id", insertable = false, updatable = false)
     private Listing listing;
 
-    @Column(name = "buyer_id", nullable = false)
+    @Column(name = "buyer_id")
     private UUID buyerId;
 
     @Column(name = "conversation_id")
     private UUID conversationId;
+
+    // CRM free-text contact info
+    @Column(name = "full_name")
+    private String fullName;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "phone")
+    private String phone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source", nullable = false, length = 20)
+    @Builder.Default
+    private LeadSource source = LeadSource.MANUAL;
+
+    @Column(name = "budget", precision = 20, scale = 2)
+    private BigDecimal budget;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -76,25 +95,21 @@ public class ListingLead extends BaseEntity {
     @Column(name = "next_follow_up_at")
     private LocalDateTime nextFollowUpAt;
 
-    public void contact() {
-        this.status = LeadStatus.CONTACTED;
-        this.lastContactedAt = LocalDateTime.now();
+    public void updateStatus(LeadStatus newStatus) {
+        this.status = newStatus;
+        if (newStatus == LeadStatus.CONSULTING) {
+            this.lastContactedAt = LocalDateTime.now();
+        }
     }
 
-    public void qualify() {
-        this.status = LeadStatus.QUALIFIED;
-    }
-
-    public void negotiate() {
-        this.status = LeadStatus.NEGOTIATING;
-    }
-
-    public void closeWon() {
-        this.status = LeadStatus.CLOSED_WON;
-    }
-
-    public void closeLost() {
-        this.status = LeadStatus.CLOSED_LOST;
+    public void update(String fullName, String email, String phone,
+                       LeadSource source, UUID listingId, BigDecimal budget) {
+        this.fullName = fullName;
+        this.email = email;
+        this.phone = phone;
+        this.source = source;
+        this.listingId = listingId;
+        this.budget = budget;
     }
 
     public void updatePriority(LeadPriority priority) {
