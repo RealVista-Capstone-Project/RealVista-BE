@@ -53,7 +53,7 @@ public class AgentReview extends BaseEntity {
     @Column(name = "reviewer_id", nullable = false)
     private UUID reviewerId;
 
-    @Column(name = "listing_id", nullable = false)
+    @Column(name = "listing_id")
     private UUID listingId;
 
     @Column(name = "engagement_id")
