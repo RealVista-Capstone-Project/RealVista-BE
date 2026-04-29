@@ -1128,7 +1128,7 @@ public class ListingApplicationService {
                 continue;
             }
             EngagementStatus status = engagement.getStatus();
-            if (status != EngagementStatus.ACCEPTED && status != EngagementStatus.FINISHED) {
+            if (status != EngagementStatus.ACCEPTED) {
                 continue;
             }
             EngagementType type = engagement.getEngagementType();
