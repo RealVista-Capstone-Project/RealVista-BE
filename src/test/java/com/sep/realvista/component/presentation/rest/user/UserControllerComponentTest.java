@@ -303,7 +303,7 @@ class UserControllerComponentTest {
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error_code").value("ILLEGAL_STATE"))
-                .andExpect(jsonPath("$.message").value("Only published listings can be unpublished"));
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Only published listings can be unpublished")));
     }
 }
 

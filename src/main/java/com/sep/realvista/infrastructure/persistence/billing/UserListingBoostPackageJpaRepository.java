@@ -33,4 +33,8 @@ public interface UserListingBoostPackageJpaRepository extends JpaRepository<User
         """)
     List<UserListingBoostPackage> findByStatusAndNotDeleted(
             @Param("status") UserListingBoostPackageStatus status);
+
+    @Query("SELECT COUNT(ulbp) FROM UserListingBoostPackage ulbp "
+            + "WHERE ulbp.boostPackageId = :id AND ulbp.status = 'ACTIVE' AND ulbp.deleted = false")
+    long countActiveByBoostPackageId(@Param("id") UUID id);
 }

@@ -8,5 +8,9 @@ public class BusinessConflictException extends DomainException {
     public BusinessConflictException(String message, String errorCode) {
         super(message, errorCode);
     }
+
+    public BusinessConflictException(String message, String errorCode, Object[] args) {
+        super(message, errorCode, args);
+    }
 }
 

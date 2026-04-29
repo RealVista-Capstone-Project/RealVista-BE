@@ -14,6 +14,7 @@ import com.sep.realvista.domain.user.notification.Notification;
 import com.sep.realvista.domain.user.notification.NotificationRepository;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
+import com.sep.realvista.domain.common.exception.DomainException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -284,7 +285,7 @@ class NotificationApplicationServiceTest {
                 .build();
         when(notificationRepository.findById(notifId)).thenReturn(Optional.of(n));
 
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        org.junit.jupiter.api.Assertions.assertThrows(DomainException.class,
                 () -> service.deleteNotification(notifId, userId));
 
         verify(notificationRepository, never()).save(any());

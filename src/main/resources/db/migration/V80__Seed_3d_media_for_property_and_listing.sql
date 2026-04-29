@@ -5,7 +5,7 @@
 DO $$
 DECLARE
     v_property_id   UUID := 'a1100000-0000-0000-0000-000000000001';
-    v_listing_id    UUID := '27199eda-c29e-7a94-c7cc-93959e8115cc';
+    v_listing_id    UUID := (SELECT listing_id FROM listings WHERE property_id = 'a1100000-0000-0000-0000-000000000001' LIMIT 1);
     v_uploader_id   UUID := '550e8400-e29b-41d4-a716-446655440101';
 BEGIN
 

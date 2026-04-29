@@ -28,6 +28,7 @@ import com.sep.realvista.domain.billing.transaction.Transaction;
 import com.sep.realvista.domain.billing.transaction.TransactionRepository;
 import com.sep.realvista.domain.billing.transaction.TransactionType;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.infrastructure.payment.payos.PayOsPaymentRequestInfo;
 import com.sep.realvista.infrastructure.payment.payos.PayOsPaymentResult;
@@ -395,7 +396,9 @@ public class BillingApplicationService {
             throw new ResourceNotFoundException("Checkout order not found");
         }
         if (order.getPaymentMethod() != PaymentMethod.PAYOS) {
-            throw new IllegalArgumentException("Only PayOS checkout orders can be synced from PayOS");
+            throw new DomainException(
+                    "Only PayOS checkout orders can be synced from PayOS",
+                    "ERROR_BILLING_PAYOS_ORDER_ONLY");
         }
 
         PayOsPaymentRequestInfo info = payOsService.fetchPaymentRequestByOrderCode(order.getOrderCode());
@@ -456,7 +459,9 @@ public class BillingApplicationService {
             throw new ResourceNotFoundException("Transaction not found");
         }
         if (txn.getPaymentMethod() != PaymentMethod.PAYOS) {
-            throw new IllegalArgumentException("Only PayOS transactions can be synced from PayOS");
+            throw new DomainException(
+                    "Only PayOS transactions can be synced from PayOS",
+                    "ERROR_BILLING_PAYOS_TRANSACTION_ONLY");
         }
         if (txn.getPaymentStatus() != PaymentStatus.PENDING) {
             return toTransactionStatusResponse(txn);
@@ -536,9 +541,17 @@ public class BillingApplicationService {
 
     private ActiveFeatureSubscriptionResponse toActiveFeatureSubscriptionResponse(UserFeatureSubscription sub) {
         FeaturePackage pkg = sub.getFeaturePackage();
-        Integer quotaLimit = null;
-        if (pkg != null && !pkg.isUnlimited()) {
-            quotaLimit = pkg.getQuota();
+        // Use originalQuota (snapshotted at checkout) so admin updates to the package
+        // never retroactively change what the user sees as their quota limit.
+        // -1 means unlimited. For legacy rows with null originalQuota, fall back to
+        // remainingQuota, never the live package quota.
+        Integer originalQuota = sub.getOriginalQuota();
+        boolean unlimited = originalQuota != null
+                ? originalQuota == -1
+                : sub.getRemainingQuota() == null;
+        Integer quotaLimit = unlimited ? null : originalQuota;
+        if (quotaLimit == null && !unlimited) {
+            quotaLimit = sub.getRemainingQuota();
         }
         return ActiveFeatureSubscriptionResponse.builder()
                 .subscriptionId(sub.getUserFeatureSubscriptionId())
@@ -547,7 +560,7 @@ public class BillingApplicationService {
                 .featureType(pkg != null ? pkg.getFeatureType().toDbValue() : "")
                 .quotaLimit(quotaLimit)
                 .remainingQuota(sub.getRemainingQuota())
-                .unlimited(pkg != null && pkg.isUnlimited())
+                .unlimited(unlimited)
                 .tierLevel(FeaturePackageTierHelper.tierLevel(pkg))
                 .startDate(sub.getStartDate())
                 .endDate(sub.getEndDate())
@@ -591,7 +604,9 @@ public class BillingApplicationService {
             throw new ResourceNotFoundException("Subscription not found");
         }
         if (sub.getStatus() != UserFeatureSubscriptionStatus.ACTIVE) {
-            throw new BusinessConflictException("Gói không còn ở trạng thái hoạt động.", "SUBSCRIPTION_NOT_ACTIVE");
+            throw new BusinessConflictException(
+                    "Gói không còn ở trạng thái hoạt động.",
+                    "ERROR_SUBSCRIPTION_NOT_ACTIVE");
         }
         sub.cancel();
         userFeatureSubscriptionRepository.save(sub);
@@ -609,14 +624,24 @@ public class BillingApplicationService {
 
     private ActiveBoostPackageResponse toActiveBoostPackageResponse(UserListingBoostPackage boost) {
         BoostPackage pkg = boost.getBoostPackage();
+        // Use originalFeaturedQuota/originalHotBadgeQuota (snapshotted at checkout)
+        // so admin updates to the package never retroactively affect existing boosts.
+        Integer originalFeatured = boost.getOriginalFeaturedQuota();
+        Integer originalHotBadge = boost.getOriginalHotBadgeQuota();
+        if (originalFeatured == null) {
+            originalFeatured = pkg != null ? pkg.getFeaturedQuota() : null;
+        }
+        if (originalHotBadge == null) {
+            originalHotBadge = pkg != null ? pkg.getHotBadgeQuota() : null;
+        }
         return ActiveBoostPackageResponse.builder()
-                .boostPackageId(pkg.getBoostPackageId())
-                .code(pkg.getCode())
-                .name(pkg.getName())
-                .description(pkg.getDescription())
-                .featuredQuota(pkg.getFeaturedQuota())
-                .hotBadgeQuota(pkg.getHotBadgeQuota())
-                .durationDays(pkg.getDurationDays())
+                .boostPackageId(pkg != null ? pkg.getBoostPackageId() : null)
+                .code(pkg != null ? pkg.getCode() : "")
+                .name(pkg != null ? pkg.getName() : "")
+                .description(pkg != null ? pkg.getDescription() : "")
+                .featuredQuota(originalFeatured)
+                .hotBadgeQuota(originalHotBadge)
+                .durationDays(pkg != null ? pkg.getDurationDays() : null)
                 .startDate(boost.getStartDate())
                 .endDate(boost.getEndDate())
                 .remainingFeaturedQuota(boost.getRemainingFeaturedQuota())
@@ -670,7 +695,7 @@ public class BillingApplicationService {
         if (newTier < maxTier) {
             throw new BusinessConflictException(
                     "Bạn đang dùng gói cấp cao hơn. Không thể mua hoặc hạ xuống gói cấp thấp hơn.",
-                    "SUBSCRIPTION_DOWNGRADE_BLOCKED");
+                    "ERROR_SUBSCRIPTION_DOWNGRADE_BLOCKED");
         }
     }
 
@@ -713,6 +738,7 @@ public class BillingApplicationService {
                     .startDate(LocalDate.now())
                     .endDate(endDate)
                     .remainingQuota(remainingQuota)
+                    .originalQuota(pkg.getQuota())
                     .status(UserFeatureSubscriptionStatus.ACTIVE)
                     .build();
 
@@ -735,6 +761,8 @@ public class BillingApplicationService {
                     .endDate(endDate)
                     .remainingFeaturedQuota(pkg.getFeaturedQuota())
                     .remainingHotBadgeQuota(pkg.getHotBadgeQuota())
+                    .originalFeaturedQuota(pkg.getFeaturedQuota())
+                    .originalHotBadgeQuota(pkg.getHotBadgeQuota())
                     .status(UserListingBoostPackageStatus.ACTIVE)
                     .build();
 
@@ -849,6 +877,7 @@ public class BillingApplicationService {
                         .startDate(LocalDate.now())
                         .endDate(null)
                         .remainingQuota(pkg.getQuota())
+                        .originalQuota(pkg.getQuota())
                         .status(UserFeatureSubscriptionStatus.ACTIVE)
                         .build();
                 userFeatureSubscriptionRepository.save(sub);

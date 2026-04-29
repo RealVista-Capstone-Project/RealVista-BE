@@ -61,11 +61,13 @@ public class CustomerProfileApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("CustomerProfile not found: " + profileId));
 
         if (!profile.getUserId().equals(userId)) {
-            throw new BusinessConflictException("Profile does not belong to user", "PROFILE_OWNERSHIP_VIOLATION");
+            throw new BusinessConflictException("Profile does not belong to user", "ERROR_PROFILE_OWNERSHIP_VIOLATION");
         }
 
         if (profile.isActive()) {
-            throw new BusinessConflictException("Cannot delete the active profile", "CANNOT_DELETE_ACTIVE_PROFILE");
+            throw new BusinessConflictException(
+                    "Cannot delete the active profile",
+                    "ERROR_CANNOT_DELETE_ACTIVE_PROFILE");
         }
 
         customerProfileRepository.deleteById(profileId);
@@ -80,7 +82,7 @@ public class CustomerProfileApplicationService {
         if (!newActive.getUserId().equals(userId)) {
             log.error("Profile ownership violation: profileId={}, profileOwnerId={}, sessionUserId={}", 
                     profileId, newActive.getUserId(), userId);
-            throw new BusinessConflictException("Profile does not belong to user", "PROFILE_OWNERSHIP_VIOLATION");
+            throw new BusinessConflictException("Profile does not belong to user", "ERROR_PROFILE_OWNERSHIP_VIOLATION");
         }
 
         // Deactivate current active profile

@@ -8,6 +8,7 @@ import com.sep.realvista.domain.billing.boost.UserListingBoostPackage;
 import com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository;
 import com.sep.realvista.domain.billing.boost.repository.UserListingBoostPackageRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
+import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingStatus;
@@ -45,18 +46,24 @@ public class ListingBoostApplicationService {
 
         // Verify listing belongs to user
         if (!listing.getUserId().equals(userId)) {
-            throw new BusinessConflictException("Listing does not belong to the current user");
+            throw new BusinessConflictException(
+                    "Listing does not belong to the current user",
+                    "ERROR_BOOST_LISTING_NOT_OWNED");
         }
 
         // Only published listings can have boosts applied
         if (listing.getStatus() != ListingStatus.PUBLISHED) {
-            throw new BusinessConflictException("Boosts can only be applied to published listings");
+            throw new BusinessConflictException(
+                    "Boosts can only be applied to published listings",
+                    "ERROR_BOOST_LISTING_NOT_PUBLISHED");
         }
 
         // Check no active boost of same type already exists
         listingBoostRepository.findActiveByListingIdAndBoostType(listingId, boostType)
                 .ifPresent(existing -> {
-                    throw new BusinessConflictException("Listing already has an active " + boostType + " boost");
+                    throw new BusinessConflictException(
+                            "Listing already has an active " + boostType + " boost",
+                            "ERROR_BOOST_ALREADY_ACTIVE");
                 });
 
         // Find user's active boost packages
@@ -66,19 +73,21 @@ public class ListingBoostApplicationService {
         UserListingBoostPackage userBoostPackage = activePackages.stream()
                 .filter(UserListingBoostPackage::isUsable)
                 .findFirst()
-                .orElseThrow(() -> new BusinessConflictException("No active boost package found"));
+                .orElseThrow(() -> new BusinessConflictException(
+                        "No active boost package found",
+                        "ERROR_BOOST_NO_ACTIVE_PACKAGE"));
 
         // Check and decrement quota
         if (boostType == BoostType.FEATURED) {
             if (userBoostPackage.getRemainingFeaturedQuota() == null
                     || userBoostPackage.getRemainingFeaturedQuota() <= 0) {
-                throw new BusinessConflictException("Insufficient quota");
+                throw new BusinessConflictException("Insufficient quota", "ERROR_BOOST_INSUFFICIENT_FEATURED_QUOTA");
             }
             userBoostPackage.decrementFeaturedQuota();
         } else {
             if (userBoostPackage.getRemainingHotBadgeQuota() == null
                     || userBoostPackage.getRemainingHotBadgeQuota() <= 0) {
-                throw new BusinessConflictException("Insufficient quota");
+                throw new BusinessConflictException("Insufficient quota", "ERROR_BOOST_INSUFFICIENT_HOT_BADGE_QUOTA");
             }
             userBoostPackage.decrementHotBadgeQuota();
         }
@@ -117,7 +126,7 @@ public class ListingBoostApplicationService {
 
         // Verify it belongs to user
         if (!listingBoost.getUserId().equals(userId)) {
-            throw new BusinessConflictException("Boost does not belong to the current user");
+            throw new BusinessConflictException("Boost does not belong to the current user", "ERROR_BOOST_NOT_OWNED");
         }
 
         // Cancel the boost
@@ -144,8 +153,8 @@ public class ListingBoostApplicationService {
         try {
             return BoostType.valueOf(boostTypeStr);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid boost type: " + boostTypeStr
-                    + ". Must be FEATURED or HOT_BADGE");
+            throw new DomainException("Invalid boost type: " + boostTypeStr
+                    + ". Must be FEATURED or HOT_BADGE", "ERROR_BOOST_INVALID_TYPE");
         }
     }
 

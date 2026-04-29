@@ -24,4 +24,6 @@ public interface UserFeatureSubscriptionRepository {
     List<UserFeatureSubscription> findAllActiveByUserId(UUID userId);
 
     List<UserFeatureSubscription> findByStatus(UserFeatureSubscriptionStatus status);
+
+    long countActiveByFeaturePackageId(UUID featurePackageId);
 }
