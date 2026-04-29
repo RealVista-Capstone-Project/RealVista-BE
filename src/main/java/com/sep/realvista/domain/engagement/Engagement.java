@@ -124,4 +124,12 @@ public class Engagement extends BaseEntity {
         }
         this.status = EngagementStatus.FINISHED;
     }
+
+    /**
+     * Associates this engagement with the listing the agent closed (sold/rented).
+     * Used when {@code listingId} was not set at proposal time.
+     */
+    public void linkToListing(UUID listingId) {
+        this.listingId = listingId;
+    }
 }
