@@ -297,4 +297,9 @@ public class Property extends BaseEntity {
             this.priceRange = priceRange;
         }
     }
+
+    /** Admin-only: reassign the property to a different owner. */
+    public void reassignOwner(UUID newOwnerId) {
+        this.ownerId = newOwnerId;
+    }
 }

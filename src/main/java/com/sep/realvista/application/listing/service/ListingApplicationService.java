@@ -887,6 +887,9 @@ public class ListingApplicationService {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
 
+            // Exclude soft-deleted listings
+            predicates.add(cb.equal(root.get("deleted"), false));
+
             // User is either creator or property owner
             var propertyJoin = root.join("property", JoinType.LEFT);
             Predicate isCreator = cb.equal(root.get("userId"), userId);

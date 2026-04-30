@@ -132,4 +132,11 @@ public class Engagement extends BaseEntity {
     public void linkToListing(UUID listingId) {
         this.listingId = listingId;
     }
+
+    public void detachPropertyAndListing() {
+        this.propertyId = null;
+        this.property = null;
+        this.listingId = null;
+        this.listing = null;
+    }
 }
