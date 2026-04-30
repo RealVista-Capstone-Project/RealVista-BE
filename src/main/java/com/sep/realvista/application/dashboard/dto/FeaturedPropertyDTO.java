@@ -19,4 +19,6 @@ public class FeaturedPropertyDTO {
     private Long rented;
     private Long views;
     private String status;
+    private String imageUrl;
+    private String thumbnailUrl;
 }

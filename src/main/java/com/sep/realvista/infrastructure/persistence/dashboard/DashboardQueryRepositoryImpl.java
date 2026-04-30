@@ -40,8 +40,7 @@ public class DashboardQueryRepositoryImpl implements DashboardQueryRepository {
 
     @Override
     public DashboardStatsResponse getStats(UUID ownerId) {
-        LocalDate today = LocalDate.now();
-        LocalDate firstDayThisMonth = today.withDayOfMonth(1);
+        LocalDate today = LocalDate.now(); LocalDate firstDayThisMonth = today.withDayOfMonth(1);
         LocalDate firstDayPrevMonth = firstDayThisMonth.minusMonths(1);
 
         BigDecimal totalRevenue = sumRevenue(ownerId, null, null);
@@ -147,7 +146,18 @@ public class DashboardQueryRepositoryImpl implements DashboardQueryRepository {
                        COALESCE((SELECT COUNT(*) FROM listings lr
                                  WHERE lr.property_id = l.property_id
                                    AND lr.status = 'RENTED'
-                                   AND lr.deleted = false), 0) AS rented_count
+                                   AND lr.deleted = false), 0) AS rented_count,
+                       COALESCE((SELECT COALESCE(pm.thumbnail_url, pm.media_url)
+                                 FROM listing_medias lm
+                                 JOIN property_medias pm ON pm.property_media_id = lm.property_media_id
+                                 WHERE lm.listing_id = l.listing_id
+                                   AND lm.deleted = false
+                                   AND pm.deleted = false
+                                 ORDER BY lm.is_primary DESC,
+                                          pm.is_primary DESC,
+                                          lm.display_order ASC,
+                                          lm.created_at ASC
+                                 LIMIT 1), '') AS image_url
                 FROM listings l
                 JOIN properties p ON p.property_id = l.property_id
                 LEFT JOIN property_types pt ON pt.property_type_id = p.property_type_id
@@ -180,6 +190,8 @@ public class DashboardQueryRepositoryImpl implements DashboardQueryRepository {
                 .status(str(row[4]))
                 .sold(longVal(row[5]))
                 .rented(longVal(row[6]))
+                .imageUrl(str(row[7]))
+                .thumbnailUrl(str(row[7]))
                 .build();
     }
 
