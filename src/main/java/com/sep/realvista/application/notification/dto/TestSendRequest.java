@@ -5,6 +5,8 @@ import java.util.Map;
 
 @Data
 public class TestSendRequest {
-    private String email;
-    private Map<String, Object> variables;
+    private String type; // EMAIL or IN_APP
+    private String title;
+    private String contentBody;
+    private Map<String, Object> mockData;
 }
