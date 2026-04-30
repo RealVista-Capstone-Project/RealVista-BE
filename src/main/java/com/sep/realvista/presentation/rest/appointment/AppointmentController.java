@@ -1,6 +1,7 @@
 package com.sep.realvista.presentation.rest.appointment;
 
 import com.sep.realvista.application.appointment.dto.AppointmentResponse;
+import com.sep.realvista.application.appointment.dto.AppointmentDashboardSnapshotResponse;
 import com.sep.realvista.application.appointment.dto.AppointmentSummaryResponse;
 import com.sep.realvista.application.appointment.dto.BookTourRequest;
 import com.sep.realvista.application.appointment.dto.UpdateAppointmentStatusRequest;
@@ -158,6 +159,36 @@ public class AppointmentController {
 
                         return ResponseEntity.ok(
                                         ApiResponse.success("Appointment summary retrieved successfully", summary));
+                } finally {
+                        MDC.remove("traceId");
+                }
+        }
+
+        @GetMapping("/dashboard-snapshot")
+        @Operation(summary = "Get dashboard appointment snapshot",
+                   description = "Returns calendar-focused appointment data for agent dashboard")
+        public ResponseEntity<ApiResponse<AppointmentDashboardSnapshotResponse>> getDashboardSnapshot(
+                        @RequestParam(name = "start_date", required = false)
+                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                        @RequestParam(name = "end_date", required = false)
+                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                        @AuthenticationPrincipal SecurityUserDetails currentUser) {
+                String traceId = UUID.randomUUID().toString();
+                MDC.put("traceId", traceId);
+                try {
+                        LocalDate resolvedStartDate = startDate != null ? startDate : LocalDate.now();
+                        LocalDate resolvedEndDate = endDate != null ? endDate : resolvedStartDate.plusDays(29);
+
+                        log.info("Request to get dashboard appointment snapshot - traceId: {}, userId: {},"
+                                        + " startDate: {}, endDate: {}",
+                                        traceId, currentUser.getUserId(), resolvedStartDate, resolvedEndDate);
+
+                        AppointmentDashboardSnapshotResponse snapshot = appointmentApplicationService.getDashboardSnapshot(
+                                        currentUser.getUserId(), resolvedStartDate, resolvedEndDate);
+
+                        return ResponseEntity.ok(
+                                        ApiResponse.success("Dashboard appointment snapshot retrieved successfully",
+                                                        snapshot));
                 } finally {
                         MDC.remove("traceId");
                 }
