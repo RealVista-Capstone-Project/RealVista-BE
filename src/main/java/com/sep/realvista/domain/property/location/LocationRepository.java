@@ -25,10 +25,14 @@ public interface LocationRepository {
      */
     List<Location> findByTypeOrderByNameAsc(LocationType type);
 
+    List<Location> findActiveByTypeOrderByNameAsc(LocationType type);
+
     /**
      * Find all child locations of a given parent, ordered by name ascending.
      */
     List<Location> findByParentIdOrderByNameAsc(UUID parentId);
+
+    List<Location> findActiveByParentIdOrderByNameAsc(UUID parentId);
 
     /**
      * Find all active districts (non-deleted locations with type DISTRICT).
@@ -47,6 +51,10 @@ public interface LocationRepository {
      * For a ward: returns just that ward's ID.
      */
     List<UUID> findDescendantWardIds(UUID locationId);
+
+    boolean existsByCodeIgnoreCase(String code, UUID excludedId);
+
+    boolean existsByNameAndParentIdIgnoreCase(String name, UUID parentId, UUID excludedId);
 
     List<Location> findContainingLocations(@Param("lat") java.math.BigDecimal lat,
                                            @Param("lng") java.math.BigDecimal lng);

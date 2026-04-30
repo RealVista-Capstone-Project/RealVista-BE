@@ -1,4 +1,4 @@
--- V106__Ensure_studio_listings_exist.sql
+-- V127__Ensure_studio_listings_exist.sql
 -- Force restoration of STUDIO property listings using robust property_type_id joins.
 -- This bypasses any potential failures in earlier pattern-matching logic (LIKE 'a61%').
 

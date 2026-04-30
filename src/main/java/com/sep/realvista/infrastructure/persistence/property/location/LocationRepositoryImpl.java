@@ -2,6 +2,7 @@ package com.sep.realvista.infrastructure.persistence.property.location;
 
 import com.sep.realvista.domain.property.location.Location;
 import com.sep.realvista.domain.property.location.LocationRepository;
+import com.sep.realvista.domain.property.location.LocationStatus;
 import com.sep.realvista.domain.property.location.LocationType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,13 +31,23 @@ public class LocationRepositoryImpl implements LocationRepository {
     }
 
     @Override
+    public List<Location> findActiveByTypeOrderByNameAsc(LocationType type) {
+        return jpaRepository.findActiveByTypeOrderByNameAsc(type, LocationStatus.ACTIVE);
+    }
+
+    @Override
     public List<Location> findByParentIdOrderByNameAsc(UUID parentId) {
         return jpaRepository.findByParentIdOrderByNameAsc(parentId);
     }
 
     @Override
+    public List<Location> findActiveByParentIdOrderByNameAsc(UUID parentId) {
+        return jpaRepository.findActiveByParentIdOrderByNameAsc(parentId, LocationStatus.ACTIVE);
+    }
+
+    @Override
     public List<Location> findAllActiveDistricts() {
-        return jpaRepository.findAllByTypeWithParent(LocationType.DISTRICT);
+        return jpaRepository.findAllByTypeWithParent(LocationType.DISTRICT, LocationStatus.ACTIVE);
     }
 
     @Override
@@ -44,7 +55,7 @@ public class LocationRepositoryImpl implements LocationRepository {
         if (districtIds == null || districtIds.isEmpty()) {
             return List.of();
         }
-        return jpaRepository.findWardsByParentIds(districtIds);
+        return jpaRepository.findWardsByParentIds(districtIds, LocationStatus.ACTIVE);
     }
 
     @Override
@@ -70,6 +81,16 @@ public class LocationRepositoryImpl implements LocationRepository {
     @Override
     public List<Location> findContainingLocations(java.math.BigDecimal lat, java.math.BigDecimal lng) {
         return jpaRepository.findContainingLocations(lat, lng);
+    }
+
+    @Override
+    public boolean existsByCodeIgnoreCase(String code, UUID excludedId) {
+        return jpaRepository.existsByCodeIgnoreCase(code, excludedId);
+    }
+
+    @Override
+    public boolean existsByNameAndParentIdIgnoreCase(String name, UUID parentId, UUID excludedId) {
+        return jpaRepository.existsByNameAndParentIdIgnoreCase(name, parentId, excludedId);
     }
 
     @Override
