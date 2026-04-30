@@ -43,13 +43,13 @@ public class DashboardQueryRepositoryImpl implements DashboardQueryRepository {
         LocalDate today = LocalDate.now(); LocalDate firstDayThisMonth = today.withDayOfMonth(1);
         LocalDate firstDayPrevMonth = firstDayThisMonth.minusMonths(1);
 
-        BigDecimal totalRevenue = sumRevenue(ownerId, null, null);
+        long totalViews = sumViews(ownerId, null, null).longValue();
 
-        BigDecimal currentRevenue = sumRevenue(
+        BigDecimal currentViews = sumViews(
                 ownerId,
                 firstDayThisMonth.atStartOfDay(),
                 today.plusDays(1).atStartOfDay());
-        BigDecimal previousRevenue = sumRevenue(
+        BigDecimal previousViews = sumViews(
                 ownerId,
                 firstDayPrevMonth.atStartOfDay(),
                 firstDayThisMonth.atStartOfDay());
@@ -93,8 +93,8 @@ public class DashboardQueryRepositoryImpl implements DashboardQueryRepository {
         long onProgress = countListingsByStatus(ownerId, "PENDING", null, null);
 
         return DashboardStatsResponse.builder()
-                .totalRevenue(totalRevenue)
-                .totalRevenueTrend(trend(currentRevenue, previousRevenue))
+                .totalViews(totalViews)
+                .totalViewsTrend(trend(currentViews, previousViews))
                 .activeListing(activeListing)
                 .activeListingTrend(trend(
                         BigDecimal.valueOf(activeListingCurrent),

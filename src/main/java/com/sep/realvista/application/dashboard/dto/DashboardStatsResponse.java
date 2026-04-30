@@ -12,8 +12,8 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DashboardStatsResponse {
-    private BigDecimal totalRevenue;
-    private BigDecimal totalRevenueTrend;
+    private Long totalViews;
+    private BigDecimal totalViewsTrend;
     private Long activeListing;
     private BigDecimal activeListingTrend;
     private Long totalClosed;
