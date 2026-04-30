@@ -2,6 +2,7 @@ package com.sep.realvista.application.policy;
 
 import com.sep.realvista.application.policy.dto.PolicyDto;
 import com.sep.realvista.application.policy.mapper.PolicyMapper;
+import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.policy.Policy;
 import com.sep.realvista.domain.policy.PolicyRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,13 +23,27 @@ public class PolicyService {
     @Transactional(readOnly = true)
     public PolicyDto getPolicyBySlug(String slug) {
         Policy policy = policyRepository.findBySlug(slug)
-                .orElseThrow(() -> new IllegalArgumentException("Policy not found with slug: " + slug));
+                .orElseThrow(() -> new ResourceNotFoundException("Policy not found with slug: " + slug));
+        return policyMapper.toDto(policy);
+    }
+
+    @Transactional(readOnly = true)
+    public PolicyDto getActivePolicyBySlug(String slug) {
+        Policy policy = policyRepository.findActiveBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Active policy not found with slug: " + slug));
         return policyMapper.toDto(policy);
     }
 
     @Transactional(readOnly = true)
     public List<PolicyDto> getAllPolicies() {
         return policyRepository.findAll().stream()
+                .map(policyMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PolicyDto> getAllActivePolicies() {
+        return policyRepository.findAllActive().stream()
                 .map(policyMapper::toDto)
                 .collect(Collectors.toList());
     }

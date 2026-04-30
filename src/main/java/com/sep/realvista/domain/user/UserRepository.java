@@ -6,12 +6,20 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface UserRepository {
+
+    long count();
+
+    long countByCreatedAtAfter(LocalDateTime date);
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    List<User> findTop10ByOrderByCreatedAtDesc();
 
     Page<User> findAll(Specification<User> spec, Pageable pageable);
 

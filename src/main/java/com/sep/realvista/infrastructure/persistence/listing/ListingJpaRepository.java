@@ -65,6 +65,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     List<Listing> findByStatusAndUpdatedAtBefore(@Param("status") ListingStatus status,
                                                  @Param("cutoff") java.time.LocalDateTime cutoff);
 
+    long countByStatus(ListingStatus status);
+
+    List<Listing> findTop10ByOrderByUpdatedAtDesc();
+
     @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status "
             + "AND l.deleted = false")
     List<Listing> findByListingTypeAndStatus(@Param("listingType") ListingType listingType,

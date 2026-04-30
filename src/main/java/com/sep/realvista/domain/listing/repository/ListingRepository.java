@@ -109,4 +109,10 @@ public interface ListingRepository {
      * @return list of listings matching the criteria
      */
     List<Listing> findByStatusAndUpdatedAtBefore(ListingStatus status, LocalDateTime cutoff);
+
+    long count();
+
+    long countByStatus(ListingStatus status);
+
+    List<Listing> findTop10ByOrderByUpdatedAtDesc();
 }

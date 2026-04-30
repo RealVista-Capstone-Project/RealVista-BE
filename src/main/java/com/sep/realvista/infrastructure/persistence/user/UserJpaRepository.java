@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,5 +32,9 @@ public interface UserJpaRepository extends JpaRepository<User, UUID>, JpaSpecifi
     boolean hasRole(@Param("userId") UUID userId, @Param("roleCode") RoleCode roleCode);
 
     Optional<User> findByPhone(String phone);
-}
 
+    long countByCreatedAtAfter(LocalDateTime date);
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    List<User> findTop10ByOrderByCreatedAtDesc();
+}

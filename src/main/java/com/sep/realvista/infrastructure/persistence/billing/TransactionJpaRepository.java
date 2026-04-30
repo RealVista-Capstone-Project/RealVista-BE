@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface TransactionJpaRepository extends JpaRepository<Transaction, UUID> {
     Optional<Transaction> findByOrderCode(Long orderCode);
     List<Transaction> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    List<Transaction> findTop10ByOrderByCreatedAtDesc();
 }

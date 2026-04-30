@@ -9,4 +9,7 @@ public interface TransactionRepository {
     Optional<Transaction> findById(UUID id);
     Optional<Transaction> findByOrderCode(Long orderCode);
     List<Transaction> findByUserId(UUID userId);
+    List<Transaction> findAll();
+    long count();
+    List<Transaction> findTop10ByOrderByCreatedAtDesc();
 }

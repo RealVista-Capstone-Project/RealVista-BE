@@ -28,6 +28,21 @@ public class ListingRepositoryImpl implements ListingRepository {
     private final ListingCustomRepository customRepository;
 
     @Override
+    public long count() {
+        return jpaRepository.count();
+    }
+
+    @Override
+    public long countByStatus(ListingStatus status) {
+        return jpaRepository.countByStatus(status);
+    }
+
+    @Override
+    public List<Listing> findTop10ByOrderByUpdatedAtDesc() {
+        return jpaRepository.findTop10ByOrderByUpdatedAtDesc();
+    }
+
+    @Override
     public Page<Listing> findAll(Specification<Listing> spec, Pageable pageable) {
         return jpaRepository.findAll(spec, pageable);
     }

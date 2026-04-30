@@ -34,4 +34,19 @@ public class TransactionRepositoryImpl implements TransactionRepository {
     public List<Transaction> findByUserId(UUID userId) {
         return jpa.findByUserIdOrderByCreatedAtDesc(userId);
     }
+
+    @Override
+    public List<Transaction> findAll() {
+        return jpa.findAll();
+    }
+
+    @Override
+    public long count() {
+        return jpa.count();
+    }
+
+    @Override
+    public List<Transaction> findTop10ByOrderByCreatedAtDesc() {
+        return jpa.findTop10ByOrderByCreatedAtDesc();
+    }
 }
