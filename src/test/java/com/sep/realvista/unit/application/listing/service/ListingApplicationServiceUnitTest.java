@@ -38,6 +38,8 @@ import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.application.listing.service.ListingAnalyticsService;
@@ -353,6 +355,123 @@ class ListingApplicationServiceUnitTest {
         }
 
         @Test
+        @DisplayName("Should return draft listing detail when requester is active creator")
+        void getListingDetail_whenDraftAndRequesterIsActiveCreator_shouldReturnDetail() {
+                // Arrange
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.DRAFT)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .price(new BigDecimal("2700.00"))
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(List.of(testMedia));
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.empty());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList(), any()))
+                                .thenReturn(expectedResponse);
+                when(userRepository.findById(userId)).thenReturn(Optional.of(User.builder()
+                                .userId(userId)
+                                .status(UserStatus.ACTIVE)
+                                .build()));
+                when(bookmarkRepository.existsByUserIdAndListingId(userId, listingId)).thenReturn(false);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
+
+                // Act
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, userId, false);
+
+                // Assert
+                assertThat(actualResponse).isNotNull();
+                assertThat(actualResponse.getStatus()).isEqualTo(ListingStatus.DRAFT);
+                verify(userRepository, atLeastOnce()).findById(userId);
+                verify(bookmarkRepository).existsByUserIdAndListingId(userId, listingId);
+        }
+
+        @Test
+        @DisplayName("Should hide draft listing detail when requester is banned creator")
+        void getListingDetail_whenDraftAndRequesterIsBannedCreator_shouldThrowNotFound() {
+                // Arrange
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .status(ListingStatus.DRAFT)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.empty());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
+                                .thenReturn(expectedResponse);
+                when(userRepository.findById(userId)).thenReturn(Optional.of(User.builder()
+                                .userId(userId)
+                                .status(UserStatus.BANNED)
+                                .build()));
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
+
+                // Act & Assert
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId, userId, true))
+                                .isInstanceOf(ResourceNotFoundException.class)
+                                .hasMessageContaining("Listing")
+                                .hasMessageContaining(listingId.toString());
+
+                verify(bookmarkRepository, never()).existsByUserIdAndListingId(any(), any());
+                verify(listingAnalyticsService, never()).recordView(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should hide draft listing detail when requester is not creator")
+        void getListingDetail_whenDraftAndRequesterIsNotCreator_shouldThrowNotFound() {
+                // Arrange
+                UUID otherUserId = UUID.randomUUID();
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .status(ListingStatus.DRAFT)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.empty());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
+                                .thenReturn(expectedResponse);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
+
+                // Act & Assert
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId, otherUserId, false))
+                                .isInstanceOf(ResourceNotFoundException.class)
+                                .hasMessageContaining("Listing")
+                                .hasMessageContaining(listingId.toString());
+
+                verify(userRepository, never()).findById(otherUserId);
+                verify(bookmarkRepository, never()).existsByUserIdAndListingId(any(), any());
+        }
+
+        @Test
         @DisplayName("Should throw ResourceNotFoundException when listing does not exist")
         void getListingDetail_whenListingDoesNotExist_shouldThrowException() {
                 // Arrange
@@ -395,6 +514,8 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
                                 .listingId(listingId)
+                                .userId(userId)
+                                .status(ListingStatus.PUBLISHED)
                                 .slug("test-listing-slug")
                                 .name("Test Listing Name")
                                 .media(List.of()) // Empty media list is fine for this test
@@ -430,6 +551,8 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
                                 .listingId(listingId)
+                                .userId(userId)
+                                .status(ListingStatus.PUBLISHED)
                                 .slug("test-listing-slug")
                                 .name("Test Listing Name")
                                 .build();
@@ -464,6 +587,8 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
                                 .listingId(listingId)
+                                .userId(userId)
+                                .status(ListingStatus.PUBLISHED)
                                 .slug("test-listing-slug")
                                 .name("Test Listing Name")
                                 .build();
@@ -858,7 +983,11 @@ class ListingApplicationServiceUnitTest {
                 when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(Collections.emptyList());
                 when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.of(preference));
-                ListingDetailResponse response = new ListingDetailResponse();
+                ListingDetailResponse response = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .userId(userId)
+                                .status(ListingStatus.PUBLISHED)
+                                .build();
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
                                 .thenReturn(response);
 
@@ -885,7 +1014,11 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(Collections.emptyList());
                 when(bookmarkRepository.existsByUserIdAndListingId(userId, listingId)).thenReturn(false);
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
-                                .thenReturn(new ListingDetailResponse());
+                                .thenReturn(ListingDetailResponse.builder()
+                                                .listingId(listingId)
+                                                .userId(userId)
+                                                .status(ListingStatus.PUBLISHED)
+                                                .build());
 
                 // Act
                 listingApplicationService.getListingDetail(listingId, userId, true);
@@ -908,7 +1041,11 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(Collections.emptyList());
                 when(bookmarkRepository.existsByUserIdAndListingId(userId, listingId)).thenReturn(false);
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
-                                .thenReturn(new ListingDetailResponse());
+                                .thenReturn(ListingDetailResponse.builder()
+                                                .listingId(listingId)
+                                                .userId(userId)
+                                                .status(ListingStatus.PUBLISHED)
+                                                .build());
 
                 // Act
                 listingApplicationService.getListingDetail(listingId, userId, false);

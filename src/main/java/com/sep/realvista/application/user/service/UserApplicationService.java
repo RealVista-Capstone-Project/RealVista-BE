@@ -51,6 +51,8 @@ import com.sep.realvista.infrastructure.security.PasswordService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Hibernate;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -104,6 +106,7 @@ public class UserApplicationService {
     private final AgentProposalRepository agentProposalRepository;
     private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
     private final PropertyAgentRepository propertyAgentRepository;
+    private final CacheManager cacheManager;
 
     /**
      * Get paginated list of users with search and filters (Admin only).
@@ -456,6 +459,7 @@ public class UserApplicationService {
                     .filter(Listing::isActive)
                     .forEach(Listing::unpublish);
             listingRepository.saveAll(listings);
+            evictListingDetailCache(listingIds);
         }
 
         // 5. Cascade cleanup from listings
@@ -544,6 +548,15 @@ public class UserApplicationService {
             case DELETED -> "User account deleted";
             case SUSPENDED -> "User account suspended";
         };
+    }
+
+    private void evictListingDetailCache(List<UUID> listingIds) {
+        Cache listingCache = cacheManager.getCache("listings");
+        if (listingCache == null) {
+            return;
+        }
+
+        listingIds.forEach(listingCache::evict);
     }
 
     /**

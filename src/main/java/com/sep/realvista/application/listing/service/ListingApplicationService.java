@@ -49,6 +49,7 @@ import com.sep.realvista.application.appointment.service.AppointmentApplicationS
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.notification.EntityType;
 import com.sep.realvista.domain.user.notification.EventType;
 import jakarta.persistence.criteria.JoinType;
@@ -166,6 +167,7 @@ public class ListingApplicationService {
     public ListingDetailResponse getListingDetail(UUID listingId, UUID userId, boolean recordView) {
         // Route through self (proxy) so @Cacheable on getCachedListingDetail fires correctly
         ListingDetailResponse response = self.getCachedListingDetail(listingId);
+        ensureListingDetailAccessible(response, userId);
         if (userId != null) {
             boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
             response.setIsFavorite(isFavorite);
@@ -179,6 +181,22 @@ public class ListingApplicationService {
         }
 
         return response;
+    }
+
+    private void ensureListingDetailAccessible(ListingDetailResponse listing, UUID userId) {
+        if (listing.getStatus() == ListingStatus.PUBLISHED) {
+            return;
+        }
+
+        if (userId == null || !userId.equals(listing.getUserId())) {
+            throw new ResourceNotFoundException("Listing", listing.getListingId());
+        }
+
+        User requester = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        if (Boolean.TRUE.equals(requester.getDeleted()) || !requester.isActive()) {
+            throw new ResourceNotFoundException("Listing", listing.getListingId());
+        }
     }
 
     /**

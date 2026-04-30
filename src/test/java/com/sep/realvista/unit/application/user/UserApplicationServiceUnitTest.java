@@ -43,6 +43,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 import java.util.Optional;
 import java.util.List;
@@ -96,6 +98,10 @@ public class UserApplicationServiceUnitTest {
     private UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
     @Mock
     private PropertyAgentRepository propertyAgentRepository;
+    @Mock
+    private CacheManager cacheManager;
+    @Mock
+    private Cache listingCache;
 
     @InjectMocks
     private UserApplicationService userApplicationService;
@@ -187,6 +193,7 @@ public class UserApplicationServiceUnitTest {
         
         when(propertyRepository.findByOwnerId(userId)).thenReturn(List.of(property));
         when(listingRepository.findByUserIdOrPropertyOwnerId(userId)).thenReturn(List.of(listing));
+        when(cacheManager.getCache("listings")).thenReturn(listingCache);
         
         when(appointmentRepository.findByListingIdInAndStatusIn(anyList(), anyList()))
                 .thenReturn(List.of(appointment));
@@ -211,6 +218,7 @@ public class UserApplicationServiceUnitTest {
         
         verify(listing).unpublish();
         verify(listingRepository).saveAll(anyList());
+        verify(listingCache).evict(listingId);
         
         verify(appointment).cancel(eq(userId), anyString());
         verify(appointmentRepository).saveAll(anyList());
@@ -246,6 +254,7 @@ public class UserApplicationServiceUnitTest {
         when(userRepository.save(any(User.class))).thenReturn(user);
         when(propertyRepository.findByOwnerId(userId)).thenReturn(Collections.emptyList());
         when(listingRepository.findByUserIdOrPropertyOwnerId(userId)).thenReturn(List.of(publishedListing, draftListing));
+        when(cacheManager.getCache("listings")).thenReturn(listingCache);
         when(engagementRepository.findByParticipantWithFetches(userId, null)).thenReturn(Collections.emptyList());
         when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList())).thenReturn(Collections.emptyList());
         when(agentProposalRepository.findByUserId(eq(userId), any())).thenReturn(new PageImpl<>(Collections.emptyList()));
@@ -257,6 +266,8 @@ public class UserApplicationServiceUnitTest {
         verify(publishedListing, times(1)).unpublish();
         verify(draftListing, never()).unpublish();
         verify(listingRepository).saveAll(anyList());
+        verify(listingCache).evict(publishedListing.getListingId());
+        verify(listingCache).evict(draftListing.getListingId());
     }
 
     @Test
@@ -284,6 +295,7 @@ public class UserApplicationServiceUnitTest {
         when(propertyRepository.findByOwnerId(userId)).thenReturn(List.of(property));
         when(propertyAgentRepository.findByAgentId(userId)).thenReturn(Collections.emptyList());
         when(listingRepository.findByUserIdOrPropertyOwnerId(userId)).thenReturn(List.of(listing));
+        when(cacheManager.getCache("listings")).thenReturn(listingCache);
 
         when(appointmentRepository.findByListingIdInAndStatusIn(anyList(), anyList()))
                 .thenReturn(List.of(appointment));
@@ -309,6 +321,7 @@ public class UserApplicationServiceUnitTest {
 
         verify(listing).unpublish();
         verify(listingRepository).saveAll(anyList());
+        verify(listingCache).evict(listingId);
 
         verify(appointment).cancel(eq(userId), eq("Owner account banned"));
         verify(appointmentRepository).saveAll(anyList());
