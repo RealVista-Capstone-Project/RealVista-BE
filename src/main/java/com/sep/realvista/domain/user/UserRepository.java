@@ -40,5 +40,8 @@ public interface UserRepository {
     boolean hasRole(UUID userId, RoleCode roleCode);
 
     Optional<User> findByPhone(String phone);
+    
+    long countByStatusAndCreatedAtAfter(UserStatus status, LocalDateTime date);
 }
+
 

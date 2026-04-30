@@ -49,11 +49,42 @@ public class PolicyService {
     }
 
     @Transactional
-    public PolicyDto updatePolicy(UUID id, String title, String content) {
+    public PolicyDto updatePolicy(UUID id, String title, String content, Boolean isActive) {
         Policy policy = policyRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Policy not found with id: " + id));
-        policy.updatePolicy(title, content);
+        policy.updatePolicy(title, content, isActive);
+        Policy saved = policyRepository.save(policy);
+        return policyMapper.toDto(saved);
+    }
+
+    @Transactional
+    public PolicyDto createPolicy(String title, String slug, String content, Boolean isActive) {
+        Policy policy = Policy.builder()
+                .title(title)
+                .slug(slug)
+                .content(content)
+                .isActive(isActive != null ? isActive : true)
+                .version(1)
+                .build();
+        Policy saved = policyRepository.save(policy);
+        return policyMapper.toDto(saved);
+    }
+
+    @Transactional
+    public void deletePolicy(UUID id) {
+        if (!policyRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Policy not found with id: " + id);
+        }
+        policyRepository.deleteById(id);
+    }
+
+    @Transactional
+    public PolicyDto togglePolicyStatus(UUID id) {
+        Policy policy = policyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Policy not found with id: " + id));
+        policy.toggleActive();
         Policy saved = policyRepository.save(policy);
         return policyMapper.toDto(saved);
     }
 }
+

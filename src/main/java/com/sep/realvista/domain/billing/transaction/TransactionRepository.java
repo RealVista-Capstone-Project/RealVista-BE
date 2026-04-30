@@ -12,4 +12,8 @@ public interface TransactionRepository {
     List<Transaction> findAll();
     long count();
     List<Transaction> findTop10ByOrderByCreatedAtDesc();
+    double sumTotalAmount();
+    double sumTotalAmountByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
 }
+
+

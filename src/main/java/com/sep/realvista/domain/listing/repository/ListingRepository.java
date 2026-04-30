@@ -115,4 +115,7 @@ public interface ListingRepository {
     long countByStatus(ListingStatus status);
 
     List<Listing> findTop10ByOrderByUpdatedAtDesc();
+
+    List<Object[]> findTopAgents(int limit);
 }
+

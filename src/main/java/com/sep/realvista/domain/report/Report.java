@@ -1,20 +1,26 @@
 package com.sep.realvista.domain.report;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
+import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
 
 import java.util.UUID;
 
@@ -40,11 +46,24 @@ public class Report extends BaseEntity {
     @Column(name = "reporter_user_id", nullable = false)
     private UUID reporterUserId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reporter_user_id", insertable = false, updatable = false)
+    private User reporter;
+
     @Column(name = "reported_user_id")
     private UUID reportedUserId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reported_user_id", insertable = false, updatable = false)
+    private User reportedUser;
+
     @Column(name = "reported_listing_id")
     private UUID reportedListingId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reported_listing_id", insertable = false, updatable = false)
+    private Listing reportedListing;
+
 
     @Enumerated(EnumType.STRING)
     @Column(name = "report_target_type", nullable = false, length = 20)

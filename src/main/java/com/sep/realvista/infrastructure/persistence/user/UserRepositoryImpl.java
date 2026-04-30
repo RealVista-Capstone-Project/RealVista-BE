@@ -97,5 +97,11 @@ public class UserRepositoryImpl implements UserRepository {
     public Optional<User> findByPhone(String phone) {
         return jpaRepository.findByPhone(phone);
     }
+
+    @Override
+    public long countByStatusAndCreatedAtAfter(com.sep.realvista.domain.user.UserStatus status, LocalDateTime date) {
+        return jpaRepository.countByStatusAndCreatedAtAfter(status, date);
+    }
 }
+
 

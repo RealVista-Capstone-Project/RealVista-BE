@@ -43,6 +43,11 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
+    public List<Object[]> findTopAgents(int limit) {
+        return jpaRepository.findTopAgents(org.springframework.data.domain.PageRequest.of(0, limit));
+    }
+
+    @Override
     public Page<Listing> findAll(Specification<Listing> spec, Pageable pageable) {
         return jpaRepository.findAll(spec, pageable);
     }

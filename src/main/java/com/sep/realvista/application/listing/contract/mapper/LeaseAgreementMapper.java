@@ -15,11 +15,15 @@ public interface LeaseAgreementMapper {
 
     @Mapping(target = "createdAt", source = "createdAt")
     @Mapping(target = "updatedAt", source = "updatedAt")
-    @Mapping(target = "renterFullName", expression = "java(leaseAgreement.getRenter() != null ? leaseAgreement.getRenter().getFullName() : null)")
+    @Mapping(target = "renterFullName", 
+             expression = "java(leaseAgreement.getRenter() != null " 
+                 + "? leaseAgreement.getRenter().getFullName() : null)")
     @Mapping(target = "renterEmail", source = "renter.email")
     @Mapping(target = "renterPhone", source = "renter.phone")
     @Mapping(target = "renterAvatarUrl", source = "renter.avatarUrl")
-    @Mapping(target = "landlordFullName", expression = "java(leaseAgreement.getLandlord() != null ? leaseAgreement.getLandlord().getFullName() : null)")
+    @Mapping(target = "landlordFullName", 
+             expression = "java(leaseAgreement.getLandlord() != null " 
+                 + "? leaseAgreement.getLandlord().getFullName() : null)")
     @Mapping(target = "landlordEmail", source = "landlord.email")
     @Mapping(target = "landlordPhone", source = "landlord.phone")
     @Mapping(target = "landlordAvatarUrl", source = "landlord.avatarUrl")

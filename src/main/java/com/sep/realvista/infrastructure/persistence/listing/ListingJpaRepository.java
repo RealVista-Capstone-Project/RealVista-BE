@@ -68,6 +68,14 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     long countByStatus(ListingStatus status);
 
     List<Listing> findTop10ByOrderByUpdatedAtDesc();
+    
+    @Query("SELECT COALESCE(u.businessName, u.email), COUNT(l) FROM Listing l "
+            + "JOIN l.user u "
+            + "WHERE l.deleted = false "
+            + "GROUP BY u.userId, u.businessName, u.email "
+            + "ORDER BY COUNT(l) DESC")
+    List<Object[]> findTopAgents(org.springframework.data.domain.Pageable pageable);
+
 
     @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status "
             + "AND l.deleted = false")

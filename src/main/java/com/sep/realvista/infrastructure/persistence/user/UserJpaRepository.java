@@ -3,6 +3,7 @@ package com.sep.realvista.infrastructure.persistence.user;
 import com.sep.realvista.domain.common.value.Email;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.role.RoleCode;
+import com.sep.realvista.domain.user.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -37,4 +38,7 @@ public interface UserJpaRepository extends JpaRepository<User, UUID>, JpaSpecifi
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     List<User> findTop10ByOrderByCreatedAtDesc();
+    
+    long countByStatusAndCreatedAtAfter(UserStatus status, LocalDateTime date);
 }
+

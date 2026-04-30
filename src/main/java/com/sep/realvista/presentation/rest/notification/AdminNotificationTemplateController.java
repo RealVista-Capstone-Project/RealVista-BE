@@ -9,6 +9,7 @@ import com.sep.realvista.application.notification.service.NotificationTemplateAp
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +56,17 @@ public class AdminNotificationTemplateController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String type,
             Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(templateService.getAllTemplates(keyword, type, pageable)));
+        Page<NotificationTemplateResponse> page = templateService.getAllTemplates(keyword, type, pageable);
+        PageResponse<NotificationTemplateResponse> pageResponse = PageResponse.<NotificationTemplateResponse>builder()
+                .content(page.getContent())
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .build();
+        return ResponseEntity.ok(ApiResponse.success(pageResponse));
     }
 
     @GetMapping("/{id}")
@@ -73,7 +84,7 @@ public class AdminNotificationTemplateController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<NotificationTemplateResponse>> updateTemplate(
-            @PathVariable UUID id, 
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateNotificationTemplateRequest request) {
         NotificationTemplateResponse updated = templateService.updateTemplate(id, request);
         return ResponseEntity.ok(ApiResponse.success("Template updated successfully", updated));
@@ -82,18 +93,18 @@ public class AdminNotificationTemplateController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteTemplate(@PathVariable UUID id) {
         templateService.deleteTemplate(id);
-        return ResponseEntity.ok(ApiResponse.success("Template deleted successfully", null));
+        return ResponseEntity.ok(ApiResponse.<Void>success("Template deleted successfully", null));
     }
-    
+
     @PostMapping("/preview")
     public ResponseEntity<ApiResponse<TemplateEngineService.RenderedTemplate>> previewTemplate(
             @RequestBody TemplatePreviewRequest request) {
-        
+
         Map<String, Object> mockData = new HashMap<>();
         if (request.getMockData() != null) {
             mockData.putAll(request.getMockData());
         }
-        
+
         if (!mockData.containsKey("userName")) {
             mockData.put("userName", "John Doe");
         }
@@ -103,7 +114,7 @@ public class AdminNotificationTemplateController {
         if (!mockData.containsKey("otp")) {
             mockData.put("otp", "123456");
         }
-        
+
         TemplateEngineService.RenderedTemplate rendered = engineService.preview(
                 request.getTitle(), request.getContentBody(), mockData);
         return ResponseEntity.ok(ApiResponse.success(rendered));
@@ -118,32 +129,32 @@ public class AdminNotificationTemplateController {
     public ResponseEntity<ApiResponse<Void>> testSend(@Valid @RequestBody TestSendRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = auth.getName();
-        
+
         // Get user details to get email/FCM token
         UUID userId = userService.findUserIdByEmail(currentUsername);
         UserResponse user = userService.getUserById(userId);
-        
+
         Map<String, Object> mockData = new HashMap<>();
         if (request.getMockData() != null) {
             mockData.putAll(request.getMockData());
         }
-        
+
         // Default mock data if missing
         mockData.putIfAbsent("userName", user.getFullName());
         mockData.putIfAbsent("name", user.getFullName());
-        
+
         TemplateEngineService.RenderedTemplate rendered = engineService.preview(
                 request.getTitle(), request.getContentBody(), mockData);
-        
+
         if ("EMAIL".equalsIgnoreCase(request.getType())) {
             emailService.sendHtmlMessage(user.getEmail(), rendered.title(), rendered.body());
         } else if ("IN_APP".equalsIgnoreCase(request.getType())) {
-            // Here we would ideally send a real FCM notification, but for test-send 
+            // Here we would ideally send a real FCM notification, but for test-send
             // we can at least log it or send to the admin's logged-in device if available.
             // For now, let's just log success as a placeholder if FCM tokens aren't easily retrievable in this context.
             log.info("Test-send Notification to {}: {} - {}", user.getFullName(), rendered.title(), rendered.body());
         }
-        
-        return ResponseEntity.ok(ApiResponse.success("Test notification sent to " + user.getEmail(), null));
+
+        return ResponseEntity.ok(ApiResponse.<Void>success("Test notification sent to " + user.getEmail(), null));
     }
 }

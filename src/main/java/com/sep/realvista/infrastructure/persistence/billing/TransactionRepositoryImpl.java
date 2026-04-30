@@ -49,4 +49,16 @@ public class TransactionRepositoryImpl implements TransactionRepository {
     public List<Transaction> findTop10ByOrderByCreatedAtDesc() {
         return jpa.findTop10ByOrderByCreatedAtDesc();
     }
+
+    @Override
+    public double sumTotalAmount() {
+        return jpa.sumTotalAmount();
+    }
+
+    @Override
+    public double sumTotalAmountByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end) {
+        return jpa.sumTotalAmountByCreatedAtBetween(start, end);
+    }
 }
+
+
