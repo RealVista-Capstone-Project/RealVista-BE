@@ -12,6 +12,8 @@ import com.sep.realvista.application.user.dto.UserSearchResponse;
 import com.sep.realvista.application.user.mapper.UserMapper;
 import com.sep.realvista.infrastructure.persistence.user.UserSpecification;
 import com.sep.realvista.domain.agent.AgentProfile;
+import com.sep.realvista.domain.agent.PropertyAgent;
+import com.sep.realvista.domain.agent.PropertyAgentRepository;
 import com.sep.realvista.domain.agent.repository.AgentProfileRepository;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.value.Email;
@@ -76,6 +78,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class UserApplicationService {
 
+    private enum CleanupCause {
+        SUSPENDED,
+        BANNED,
+        DELETED
+    }
+
     private final UserRepository userRepository;
     private final UserDomainService userDomainService;
     private final UserMapper userMapper;
@@ -95,6 +103,7 @@ public class UserApplicationService {
     private final EngagementRepository engagementRepository;
     private final AgentProposalRepository agentProposalRepository;
     private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
+    private final PropertyAgentRepository propertyAgentRepository;
 
     /**
      * Get paginated list of users with search and filters (Admin only).
@@ -389,7 +398,7 @@ public class UserApplicationService {
         user.suspend();
         User suspendedUser = userRepository.save(user);
 
-        performCascadingCleanup(userId, false);
+        performCascadingCleanup(userId, CleanupCause.SUSPENDED);
 
         log.info("User {} suspension cascade completed successfully", userId);
         return userMapper.toResponse(suspendedUser);
@@ -406,16 +415,28 @@ public class UserApplicationService {
         user.ban();
         User bannedUser = userRepository.save(user);
 
-        performCascadingCleanup(userId, true);
+        performCascadingCleanup(userId, CleanupCause.BANNED);
 
         log.info("User {} ban cascade completed successfully", userId);
         return userMapper.toResponse(bannedUser);
     }
 
-    private void performCascadingCleanup(UUID userId, boolean isBan) {
+    private void performCascadingCleanup(UUID userId, CleanupCause cause) {
         // 1. Fetch properties owned by user
         List<Property> properties = propertyRepository.findByOwnerId(userId);
         List<UUID> propertyIds = properties.stream().map(Property::getPropertyId).collect(Collectors.toList());
+
+        // 1b. Fetch properties assigned to this user as an agent. These properties
+        // stay with their owner, but the inactive agent must be detached.
+        boolean shouldDetachAgentAssignments = cause == CleanupCause.BANNED || cause == CleanupCause.DELETED;
+        List<PropertyAgent> assignedProperties = shouldDetachAgentAssignments
+                ? propertyAgentRepository.findByAgentId(userId)
+                : List.of();
+        List<UUID> assignedPropertyIds = assignedProperties.stream()
+                .map(PropertyAgent::getPropertyId)
+                .collect(Collectors.toList());
+        Set<UUID> affectedPropertyIds = new HashSet<>(propertyIds);
+        affectedPropertyIds.addAll(assignedPropertyIds);
 
         // 2. Fetch listings created by user or for user's properties
         List<Listing> listings = listingRepository.findByUserIdOrPropertyOwnerId(userId);
@@ -446,7 +467,7 @@ public class UserApplicationService {
             );
             if (!appointments.isEmpty()) {
                 log.info("Cleanup cascade: cancelling {} appointments", appointments.size());
-                appointments.forEach(a -> a.cancel(userId, isBan ? "Owner account banned" : "Owner account suspended"));
+                appointments.forEach(a -> a.cancel(userId, ownerCleanupReason(cause)));
                 appointmentRepository.saveAll(appointments);
             }
 
@@ -460,11 +481,11 @@ public class UserApplicationService {
         }
 
         // 6. Cancel Engagements (linked to user OR drafted property/listing)
-        List<Engagement> initiatorEngagements = engagementRepository.findByInitiatorId(userId);
+        List<Engagement> participantEngagements = engagementRepository.findByParticipantWithFetches(userId, null);
         List<Engagement> relatedEngagements = engagementRepository
-                .findByListingIdInOrPropertyIdIn(listingIds, propertyIds);
+                .findByListingIdInOrPropertyIdIn(listingIds, affectedPropertyIds.stream().toList());
 
-        Set<Engagement> allEngagements = new HashSet<>(initiatorEngagements);
+        Set<Engagement> allEngagements = new HashSet<>(participantEngagements);
         allEngagements.addAll(relatedEngagements);
 
         List<Engagement> toCancel = allEngagements.stream()
@@ -473,11 +494,18 @@ public class UserApplicationService {
 
         if (!toCancel.isEmpty()) {
             log.info("Cleanup cascade: cancelling {} pending/accepted engagements", toCancel.size());
-            toCancel.forEach(e -> e.cancel(isBan ? "User account banned" : "User account suspended"));
+            toCancel.forEach(e -> e.cancel(userCleanupReason(cause)));
             toCancel.forEach(engagementRepository::save);
         }
 
-        // 7. Revert Agent Proposal Templates to DRAFT
+        // 7. Remove inactive agent assignments from owner properties
+        if (!assignedProperties.isEmpty()) {
+            log.info("Cleanup cascade: removing {} property-agent assignments for user {}",
+                    assignedProperties.size(), userId);
+            propertyAgentRepository.deleteAll(assignedProperties);
+        }
+
+        // 8. Revert Agent Proposal Templates to DRAFT
         List<AgentProposal> proposals = agentProposalRepository
                 .findByUserId(userId, org.springframework.data.domain.Pageable.unpaged()).getContent();
         List<AgentProposal> activeProposals = proposals.stream()
@@ -489,17 +517,33 @@ public class UserApplicationService {
             activeProposals.forEach(agentProposalRepository::save);
         }
 
-        // 8. Cancel Subscriptions (Only for Ban)
-        if (isBan) {
+        // 9. Cancel Subscriptions (Only for Ban)
+        if (cause == CleanupCause.BANNED || cause == CleanupCause.DELETED) {
             List<com.sep.realvista.domain.billing.subscription.UserFeatureSubscription> activeSubs =
                     userFeatureSubscriptionRepository.findAllActiveByUserId(userId);
             if (!activeSubs.isEmpty()) {
-                log.info("Cleanup cascade: cancelling {} active subscriptions for banned user {}",
-                        activeSubs.size(), userId);
+                log.info("Cleanup cascade: cancelling {} active subscriptions for {} user {}",
+                        activeSubs.size(), cause.name().toLowerCase(Locale.ROOT), userId);
                 activeSubs.forEach(com.sep.realvista.domain.billing.subscription.UserFeatureSubscription::cancel);
                 activeSubs.forEach(userFeatureSubscriptionRepository::save);
             }
         }
+    }
+
+    private String ownerCleanupReason(CleanupCause cause) {
+        return switch (cause) {
+            case BANNED -> "Owner account banned";
+            case DELETED -> "Owner account deleted";
+            case SUSPENDED -> "Owner account suspended";
+        };
+    }
+
+    private String userCleanupReason(CleanupCause cause) {
+        return switch (cause) {
+            case BANNED -> "User account banned";
+            case DELETED -> "User account deleted";
+            case SUSPENDED -> "User account suspended";
+        };
     }
 
     /**
@@ -511,8 +555,9 @@ public class UserApplicationService {
 
         User user = userDomainService.getUserOrThrow(userId);
         user.markAsDeleted();
-
         userRepository.save(user);
+
+        performCascadingCleanup(userId, CleanupCause.DELETED);
         log.info("User deleted successfully: {}", userId);
     }
 

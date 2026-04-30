@@ -6,6 +6,8 @@ import com.sep.realvista.application.service.OtpService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.mapper.UserMapper;
 import com.sep.realvista.application.user.service.UserApplicationService;
+import com.sep.realvista.domain.agent.PropertyAgent;
+import com.sep.realvista.domain.agent.PropertyAgentRepository;
 import com.sep.realvista.domain.agent.repository.AgentProfileRepository;
 import com.sep.realvista.domain.profile.repository.CustomerProfileRepository;
 import com.sep.realvista.domain.user.User;
@@ -92,6 +94,8 @@ public class UserApplicationServiceUnitTest {
     private AgentProposalRepository agentProposalRepository;
     @Mock
     private UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
+    @Mock
+    private PropertyAgentRepository propertyAgentRepository;
 
     @InjectMocks
     private UserApplicationService userApplicationService;
@@ -189,7 +193,7 @@ public class UserApplicationServiceUnitTest {
         when(listingBoostRepository.findActiveByListingIds(anyList()))
                 .thenReturn(List.of(boost));
         
-        when(engagementRepository.findByInitiatorId(userId)).thenReturn(List.of(engagement));
+        when(engagementRepository.findByParticipantWithFetches(userId, null)).thenReturn(List.of(engagement));
         when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList()))
                 .thenReturn(Collections.emptyList());
         
@@ -242,7 +246,7 @@ public class UserApplicationServiceUnitTest {
         when(userRepository.save(any(User.class))).thenReturn(user);
         when(propertyRepository.findByOwnerId(userId)).thenReturn(Collections.emptyList());
         when(listingRepository.findByUserIdOrPropertyOwnerId(userId)).thenReturn(List.of(publishedListing, draftListing));
-        when(engagementRepository.findByInitiatorId(userId)).thenReturn(Collections.emptyList());
+        when(engagementRepository.findByParticipantWithFetches(userId, null)).thenReturn(Collections.emptyList());
         when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList())).thenReturn(Collections.emptyList());
         when(agentProposalRepository.findByUserId(eq(userId), any())).thenReturn(new PageImpl<>(Collections.emptyList()));
 
@@ -278,6 +282,7 @@ public class UserApplicationServiceUnitTest {
         when(userRepository.save(any(User.class))).thenReturn(user);
 
         when(propertyRepository.findByOwnerId(userId)).thenReturn(List.of(property));
+        when(propertyAgentRepository.findByAgentId(userId)).thenReturn(Collections.emptyList());
         when(listingRepository.findByUserIdOrPropertyOwnerId(userId)).thenReturn(List.of(listing));
 
         when(appointmentRepository.findByListingIdInAndStatusIn(anyList(), anyList()))
@@ -285,7 +290,7 @@ public class UserApplicationServiceUnitTest {
         when(listingBoostRepository.findActiveByListingIds(anyList()))
                 .thenReturn(List.of(boost));
 
-        when(engagementRepository.findByInitiatorId(userId)).thenReturn(List.of(engagement));
+        when(engagementRepository.findByParticipantWithFetches(userId, null)).thenReturn(List.of(engagement));
         when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList()))
                 .thenReturn(Collections.emptyList());
 
@@ -319,5 +324,40 @@ public class UserApplicationServiceUnitTest {
 
         verify(subscription).cancel();
         verify(userFeatureSubscriptionRepository).save(subscription);
+    }
+
+    @Test
+    void deleteUser_shouldCascadeCleanupAndRemoveAgentAssignments() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        UUID assignedPropertyId = UUID.randomUUID();
+        User user = spy(User.builder().userId(userId).status(com.sep.realvista.domain.user.UserStatus.ACTIVE).build());
+        PropertyAgent propertyAgent = PropertyAgent.builder()
+                .propertyId(assignedPropertyId)
+                .agentId(userId)
+                .build();
+        Engagement engagement = spy(Engagement.builder().status(EngagementStatus.ACCEPTED).build());
+        UserFeatureSubscription subscription = spy(UserFeatureSubscription.builder().build());
+
+        when(userDomainService.getUserOrThrow(userId)).thenReturn(user);
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(propertyRepository.findByOwnerId(userId)).thenReturn(Collections.emptyList());
+        when(propertyAgentRepository.findByAgentId(userId)).thenReturn(List.of(propertyAgent));
+        when(listingRepository.findByUserIdOrPropertyOwnerId(userId)).thenReturn(Collections.emptyList());
+        when(engagementRepository.findByParticipantWithFetches(userId, null)).thenReturn(List.of(engagement));
+        when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList()))
+                .thenReturn(Collections.emptyList());
+        when(agentProposalRepository.findByUserId(eq(userId), any()))
+                .thenReturn(new PageImpl<>(Collections.emptyList()));
+        when(userFeatureSubscriptionRepository.findAllActiveByUserId(userId)).thenReturn(List.of(subscription));
+
+        // Act
+        userApplicationService.deleteUser(userId);
+
+        // Assert
+        verify(user).markAsDeleted();
+        verify(propertyAgentRepository).deleteAll(List.of(propertyAgent));
+        verify(engagement).cancel(eq("User account deleted"));
+        verify(subscription).cancel();
     }
 }
