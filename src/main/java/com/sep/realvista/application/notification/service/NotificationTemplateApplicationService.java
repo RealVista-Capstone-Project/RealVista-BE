@@ -19,18 +19,28 @@ public class NotificationTemplateApplicationService {
     private final NotificationTemplateRepository repository;
 
     @Transactional(readOnly = true)
-    public Page<NotificationTemplateResponse> getPagedTemplates(Pageable pageable) {
+    public Page<NotificationTemplateResponse> getAllTemplates(String search, String type, Pageable pageable) {
+        if (search != null && !search.isEmpty()) {
+            return repository.findByNameContainingIgnoreCase(search, pageable).map(this::toDto);
+        }
         return repository.findAll(pageable).map(this::toDto);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationTemplateResponse getTemplate(UUID id) {
+        return repository.findById(id)
+                .map(this::toDto)
+                .orElseThrow(() -> new RuntimeException("Template not found"));
     }
 
     public NotificationTemplateResponse createTemplate(CreateNotificationTemplateRequest request) {
         NotificationTemplate template = NotificationTemplate.builder()
-                .templateName(request.getTemplateName())
-                .slug(request.getSlug())
-                .subjectTemplate(request.getSubjectTemplate())
-                .body_template(request.getBody_template())
-                .description(request.getDescription())
-                .isActive(true)
+                .templateKey(request.getTemplateKey())
+                .name(request.getName())
+                .type(request.getType())
+                .language(request.getLanguage())
+                .title(request.getTitle())
+                .contentBody(request.getContentBody())
                 .build();
         return toDto(repository.save(template));
     }
@@ -39,11 +49,7 @@ public class NotificationTemplateApplicationService {
         NotificationTemplate template = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Template not found"));
         
-        if (request.getTemplateName() != null) template.setTemplateName(request.getTemplateName());
-        if (request.getSubjectTemplate() != null) template.setSubjectTemplate(request.getSubjectTemplate());
-        if (request.getBody_template() != null) template.setBody_template(request.getBody_template());
-        if (request.getDescription() != null) template.setDescription(request.getDescription());
-        if (request.getIsActive() != null) template.setActive(request.getIsActive());
+        template.update(request.getName(), request.getTitle(), request.getContentBody());
 
         return toDto(repository.save(template));
     }
@@ -55,12 +61,12 @@ public class NotificationTemplateApplicationService {
     private NotificationTemplateResponse toDto(NotificationTemplate template) {
         return NotificationTemplateResponse.builder()
                 .templateId(template.getTemplateId())
-                .templateName(template.getTemplateName())
-                .slug(template.getSlug())
-                .subjectTemplate(template.getSubjectTemplate())
-                .body_template(template.getBody_template())
-                .description(template.getDescription())
-                .isActive(template.isActive())
+                .templateKey(template.getTemplateKey())
+                .name(template.getName())
+                .type(template.getType())
+                .language(template.getLanguage())
+                .title(template.getTitle())
+                .contentBody(template.getContentBody())
                 .createdAt(template.getCreatedAt())
                 .updatedAt(template.getUpdatedAt())
                 .build();

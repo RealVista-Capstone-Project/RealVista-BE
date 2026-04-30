@@ -4,9 +4,7 @@ import lombok.Data;
 
 @Data
 public class UpdateNotificationTemplateRequest {
-    private String templateName;
-    private String subjectTemplate;
-    private String body_template;
-    private String description;
-    private Boolean isActive;
+    private String name;
+    private String title;
+    private String contentBody;
 }
