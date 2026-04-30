@@ -1,5 +1,7 @@
 package com.sep.realvista.domain.listing.analytics;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,4 +48,15 @@ public interface ListingViewRepository {
      * @return the total view count
      */
     Integer getTotalViewCountByListingId(UUID listingId);
+
+    /**
+     * Get total view count for a set of listings in a time range.
+     *
+     * @param listingIds   listing IDs
+     * @param from         inclusive range start
+     * @param toExclusive  exclusive range end
+     * @return total views in range
+     */
+    Long getTotalViewCountByListingIdsAndViewedAtBetween(
+            List<UUID> listingIds, LocalDateTime from, LocalDateTime toExclusive);
 }

@@ -1,6 +1,7 @@
 package com.sep.realvista.presentation.rest.listing;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
+import com.sep.realvista.application.listing.dto.AgentPerformanceAnalyticsDTO;
 import com.sep.realvista.application.listing.dto.ListingAnalyticsDTO;
 import com.sep.realvista.application.listing.service.ListingAnalyticsService;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
@@ -20,6 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -78,6 +80,21 @@ public class ListingAnalyticsController {
         } finally {
             MDC.remove("traceId");
         }
+    }
+
+    @GetMapping("/analytics/agent-performance")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary = "Get agent performance analytics",
+            description = "Retrieves agent-level performance metrics for dashboard trend and channels. "
+                    + "Supports period granularity: W (week), M (month), Y (year).")
+    public ResponseEntity<ApiResponse<AgentPerformanceAnalyticsDTO>> getAgentPerformanceAnalytics(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @RequestParam(name = "period", required = false, defaultValue = "M") String period) {
+        AgentPerformanceAnalyticsDTO analytics =
+                listingAnalyticsService.getAgentPerformanceAnalytics(userDetails.getUserId(), period);
+        return ResponseEntity.ok(ApiResponse.success("Agent performance analytics retrieved successfully", analytics));
     }
 
     /**

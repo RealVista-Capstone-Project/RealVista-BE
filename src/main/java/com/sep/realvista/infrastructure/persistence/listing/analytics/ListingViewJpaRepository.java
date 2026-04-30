@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -37,4 +39,14 @@ public interface ListingViewJpaRepository extends JpaRepository<ListingView, Lis
     @Query("SELECT COALESCE(SUM(lv.viewCount), 0) FROM ListingView lv "
             + "WHERE lv.listingId = :listingId AND lv.deleted = false")
     Integer getTotalViewCountByListingId(@Param("listingId") UUID listingId);
+
+    @Query("SELECT COALESCE(SUM(lv.viewCount), 0) FROM ListingView lv "
+            + "WHERE lv.listingId IN :listingIds "
+            + "AND lv.deleted = false "
+            + "AND lv.viewedAt >= :from "
+            + "AND lv.viewedAt < :toExclusive")
+    Long getTotalViewCountByListingIdsAndViewedAtBetween(
+            @Param("listingIds") List<UUID> listingIds,
+            @Param("from") LocalDateTime from,
+            @Param("toExclusive") LocalDateTime toExclusive);
 }

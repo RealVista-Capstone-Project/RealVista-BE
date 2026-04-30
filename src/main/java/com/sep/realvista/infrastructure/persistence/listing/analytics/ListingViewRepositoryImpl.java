@@ -6,6 +6,8 @@ import com.sep.realvista.domain.listing.analytics.ListingViewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,5 +42,14 @@ public class ListingViewRepositoryImpl implements ListingViewRepository {
     @Override
     public Integer getTotalViewCountByListingId(UUID listingId) {
         return jpaRepository.getTotalViewCountByListingId(listingId);
+    }
+
+    @Override
+    public Long getTotalViewCountByListingIdsAndViewedAtBetween(
+            List<UUID> listingIds, LocalDateTime from, LocalDateTime toExclusive) {
+        if (listingIds == null || listingIds.isEmpty()) {
+            return 0L;
+        }
+        return jpaRepository.getTotalViewCountByListingIdsAndViewedAtBetween(listingIds, from, toExclusive);
     }
 }
