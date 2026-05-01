@@ -270,6 +270,16 @@ public class AppointmentApplicationService {
     @Transactional(readOnly = true)
     public AppointmentSummaryResponse getAppointmentSummary(UUID userId, LocalDateTime start, LocalDateTime end) {
         List<Appointment> appointments = appointmentService.getAppointmentsByUserId(userId, start, end, null);
+        LocalDate currentMonthStartDate = LocalDate.now().withDayOfMonth(1);
+        LocalDate previousMonthStartDate = currentMonthStartDate.minusMonths(1);
+        LocalDate nextMonthStartDate = currentMonthStartDate.plusMonths(1);
+        LocalDateTime currentMonthStart = currentMonthStartDate.atStartOfDay();
+        LocalDateTime previousMonthStart = previousMonthStartDate.atStartOfDay();
+        LocalDateTime nextMonthStart = nextMonthStartDate.atStartOfDay();
+        List<Appointment> currentMonthAppointments = appointmentService.getAppointmentsByUserId(
+                userId, currentMonthStart, nextMonthStart, null);
+        List<Appointment> previousMonthAppointments = appointmentService.getAppointmentsByUserId(
+                userId, previousMonthStart, currentMonthStart, null);
         LocalDateTime now = LocalDateTime.now();
 
         long pendingAppointments = appointments.stream()
@@ -288,15 +298,30 @@ public class AppointmentApplicationService {
                         && a.getStartTime().isAfter(now)
                         && (a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.ACCEPTED))
                 .count();
+        long currentMonthUpcomingAppointments = currentMonthAppointments.stream()
+                .filter(a -> a.isTour()
+                        && a.getStartTime() != null
+                        && a.getStartTime().isAfter(now)
+                        && (a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.ACCEPTED))
+                .count();
+        long previousMonthUpcomingAppointments = previousMonthAppointments.stream()
+                .filter(a -> a.isTour()
+                        && a.getStartTime() != null
+                        && (a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.ACCEPTED))
+                .count();
 
         return AppointmentSummaryResponse.builder()
                 .totalAppointments(appointments.size())
+                .currentMonthTotalAppointments(currentMonthAppointments.size())
+                .previousTotalAppointments(previousMonthAppointments.size())
                 .pendingAppointments(pendingAppointments)
                 .acceptedAppointments(acceptedAppointments)
                 .rejectedAppointments(rejectedAppointments)
                 .canceledAppointments(canceledAppointments)
                 .completedAppointments(completedAppointments)
                 .upcomingAppointments(upcomingAppointments)
+                .currentMonthUpcomingAppointments(currentMonthUpcomingAppointments)
+                .previousUpcomingAppointments(previousMonthUpcomingAppointments)
                 .build();
     }
 

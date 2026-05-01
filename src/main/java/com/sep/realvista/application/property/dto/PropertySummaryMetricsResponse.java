@@ -7,6 +7,8 @@ import lombok.Value;
 @Builder
 public class PropertySummaryMetricsResponse {
     long totalProperties;
+    long currentMonthTotalProperties;
+    long previousTotalProperties;
     long availableProperties;
     long reservedProperties;
     long soldProperties;

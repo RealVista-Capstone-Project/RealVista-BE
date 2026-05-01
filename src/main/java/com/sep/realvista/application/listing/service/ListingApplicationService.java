@@ -69,6 +69,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -869,15 +871,39 @@ public class ListingApplicationService {
         log.info("Fetching managed listings summary for user ID: {}", userId);
 
         List<Listing> allListings = listingRepository.findByUserIdOrPropertyOwnerId(userId);
+        LocalDate currentMonthStartDate = LocalDate.now().withDayOfMonth(1);
+        LocalDate previousMonthStartDate = currentMonthStartDate.minusMonths(1);
+        LocalDate nextMonthStartDate = currentMonthStartDate.plusMonths(1);
+        LocalDateTime currentMonthStart = currentMonthStartDate.atStartOfDay();
+        LocalDateTime previousMonthStart = previousMonthStartDate.atStartOfDay();
+        LocalDateTime nextMonthStart = nextMonthStartDate.atStartOfDay();
 
         long total = allListings.size();
         long rent = allListings.stream().filter(l -> ListingType.RENT.equals(l.getListingType())).count();
         long sale = allListings.stream().filter(l -> ListingType.SALE.equals(l.getListingType())).count();
+        long currentMonthAll = listingRepository.countByUserIdOrPropertyOwnerIdAndCreatedAtBetween(
+                userId, currentMonthStart, nextMonthStart);
+        long previousAll = listingRepository.countByUserIdOrPropertyOwnerIdAndCreatedAtBetween(
+                userId, previousMonthStart, currentMonthStart);
+        long currentMonthRent = listingRepository.countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+                userId, ListingType.RENT, currentMonthStart, nextMonthStart);
+        long previousRent = listingRepository.countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+                userId, ListingType.RENT, previousMonthStart, currentMonthStart);
+        long currentMonthSale = listingRepository.countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+                userId, ListingType.SALE, currentMonthStart, nextMonthStart);
+        long previousSale = listingRepository.countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+                userId, ListingType.SALE, previousMonthStart, currentMonthStart);
 
         return ManagedListingSummaryDTO.builder()
                 .all(total)
                 .rent(rent)
                 .sale(sale)
+                .currentMonthAll(currentMonthAll)
+                .currentMonthRent(currentMonthRent)
+                .currentMonthSale(currentMonthSale)
+                .previousAll(previousAll)
+                .previousRent(previousRent)
+                .previousSale(previousSale)
                 .build();
     }
 

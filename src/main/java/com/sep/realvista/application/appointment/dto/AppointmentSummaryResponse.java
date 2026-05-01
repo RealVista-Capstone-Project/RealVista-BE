@@ -7,10 +7,14 @@ import lombok.Value;
 @Builder
 public class AppointmentSummaryResponse {
     long totalAppointments;
+    long currentMonthTotalAppointments;
+    long previousTotalAppointments;
     long pendingAppointments;
     long acceptedAppointments;
     long rejectedAppointments;
     long canceledAppointments;
     long completedAppointments;
     long upcomingAppointments;
+    long currentMonthUpcomingAppointments;
+    long previousUpcomingAppointments;
 }
