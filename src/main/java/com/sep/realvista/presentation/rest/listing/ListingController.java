@@ -152,9 +152,11 @@ public class ListingController {
                         }
                         
                         // Enforce access control for BANNED listings
-                        if (listing.getStatus() == com.sep.realvista.domain.listing.ListingStatus.BANNED && !isAdmin) {
+                        if (listing.getStatus() == com.sep.realvista.domain.listing.ListingStatus.BANNED
+                                        && !isAdmin) {
                                 log.warn("Access denied to BANNED listing {} for user {}", idOrSlug, userId);
-                                throw new com.sep.realvista.domain.common.exception.ResourceNotFoundException("Listing", idOrSlug);
+                                throw new com.sep.realvista.domain.common.exception.ResourceNotFoundException(
+                                                "Listing", idOrSlug);
                         }
 
                         return ResponseEntity.ok(ApiResponse.success("Listing retrieved successfully", listing));

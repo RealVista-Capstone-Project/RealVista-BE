@@ -4,7 +4,6 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.report.ReportApplicationService;
 import com.sep.realvista.application.report.dto.ReportDto;
-import com.sep.realvista.domain.report.ReportStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

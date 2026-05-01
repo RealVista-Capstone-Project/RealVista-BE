@@ -7,8 +7,6 @@ import com.sep.realvista.application.listing.service.ListingApplicationService;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.report.Report;
 import com.sep.realvista.domain.report.ReportRepository;
-import com.sep.realvista.domain.report.ReportStatus;
-import com.sep.realvista.domain.report.ReportTargetType;
 import com.sep.realvista.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
