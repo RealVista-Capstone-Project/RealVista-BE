@@ -118,7 +118,7 @@ public interface ListingRepository {
 
     List<Object[]> findTopListings(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
 
-    List<Object[]> findTopAgents(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+    long countByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
 
     long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
 }

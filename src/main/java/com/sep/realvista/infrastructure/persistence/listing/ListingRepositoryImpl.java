@@ -49,8 +49,8 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
     
     @Override
-    public List<Object[]> findTopAgents(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
-        return jpaRepository.findTopAgents(startDate, endDate, pageable);
+    public long countByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end) {
+        return jpaRepository.countByUserIdAndCreatedAtBetween(userId, start, end);
     }
 
     @Override

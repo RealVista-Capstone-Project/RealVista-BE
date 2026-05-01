@@ -2,6 +2,7 @@ package com.sep.realvista.infrastructure.persistence.billing;
 
 import com.sep.realvista.domain.billing.transaction.Transaction;
 import com.sep.realvista.domain.billing.transaction.TransactionRepository;
+import com.sep.realvista.domain.billing.transaction.PaymentStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -62,10 +63,16 @@ public class TransactionRepositoryImpl implements TransactionRepository {
 
     @Override
     public double sumTotalAmountByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end) {
-        List<Transaction> transactions = jpa.findAllByCreatedAtBetween(start, end);
+        List<Transaction> transactions = jpa.findAllByCreatedAtBetweenAndPaymentStatus(
+                start, end, PaymentStatus.COMPLETED);
         return transactions.stream()
                 .map(Transaction::getAmount)
                 .mapToDouble(java.math.BigDecimal::doubleValue)
                 .sum();
+    }
+
+    @Override
+    public double sumTotalAmountByPaymentStatus(PaymentStatus status) {
+        return jpa.sumTotalAmountByPaymentStatus(status);
     }
 }

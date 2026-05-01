@@ -160,12 +160,6 @@ class AppointmentApplicationServiceTest {
         when(settingPreferenceRepository.findByUserId(any()))
                 .thenReturn(java.util.Optional.empty());
 
-        when(notificationMessageService.getMessage(anyString(), anyString()))
-                .thenReturn("Mock Title");
-        
-        when(notificationMessageService.getMessage(anyString(), anyString(), any(), any(), any(), any()))
-                .thenReturn("Mock Message");
-
         // Act
         applicationService.bookTour(userId, request);
 
@@ -182,23 +176,23 @@ class AppointmentApplicationServiceTest {
         assertThat(lead.getEmail()).isEqualTo("sender@test.com");
 
         // Verify confirmation email sent to sender
-        verify(emailService).sendTemplateMessageAsync(
+        verify(emailService).sendDbTemplateMessageAsync(
                 eq("sender@test.com"),
-                eq("Đặt lịch tham quan: Test Listing"),
-                eq("tour-booking-confirmation"),
+                eq("TOUR_BOOKING_CONFIRMATION"),
+                eq("vi"),
                 anyMap()
         );
 
         // Verify notification email sent to owner
-        verify(emailService).sendTemplateMessageAsync(
+        verify(emailService).sendDbTemplateMessageAsync(
                 eq("owner@test.com"),
-                eq("Yêu cầu tham quan mới: Test Listing"),
-                eq("tour-booking-notification"),
+                eq("TOUR_BOOKING_NOTIFICATION"),
+                eq("vi"),
                 anyMap()
         );
 
-        // Verify in-app/push notifications sent to both owner and sender
+        // Verify in-app notifications sent to both owner and sender
         verify(notificationApplicationService, atLeastOnce())
-                .sendNotification(any(SendNotificationRequest.class));
+                .sendDbNotification(any(), anyString(), anyString(), anyMap(), any(), any(), any());
     }
 }

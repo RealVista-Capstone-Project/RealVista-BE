@@ -15,6 +15,7 @@ public interface TransactionRepository {
     double sumTotalAmount();
     List<Transaction> findAllByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
     double sumTotalAmountByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+    double sumTotalAmountByPaymentStatus(PaymentStatus status);
 }
 
 

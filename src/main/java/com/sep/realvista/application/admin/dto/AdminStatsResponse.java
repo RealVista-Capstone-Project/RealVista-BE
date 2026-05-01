@@ -39,6 +39,7 @@ public class AdminStatsResponse {
         private long views;
         private long interactions;
         private double revenue;
+        private Map<String, Double> breakdown;
         private String trend; // "up", "down", "stable"
     }
 

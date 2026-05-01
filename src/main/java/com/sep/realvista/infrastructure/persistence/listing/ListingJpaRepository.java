@@ -72,33 +72,24 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     List<Listing> findTop10ByOrderByUpdatedAtDesc();
     
     
-    @Query("SELECT l.listingId, l.name, m.thumbnailUrl, COALESCE(SUM(bp.price), 0) FROM Listing l "
+    @Query("SELECT l.listingId, l.name, m.thumbnailUrl, "
+            + "COALESCE(SUM(bp.price * 1.0 / NULLIF(bp.featuredQuota + bp.hotBadgeQuota, 0)), 0), "
+            + "COUNT(CASE WHEN b.boostType = 'FEATURED' THEN 1 END), "
+            + "COUNT(CASE WHEN b.boostType = 'HOT_BADGE' THEN 1 END) "
+            + "FROM Listing l "
             + "LEFT JOIN l.property p "
             + "LEFT JOIN p.mediaList m ON m.isPrimary = true "
             + "LEFT JOIN l.boosts b ON b.deleted = false AND b.createdAt BETWEEN :startDate AND :endDate "
             + "LEFT JOIN b.boostPackage bp "
             + "WHERE l.deleted = false AND l.status <> com.sep.realvista.domain.listing.ListingStatus.BANNED "
             + "GROUP BY l.listingId, l.name, m.thumbnailUrl "
-            + "ORDER BY SUM(bp.price) DESC")
+            + "ORDER BY COALESCE(SUM(bp.price * 1.0 / NULLIF(bp.featuredQuota + bp.hotBadgeQuota, 0)), 0) DESC, "
+            + "l.name ASC")
     List<Object[]> findTopListings(@Param("startDate") LocalDateTime startDate, 
                                   @Param("endDate") LocalDateTime endDate,
                                   Pageable pageable);
 
-    @Query("SELECT u.userId, u.businessName, u.email.value, u.avatarUrl, "
-            + "COUNT(DISTINCT l.listingId), "
-            + "(COALESCE((SELECT SUM(bp.price) FROM ListingBoost b JOIN b.boostPackage bp "
-            + "WHERE b.userId = u.userId AND b.deleted = false AND b.createdAt BETWEEN :startDate AND :endDate), 0) + "
-            + " COALESCE((SELECT SUM(fp.price) FROM UserFeatureSubscription s JOIN s.featurePackage fp "
-            + "WHERE s.userId = u.userId AND s.deleted = false "
-            + "AND s.createdAt BETWEEN :startDate AND :endDate), 0)) as total_revenue "
-            + "FROM User u "
-            + "LEFT JOIN Listing l ON u.userId = l.userId AND l.deleted = false "
-            + "AND l.createdAt BETWEEN :startDate AND :endDate "
-            + "GROUP BY u.userId, u.businessName, u.email.value, u.avatarUrl "
-            + "ORDER BY total_revenue DESC")
-    List<Object[]> findTopAgents(@Param("startDate") LocalDateTime startDate, 
-                                @Param("endDate") LocalDateTime endDate,
-                                Pageable pageable);
+    long countByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
