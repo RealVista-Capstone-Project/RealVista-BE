@@ -8,11 +8,14 @@ import com.docusign.esign.model.Document;
 import com.docusign.esign.model.EnvelopeDefinition;
 import com.docusign.esign.model.EnvelopeSummary;
 import com.docusign.esign.model.RecipientViewRequest;
+import com.docusign.esign.model.RecipientPhoneAuthentication;
 import com.docusign.esign.model.Recipients;
 import com.docusign.esign.model.SignHere;
 import com.docusign.esign.model.Signer;
 import com.docusign.esign.model.Tabs;
-import com.docusign.esign.model.TemplateRole;
+import com.docusign.esign.model.CompositeTemplate;
+import com.docusign.esign.model.ServerTemplate;
+import com.docusign.esign.model.InlineTemplate;
 import com.docusign.esign.model.Text;
 import com.docusign.esign.model.ViewUrl;
 import com.sep.realvista.application.listing.contract.dto.LeaseTemplateData;
@@ -119,6 +122,7 @@ public class DocuSignServiceImpl implements DocuSignService {
             String documentName,
             String signerEmail,
             String signerName,
+            String signerPhone,
             String signerClientUserId) {
 
         if (!isAvailable()) {
@@ -129,10 +133,10 @@ public class DocuSignServiceImpl implements DocuSignService {
         ensureAuthenticated();
 
         try {
+            Signer signer = buildSigner(signerEmail, signerName, signerPhone, signerClientUserId, "1");
             EnvelopeDefinition envelope = buildEnvelopeDefinition(
                     documentBytes, documentName,
-                    signerEmail, signerName, signerClientUserId,
-                    "1", SIGNING_STATUS
+                    signer, SIGNING_STATUS
             );
 
             EnvelopesApi envelopesApi = new EnvelopesApi(apiClient);
@@ -208,6 +212,7 @@ public class DocuSignServiceImpl implements DocuSignService {
             String documentName,
             String signerEmail,
             String signerName,
+            String signerPhone,
             String signerClientUserId) {
 
         if (!isAvailable()) {
@@ -224,12 +229,12 @@ public class DocuSignServiceImpl implements DocuSignService {
                 log.info("Envelope {} is {}, creating new envelope for landlord", envelopeId, status);
                 return createEnvelopeForSigning(
                         documentBytes, documentName,
-                        signerEmail, signerName, signerClientUserId
+                        signerEmail, signerName, signerPhone, signerClientUserId
                 );
             }
 
             // Add landlord as a new recipient to the existing envelope (routing order 2)
-            Signer landlordSigner = buildSigner(signerEmail, signerName, signerClientUserId, "2");
+            Signer landlordSigner = buildSigner(signerEmail, signerName, signerPhone, signerClientUserId, "2");
 
             Recipients recipients = new Recipients();
             recipients.setSigners(List.of(landlordSigner));
@@ -291,28 +296,61 @@ public class DocuSignServiceImpl implements DocuSignService {
                     buildTextTab("contractYear", data.getContractYear())
             ));
 
-            // Landlord role (routing order 1 — signs first)
-            TemplateRole landlordRole = new TemplateRole();
-            landlordRole.setEmail(data.getLandlordEmail());
-            landlordRole.setName(data.getLandlordName());
-            landlordRole.setRoleName("landlord");
-            landlordRole.setClientUserId(data.getLandlordClientUserId());
-            landlordRole.setRoutingOrder("1");
-            landlordRole.setTabs(landlordTabs);
+            // Landlord Signer (routing order 1 — signs first)
+            Signer landlordSigner = new Signer();
+            landlordSigner.setEmail(data.getLandlordEmail());
+            landlordSigner.setName(data.getLandlordName());
+            landlordSigner.setRoleName("landlord");
+            landlordSigner.setRecipientId("1");
+            landlordSigner.setRoutingOrder("1");
+            landlordSigner.setClientUserId(data.getLandlordClientUserId());
+            landlordSigner.setTabs(landlordTabs);
 
-            // Renter role (routing order 2 — signs after landlord)
-            TemplateRole renterRole = new TemplateRole();
-            renterRole.setEmail(data.getRenterEmail());
-            renterRole.setName(data.getRenterName());
-            renterRole.setRoleName("renter");
-            renterRole.setClientUserId(data.getRenterClientUserId());
-            renterRole.setRoutingOrder("2");
-            renterRole.setTabs(renterTabs);
+            if (StringUtils.hasText(data.getLandlordPhone())) {
+                String formattedPhone = formatPhoneWithCountryCode(data.getLandlordPhone());
+                RecipientPhoneAuthentication phoneAuth = new RecipientPhoneAuthentication();
+                phoneAuth.setSenderProvidedNumbers(List.of(formattedPhone));
+                landlordSigner.setPhoneAuthentication(phoneAuth);
+                landlordSigner.setRequireIdLookup("true");
+                landlordSigner.setIdCheckConfigurationName("Phone Auth $");
+            }
 
-            // Build envelope from template
+            // Renter Signer (routing order 2 — signs after landlord)
+            Signer renterSigner = new Signer();
+            renterSigner.setEmail(data.getRenterEmail());
+            renterSigner.setName(data.getRenterName());
+            renterSigner.setRoleName("renter");
+            renterSigner.setRecipientId("2");
+            renterSigner.setRoutingOrder("2");
+            renterSigner.setClientUserId(data.getRenterClientUserId());
+            renterSigner.setTabs(renterTabs);
+
+            if (StringUtils.hasText(data.getRenterPhone())) {
+                String formattedPhone = formatPhoneWithCountryCode(data.getRenterPhone());
+                RecipientPhoneAuthentication phoneAuth = new RecipientPhoneAuthentication();
+                phoneAuth.setSenderProvidedNumbers(List.of(formattedPhone));
+                renterSigner.setPhoneAuthentication(phoneAuth);
+                renterSigner.setRequireIdLookup("true");
+                renterSigner.setIdCheckConfigurationName("Phone Auth $");
+            }
+
+            Recipients recipients = new Recipients();
+            recipients.setSigners(List.of(landlordSigner, renterSigner));
+
+            InlineTemplate inlineTemplate = new InlineTemplate();
+            inlineTemplate.setSequence("2");
+            inlineTemplate.setRecipients(recipients);
+
+            ServerTemplate serverTemplate = new ServerTemplate();
+            serverTemplate.setSequence("1");
+            serverTemplate.setTemplateId(templateId);
+
+            CompositeTemplate compositeTemplate = new CompositeTemplate();
+            compositeTemplate.setServerTemplates(List.of(serverTemplate));
+            compositeTemplate.setInlineTemplates(List.of(inlineTemplate));
+
             EnvelopeDefinition envelope = new EnvelopeDefinition();
-            envelope.setTemplateId(templateId);
-            envelope.setTemplateRoles(List.of(renterRole, landlordRole));
+            envelope.setCompositeTemplates(List.of(compositeTemplate));
             envelope.setStatus(SIGNING_STATUS);
 
             EnvelopesApi envelopesApi = new EnvelopesApi(apiClient);
@@ -370,10 +408,7 @@ public class DocuSignServiceImpl implements DocuSignService {
     private EnvelopeDefinition buildEnvelopeDefinition(
             byte[] documentBytes,
             String documentName,
-            String signerEmail,
-            String signerName,
-            String signerClientUserId,
-            String routingOrder,
+            Signer signer,
             String status) {
 
         // Build document
@@ -382,9 +417,6 @@ public class DocuSignServiceImpl implements DocuSignService {
         document.setName(documentName);
         document.setFileExtension("pdf");
         document.setDocumentId("1");
-
-        // Build signer with embedded signing (clientUserId set)
-        Signer signer = buildSigner(signerEmail, signerName, signerClientUserId, routingOrder);
 
         // Build envelope
         EnvelopeDefinition envelope = new EnvelopeDefinition();
@@ -397,7 +429,7 @@ public class DocuSignServiceImpl implements DocuSignService {
         return envelope;
     }
 
-    private Signer buildSigner(String email, String name, String clientUserId, String routingOrder) {
+    private Signer buildSigner(String email, String name, String phone, String clientUserId, String routingOrder) {
         // Sign-here tab placed at bottom of the last page
         SignHere signHere = new SignHere();
         signHere.setAnchorString("/sig1/");
@@ -420,8 +452,35 @@ public class DocuSignServiceImpl implements DocuSignService {
         signer.setRoutingOrder(routingOrder);
         signer.setTabs(tabs);
 
+        if (StringUtils.hasText(phone)) {
+            String formattedPhone = formatPhoneWithCountryCode(phone);
+            RecipientPhoneAuthentication phoneAuth = new RecipientPhoneAuthentication();
+            phoneAuth.setSenderProvidedNumbers(List.of(formattedPhone));
+            signer.setPhoneAuthentication(phoneAuth);
+            signer.setRequireIdLookup("true");
+            signer.setIdCheckConfigurationName("Phone Auth $");
+        }
+
         return signer;
     }
+
+    private String formatPhoneWithCountryCode(String phone) {
+        if (phone == null) {
+            return null;
+        }
+        String formatted = phone.trim();
+        // If it starts with 0 (e.g. 0912345678), convert it to +84
+        if (formatted.startsWith("0") && formatted.length() > 9) {
+            return "+84" + formatted.substring(1);
+        }
+        // If it already has +, return as is
+        if (formatted.startsWith("+")) {
+            return formatted;
+        }
+        // Otherwise prepend + for international format
+        return "+" + formatted;
+    }
+
 
     private Text buildTextTab(String tabLabel, String value) {
         Text text = new Text();

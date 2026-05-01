@@ -137,9 +137,9 @@ public class LeaseAgreementController {
 
   @GetMapping("/agent/{agentId}")
   @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
-  @Operation(summary = "List leases by agent",
+  @Operation(summary = "List leases by agent", 
       description = "Returns all rental contracts that the agent facilitated (agentId matches). "
-          + "Supports optional status filtering and pagination.")
+      + "Supports optional status filtering and pagination.")
   public ResponseEntity<ApiResponse<PageResponse<LeaseResponse>>> getLeasesByAgent(
       @PathVariable UUID agentId,
       @Parameter(description = "Filter by lease status (e.g. ACTIVE, EXPIRED, TERMINATED). Omit to return all.")
@@ -154,10 +154,10 @@ public class LeaseAgreementController {
 
   @PostMapping("/{id}/send-renter")
   @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
-  @Operation(summary = "Send lease to renter for signing (second step)",
+  @Operation(summary = "Send lease to renter for signing (second step)", 
       description = "After the landlord has signed, call this to get an embedded signing URL for the renter. "
-          + "The lease must be in PENDING_LANDLORD status. "
-          + "The frontend should redirect the renter to the returned signingUrl.")
+      + "The lease must be in PENDING_LANDLORD status. "
+      + "The frontend should redirect the renter to the returned signingUrl.")
   public ResponseEntity<ApiResponse<SigningUrlResponse>> sendToRenterForSigning(
       @PathVariable UUID id,
       @Parameter(description = "Locale for the return URL path segment (default: vi)")
@@ -168,9 +168,9 @@ public class LeaseAgreementController {
 
   @GetMapping("/{id}/renter-signing-url")
   @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'TENANT', 'ADMIN')")
-  @Operation(summary = "Get renter embedded signing URL",
+  @Operation(summary = "Get renter embedded signing URL", 
       description = "Regenerates the DocuSign embedded signing URL for the renter. "
-          + "URLs expire in ~5 minutes so this can be called to refresh.")
+      + "URLs expire in ~5 minutes so this can be called to refresh.")
   public ResponseEntity<ApiResponse<SigningUrlResponse>> getRenterSigningUrl(
       @PathVariable UUID id,
       @Parameter(description = "Locale for the return URL path segment (default: vi)")
@@ -181,9 +181,9 @@ public class LeaseAgreementController {
 
   @PostMapping("/{id}/send-landlord")
   @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
-  @Operation(summary = "Send lease to landlord for signing (first step)",
+  @Operation(summary = "Send lease to landlord for signing (first step)", 
       description = "Creates a DocuSign envelope and returns an embedded signing URL for the landlord. "
-          + "Landlord signs first; after signing, call send-renter to get the renter signing URL.")
+      + "Landlord signs first; after signing, call send-renter to get the renter signing URL.")
   public ResponseEntity<ApiResponse<SigningUrlResponse>> sendToLandlordForSigning(
       @PathVariable UUID id,
       @Parameter(description = "Locale for the return URL path segment (default: vi)")
@@ -194,7 +194,7 @@ public class LeaseAgreementController {
 
   @GetMapping("/{id}/landlord-signing-url")
   @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
-  @Operation(summary = "Get landlord embedded signing URL",
+  @Operation(summary = "Get landlord embedded signing URL", 
       description = "Regenerates the DocuSign embedded signing URL for the landlord.")
   public ResponseEntity<ApiResponse<SigningUrlResponse>> getLandlordSigningUrl(
       @PathVariable UUID id,
@@ -208,10 +208,10 @@ public class LeaseAgreementController {
 
   @PostMapping("/{id}/confirm-landlord-signed")
   @PreAuthorize("hasAnyRole('OWNER', 'AGENT', 'ADMIN')")
-  @Operation(summary = "Confirm landlord has signed",
+  @Operation(summary = "Confirm landlord has signed", 
       description = "Transitions the lease from PENDING_LANDLORD to PENDING_RENTER. "
-          + "Call this endpoint after DocuSign redirects back to the frontend "
-          + "with event=signing_complete on the landlord return URL.")
+      + "Call this endpoint after DocuSign redirects back to the frontend "
+      + "with event=signing_complete on the landlord return URL.")
   public ResponseEntity<ApiResponse<LeaseResponse>> confirmLandlordSigned(@PathVariable UUID id) {
     return ResponseEntity.ok(ApiResponse.success(
         "Landlord signing confirmed, lease is now pending renter",
@@ -230,9 +230,9 @@ public class LeaseAgreementController {
 
   @PutMapping("/{id}/terminate")
   @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
-  @Operation(summary = "Terminate active lease agreement",
+  @Operation(summary = "Terminate active lease agreement", 
       description = "Terminates an ACTIVE lease. Caller must be the landlord of the lease. "
-          + "The property is automatically reset to AVAILABLE and the renter is notified.")
+      + "The property is automatically reset to AVAILABLE and the renter is notified.")
   public ResponseEntity<ApiResponse<LeaseResponse>> terminateLease(
       @PathVariable UUID id,
       @RequestBody(required = false) TerminateLeaseRequest request) {
@@ -243,9 +243,9 @@ public class LeaseAgreementController {
   // ── DocuSign Webhook (Public — no auth required) ──────────────────────────
 
   @PostMapping("/docusign/webhook")
-  @Operation(summary = "DocuSign Connect webhook",
+  @Operation(summary = "DocuSign Connect webhook", 
       description = "Receives envelope status update events from DocuSign Connect. "
-          + "Payload is HMAC-verified using the configured webhook key.")
+      + "Payload is HMAC-verified using the configured webhook key.")
   public ResponseEntity<Void> docuSignWebhook(
       @RequestHeader(value = "X-DocuSign-Signature-1", required = false) String hmacSignature,
       @RequestBody byte[] payload) {
