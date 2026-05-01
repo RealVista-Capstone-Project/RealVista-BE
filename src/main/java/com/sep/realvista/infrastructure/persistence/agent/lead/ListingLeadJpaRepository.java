@@ -138,4 +138,44 @@ public interface ListingLeadJpaRepository extends JpaRepository<ListingLead, UUI
                                             @Param("toExclusive") LocalDateTime toExclusive,
                                             @Param("listingId") UUID listingId,
                                             @Param("query") String query);
+
+    @Query("""
+            SELECT l.status, COUNT(l) FROM ListingLead l
+            WHERE l.agentId = :agentId
+              AND l.deleted = false
+              AND (:listingId IS NULL OR l.listingId = :listingId)
+              AND l.createdAt >= :from
+              AND l.createdAt < :toExclusive
+              AND (
+                :query IS NULL
+                OR LOWER(COALESCE(l.fullName, '')) LIKE :query
+                OR LOWER(COALESCE(l.email, '')) LIKE :query
+                OR LOWER(COALESCE(l.phone, '')) LIKE :query
+                OR EXISTS (
+                    SELECT n FROM LeadNote n
+                    WHERE n.listingLeadId = l.listingLeadId
+                      AND n.deleted = false
+                      AND LOWER(COALESCE(n.content, '')) LIKE :query
+                )
+                OR EXISTS (
+                    SELECT listing FROM Listing listing
+                    WHERE listing.listingId = l.listingId
+                      AND listing.deleted = false
+                      AND LOWER(COALESCE(listing.name, '')) LIKE :query
+                )
+              )
+            GROUP BY l.status
+            """)
+    List<Object[]> countByStatusWithFilters(@Param("agentId") UUID agentId,
+                                            @Param("from") LocalDateTime from,
+                                            @Param("toExclusive") LocalDateTime toExclusive,
+                                            @Param("listingId") UUID listingId,
+                                            @Param("query") String query);
+
+    @Query("""
+            SELECT l.listingId, COUNT(l) FROM ListingLead l
+            WHERE l.agentId = :agentId AND l.deleted = false
+            GROUP BY l.listingId
+            """)
+    List<Object[]> countByAgentIdGroupedByListingId(@Param("agentId") UUID agentId);
 }

@@ -38,6 +38,14 @@ public interface ListingRepository {
 
     List<Listing> findByUserIdOrPropertyOwnerId(UUID userId);
 
+    long countByUserIdOrPropertyOwnerIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
+
+    long countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+            UUID userId,
+            ListingType listingType,
+            LocalDateTime start,
+            LocalDateTime end);
+
     List<Listing> findByStatus(ListingStatus status);
 
     List<Listing> findByListingTypeAndStatus(ListingType listingType, ListingStatus status);
