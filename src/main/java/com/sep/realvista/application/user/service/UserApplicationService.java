@@ -640,10 +640,15 @@ public class UserApplicationService {
 
         String otp = otpService.generateAndStore(EMAIL_OTP_PREFIX + userId, OTP_EXPIRY_MINUTES);
         String fullName = user.getFullName();
-        emailService.sendTemplateMessageAsync(
+        
+        SettingPreference prefs = settingPreferenceRepository.findByUserId(userId)
+                .orElse(null);
+        String lang = (prefs != null && prefs.getPreferredLanguage() != null) ? prefs.getPreferredLanguage() : "vi";
+
+        emailService.sendDbTemplateMessageAsync(
                 normalizedEmail,
-                "Mã xác minh email RealVista",
-                "email-otp",
+                "EMAIL_OTP",
+                lang,
                 Map.of(
                         "userName", fullName != null && !fullName.isBlank() ? fullName : normalizedEmail,
                         "otp", otp,

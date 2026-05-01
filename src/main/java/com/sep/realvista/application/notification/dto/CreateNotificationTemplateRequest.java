@@ -5,13 +5,13 @@ import lombok.Data;
 
 @Data
 public class CreateNotificationTemplateRequest {
-    @JsonProperty("templateKey")
+    @JsonProperty("template_key")
     private String templateKey;
     private String name;
     private String type;
     private String language;
     private String title;
-    @JsonProperty("contentBody")
+    @JsonProperty("content_body")
     private String contentBody;
 }
 

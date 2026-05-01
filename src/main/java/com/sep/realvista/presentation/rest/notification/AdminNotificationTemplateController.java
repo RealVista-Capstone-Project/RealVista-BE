@@ -5,6 +5,7 @@ import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.notification.dto.CreateNotificationTemplateRequest;
 import com.sep.realvista.application.notification.dto.NotificationTemplateResponse;
 import com.sep.realvista.application.notification.dto.UpdateNotificationTemplateRequest;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.notification.service.NotificationTemplateApplicationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,7 @@ public class AdminNotificationTemplateController {
     private final NotificationTemplateApplicationService templateService;
     private final TemplateEngineService engineService;
     private final EmailService emailService;
+    private final NotificationApplicationService notificationService;
     private final FirebaseNotificationService fcmService;
     private final UserApplicationService userService;
 
@@ -149,9 +151,16 @@ public class AdminNotificationTemplateController {
         if ("EMAIL".equalsIgnoreCase(request.getType())) {
             emailService.sendHtmlMessage(user.getEmail(), rendered.title(), rendered.body());
         } else if ("IN_APP".equalsIgnoreCase(request.getType())) {
-            // Here we would ideally send a real FCM notification, but for test-send
-            // we can at least log it or send to the admin's logged-in device if available.
-            // For now, let's just log success as a placeholder if FCM tokens aren't easily retrievable in this context.
+            notificationService.sendNotification(com.sep.realvista.application.notification.dto.SendNotificationRequest.builder()
+                    .userId(user.getUserId())
+                    .userEmail(user.getEmail())
+                    .title(rendered.title())
+                    .message(rendered.body())
+                    .eventType(com.sep.realvista.domain.user.notification.EventType.SYSTEM)
+                    .entityType(null)
+                    .entityId(null)
+                    .metadata(new HashMap<>())
+                    .build());
             log.info("Test-send Notification to {}: {} - {}", user.getFullName(), rendered.title(), rendered.body());
         }
 

@@ -1,6 +1,9 @@
 package com.sep.realvista.infrastructure.external.email;
 
 import com.sep.realvista.application.service.EmailService;
+import com.sep.realvista.application.service.TemplateEngineService;
+import com.sep.realvista.domain.user.notification.NotificationTemplate;
+import com.sep.realvista.domain.user.notification.NotificationTemplateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +22,8 @@ public class EmailServiceImpl implements EmailService {
 
     private final EmailProvider emailProvider;
     private final SpringTemplateEngine templateEngine;
+    private final NotificationTemplateRepository templateRepository;
+    private final TemplateEngineService dbTemplateEngine;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -89,6 +94,38 @@ public class EmailServiceImpl implements EmailService {
             return CompletableFuture.completedFuture(null);
         } catch (Exception e) {
             log.error("Async template email '{}' to {} failed: {}", templateName, to, e.getMessage(), e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    @Override
+    public void sendDbTemplateMessage(String to, String templateKey, String language, Map<String, Object> variables) {
+        try {
+            NotificationTemplate template = templateRepository.findByTemplateKeyAndLanguage(templateKey, language)
+                    .orElseThrow(() -> new RuntimeException("Email template not found: " + templateKey + " (" + language + ")"));
+
+            TemplateEngineService.RenderedTemplate rendered = dbTemplateEngine.preview(
+                    template.getTitle(),
+                    template.getContentBody(),
+                    variables
+            );
+
+            sendHtmlMessage(to, rendered.title(), rendered.body());
+        } catch (Exception e) {
+            log.error("Failed to send DB template email '{}' to {}: {}", templateKey, to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send DB template email: " + e.getMessage(), e);
+        }
+    }
+
+    @Async
+    @Override
+    public CompletableFuture<Void> sendDbTemplateMessageAsync(String to, String templateKey, String language,
+                                                              Map<String, Object> variables) {
+        try {
+            sendDbTemplateMessage(to, templateKey, language, variables);
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("Async DB template email '{}' to {} failed: {}", templateKey, to, e.getMessage(), e);
             return CompletableFuture.failedFuture(e);
         }
     }

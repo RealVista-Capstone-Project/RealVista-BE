@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sep.realvista.application.service.TemplateEngineService;
 
 import java.util.UUID;
 
@@ -19,13 +20,12 @@ import java.util.UUID;
 public class NotificationTemplateApplicationService {
 
     private final NotificationTemplateRepository repository;
+    private final TemplateEngineService templateEngineService;
 
     @Transactional(readOnly = true)
     public Page<NotificationTemplateResponse> getAllTemplates(String search, String type, Pageable pageable) {
-        if (search != null && !search.isEmpty()) {
-            return repository.findByNameContainingIgnoreCase(search, pageable).map(this::toDto);
-        }
-        return repository.findAll(pageable).map(this::toDto);
+        String searchKey = search != null ? search : "";
+        return repository.searchTemplates(searchKey, type, pageable).map(this::toDto);
     }
 
     @Transactional(readOnly = true)
@@ -44,6 +44,9 @@ public class NotificationTemplateApplicationService {
                 .title(request.getTitle())
                 .contentBody(request.getContentBody())
                 .build();
+
+        validateTemplate(template.getTemplateKey(), template.getTitle(), template.getContentBody());
+
         return toDto(repository.save(template));
     }
 
@@ -53,11 +56,22 @@ public class NotificationTemplateApplicationService {
         
         template.update(request.getName(), request.getTitle(), request.getContentBody());
 
+        validateTemplate(template.getTemplateKey(), template.getTitle(), template.getContentBody());
+
         return toDto(repository.save(template));
     }
 
     public void deleteTemplate(UUID id) {
         repository.deleteById(id);
+    }
+
+    private void validateTemplate(String key, String title, String content) {
+        String combined = (title != null ? title : "") + " " + (content != null ? content : "");
+        java.util.List<String> missing = templateEngineService.validateRequiredVariables(key, combined);
+        if (!missing.isEmpty()) {
+            throw new RuntimeException("Missing required variables for template " + key 
+                    + ": " + String.join(", ", missing));
+        }
     }
 
     private NotificationTemplateResponse toDto(NotificationTemplate template) {

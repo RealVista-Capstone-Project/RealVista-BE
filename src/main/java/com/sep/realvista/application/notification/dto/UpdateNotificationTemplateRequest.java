@@ -7,7 +7,7 @@ import lombok.Data;
 public class UpdateNotificationTemplateRequest {
     private String name;
     private String title;
-    @JsonProperty("contentBody")
+    @JsonProperty("content_body")
     private String contentBody;
 }
 
