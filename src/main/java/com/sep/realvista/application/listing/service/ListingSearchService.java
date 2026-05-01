@@ -8,6 +8,7 @@ import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
+import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.PropertyMedia;
@@ -55,6 +56,7 @@ public class ListingSearchService {
     private final PropertyAttributeValueJpaRepository propertyAttributeValueRepository;
     private final LocationRepository locationRepository;
     private final ListingBoostRepository listingBoostRepository;
+    private final ListingMediaRepository listingMediaRepository;
 
     private static final class ListingFields {
         static final String STATUS = "status";
@@ -142,8 +144,15 @@ public class ListingSearchService {
                 .stream()
                 .collect(Collectors.groupingBy(ListingBoost::getListingId));
 
+        // Bulk fetch listing IDs that have 3D media
+        Set<UUID> listingIdsWith3D = listingMediaRepository
+                .findListingIdsWith3DMedia(listingIds)
+                .stream()
+                .collect(Collectors.toSet());
+
         // Final reference for use inside lambda
         final Set<UUID> finalBookmarkedIds = bookmarkedIds;
+        final Set<UUID> finalListingIdsWith3D = listingIdsWith3D;
 
         // Map to response and populate thumbnails + isFavorite + attributes
         return listings.map(listing -> {
@@ -184,6 +193,9 @@ public class ListingSearchService {
                 response.setIsBoosted(false);
                 response.setBoostPackages(List.of());
             }
+
+            // Populate has3d flag
+            response.setHas3d(finalListingIdsWith3D.contains(listing.getListingId()));
 
             // Populate user type (Agent/Owner)
             if (listing.getUser() != null && listing.getUser().getUserRoles() != null) {

@@ -101,6 +101,9 @@ public class ListingSearchResponse {
     @JsonProperty("property_category_name")
     private String propertyCategoryName;
 
+    @JsonProperty("has_3d")
+    private Boolean has3d;
+
     @JsonProperty("full_address")
     public String getFullAddress() {
         return AddressFormatter.formatFullAddress(streetAddress, wardName, districtName, cityName);

@@ -33,4 +33,14 @@ public interface ListingMediaJpaRepository extends JpaRepository<ListingMedia, U
         @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId IN :listingIds "
                         + "AND lm.isPrimary = true AND lm.deleted = false")
         List<ListingMedia> findPrimaryByListingIds(@Param("listingIds") List<UUID> listingIds);
+
+        /**
+         * Find all listing IDs that have 3D media among the given listing IDs.
+         * Returns distinct listing IDs that have at least one non-deleted 3D media.
+         */
+        @Query("SELECT DISTINCT lm.listingId FROM ListingMedia lm "
+                        + "WHERE lm.listingId IN :listingIds "
+                        + "AND lm.propertyMedia.mediaType = '3D' "
+                        + "AND lm.deleted = false")
+        List<UUID> findListingIdsWith3DMedia(@Param("listingIds") List<UUID> listingIds);
 }
