@@ -28,4 +28,7 @@ public class CreateLocationRequest {
 
     @JsonProperty("parent_id")
     private UUID parentId;
+
+    @JsonProperty("sort_order")
+    private Integer sortOrder;
 }

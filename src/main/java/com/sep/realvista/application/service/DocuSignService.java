@@ -26,6 +26,7 @@ public interface DocuSignService {
      * @param documentName     Display name for the document (e.g. "Lease Agreement")
      * @param signerEmail      Email address of the signer
      * @param signerName       Full name of the signer
+     * @param signerPhone      Phone number of the signer (for SMS Authentication)
      * @param signerClientUserId Unique client-side user ID for embedded signing (e.g. user UUID)
      * @return DocuSign envelope ID
      */
@@ -34,6 +35,7 @@ public interface DocuSignService {
             String documentName,
             String signerEmail,
             String signerName,
+            String signerPhone,
             String signerClientUserId
     );
 
@@ -72,6 +74,7 @@ public interface DocuSignService {
      * @param documentName     Display name for the document
      * @param signerEmail      Landlord email
      * @param signerName       Landlord full name
+     * @param signerPhone      Landlord phone number (for SMS Authentication)
      * @param signerClientUserId Landlord client-side user ID
      * @return Envelope ID (same or new)
      */
@@ -81,6 +84,7 @@ public interface DocuSignService {
             String documentName,
             String signerEmail,
             String signerName,
+            String signerPhone,
             String signerClientUserId
     );
 
