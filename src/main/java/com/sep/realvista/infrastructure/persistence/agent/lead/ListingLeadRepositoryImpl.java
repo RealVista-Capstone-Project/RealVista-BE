@@ -63,4 +63,10 @@ public class ListingLeadRepositoryImpl implements ListingLeadRepository {
                                                     UUID listingId, String query) {
         return jpaRepository.countBySourceWithFilters(agentId, from, toExclusive, listingId, query);
     }
+
+    @Override
+    public List<Object[]> countByStatusWithFilters(UUID agentId, LocalDateTime from, LocalDateTime toExclusive,
+                                                    UUID listingId, String query) {
+        return jpaRepository.countByStatusWithFilters(agentId, from, toExclusive, listingId, query);
+    }
 }

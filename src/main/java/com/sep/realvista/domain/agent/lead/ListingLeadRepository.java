@@ -29,4 +29,7 @@ public interface ListingLeadRepository {
 
     List<Object[]> countBySourceWithFilters(UUID agentId, LocalDateTime from, LocalDateTime toExclusive,
                                             UUID listingId, String query);
+
+    List<Object[]> countByStatusWithFilters(UUID agentId, LocalDateTime from, LocalDateTime toExclusive,
+                                            UUID listingId, String query);
 }
