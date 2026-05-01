@@ -23,12 +23,14 @@ public interface PropertyRepository {
             UUID ownerId,
             String keyword,
             PropertyStatus status,
+            List<PropertyStatus> statuses,
             Pageable pageable);
 
     org.springframework.data.domain.Page<Property> findByAgentIdAndCriteria(
             UUID agentId,
             String keyword,
             PropertyStatus status,
+            List<PropertyStatus> statuses,
             Pageable pageable);
 
     boolean existsById(UUID id);

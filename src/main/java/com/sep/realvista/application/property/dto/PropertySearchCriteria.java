@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,4 +19,7 @@ public class PropertySearchCriteria {
 
     @Parameter(description = "Filter properties by current status")
     private PropertyStatus status;
+
+    @Parameter(description = "Filter properties by multiple statuses. Takes priority over status when present.")
+    private List<PropertyStatus> statuses;
 }

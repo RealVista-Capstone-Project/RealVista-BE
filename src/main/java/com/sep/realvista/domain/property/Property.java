@@ -109,6 +109,10 @@ public class Property extends BaseEntity {
     @Column(name = "price_range", columnDefinition = "jsonb")
     private PriceRangeVO priceRange;
 
+    @Column(name = "allow_rent_listing_when_rented", nullable = false)
+    @Builder.Default
+    private Boolean allowRentListingWhenRented = false;
+
     public void publish() {
         if (this.status != PropertyStatus.DRAFT && this.status != PropertyStatus.VERIFIED) {
             throw new IllegalStateException("Only draft or verified properties can be published");
@@ -295,6 +299,12 @@ public class Property extends BaseEntity {
     public void updatePriceRange(PriceRangeVO priceRange) {
         if (priceRange != null) {
             this.priceRange = priceRange;
+        }
+    }
+
+    public void updateAllowRentListingWhenRented(Boolean allowRentListingWhenRented) {
+        if (allowRentListingWhenRented != null) {
+            this.allowRentListingWhenRented = allowRentListingWhenRented;
         }
     }
 }

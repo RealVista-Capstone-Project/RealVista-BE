@@ -38,11 +38,14 @@ public class PropertyRepositoryImpl implements PropertyRepository {
             UUID ownerId,
             String keyword,
             PropertyStatus status,
+            List<PropertyStatus> statuses,
             Pageable pageable) {
         String keywordPattern = (keyword == null || keyword.isBlank())
                 ? null
                 : "%" + keyword.trim().toLowerCase() + "%";
-        return jpaRepository.findByOwnerIdAndKeyword(ownerId, keywordPattern, status, pageable);
+        List<PropertyStatus> statusFilter = statuses == null || statuses.isEmpty() ? null : statuses;
+        PropertyStatus singleStatus = statusFilter == null ? status : null;
+        return jpaRepository.findByOwnerIdAndKeyword(ownerId, keywordPattern, singleStatus, statusFilter, pageable);
     }
 
     @Override
@@ -50,11 +53,14 @@ public class PropertyRepositoryImpl implements PropertyRepository {
             UUID agentId,
             String keyword,
             PropertyStatus status,
+            List<PropertyStatus> statuses,
             Pageable pageable) {
         String keywordPattern = (keyword == null || keyword.isBlank())
                 ? null
                 : "%" + keyword.trim().toLowerCase() + "%";
-        return jpaRepository.findByAgentIdAndKeyword(agentId, keywordPattern, status, pageable);
+        List<PropertyStatus> statusFilter = statuses == null || statuses.isEmpty() ? null : statuses;
+        PropertyStatus singleStatus = statusFilter == null ? status : null;
+        return jpaRepository.findByAgentIdAndKeyword(agentId, keywordPattern, singleStatus, statusFilter, pageable);
     }
 
     @Override

@@ -34,6 +34,7 @@ import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
 import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.application.listing.dto.ListingSummaryDTO;
 import com.sep.realvista.domain.listing.ListingStatus;
@@ -46,6 +47,8 @@ import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -86,6 +89,7 @@ public class PropertyApplicationService {
     private final AgentProposalRepository agentProposalRepository;
     private final SettingPreferenceRepository settingPreferenceRepository;
     private final EngagementApplicationService engagementApplicationService;
+    private final CacheManager cacheManager;
 
     private UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -144,6 +148,7 @@ public class PropertyApplicationService {
                 .descriptions(request.getDescriptions())
                 .extraAttributes(request.getExtraAttributes())
                 .priceRange(request.getPriceRange())
+                .allowRentListingWhenRented(Boolean.TRUE.equals(request.getAllowRentListingWhenRented()))
                 .status(finalStatus)
                 .slug(titleSlug)
                 .build();
@@ -179,6 +184,8 @@ public class PropertyApplicationService {
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+
+        boolean wasAllowRentListingWhenRented = Boolean.TRUE.equals(property.getAllowRentListingWhenRented());
 
         if (!property.getOwnerId().equals(ownerId)) {
             throw new DomainException(
@@ -244,6 +251,14 @@ public class PropertyApplicationService {
             property.updatePriceRange(request.getPriceRange());
         }
 
+        property.updateAllowRentListingWhenRented(request.getAllowRentListingWhenRented());
+
+        if (property.getStatus() == PropertyStatus.RENTED
+                && wasAllowRentListingWhenRented
+                && !Boolean.TRUE.equals(property.getAllowRentListingWhenRented())) {
+            draftRentListingsForRentedProperty(propertyId);
+        }
+
         propertyRepository.save(property);
         entityManager.flush();
         entityManager.clear();
@@ -296,14 +311,15 @@ public class PropertyApplicationService {
 
         String keyword = criteria != null ? criteria.getKeyword() : null;
         PropertyStatus status = criteria != null ? criteria.getStatus() : null;
+        List<PropertyStatus> statuses = criteria != null ? criteria.getStatuses() : null;
         Page<Property> propertiesPage;
 
         if (isAgent) {
             log.info("Getting properties for agent: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, status, pageable);
+            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, status, statuses, pageable);
         } else {
             log.info("Getting properties for owner: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, status, pageable);
+            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, status, statuses, pageable);
         }
 
         List<PropertySummaryResponse> content = propertiesPage.getContent().stream().map(property -> {
@@ -356,6 +372,33 @@ public class PropertyApplicationService {
             summary.setSoldByName(user.getFullName());
             summary.setSoldByPhone(user.getPhone());
         });
+    }
+
+    private void draftRentListingsForRentedProperty(UUID propertyId) {
+        List<Listing> changedListings = listingRepository.findByPropertyId(propertyId).stream()
+                .filter(listing -> listing.getListingType() == ListingType.RENT)
+                .filter(listing -> listing.getStatus() == ListingStatus.PUBLISHED
+                        || listing.getStatus() == ListingStatus.PENDING)
+                .peek(Listing::moveToDraft)
+                .toList();
+
+        if (changedListings.isEmpty()) {
+            return;
+        }
+
+        listingRepository.saveAll(changedListings);
+        evictListingDetailCache(changedListings);
+    }
+
+    private void evictListingDetailCache(List<Listing> listings) {
+        Cache listingCache = cacheManager.getCache("listings");
+        if (listingCache == null) {
+            return;
+        }
+
+        listings.stream()
+                .map(Listing::getListingId)
+                .forEach(listingCache::evict);
     }
 
     @Transactional(readOnly = true)
