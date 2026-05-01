@@ -183,7 +183,8 @@ public class AppointmentController {
                                         + " startDate: {}, endDate: {}",
                                         traceId, currentUser.getUserId(), resolvedStartDate, resolvedEndDate);
 
-                        AppointmentDashboardSnapshotResponse snapshot = appointmentApplicationService.getDashboardSnapshot(
+                        AppointmentDashboardSnapshotResponse snapshot = appointmentApplicationService
+                                .getDashboardSnapshot(
                                         currentUser.getUserId(), resolvedStartDate, resolvedEndDate);
 
                         return ResponseEntity.ok(

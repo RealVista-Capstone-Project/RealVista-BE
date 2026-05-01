@@ -272,7 +272,8 @@ public class AppointmentApplicationService {
         List<Appointment> appointments = appointmentService.getAppointmentsByUserId(userId, start, end, null);
         LocalDateTime now = LocalDateTime.now();
 
-        long pendingAppointments = appointments.stream().filter(a -> a.getStatus() == AppointmentStatus.PENDING).count();
+        long pendingAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.PENDING).count();
         long acceptedAppointments = appointments.stream()
                 .filter(a -> a.getStatus() == AppointmentStatus.ACCEPTED).count();
         long rejectedAppointments = appointments.stream()
@@ -300,7 +301,10 @@ public class AppointmentApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public AppointmentDashboardSnapshotResponse getDashboardSnapshot(UUID userId, LocalDate startDate, LocalDate endDate) {
+    public AppointmentDashboardSnapshotResponse getDashboardSnapshot(
+            UUID userId,
+            LocalDate startDate,
+            LocalDate endDate) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
         List<Appointment> appointments = appointmentService.getAppointmentsByUserId(userId, startDateTime, endDateTime);
@@ -310,7 +314,7 @@ public class AppointmentApplicationService {
 
         List<AppointmentCalendarDayResponse> calendarDays = IntStream
                 .rangeClosed(0, (int) java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate))
-                .mapToObj(offset -> startDate.plusDays(offset))
+                .mapToObj(startDate::plusDays)
                 .map(day -> {
                     List<Appointment> dayAppointments = appointmentByDate.getOrDefault(day, List.of());
                     long tourCount = dayAppointments.stream().filter(Appointment::isTour).count();
@@ -392,7 +396,7 @@ public class AppointmentApplicationService {
         String title = "";
         String message = "";
         EventType eventType = null;
-        String lang = "vi";
+        String lang;
 
         switch (appointment.getStatus()) {
             case ACCEPTED -> {
