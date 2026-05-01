@@ -16,9 +16,9 @@ public interface TransactionJpaRepository extends JpaRepository<Transaction, UUI
             + "WHERE t.paymentStatus = 'COMPLETED'")
     double sumTotalAmount();
 
-    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t "
+    @org.springframework.data.jpa.repository.Query("SELECT t FROM Transaction t "
             + "WHERE t.paymentStatus = 'COMPLETED' AND t.createdAt BETWEEN :start AND :end")
-    double sumTotalAmountByCreatedAtBetween(
+    List<Transaction> findAllByCreatedAtBetween(
             @org.springframework.data.repository.query.Param("start") java.time.LocalDateTime start,
             @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end);
 }

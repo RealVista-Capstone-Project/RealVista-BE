@@ -3,6 +3,7 @@ package com.sep.realvista.presentation.rest.report;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.report.ReportApplicationService;
+import com.sep.realvista.application.report.dto.ReportDto;
 import com.sep.realvista.domain.report.ReportStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -36,42 +37,52 @@ public class AdminReportController {
 
     @GetMapping
     @Operation(summary = "Get paged reports with optional status filter")
-    public ResponseEntity<ApiResponse<PageResponse<com.sep.realvista.application.report.dto.ReportDto>>> getReports(
-            @RequestParam(required = false) ReportStatus status,
+    public ResponseEntity<ApiResponse<PageResponse<ReportDto>>> getReports(
+            @RequestParam(required = false) com.sep.realvista.domain.report.ReportStatus status,
             Pageable pageable) {
         log.info("Fetching reports with status: {} and pageable: {}", status, pageable);
-        PageResponse<com.sep.realvista.application.report.dto.ReportDto> response =
+        PageResponse<ReportDto> response =
                 reportService.getPagedReports(status, pageable);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+    @GetMapping("/{id}")
+    @Operation(summary = "Get report by ID")
+    public ResponseEntity<ApiResponse<ReportDto>> getReport(@PathVariable("id") UUID id) {
+        log.info("Fetching report by ID: {}", id);
+        ReportDto response = reportService.getReportById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PostMapping("/{id}/review")
     @Operation(summary = "Start reviewing a report")
-    public ResponseEntity<ApiResponse<Void>> startReview(@PathVariable UUID id) {
-        log.info("Starting review for report: {}", id);
+    public ResponseEntity<ApiResponse<Void>> startReview(@PathVariable("id") UUID id) {
+        log.info("[AdminReport] Start review request received for report ID: {}", id);
         reportService.startReview(id);
+        log.info("[AdminReport] Successfully started review for report ID: {}", id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @PostMapping("/{id}/resolve")
     @Operation(summary = "Resolve a report with an admin note")
     public ResponseEntity<ApiResponse<Void>> resolveReport(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody Map<String, String> body) {
         String adminNote = body.get("admin_note");
-        log.info("Resolving report: {} with note: {}", id, adminNote);
+        log.info("[AdminReport] Resolve request received for report ID: {} with note: {}", id, adminNote);
         reportService.resolveReport(id, adminNote);
+        log.info("[AdminReport] Successfully resolved report ID: {}", id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @PostMapping("/{id}/dismiss")
     @Operation(summary = "Dismiss a report with an admin note")
     public ResponseEntity<ApiResponse<Void>> dismissReport(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody Map<String, String> body) {
         String adminNote = body.get("admin_note");
-        log.info("Dismissing report: {} with note: {}", id, adminNote);
+        log.info("[AdminReport] Dismiss request received for report ID: {} with note: {}", id, adminNote);
         reportService.dismissReport(id, adminNote);
+        log.info("[AdminReport] Successfully dismissed report ID: {}", id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

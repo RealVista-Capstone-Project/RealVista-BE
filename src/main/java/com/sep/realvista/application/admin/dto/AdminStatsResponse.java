@@ -11,9 +11,12 @@ import java.util.Map;
 @Builder
 public class AdminStatsResponse {
     private List<ChartData> userGrowth;
+    private List<ChartData> listingGrowth;
     private List<ChartData> listingStatus;
     private List<ChartData> revenueTrend;
-    private List<ChartData> topAgents;
+    private List<ListingMetric> topListings;
+    private List<ChartData> packageInsights;
+    private List<AgentMetric> topAgents;
     private List<ActivityData> recentActivities;
     private List<ActivityData> topUrgentReports;
     private Map<String, Double> systemHealth;
@@ -21,8 +24,33 @@ public class AdminStatsResponse {
     @Getter
     @Builder
     public static class ChartData {
+        private String id;
         private String label;
         private double value;
+        private Map<String, Double> extra;
+    }
+
+    @Getter
+    @Builder
+    public static class ListingMetric {
+        private String id;
+        private String title;
+        private String thumbnailUrl;
+        private long views;
+        private long interactions;
+        private double revenue;
+        private String trend; // "up", "down", "stable"
+    }
+
+    @Getter
+    @Builder
+    public static class AgentMetric {
+        private String id;
+        private String name;
+        private String email;
+        private String avatarUrl;
+        private long listingCount;
+        private double revenueGenerated;
     }
 
     @Getter

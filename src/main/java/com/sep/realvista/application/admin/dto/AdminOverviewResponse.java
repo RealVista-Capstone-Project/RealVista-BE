@@ -11,4 +11,9 @@ public class AdminOverviewResponse {
     private long pendingListings;
     private long unresolvedReports;
     private long totalListings;
+    private long totalBoosts;
+    private long listingsCreatedToday;
+    private long listingsInPeriod;
+    private double revenueInPeriod;
+    private long newUsersInPeriod;
 }

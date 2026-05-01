@@ -116,6 +116,9 @@ public interface ListingRepository {
 
     List<Listing> findTop10ByOrderByUpdatedAtDesc();
 
-    List<Object[]> findTopAgents(int limit);
-}
+    List<Object[]> findTopListings(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
 
+    List<Object[]> findTopAgents(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+
+    long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+}

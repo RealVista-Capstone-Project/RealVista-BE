@@ -7,8 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -69,12 +71,36 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
 
     List<Listing> findTop10ByOrderByUpdatedAtDesc();
     
-    @Query("SELECT COALESCE(u.businessName, u.email), COUNT(l) FROM Listing l "
-            + "JOIN l.user u "
-            + "WHERE l.deleted = false "
-            + "GROUP BY u.userId, u.businessName, u.email "
-            + "ORDER BY COUNT(l) DESC")
-    List<Object[]> findTopAgents(org.springframework.data.domain.Pageable pageable);
+    
+    @Query("SELECT l.listingId, l.name, m.thumbnailUrl, COALESCE(SUM(bp.price), 0) FROM Listing l "
+            + "LEFT JOIN l.property p "
+            + "LEFT JOIN p.mediaList m ON m.isPrimary = true "
+            + "LEFT JOIN l.boosts b ON b.deleted = false AND b.createdAt BETWEEN :startDate AND :endDate "
+            + "LEFT JOIN b.boostPackage bp "
+            + "WHERE l.deleted = false AND l.status <> com.sep.realvista.domain.listing.ListingStatus.BANNED "
+            + "GROUP BY l.listingId, l.name, m.thumbnailUrl "
+            + "ORDER BY SUM(bp.price) DESC")
+    List<Object[]> findTopListings(@Param("startDate") LocalDateTime startDate, 
+                                  @Param("endDate") LocalDateTime endDate,
+                                  Pageable pageable);
+
+    @Query("SELECT u.userId, u.businessName, u.email.value, u.avatarUrl, "
+            + "COUNT(DISTINCT l.listingId), "
+            + "(COALESCE((SELECT SUM(bp.price) FROM ListingBoost b JOIN b.boostPackage bp "
+            + "WHERE b.userId = u.userId AND b.deleted = false AND b.createdAt BETWEEN :startDate AND :endDate), 0) + "
+            + " COALESCE((SELECT SUM(fp.price) FROM UserFeatureSubscription s JOIN s.featurePackage fp "
+            + "WHERE s.userId = u.userId AND s.deleted = false "
+            + "AND s.createdAt BETWEEN :startDate AND :endDate), 0)) as total_revenue "
+            + "FROM User u "
+            + "LEFT JOIN Listing l ON u.userId = l.userId AND l.deleted = false "
+            + "AND l.createdAt BETWEEN :startDate AND :endDate "
+            + "GROUP BY u.userId, u.businessName, u.email.value, u.avatarUrl "
+            + "ORDER BY total_revenue DESC")
+    List<Object[]> findTopAgents(@Param("startDate") LocalDateTime startDate, 
+                                @Param("endDate") LocalDateTime endDate,
+                                Pageable pageable);
+
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
 
     @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status "
@@ -82,10 +108,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     List<Listing> findByListingTypeAndStatus(@Param("listingType") ListingType listingType,
             @Param("status") ListingStatus status);
 
-    @Query("SELECT l FROM Listing l WHERE l.listingId = :id AND l.deleted = false")
+    @Query("SELECT l FROM Listing l WHERE l.listingId = :id AND l.deleted = false AND l.status <> 'BANNED'")
     Optional<Listing> findActiveById(@Param("id") UUID id);
 
-    @Query("SELECT l FROM Listing l WHERE l.slug = :slug AND l.deleted = false")
+    @Query("SELECT l FROM Listing l WHERE l.slug = :slug AND l.deleted = false AND l.status <> 'BANNED'")
     Optional<Listing> findBySlugAndDeletedFalse(@Param("slug") String slug);
 
     @Query("SELECT l FROM Listing l WHERE l.deleted = false")

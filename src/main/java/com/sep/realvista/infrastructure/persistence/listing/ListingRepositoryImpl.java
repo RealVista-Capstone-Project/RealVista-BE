@@ -42,9 +42,20 @@ public class ListingRepositoryImpl implements ListingRepository {
         return jpaRepository.findTop10ByOrderByUpdatedAtDesc();
     }
 
+
     @Override
-    public List<Object[]> findTopAgents(int limit) {
-        return jpaRepository.findTopAgents(org.springframework.data.domain.PageRequest.of(0, limit));
+    public List<Object[]> findTopListings(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+        return jpaRepository.findTopListings(startDate, endDate, pageable);
+    }
+    
+    @Override
+    public List<Object[]> findTopAgents(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+        return jpaRepository.findTopAgents(startDate, endDate, pageable);
+    }
+
+    @Override
+    public long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end) {
+        return jpaRepository.countByCreatedAtBetween(start, end);
     }
 
     @Override

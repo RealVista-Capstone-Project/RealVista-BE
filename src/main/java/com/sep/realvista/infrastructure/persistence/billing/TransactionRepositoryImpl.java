@@ -56,9 +56,16 @@ public class TransactionRepositoryImpl implements TransactionRepository {
     }
 
     @Override
+    public List<Transaction> findAllByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end) {
+        return jpa.findAllByCreatedAtBetween(start, end);
+    }
+
+    @Override
     public double sumTotalAmountByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end) {
-        return jpa.sumTotalAmountByCreatedAtBetween(start, end);
+        List<Transaction> transactions = jpa.findAllByCreatedAtBetween(start, end);
+        return transactions.stream()
+                .map(Transaction::getAmount)
+                .mapToDouble(java.math.BigDecimal::doubleValue)
+                .sum();
     }
 }
-
-

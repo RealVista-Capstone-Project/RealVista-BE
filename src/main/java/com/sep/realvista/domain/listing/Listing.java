@@ -237,6 +237,13 @@ public class Listing extends BaseEntity {
         this.publishedAt = null;
     }
 
+    public void ban() {
+        if (this.status == ListingStatus.BANNED) {
+            throw new IllegalStateException("Listing is already banned");
+        }
+        this.status = ListingStatus.BANNED;
+    }
+
     public boolean isActive() {
         return this.status == ListingStatus.PUBLISHED;
     }

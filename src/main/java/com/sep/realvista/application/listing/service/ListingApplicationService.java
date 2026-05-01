@@ -1309,4 +1309,31 @@ public class ListingApplicationService {
                 .map(com.sep.realvista.domain.user.preference.SettingPreference::getPreferredLanguage)
                 .orElse("vi");
     }
+
+    /**
+     * Bans a listing and cancels all its active appointments.
+     *
+     * @param listingId the listing ID to ban
+     */
+    @CacheEvict(value = "listings", allEntries = true)
+    public void banListing(UUID listingId) {
+        log.info("Banning listing ID: {}", listingId);
+
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
+
+        if (listing.getStatus() == ListingStatus.BANNED) {
+            log.warn("Listing ID: {} is already banned", listingId);
+            return;
+        }
+
+        listing.ban();
+        listingRepository.save(listing);
+
+        // Cancel all active appointments
+        String reason = "Tin đăng này đã bị quản trị viên chặn do vi phạm chính sách.";
+        appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
+
+        log.info("Successfully banned listing ID: {} and cancelled active appointments", listingId);
+    }
 }
