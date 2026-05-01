@@ -282,7 +282,8 @@ public class AppointmentApplicationService {
         long completedAppointments = appointments.stream()
                 .filter(a -> a.getStatus() == AppointmentStatus.COMPLETED).count();
         long upcomingAppointments = appointments.stream()
-                .filter(a -> a.getStartTime() != null
+                .filter(a -> a.isTour()
+                        && a.getStartTime() != null
                         && a.getStartTime().isAfter(now)
                         && (a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.ACCEPTED))
                 .count();
