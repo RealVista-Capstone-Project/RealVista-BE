@@ -42,6 +42,8 @@ public interface PropertyRepository {
 
     List<Property> searchByAddress(String address);
 
+    long countByLocationIds(List<UUID> locationIds);
+
     /**
      * Finds a paginated feed of properties available for agent proposals.
      *
