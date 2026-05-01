@@ -102,7 +102,8 @@ public class EmailServiceImpl implements EmailService {
     public void sendDbTemplateMessage(String to, String templateKey, String language, Map<String, Object> variables) {
         try {
             NotificationTemplate template = templateRepository.findByTemplateKeyAndLanguage(templateKey, language)
-                    .orElseThrow(() -> new RuntimeException("Email template not found: " + templateKey + " (" + language + ")"));
+                    .orElseThrow(() -> new RuntimeException("Email template not found: " 
+                            + templateKey + " (" + language + ")"));
 
             TemplateEngineService.RenderedTemplate rendered = dbTemplateEngine.preview(
                     template.getTitle(),

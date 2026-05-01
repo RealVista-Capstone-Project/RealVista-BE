@@ -4,7 +4,6 @@ import com.sep.realvista.application.appointment.dto.BookTourRequest;
 import com.sep.realvista.application.appointment.dto.AppointmentResponse;
 import com.sep.realvista.application.appointment.dto.SyncBlocksRequest;
 import com.sep.realvista.application.appointment.dto.UpdateAppointmentStatusRequest;
-import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.EmailService;
 import com.sep.realvista.domain.agent.lead.LeadPriority;
@@ -329,7 +328,8 @@ public class AppointmentApplicationService {
                                 "listingName", listingName,
                                 "tourDate", tourDate,
                                 "tourTime", tourTime,
-                                "reason", appointment.getRejectionReason() != null ? appointment.getRejectionReason() : "Không có lý do cụ thể"
+                                "reason", appointment.getRejectionReason() != null 
+                                        ? appointment.getRejectionReason() : "Không có lý do cụ thể"
                         ),
                         EventType.APPOINTMENT_REJECTED,
                         EntityType.APPOINTMENT,
@@ -351,7 +351,8 @@ public class AppointmentApplicationService {
                                 "listingName", listingName,
                                 "tourDate", tourDate,
                                 "tourTime", tourTime,
-                                "reason", appointment.getCancellationReason() != null ? appointment.getCancellationReason() : "Không có lý do cụ thể"
+                                "reason", appointment.getCancellationReason() != null 
+                                        ? appointment.getCancellationReason() : "Không có lý do cụ thể"
                         ),
                         EventType.APPOINTMENT_CANCELLED,
                         EntityType.APPOINTMENT,

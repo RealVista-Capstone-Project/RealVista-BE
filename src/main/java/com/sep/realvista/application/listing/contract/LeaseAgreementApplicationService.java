@@ -7,7 +7,6 @@ import com.sep.realvista.application.listing.contract.dto.LeaseTemplateData;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
 import com.sep.realvista.application.listing.contract.dto.TerminateLeaseRequest;
 import com.sep.realvista.application.listing.contract.mapper.LeaseAgreementMapper;
-import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.DocuSignService;
 import com.sep.realvista.infrastructure.config.DocuSignConfig;

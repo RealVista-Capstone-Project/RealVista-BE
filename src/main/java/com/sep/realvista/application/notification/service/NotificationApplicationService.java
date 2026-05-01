@@ -111,7 +111,8 @@ public class NotificationApplicationService {
     public void sendDbNotification(UUID userId, String templateKey, String language, Map<String, Object> variables,
                                   EventType eventType, EntityType entityType, UUID entityId) {
         NotificationTemplate template = templateRepository.findByTemplateKeyAndLanguage(templateKey, language)
-                .orElseThrow(() -> new DomainException("Notification template not found: " + templateKey, "ERROR_TEMPLATE_NOT_FOUND"));
+                .orElseThrow(() -> new DomainException("Notification template not found: " + templateKey, 
+                        "ERROR_TEMPLATE_NOT_FOUND"));
 
         // Get user email for WebSocket
         com.sep.realvista.domain.user.User user = userRepository.findById(userId)

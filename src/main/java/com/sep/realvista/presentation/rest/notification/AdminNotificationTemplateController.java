@@ -34,6 +34,8 @@ import com.sep.realvista.application.service.EmailService;
 import com.sep.realvista.application.service.FirebaseNotificationService;
 import com.sep.realvista.application.user.service.UserApplicationService;
 import com.sep.realvista.application.user.dto.UserResponse;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import com.sep.realvista.domain.user.notification.EventType;
 
 import java.util.UUID;
 import java.util.Map;
@@ -151,12 +153,12 @@ public class AdminNotificationTemplateController {
         if ("EMAIL".equalsIgnoreCase(request.getType())) {
             emailService.sendHtmlMessage(user.getEmail(), rendered.title(), rendered.body());
         } else if ("IN_APP".equalsIgnoreCase(request.getType())) {
-            notificationService.sendNotification(com.sep.realvista.application.notification.dto.SendNotificationRequest.builder()
+            notificationService.sendNotification(SendNotificationRequest.builder()
                     .userId(user.getUserId())
                     .userEmail(user.getEmail())
                     .title(rendered.title())
                     .message(rendered.body())
-                    .eventType(com.sep.realvista.domain.user.notification.EventType.SYSTEM)
+                    .eventType(EventType.SYSTEM)
                     .entityType(null)
                     .entityId(null)
                     .metadata(new HashMap<>())

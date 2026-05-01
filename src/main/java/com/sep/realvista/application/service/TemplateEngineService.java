@@ -31,51 +31,73 @@ public class TemplateEngineService {
             case "EMAIL_OTP" -> {
                 variables.add(new TemplateSchemaResponse.VariableDefinition("userName", "User's full name", true));
                 variables.add(new TemplateSchemaResponse.VariableDefinition("otp", "One-time password code", true));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("expiryMinutes", "Expiration time in minutes", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "expiryMinutes", "Expiration time in minutes", true));
             }
             case "AGENT_PROPOSAL_NOTIFICATION" -> {
-                variables.add(new TemplateSchemaResponse.VariableDefinition("ownerName", "Property owner's name", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "ownerName", "Property owner's name", true));
                 variables.add(new TemplateSchemaResponse.VariableDefinition("agentName", "Agent's name", true));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("proposalTitle", "Title of the proposal", true));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("propertyAddress", "Address of the property", true));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("viewEngagementsUrl", "Link to view the engagement", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "proposalTitle", "Title of the proposal", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "propertyAddress", "Address of the property", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "viewEngagementsUrl", "Link to view the engagement", true));
             }
             case "AGENT_PROPOSAL_DECISION" -> {
                 variables.add(new TemplateSchemaResponse.VariableDefinition("agentName", "Agent's name", true));
                 variables.add(new TemplateSchemaResponse.VariableDefinition("ownerName", "Owner's name", true));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("proposalTitle", "Title of the proposal", true));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("propertyAddress", "Address of the property", true));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("accepted", "Boolean status of decision", true));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("viewEngagementsUrl", "Link to view the engagement", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "proposalTitle", "Title of the proposal", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "propertyAddress", "Address of the property", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "accepted", "Boolean status of decision", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "viewEngagementsUrl", "Link to view the engagement", true));
             }
-            case "TOUR_BOOKING_CONFIRMATION", "TOUR_BOOKING_NOTIFICATION", "TOUR_BOOKING_STATUS_CHANGE", "TOUR_BOOKING_SUCCESS", "NEW_TOUR_REQUEST" -> {
-                variables.add(new TemplateSchemaResponse.VariableDefinition("senderName", "Person who booked the tour", false));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("ownerName", "Property owner's name", false));
+            case "TOUR_BOOKING_CONFIRMATION", "TOUR_BOOKING_NOTIFICATION", "TOUR_BOOKING_STATUS_CHANGE",
+                 "TOUR_BOOKING_SUCCESS", "NEW_TOUR_REQUEST" -> {
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "senderName", "Person who booked the tour", false));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "ownerName", "Property owner's name", false));
                 variables.add(new TemplateSchemaResponse.VariableDefinition("listingName", "Listing title", false));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("propertyAddress", "Property address", false));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "propertyAddress", "Property address", false));
                 variables.add(new TemplateSchemaResponse.VariableDefinition("tourDate", "Date of the tour", false));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("tourTime", "Time slot of the tour", false));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("status", "Current status of booking", false));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "tourTime", "Time slot of the tour", false));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "status", "Current status of booking", false));
                 variables.add(new TemplateSchemaResponse.VariableDefinition("notes", "Sender notes", false));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("viewAppointmentUrl", "Link to view appointments", false));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "viewAppointmentUrl", "Link to view appointments", false));
             }
             case "LEASE_TERMINATED" -> {
                 variables.add(new TemplateSchemaResponse.VariableDefinition("reason", "Reason for termination", true));
             }
-            case "APPOINTMENT_ACCEPTED", "APPOINTMENT_REJECTED", "APPOINTMENT_CANCELLED", "APPOINTMENT_COMPLETED" -> {
+            case "APPOINTMENT_ACCEPTED", "APPOINTMENT_REJECTED", "APPOINTMENT_CANCELLED",
+                 "APPOINTMENT_COMPLETED" -> {
                 variables.add(new TemplateSchemaResponse.VariableDefinition("listingName", "Listing title", true));
                 variables.add(new TemplateSchemaResponse.VariableDefinition("tourDate", "Date of the tour", true));
-                variables.add(new TemplateSchemaResponse.VariableDefinition("tourTime", "Time slot of the tour", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "tourTime", "Time slot of the tour", true));
                 if (templateKey.equals("APPOINTMENT_REJECTED") || templateKey.equals("APPOINTMENT_CANCELLED")) {
-                    variables.add(new TemplateSchemaResponse.VariableDefinition("reason", "Reason for rejection/cancellation", true));
+                    variables.add(new TemplateSchemaResponse.VariableDefinition(
+                            "reason", "Reason for rejection/cancellation", true));
                 }
                 if (templateKey.equals("APPOINTMENT_CANCELLED")) {
-                    variables.add(new TemplateSchemaResponse.VariableDefinition("actorName", "Person who cancelled", true));
+                    variables.add(new TemplateSchemaResponse.VariableDefinition(
+                            "actorName", "Person who cancelled", true));
                 }
             }
             case "SYSTEM" -> {
-                variables.add(new TemplateSchemaResponse.VariableDefinition("message", "The system message content", true));
+                variables.add(new TemplateSchemaResponse.VariableDefinition(
+                        "message", "The system message content", true));
             }
+            default -> { }
         }
 
         return TemplateSchemaResponse.builder()
@@ -122,7 +144,8 @@ public class TemplateEngineService {
      * This should be called before saving a template in the Admin Service.
      */
     public List<String> validateRequiredVariables(String templateKey, String content) {
-        log.info("Validating template variables for key: {}. Content length: {}", templateKey, content != null ? content.length() : 0);
+        log.info("Validating template variables for key: {}. Content length: {}", 
+                templateKey, content != null ? content.length() : 0);
         List<String> required = getRequiredVariablesFor(templateKey);
         List<String> missing = new ArrayList<>();
         
