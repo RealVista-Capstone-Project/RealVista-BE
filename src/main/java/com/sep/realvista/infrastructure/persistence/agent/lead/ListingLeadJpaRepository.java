@@ -171,4 +171,11 @@ public interface ListingLeadJpaRepository extends JpaRepository<ListingLead, UUI
                                             @Param("toExclusive") LocalDateTime toExclusive,
                                             @Param("listingId") UUID listingId,
                                             @Param("query") String query);
+
+    @Query("""
+            SELECT l.listingId, COUNT(l) FROM ListingLead l
+            WHERE l.agentId = :agentId AND l.deleted = false
+            GROUP BY l.listingId
+            """)
+    List<Object[]> countByAgentIdGroupedByListingId(@Param("agentId") UUID agentId);
 }

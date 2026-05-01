@@ -1,11 +1,12 @@
 package com.sep.realvista.application.listing.service;
 
 import com.sep.realvista.application.listing.dto.ListingAnalyticsDTO;
+import com.sep.realvista.domain.agent.lead.ListingLeadRepository;
 import com.sep.realvista.domain.listing.analytics.ListingView;
 import com.sep.realvista.domain.listing.analytics.ListingViewRepository;
 import com.sep.realvista.domain.listing.appointment.Appointment;
-import com.sep.realvista.domain.listing.appointment.AppointmentType;
 import com.sep.realvista.domain.listing.repository.AppointmentRepository;
+import com.sep.realvista.domain.listing.repository.ListingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,12 @@ class ListingAnalyticsServiceTest {
 
     @Mock
     private AppointmentRepository appointmentRepository;
+
+    @Mock
+    private ListingRepository listingRepository;
+
+    @Mock
+    private ListingLeadRepository listingLeadRepository;
 
     @InjectMocks
     private ListingAnalyticsService listingAnalyticsService;

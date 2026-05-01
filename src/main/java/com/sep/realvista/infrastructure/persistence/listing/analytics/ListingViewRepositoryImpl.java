@@ -52,4 +52,20 @@ public class ListingViewRepositoryImpl implements ListingViewRepository {
         }
         return jpaRepository.getTotalViewCountByListingIdsAndViewedAtBetween(listingIds, from, toExclusive);
     }
+
+    @Override
+    public List<Object[]> sumViewCountsGroupedByListingIds(List<UUID> listingIds) {
+        if (listingIds == null || listingIds.isEmpty()) {
+            return List.of();
+        }
+        return jpaRepository.sumViewCountsGroupedByListingIds(listingIds);
+    }
+
+    @Override
+    public List<Object[]> countDistinctUsersGroupedByListingIds(List<UUID> listingIds) {
+        if (listingIds == null || listingIds.isEmpty()) {
+            return List.of();
+        }
+        return jpaRepository.countDistinctUsersGroupedByListingIds(listingIds);
+    }
 }

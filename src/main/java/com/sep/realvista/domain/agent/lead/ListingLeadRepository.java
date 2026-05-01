@@ -32,4 +32,12 @@ public interface ListingLeadRepository {
 
     List<Object[]> countByStatusWithFilters(UUID agentId, LocalDateTime from, LocalDateTime toExclusive,
                                             UUID listingId, String query);
+
+    /**
+     * Total leads per listing for an agent.
+     *
+     * @param agentId agent id
+     * @return rows of [listingId, count]
+     */
+    List<Object[]> countByAgentIdGroupedByListingId(UUID agentId);
 }

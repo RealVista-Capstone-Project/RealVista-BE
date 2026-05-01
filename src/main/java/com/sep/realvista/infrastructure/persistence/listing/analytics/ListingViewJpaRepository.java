@@ -49,4 +49,14 @@ public interface ListingViewJpaRepository extends JpaRepository<ListingView, Lis
             @Param("listingIds") List<UUID> listingIds,
             @Param("from") LocalDateTime from,
             @Param("toExclusive") LocalDateTime toExclusive);
+
+    @Query("SELECT lv.listingId, COALESCE(SUM(lv.viewCount), 0) FROM ListingView lv "
+            + "WHERE lv.listingId IN :listingIds AND lv.deleted = false "
+            + "GROUP BY lv.listingId")
+    List<Object[]> sumViewCountsGroupedByListingIds(@Param("listingIds") List<UUID> listingIds);
+
+    @Query("SELECT lv.listingId, COUNT(DISTINCT lv.userId) FROM ListingView lv "
+            + "WHERE lv.listingId IN :listingIds AND lv.deleted = false "
+            + "GROUP BY lv.listingId")
+    List<Object[]> countDistinctUsersGroupedByListingIds(@Param("listingIds") List<UUID> listingIds);
 }

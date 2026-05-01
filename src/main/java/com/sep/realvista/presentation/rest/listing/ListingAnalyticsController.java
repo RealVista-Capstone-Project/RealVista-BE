@@ -1,6 +1,7 @@
 package com.sep.realvista.presentation.rest.listing;
 
 import com.sep.realvista.application.common.dto.ApiResponse;
+import com.sep.realvista.application.listing.dto.AgentListingAnalyticsRowDTO;
 import com.sep.realvista.application.listing.dto.AgentPerformanceAnalyticsDTO;
 import com.sep.realvista.application.listing.dto.ListingAnalyticsDTO;
 import com.sep.realvista.application.listing.service.ListingAnalyticsService;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -95,6 +97,24 @@ public class ListingAnalyticsController {
         AgentPerformanceAnalyticsDTO analytics =
                 listingAnalyticsService.getAgentPerformanceAnalytics(userDetails.getUserId(), period);
         return ResponseEntity.ok(ApiResponse.success("Agent performance analytics retrieved successfully", analytics));
+    }
+
+    @GetMapping("/analytics/my-top-listings")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary = "Get agent top listings with analytics",
+            description = "Returns the authenticated user's managed listings enriched with views, unique viewers, "
+                    + "tour bookings, inquiries, and conversion rate. Sorted descending by sort_by "
+                    + "(views | inquiries | tours). Limit defaults to 5 and is capped at 10.")
+    public ResponseEntity<ApiResponse<List<AgentListingAnalyticsRowDTO>>> getMyTopListingsWithAnalytics(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @RequestParam(name = "sort_by", required = false, defaultValue = "views") String sortBy,
+            @RequestParam(name = "limit", required = false, defaultValue = "5") int limit) {
+        List<AgentListingAnalyticsRowDTO> rows =
+                listingAnalyticsService.getAgentListingsWithAnalytics(userDetails.getUserId(), sortBy, limit);
+        return ResponseEntity.ok(
+                ApiResponse.success("Top listings with analytics retrieved successfully", rows));
     }
 
     /**

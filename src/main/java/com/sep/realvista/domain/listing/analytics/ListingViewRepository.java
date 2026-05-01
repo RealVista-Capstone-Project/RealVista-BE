@@ -59,4 +59,20 @@ public interface ListingViewRepository {
      */
     Long getTotalViewCountByListingIdsAndViewedAtBetween(
             List<UUID> listingIds, LocalDateTime from, LocalDateTime toExclusive);
+
+    /**
+     * Sum of view_count per listing for the given listing ids.
+     *
+     * @param listingIds listing ids (empty returns empty list)
+     * @return rows of [listingId, totalViews]
+     */
+    List<Object[]> sumViewCountsGroupedByListingIds(List<UUID> listingIds);
+
+    /**
+     * Distinct viewer count per listing.
+     *
+     * @param listingIds listing ids (empty returns empty list)
+     * @return rows of [listingId, distinctUserCount]
+     */
+    List<Object[]> countDistinctUsersGroupedByListingIds(List<UUID> listingIds);
 }
