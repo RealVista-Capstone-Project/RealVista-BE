@@ -206,6 +206,12 @@ public class LeaseAgreementApplicationService {
     }
 
     User renter = findUserOrThrow(lease.getRenterId());
+    
+    if (renter.getPhone() == null || renter.getPhone().isBlank()) {
+      throw new BusinessConflictException(
+          "Renter must have a valid phone number for SMS Authentication.",
+          "ERROR_LEASE_PHONE_REQUIRED_FOR_SIGNING");
+    }
 
     if (!docuSignService.isAvailable()) {
       // Graceful degradation: update status without DocuSign
@@ -230,6 +236,7 @@ public class LeaseAgreementApplicationService {
           "Lease Agreement",
           renter.getEmail().getValue(),
           renter.getFirstName() + " " + renter.getLastName(),
+          renter.getPhone(),
           renter.getUserId().toString());
 
       // Update envelope ID if a new one was created
@@ -315,6 +322,12 @@ public class LeaseAgreementApplicationService {
     }
 
     User landlord = findUserOrThrow(lease.getLandlordId());
+    
+    if (landlord.getPhone() == null || landlord.getPhone().isBlank()) {
+      throw new BusinessConflictException(
+          "Landlord must have a valid phone number for SMS Authentication.",
+          "ERROR_LEASE_PHONE_REQUIRED_FOR_SIGNING");
+    }
 
     if (!docuSignService.isAvailable()) {
       log.warn("DocuSign not available — marking lease {} as PENDING_LANDLORD without envelope", leaseId);
@@ -341,9 +354,11 @@ public class LeaseAgreementApplicationService {
           .renterName(renter.getFirstName() + " " + renter.getLastName())
           .renterEmail(renter.getEmail().getValue())
           .renterClientUserId(renter.getUserId().toString())
+          .renterPhone(renter.getPhone())
           .landlordName(landlord.getFirstName() + " " + landlord.getLastName())
           .landlordEmail(landlord.getEmail().getValue())
           .landlordClientUserId(landlord.getUserId().toString())
+          .landlordPhone(landlord.getPhone())
           .handoverDate(lease.getLeaseStartDate() != null
               ? lease.getLeaseStartDate().format(handoverFormatter)
               : "")
@@ -384,6 +399,7 @@ public class LeaseAgreementApplicationService {
           "Lease Agreement",
           landlord.getEmail().getValue(),
           landlord.getFirstName() + " " + landlord.getLastName(),
+          landlord.getPhone(),
           landlord.getUserId().toString());
     }
 

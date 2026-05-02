@@ -22,6 +22,9 @@ public class LeaseTemplateData {
     /** Renter's client-side user ID for embedded signing. */
     private String renterClientUserId;
 
+    /** Renter's phone number for DocuSign SMS authentication. */
+    private String renterPhone;
+
     /** Landlord's full name (tab label: landlordName). */
     private String landlordName;
 
@@ -30,6 +33,9 @@ public class LeaseTemplateData {
 
     /** Landlord's client-side user ID for embedded signing. */
     private String landlordClientUserId;
+
+    /** Landlord's phone number for DocuSign SMS authentication. */
+    private String landlordPhone;
 
     /**
      * Handover/move-in date formatted as string (tab label: handoverDate).
