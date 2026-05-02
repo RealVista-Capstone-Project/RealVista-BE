@@ -329,7 +329,7 @@ public class UserApplicationServiceUnitTest {
         verify(boost).cancel();
         verify(listingBoostRepository).save(boost);
 
-        verify(engagement).cancel(eq("Tài khoản chủ nhà đã bị khóa"));
+        verify(engagement).cancel(eq("Tài khoản người dùng đã bị khóa"));
         verify(engagementRepository).save(engagement);
 
         verify(proposal).setAsDraft();
