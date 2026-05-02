@@ -93,6 +93,65 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
     long countByLocationIds(@Param("locationIds") List<UUID> locationIds);
 
     /**
+     * Admin-only query: all non-deleted properties with optional keyword, status, user,
+     * property type, and location filters.
+     * When userId is provided, matches properties where the user is either the owner or an active agent.
+     */
+    @Query(value = "SELECT DISTINCT p FROM Property p "
+           + "LEFT JOIN FETCH p.propertyType pt "
+           + "LEFT JOIN FETCH pt.propertyCategory "
+           + "LEFT JOIN FETCH p.location loc "
+           + "LEFT JOIN FETCH loc.parent dist "
+           + "LEFT JOIN FETCH dist.parent city "
+           + "WHERE p.deleted = false "
+           + "AND (:status IS NULL OR p.status = :status) "
+           + "AND (:propertyTypeId IS NULL OR p.propertyTypeId = :propertyTypeId) "
+           + "AND (:locationId IS NULL OR p.locationId = :locationId "
+           + "  OR loc.locationId = :locationId OR dist.locationId = :locationId "
+           + "  OR city.locationId = :locationId) "
+           + "AND (:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword "
+           + "  OR LOWER(p.descriptions) LIKE :keyword "
+           + "  OR EXISTS (SELECT owner FROM com.sep.realvista.domain.user.User owner "
+           + "    WHERE owner.userId = p.ownerId "
+           + "    AND (LOWER(owner.firstName) LIKE :keyword "
+           + "      OR LOWER(owner.lastName) LIKE :keyword "
+           + "      OR LOWER(owner.businessName) LIKE :keyword "
+           + "      OR LOWER(owner.email.value) LIKE :keyword "
+           + "      OR LOWER(owner.phone) LIKE :keyword))) "
+           + "AND (:userId IS NULL OR p.ownerId = :userId "
+           + "  OR EXISTS (SELECT pa FROM com.sep.realvista.domain.agent.PropertyAgent pa "
+           + "    WHERE pa.propertyId = p.propertyId AND pa.agentId = :userId AND pa.deleted = false))",
+           countQuery = "SELECT COUNT(DISTINCT p) FROM Property p "
+           + "LEFT JOIN p.location loc "
+           + "LEFT JOIN loc.parent dist "
+           + "LEFT JOIN dist.parent city "
+           + "WHERE p.deleted = false "
+           + "AND (:status IS NULL OR p.status = :status) "
+           + "AND (:propertyTypeId IS NULL OR p.propertyTypeId = :propertyTypeId) "
+           + "AND (:locationId IS NULL OR p.locationId = :locationId "
+           + "  OR loc.locationId = :locationId OR dist.locationId = :locationId "
+           + "  OR city.locationId = :locationId) "
+           + "AND (:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword "
+           + "  OR LOWER(p.descriptions) LIKE :keyword "
+           + "  OR EXISTS (SELECT owner FROM com.sep.realvista.domain.user.User owner "
+           + "    WHERE owner.userId = p.ownerId "
+           + "    AND (LOWER(owner.firstName) LIKE :keyword "
+           + "      OR LOWER(owner.lastName) LIKE :keyword "
+           + "      OR LOWER(owner.businessName) LIKE :keyword "
+           + "      OR LOWER(owner.email.value) LIKE :keyword "
+           + "      OR LOWER(owner.phone) LIKE :keyword))) "
+           + "AND (:userId IS NULL OR p.ownerId = :userId "
+           + "  OR EXISTS (SELECT pa FROM com.sep.realvista.domain.agent.PropertyAgent pa "
+           + "    WHERE pa.propertyId = p.propertyId AND pa.agentId = :userId AND pa.deleted = false))")
+    org.springframework.data.domain.Page<Property> findByAdminCriteria(
+            @Param("keyword") String keyword,
+            @Param("status") PropertyStatus status,
+            @Param("userId") UUID userId,
+            @Param("propertyTypeId") UUID propertyTypeId,
+            @Param("locationId") UUID locationId,
+            Pageable pageable);
+
+    /**
      * Finds AVAILABLE properties not already assigned to the given agent,
      * with optional keyword, propertyType, and location filters.
      *

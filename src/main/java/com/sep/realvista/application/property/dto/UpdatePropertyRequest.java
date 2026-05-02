@@ -63,4 +63,11 @@ public class UpdatePropertyRequest {
 
     @JsonProperty("price_range")
     private PriceRangeVO priceRange;
+
+    /**
+     * Admin-only: reassign the property to a different owner.
+     * Ignored for non-admin update calls.
+     */
+    @JsonProperty("new_owner_id")
+    private UUID newOwnerId;
 }

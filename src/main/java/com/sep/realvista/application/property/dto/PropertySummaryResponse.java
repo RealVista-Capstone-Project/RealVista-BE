@@ -72,6 +72,12 @@ public class PropertySummaryResponse {
     @JsonProperty("owner_name")
     private String ownerName;
 
+    @JsonProperty("owner_email")
+    private String ownerEmail;
+
+    @JsonProperty("owner_avatar_url")
+    private String ownerAvatarUrl;
+
     @JsonProperty("owner_phone")
     private String ownerPhone;
 
