@@ -76,8 +76,11 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
             Pageable pageable);
 
     @Query("SELECT p FROM Property p WHERE (p.ownerId = :userId OR "
-           + "EXISTS (SELECT pa FROM com.sep.realvista.domain.agent.PropertyAgent pa "
-           + "WHERE pa.propertyId = p.propertyId AND pa.agentId = :userId AND pa.deleted = false)) "
+           + "EXISTS (SELECT e FROM Engagement e "
+           + "WHERE e.propertyId = p.propertyId "
+           + "AND e.status = com.sep.realvista.domain.engagement.EngagementStatus.ACCEPTED "
+           + "AND e.deleted = false "
+           + "AND (e.initiatorId = :userId OR e.receiverId = :userId))) "
            + "AND p.deleted = false")
     List<Property> findByOwnerIdOrAgentId(@Param("userId") UUID userId);
 

@@ -6,6 +6,8 @@ import com.sep.realvista.application.crm.dto.CreateLeadRequest;
 import com.sep.realvista.application.crm.dto.LeadNoteResponse;
 import com.sep.realvista.application.crm.dto.LeadResponse;
 import com.sep.realvista.application.crm.dto.LeadSourceSummaryResponse;
+import com.sep.realvista.application.crm.dto.LeadStatusSummaryResponse;
+import com.sep.realvista.application.crm.dto.LeadStatusSummaryResultResponse;
 import com.sep.realvista.application.crm.dto.LeadSummaryResponse;
 import com.sep.realvista.application.crm.dto.UpdateLeadRequest;
 import com.sep.realvista.application.crm.dto.UpdateLeadStatusRequest;
@@ -121,6 +123,30 @@ public class LeadApplicationService {
                 .previousTotalLeads(previousTotalLeads)
                 .previousClosedLeads(previousClosedLeads)
                 .bySource(bySource)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public LeadStatusSummaryResultResponse getStatusSummary(
+            UUID agentId,
+            LocalDate from,
+            LocalDate to,
+            UUID listingId,
+            String query
+    ) {
+        DateBounds current = toBounds(from, to);
+        String normalizedQuery = normalizeQuery(query);
+        List<Object[]> statusCounts = leadRepository.countByStatusWithFilters(
+                agentId, current.from(), current.toExclusive(), listingId, normalizedQuery);
+        List<LeadStatusSummaryResponse> byStatus = Arrays.stream(LeadStatus.values())
+                .map(status -> LeadStatusSummaryResponse.builder()
+                        .status(status)
+                        .count(countForStatus(statusCounts, status))
+                        .build())
+                .toList();
+
+        return LeadStatusSummaryResultResponse.builder()
+                .byStatus(byStatus)
                 .build();
     }
 
@@ -250,6 +276,14 @@ public class LeadApplicationService {
     private long countForSource(List<Object[]> rows, LeadSource source) {
         return rows.stream()
                 .filter(row -> row[0] == source)
+                .map(row -> (Long) row[1])
+                .findFirst()
+                .orElse(0L);
+    }
+
+    private long countForStatus(List<Object[]> rows, LeadStatus status) {
+        return rows.stream()
+                .filter(row -> row[0] == status)
                 .map(row -> (Long) row[1])
                 .findFirst()
                 .orElse(0L);

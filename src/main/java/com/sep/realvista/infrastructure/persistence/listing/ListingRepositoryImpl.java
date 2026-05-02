@@ -83,6 +83,21 @@ public class ListingRepositoryImpl implements ListingRepository {
     }
 
     @Override
+    public long countByUserIdOrPropertyOwnerIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end) {
+        return jpaRepository.countByUserIdOrPropertyOwnerIdAndCreatedAtBetween(userId, start, end);
+    }
+
+    @Override
+    public long countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+            UUID userId,
+            ListingType listingType,
+            LocalDateTime start,
+            LocalDateTime end) {
+        return jpaRepository.countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+                userId, listingType, start, end);
+    }
+
+    @Override
     public List<Listing> findByStatus(ListingStatus status) {
         return jpaRepository.findByStatus(status);
     }
