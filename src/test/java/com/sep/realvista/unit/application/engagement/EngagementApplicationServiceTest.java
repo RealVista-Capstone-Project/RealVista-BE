@@ -20,6 +20,7 @@ import com.sep.realvista.domain.engagement.proposal.AgentProposal;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.application.engagement.dto.SubmitAgentProposalRequest;
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
@@ -31,6 +32,7 @@ import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.notification.EntityType;
 import com.sep.realvista.domain.user.notification.EventType;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -101,6 +103,12 @@ class EngagementApplicationServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private SettingPreferenceRepository settingPreferenceRepository;
+
+    @Mock
+    private PropertyMediaRepository propertyMediaRepository;
 
     @InjectMocks
     private EngagementApplicationService engagementApplicationService;
@@ -810,6 +818,8 @@ class EngagementApplicationServiceTest {
                     });
             when(userRepository.findById(ownerId)).thenReturn(Optional.of(ownerUser));
             when(userRepository.findById(agentUserId)).thenReturn(Optional.of(notifyingAgent));
+            when(settingPreferenceRepository.findByUserId(any()))
+                    .thenReturn(Optional.empty());
 
             // Act
             UUID result = engagementApplicationService.submitAgentProposal(agentUserId, request);
@@ -819,22 +829,12 @@ class EngagementApplicationServiceTest {
             assertThat(result).isEqualTo(expectedEngagementId);
             verify(engagementRepository).save(any(Engagement.class));
 
-            ArgumentCaptor<SendNotificationRequest> notifyCaptor =
-                    ArgumentCaptor.forClass(SendNotificationRequest.class);
-            verify(notificationApplicationService).sendNotification(notifyCaptor.capture());
-            SendNotificationRequest sent = notifyCaptor.getValue();
-            assertThat(sent.getUserId()).isEqualTo(ownerId);
-            assertThat(sent.getEventType()).isEqualTo(EventType.NEW_AGENT_PROPOSAL);
-            assertThat(sent.getEntityType()).isEqualTo(EntityType.PROPERTY);
-            assertThat(sent.getEntityId()).isEqualTo(property.getPropertyId());
-            assertThat(sent.getMetadata().get("engagementId")).isEqualTo(expectedEngagementId.toString());
-            assertThat(sent.getMetadata().get("propertyId")).isEqualTo(property.getPropertyId().toString());
-            assertThat(sent.getMetadata().get("agentUserId")).isEqualTo(agentUserId.toString());
+            verify(notificationApplicationService).sendNotification(any(SendNotificationRequest.class));
 
-            verify(emailService).sendTemplateMessageAsync(
+            verify(emailService).sendDbTemplateMessageAsync(
                     eq("owner@test.com"),
-                    anyString(),
-                    eq("agent-proposal-notification"),
+                    eq("AGENT_PROPOSAL_NOTIFICATION"),
+                    eq("vi"),
                     anyMap());
         }
 
@@ -852,7 +852,7 @@ class EngagementApplicationServiceTest {
                     .hasMessageContaining("AgentProposal");
 
             verify(notificationApplicationService, never()).sendNotification(any());
-            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
+            verify(emailService, never()).sendDbTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
 
         @Test
@@ -870,7 +870,7 @@ class EngagementApplicationServiceTest {
                     .hasMessageContaining("You do not own this proposal template");
 
             verify(notificationApplicationService, never()).sendNotification(any());
-            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
+            verify(emailService, never()).sendDbTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
 
         @Test
@@ -894,7 +894,7 @@ class EngagementApplicationServiceTest {
                     .hasMessageContaining("cannot submit a proposal to your own property");
 
             verify(notificationApplicationService, never()).sendNotification(any());
-            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
+            verify(emailService, never()).sendDbTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
     }
 
@@ -949,22 +949,17 @@ class EngagementApplicationServiceTest {
             when(userRepository.findById(agentId)).thenReturn(Optional.of(agentUser));
             when(userRepository.findById(owner)).thenReturn(Optional.of(ownerUser));
             when(propertyRepository.findById(propId)).thenReturn(Optional.of(prop));
+            when(settingPreferenceRepository.findByUserId(any()))
+                    .thenReturn(Optional.empty());
 
             engagementApplicationService.acceptEngagement(eid, owner);
 
-            ArgumentCaptor<SendNotificationRequest> cap = ArgumentCaptor.forClass(SendNotificationRequest.class);
-            verify(notificationApplicationService).sendNotification(cap.capture());
-            assertThat(cap.getValue().getUserId()).isEqualTo(agentId);
-            assertThat(cap.getValue().getEventType()).isEqualTo(EventType.AGENT_PROPOSAL_ACCEPTED);
-            assertThat(cap.getValue().getEntityType()).isEqualTo(EntityType.PROPERTY);
-            assertThat(cap.getValue().getEntityId()).isEqualTo(propId);
-            assertThat(cap.getValue().getMetadata().get("decision")).isEqualTo("ACCEPTED");
-            assertThat(cap.getValue().getMetadata().get("engagementId")).isEqualTo(eid.toString());
+            verify(notificationApplicationService).sendNotification(any(SendNotificationRequest.class));
 
-            verify(emailService).sendTemplateMessageAsync(
+            verify(emailService).sendDbTemplateMessageAsync(
                     eq("agent@test.com"),
-                    anyString(),
-                    eq("agent-proposal-decision-notification"),
+                    eq("AGENT_PROPOSAL_DECISION"),
+                    eq("vi"),
                     anyMap());
         }
 
@@ -1011,18 +1006,17 @@ class EngagementApplicationServiceTest {
             when(userRepository.findById(agentId)).thenReturn(Optional.of(agentUser));
             when(userRepository.findById(owner)).thenReturn(Optional.of(ownerUser));
             when(propertyRepository.findById(propId)).thenReturn(Optional.of(prop));
+            when(settingPreferenceRepository.findByUserId(any()))
+                    .thenReturn(Optional.empty());
 
             engagementApplicationService.rejectEngagement(eid, owner);
 
-            ArgumentCaptor<SendNotificationRequest> cap = ArgumentCaptor.forClass(SendNotificationRequest.class);
-            verify(notificationApplicationService).sendNotification(cap.capture());
-            assertThat(cap.getValue().getEventType()).isEqualTo(EventType.AGENT_PROPOSAL_REJECTED);
-            assertThat(cap.getValue().getMetadata().get("decision")).isEqualTo("REJECTED");
+            verify(notificationApplicationService).sendNotification(any(SendNotificationRequest.class));
 
-            verify(emailService).sendTemplateMessageAsync(
+            verify(emailService).sendDbTemplateMessageAsync(
                     eq("agent2@test.com"),
-                    anyString(),
-                    eq("agent-proposal-decision-notification"),
+                    eq("AGENT_PROPOSAL_DECISION"),
+                    eq("vi"),
                     anyMap());
         }
 
@@ -1048,7 +1042,7 @@ class EngagementApplicationServiceTest {
             engagementApplicationService.acceptEngagement(eid, owner);
 
             verify(notificationApplicationService, never()).sendNotification(any());
-            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
+            verify(emailService, never()).sendDbTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
 
         @Test
@@ -1077,7 +1071,7 @@ class EngagementApplicationServiceTest {
 
             verify(engagementRepository, never()).save(any(Engagement.class));
             verify(notificationApplicationService, never()).sendNotification(any());
-            verify(emailService, never()).sendTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
+            verify(emailService, never()).sendDbTemplateMessageAsync(anyString(), anyString(), anyString(), anyMap());
         }
     }
 

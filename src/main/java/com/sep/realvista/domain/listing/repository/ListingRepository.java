@@ -117,4 +117,18 @@ public interface ListingRepository {
      * @return list of listings matching the criteria
      */
     List<Listing> findByStatusAndUpdatedAtBefore(ListingStatus status, LocalDateTime cutoff);
+
+    long count();
+
+    long countByStatus(ListingStatus status);
+
+    List<Listing> findTop10ByOrderByUpdatedAtDesc();
+
+    List<Object[]> findTopListings(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
+
+    long countByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
+
+    long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+
+    boolean has3dTour(UUID listingId);
 }

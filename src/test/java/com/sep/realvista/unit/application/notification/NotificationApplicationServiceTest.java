@@ -23,6 +23,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import com.sep.realvista.domain.user.notification.NotificationTemplateRepository;
+import com.sep.realvista.application.service.TemplateEngineService;
+import com.sep.realvista.domain.user.UserRepository;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +45,9 @@ class NotificationApplicationServiceTest {
     @Mock FirebaseNotificationService firebaseNotificationService;
     @Mock SimpMessagingTemplate messagingTemplate;
     @Mock SettingPreferenceRepository settingPreferenceRepository;
+    @Mock NotificationTemplateRepository templateRepository;
+    @Mock TemplateEngineService templateEngineService;
+    @Mock UserRepository userRepository;
 
     // ObjectMapper is a real instance — no need to mock it
     ObjectMapper objectMapper = new ObjectMapper();
@@ -59,7 +65,10 @@ class NotificationApplicationServiceTest {
                 firebaseNotificationService,
                 messagingTemplate,
                 settingPreferenceRepository,
-                objectMapper
+                objectMapper,
+                templateRepository,
+                templateEngineService,
+                userRepository
         );
     }
 

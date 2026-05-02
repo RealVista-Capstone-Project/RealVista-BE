@@ -7,6 +7,7 @@ import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubsc
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,5 +62,20 @@ public class UserFeatureSubscriptionRepositoryImpl implements UserFeatureSubscri
     @Override
     public long countActiveByFeaturePackageId(UUID featurePackageId) {
         return jpa.countActiveByFeaturePackageId(featurePackageId);
+    }
+
+    @Override
+    public double sumTotalRevenue() {
+        return jpa.sumTotalRevenue();
+    }
+
+    @Override
+    public double sumTotalRevenueBetween(LocalDateTime start, LocalDateTime end) {
+        return jpa.sumTotalRevenueBetween(start, end);
+    }
+
+    @Override
+    public double sumRevenueByPackageAndPeriod(UUID featurePackageId, LocalDateTime start, LocalDateTime end) {
+        return jpa.sumRevenueByPackageAndPeriod(featurePackageId, start, end);
     }
 }

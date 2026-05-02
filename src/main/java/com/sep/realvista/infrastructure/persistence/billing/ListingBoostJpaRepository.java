@@ -37,4 +37,19 @@ public interface ListingBoostJpaRepository extends JpaRepository<ListingBoost, U
     @Query("SELECT COUNT(lb) FROM ListingBoost lb "
             + "WHERE lb.boostPackageId = :id AND lb.status = 'ACTIVE' AND lb.deleted = false")
     long countActiveByBoostPackageId(@Param("id") UUID id);
+
+    @Query("SELECT COALESCE(SUM(bp.price), 0) FROM ListingBoost lb "
+            + "JOIN lb.boostPackage bp WHERE lb.deleted = false")
+    double sumTotalRevenue();
+
+    @Query("SELECT COALESCE(SUM(bp.price), 0) FROM ListingBoost lb JOIN lb.boostPackage bp "
+            + "WHERE lb.deleted = false AND lb.createdAt BETWEEN :start AND :end")
+    double sumTotalRevenueBetween(@Param("start") java.time.LocalDateTime start, 
+                                @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COALESCE(SUM(bp.price), 0) FROM ListingBoost lb JOIN lb.boostPackage bp "
+            + "WHERE lb.deleted = false AND lb.boostPackageId = :id AND lb.createdAt BETWEEN :start AND :end")
+    double sumRevenueByPackageAndPeriod(@Param("id") UUID id, 
+                                      @Param("start") java.time.LocalDateTime start, 
+                                      @Param("end") java.time.LocalDateTime end);
 }

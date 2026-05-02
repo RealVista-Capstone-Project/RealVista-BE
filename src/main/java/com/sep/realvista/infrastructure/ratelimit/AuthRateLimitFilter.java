@@ -2,7 +2,6 @@ package com.sep.realvista.infrastructure.ratelimit;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -68,10 +67,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket createNewBucket() {
-        Bandwidth limit = Bandwidth.classic(
-                RATE_LIMIT_CAPACITY,
-                Refill.greedy(RATE_LIMIT_CAPACITY, RATE_LIMIT_PERIOD)
-        );
+        Bandwidth limit = Bandwidth.builder()
+                .capacity(RATE_LIMIT_CAPACITY)
+                .refillGreedy(RATE_LIMIT_CAPACITY, RATE_LIMIT_PERIOD)
+                .build();
         return Bucket.builder().addLimit(limit).build();
     }
 

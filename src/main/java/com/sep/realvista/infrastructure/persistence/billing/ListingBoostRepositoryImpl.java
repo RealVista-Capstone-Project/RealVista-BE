@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -60,5 +61,25 @@ public class ListingBoostRepositoryImpl implements ListingBoostRepository {
     @Override
     public long countActiveByBoostPackageId(UUID boostPackageId) {
         return jpa.countActiveByBoostPackageId(boostPackageId);
+    }
+
+    @Override
+    public long count() {
+        return jpa.count();
+    }
+
+    @Override
+    public double sumTotalRevenue() {
+        return jpa.sumTotalRevenue();
+    }
+
+    @Override
+    public double sumTotalRevenueBetween(LocalDateTime start, LocalDateTime end) {
+        return jpa.sumTotalRevenueBetween(start, end);
+    }
+
+    @Override
+    public double sumRevenueByPackageAndPeriod(UUID boostPackageId, LocalDateTime start, LocalDateTime end) {
+        return jpa.sumRevenueByPackageAndPeriod(boostPackageId, start, end);
     }
 }

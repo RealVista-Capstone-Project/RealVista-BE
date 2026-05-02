@@ -7,7 +7,6 @@ import com.sep.realvista.application.listing.contract.dto.LeaseTemplateData;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
 import com.sep.realvista.application.listing.contract.dto.TerminateLeaseRequest;
 import com.sep.realvista.application.listing.contract.mapper.LeaseAgreementMapper;
-import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.DocuSignService;
 import com.sep.realvista.infrastructure.config.DocuSignConfig;
@@ -40,6 +39,7 @@ import org.springframework.web.client.RestTemplate;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -579,17 +579,15 @@ public class LeaseAgreementApplicationService {
 
     // Notify renter
     User renter = findUserOrThrow(lease.getRenterId());
-    notificationService.sendNotification(SendNotificationRequest.builder()
-        .userId(renter.getUserId())
-        .userEmail(renter.getEmail().getValue())
-        .title("Hợp đồng thuê nhà đã bị chấm dứt")
-        .message(reason != null
-            ? "Chủ nhà đã chấm dứt hợp đồng thuê nhà của bạn. Lý do: " + reason
-            : "Chủ nhà đã chấm dứt hợp đồng thuê nhà của bạn.")
-        .eventType(EventType.LEASE_TERMINATED)
-        .entityType(EntityType.LEASE)
-        .entityId(leaseId)
-        .build());
+    notificationService.sendDbNotification(
+        renter.getUserId(),
+        "LEASE_TERMINATED",
+        "vi",
+        Map.of("reason", reason != null ? reason : "Không có lý do cụ thể"),
+        EventType.LEASE_TERMINATED,
+        EntityType.LEASE,
+        leaseId
+    );
 
     return toEnrichedResponse(lease);
   }

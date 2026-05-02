@@ -130,6 +130,9 @@ public class ListingController {
                                         idOrSlug, recordView);
 
                         UUID userId = userDetails != null ? userDetails.getUserId() : null;
+                        boolean isAdmin = userDetails != null && userDetails.getAuthorities().stream()
+                                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                        
                         ListingDetailResponse listing;
 
                         // Try to parse as UUID first
@@ -146,6 +149,14 @@ public class ListingController {
                                         log.error("Failed to get listing by slug: {}", idOrSlug, ex);
                                         throw ex;
                                 }
+                        }
+                        
+                        // Enforce access control for BANNED listings
+                        if (listing.getStatus() == com.sep.realvista.domain.listing.ListingStatus.BANNED
+                                        && !isAdmin) {
+                                log.warn("Access denied to BANNED listing {} for user {}", idOrSlug, userId);
+                                throw new com.sep.realvista.domain.common.exception.ResourceNotFoundException(
+                                                "Listing", idOrSlug);
                         }
 
                         return ResponseEntity.ok(ApiResponse.success("Listing retrieved successfully", listing));

@@ -28,6 +28,7 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
+import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
@@ -84,6 +85,7 @@ public class EngagementApplicationService {
     private final NotificationApplicationService notificationApplicationService;
     private final EmailService emailService;
     private final UserRepository userRepository;
+    private final SettingPreferenceRepository settingPreferenceRepository;
 
     @Value("${spring.application.frontend.url}")
     private String frontendUrl;
@@ -489,10 +491,14 @@ public class EngagementApplicationService {
             emailVars.put("propertyAddress", propertyAddress.isBlank() ? "—" : propertyAddress);
             emailVars.put("viewEngagementsUrl", engagementsUrl);
 
-            emailService.sendTemplateMessageAsync(
+            String lang = settingPreferenceRepository.findByUserId(owner.getUserId())
+                    .map(prefs -> prefs.getPreferredLanguage())
+                    .orElse("vi");
+
+            emailService.sendDbTemplateMessageAsync(
                     owner.getEmail().getValue(),
-                    "Đề xuất môi giới mới trên RealVista",
-                    "agent-proposal-notification",
+                    "AGENT_PROPOSAL_NOTIFICATION",
+                    lang,
                     emailVars);
             log.info("Queued agent proposal notification email to owner {}", owner.getEmail().getValue());
         } catch (Exception e) {
@@ -707,14 +713,14 @@ public class EngagementApplicationService {
             emailVars.put("accepted", accepted);
             emailVars.put("viewEngagementsUrl", engagementsUrl);
 
-            String emailSubject = accepted
-                    ? "Đề xuất của bạn đã được chấp nhận - RealVista"
-                    : "Đề xuất của bạn đã bị từ chối - RealVista";
+            String lang = settingPreferenceRepository.findByUserId(agent.getUserId())
+                    .map(prefs -> prefs.getPreferredLanguage())
+                    .orElse("vi");
 
-            emailService.sendTemplateMessageAsync(
+            emailService.sendDbTemplateMessageAsync(
                     agent.getEmail().getValue(),
-                    emailSubject,
-                    "agent-proposal-decision-notification",
+                    "AGENT_PROPOSAL_DECISION",
+                    lang,
                     emailVars);
             log.info("Queued agent proposal decision email to agent {}", agent.getEmail().getValue());
         } catch (Exception e) {

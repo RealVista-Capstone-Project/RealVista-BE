@@ -8,5 +8,9 @@ public interface PolicyRepository {
     Policy save(Policy policy);
     Optional<Policy> findById(UUID id);
     Optional<Policy> findBySlug(String slug);
+    Optional<Policy> findActiveBySlug(String slug);
     List<Policy> findAll();
+    List<Policy> findAllActive();
+    boolean existsById(UUID id);
+    void deleteById(UUID id);
 }
