@@ -66,4 +66,11 @@ public class UpdatePropertyRequest {
 
     @JsonProperty("allow_rent_listing_when_rented")
     private Boolean allowRentListingWhenRented;
+    
+    /**
+     * Admin-only: reassign the property to a different owner.
+     * Ignored for non-admin update calls.
+     */
+    @JsonProperty("new_owner_id")
+    private UUID newOwnerId;
 }

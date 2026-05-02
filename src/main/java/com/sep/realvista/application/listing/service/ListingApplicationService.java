@@ -927,11 +927,17 @@ public class ListingApplicationService {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
 
-            // User is either creator or property owner
+            // Exclude soft-deleted listings
+            predicates.add(cb.equal(root.get("deleted"), false));
+
+            // User is either creator or property owner.
+            // When the owner views via isOwner, exclude listings whose creator (agent) has been deleted.
             var propertyJoin = root.join("property", JoinType.LEFT);
+            var userJoin = root.join("user", JoinType.LEFT);
             Predicate isCreator = cb.equal(root.get("userId"), userId);
             Predicate isOwner = cb.equal(propertyJoin.get("ownerId"), userId);
-            predicates.add(cb.or(isCreator, isOwner));
+            Predicate creatorNotDeleted = cb.isFalse(userJoin.get("deleted"));
+            predicates.add(cb.or(isCreator, cb.and(isOwner, creatorNotDeleted)));
 
             if (criteria != null) {
                 // Listing Type

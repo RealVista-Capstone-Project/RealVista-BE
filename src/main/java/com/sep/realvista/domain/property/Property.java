@@ -307,4 +307,9 @@ public class Property extends BaseEntity {
             this.allowRentListingWhenRented = allowRentListingWhenRented;
         }
     }
+
+    /** Admin-only: reassign the property to a different owner. */
+    public void reassignOwner(UUID newOwnerId) {
+        this.ownerId = newOwnerId;
+    }
 }

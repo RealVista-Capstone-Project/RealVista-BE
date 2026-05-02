@@ -458,8 +458,10 @@ public class AppointmentApplicationService {
                 message = notificationMessageService.getMessage("APPOINTMENT_CANCELLED_MESSAGE", lang,
                         actor.getFullName(), listingName, tourDate, tourTime);
                 if (appointment.getCancellationReason() != null && !appointment.getCancellationReason().isBlank()) {
+                    String resolvedReason = notificationMessageService
+                            .getMessage(appointment.getCancellationReason(), lang);
                     message += " " + notificationMessageService.getMessage("LABEL_REASON", lang)
-                            + appointment.getCancellationReason();
+                            + resolvedReason;
                 }
                 eventType = EventType.APPOINTMENT_CANCELLED;
             }

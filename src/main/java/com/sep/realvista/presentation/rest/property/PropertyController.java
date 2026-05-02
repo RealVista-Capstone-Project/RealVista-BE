@@ -232,4 +232,49 @@ public class PropertyController {
         pageable);
     return ResponseEntity.ok(ApiResponse.success("Property feed retrieved successfully", response));
   }
+
+  // ── Admin endpoints ────────────────────────────────────────────────────────
+
+  @GetMapping("/admin")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Admin: list all properties",
+      description = "Returns a paginated list of all properties. Supports optional keyword, status, "
+          + "user, type and location filters.")
+  public ResponseEntity<ApiResponse<PageResponse<PropertySummaryResponse>>> adminGetProperties(
+      @ParameterObject PropertySearchCriteria criteria,
+      @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
+      @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size) {
+    log.info("Admin REST request to list all properties");
+    org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
+        org.springframework.data.domain.Sort.by("createdAt").descending());
+    PageResponse<PropertySummaryResponse> response = propertyApplicationService.adminGetProperties(criteria, pageable);
+    return ResponseEntity.ok(ApiResponse.success("Properties retrieved successfully", response));
+  }
+
+  @PutMapping("/admin/{propertyId}")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Admin: update any property",
+      description = "Allows an admin to update any property, bypassing owner check. "
+          + "Optionally reassigns the owner via 'new_owner_id'.")
+  public ResponseEntity<ApiResponse<PropertyDetailResponse>> adminUpdateProperty(
+      @PathVariable UUID propertyId,
+      @RequestBody UpdatePropertyRequest request) {
+    log.info("Admin REST request to update property {}", propertyId);
+    PropertyDetailResponse response = propertyApplicationService.adminUpdateProperty(propertyId, request);
+    return ResponseEntity.ok(ApiResponse.success("Property updated successfully", response));
+  }
+
+  @DeleteMapping("/admin/{propertyId}")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Admin: delete any property",
+      description = "Allows an admin to soft-delete any property, bypassing owner check. "
+          + "Notifies the owner and active agent.")
+  public ResponseEntity<ApiResponse<Void>> adminDeleteProperty(@PathVariable UUID propertyId) {
+    log.info("Admin REST request to soft-delete property {}", propertyId);
+    propertyApplicationService.adminDeleteProperty(propertyId);
+    return ResponseEntity.ok(ApiResponse.success("Property deleted successfully", null));
+  }
 }

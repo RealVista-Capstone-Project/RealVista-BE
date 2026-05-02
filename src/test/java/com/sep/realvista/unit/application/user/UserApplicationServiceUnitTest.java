@@ -323,13 +323,13 @@ public class UserApplicationServiceUnitTest {
         verify(listingRepository).saveAll(anyList());
         verify(listingCache).evict(listingId);
 
-        verify(appointment).cancel(eq(userId), eq("Owner account banned"));
+        verify(appointment).cancel(eq(userId), eq("Tài khoản chủ nhà đã bị khóa"));
         verify(appointmentRepository).saveAll(anyList());
 
         verify(boost).cancel();
         verify(listingBoostRepository).save(boost);
 
-        verify(engagement).cancel(eq("User account banned"));
+        verify(engagement).cancel(eq("Tài khoản người dùng đã bị khóa"));
         verify(engagementRepository).save(engagement);
 
         verify(proposal).setAsDraft();
@@ -370,7 +370,7 @@ public class UserApplicationServiceUnitTest {
         // Assert
         verify(user).markAsDeleted();
         verify(propertyAgentRepository).deleteAll(List.of(propertyAgent));
-        verify(engagement).cancel(eq("User account deleted"));
+        verify(engagement).cancel(eq("Tài khoản người dùng đã bị xóa"));
         verify(subscription).cancel();
     }
 }
