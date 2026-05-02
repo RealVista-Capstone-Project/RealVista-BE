@@ -10,6 +10,7 @@ import com.sep.realvista.application.property.dto.PropertyDetailResponse;
 import com.sep.realvista.application.property.dto.PropertyFeedCriteria;
 import com.sep.realvista.application.property.dto.PropertyFeedItemResponse;
 import com.sep.realvista.application.property.dto.PropertySearchCriteria;
+import com.sep.realvista.application.property.dto.PropertySummaryMetricsResponse;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
 import com.sep.realvista.application.property.service.PropertyApplicationService;
@@ -99,6 +100,16 @@ public class PropertyController {
         pageable);
 
     return ResponseEntity.ok(ApiResponse.success("My properties retrieved successfully", response));
+  }
+
+  @GetMapping("/me/summary")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get current user's property summary metrics", description = "Retrieves aggregated property"
+      + " counts by status for the authenticated user.")
+  public ResponseEntity<ApiResponse<PropertySummaryMetricsResponse>> getMyPropertiesSummary() {
+    log.info("REST request to get current user's property summary metrics");
+    PropertySummaryMetricsResponse response = propertyApplicationService.getMyPropertiesSummary();
+    return ResponseEntity.ok(ApiResponse.success("Property summary metrics retrieved successfully", response));
   }
 
   @GetMapping("/amenities")

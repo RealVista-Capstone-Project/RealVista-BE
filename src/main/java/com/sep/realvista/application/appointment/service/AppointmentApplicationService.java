@@ -1,7 +1,12 @@
 package com.sep.realvista.application.appointment.service;
 
 import com.sep.realvista.application.appointment.dto.BookTourRequest;
+import com.sep.realvista.application.appointment.dto.AppointmentCalendarDayResponse;
+import com.sep.realvista.application.appointment.dto.AppointmentCalendarItemResponse;
+import com.sep.realvista.application.appointment.dto.AppointmentCalendarRangeResponse;
+import com.sep.realvista.application.appointment.dto.AppointmentDashboardSnapshotResponse;
 import com.sep.realvista.application.appointment.dto.AppointmentResponse;
+import com.sep.realvista.application.appointment.dto.AppointmentSummaryResponse;
 import com.sep.realvista.application.appointment.dto.SyncBlocksRequest;
 import com.sep.realvista.application.appointment.dto.UpdateAppointmentStatusRequest;
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
@@ -29,12 +34,15 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Comparator;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 
 @Service
@@ -259,6 +267,119 @@ public class AppointmentApplicationService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public AppointmentSummaryResponse getAppointmentSummary(UUID userId, LocalDateTime start, LocalDateTime end) {
+        List<Appointment> appointments = appointmentService.getAppointmentsByUserId(userId, start, end, null);
+        LocalDate currentMonthStartDate = LocalDate.now().withDayOfMonth(1);
+        LocalDate previousMonthStartDate = currentMonthStartDate.minusMonths(1);
+        LocalDate nextMonthStartDate = currentMonthStartDate.plusMonths(1);
+        LocalDateTime currentMonthStart = currentMonthStartDate.atStartOfDay();
+        LocalDateTime previousMonthStart = previousMonthStartDate.atStartOfDay();
+        LocalDateTime nextMonthStart = nextMonthStartDate.atStartOfDay();
+        List<Appointment> currentMonthAppointments = appointmentService.getAppointmentsByUserId(
+                userId, currentMonthStart, nextMonthStart, null);
+        List<Appointment> previousMonthAppointments = appointmentService.getAppointmentsByUserId(
+                userId, previousMonthStart, currentMonthStart, null);
+        LocalDateTime now = LocalDateTime.now();
+
+        long pendingAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.PENDING).count();
+        long acceptedAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.ACCEPTED).count();
+        long rejectedAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.REJECTED).count();
+        long canceledAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.CANCELED).count();
+        long completedAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.COMPLETED).count();
+        long upcomingAppointments = appointments.stream()
+                .filter(a -> a.isTour()
+                        && a.getStartTime() != null
+                        && a.getStartTime().isAfter(now)
+                        && (a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.ACCEPTED))
+                .count();
+        long currentMonthUpcomingAppointments = currentMonthAppointments.stream()
+                .filter(a -> a.isTour()
+                        && a.getStartTime() != null
+                        && a.getStartTime().isAfter(now)
+                        && (a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.ACCEPTED))
+                .count();
+        long previousMonthUpcomingAppointments = previousMonthAppointments.stream()
+                .filter(a -> a.isTour()
+                        && a.getStartTime() != null
+                        && (a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.ACCEPTED))
+                .count();
+
+        return AppointmentSummaryResponse.builder()
+                .totalAppointments(appointments.size())
+                .currentMonthTotalAppointments(currentMonthAppointments.size())
+                .previousTotalAppointments(previousMonthAppointments.size())
+                .pendingAppointments(pendingAppointments)
+                .acceptedAppointments(acceptedAppointments)
+                .rejectedAppointments(rejectedAppointments)
+                .canceledAppointments(canceledAppointments)
+                .completedAppointments(completedAppointments)
+                .upcomingAppointments(upcomingAppointments)
+                .currentMonthUpcomingAppointments(currentMonthUpcomingAppointments)
+                .previousUpcomingAppointments(previousMonthUpcomingAppointments)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public AppointmentDashboardSnapshotResponse getDashboardSnapshot(
+            UUID userId,
+            LocalDate startDate,
+            LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+        List<Appointment> appointments = appointmentService.getAppointmentsByUserId(userId, startDateTime, endDateTime);
+
+        Map<LocalDate, List<Appointment>> appointmentByDate = appointments.stream()
+                .collect(Collectors.groupingBy(appointment -> appointment.getStartTime().toLocalDate()));
+
+        List<AppointmentCalendarDayResponse> calendarDays = IntStream
+                .rangeClosed(0, (int) java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate))
+                .mapToObj(startDate::plusDays)
+                .map(day -> {
+                    List<Appointment> dayAppointments = appointmentByDate.getOrDefault(day, List.of());
+                    long tourCount = dayAppointments.stream().filter(Appointment::isTour).count();
+                    long blockCount = dayAppointments.stream().filter(Appointment::isBlock).count();
+                    long total = dayAppointments.size();
+                    return AppointmentCalendarDayResponse.builder()
+                            .date(day.toString())
+                            .total(total)
+                            .tourCount(tourCount)
+                            .blockCount(blockCount)
+                            .hasItems(total > 0)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        List<AppointmentCalendarItemResponse> items = appointments.stream()
+                .sorted(Comparator.comparing(Appointment::getStartTime))
+                .map(appointment -> AppointmentCalendarItemResponse.builder()
+                        .appointmentId(appointment.getAppointmentId().toString())
+                        .listingId(appointment.getListingId() != null ? appointment.getListingId().toString() : "")
+                        .listingName(resolveListingName(appointment))
+                        .listingAddress(resolveListingAddress(appointment))
+                        .startTime(appointment.getStartTime().toString())
+                        .endTime(appointment.getEndTime().toString())
+                        .status(appointment.getStatus().name())
+                        .appointmentType(appointment.getAppointmentType().name())
+                        .build())
+                .collect(Collectors.toList());
+
+        return AppointmentDashboardSnapshotResponse.builder()
+                .range(AppointmentCalendarRangeResponse.builder()
+                        .startDate(startDate.toString())
+                        .endDate(endDate.toString())
+                        .timezone(ZoneId.systemDefault().getId())
+                        .build())
+                .calendarDays(calendarDays)
+                .appointments(items)
+                .build();
+    }
+
     public AppointmentResponse updateAppointmentStatus(UUID userId, UUID appointmentId,
             UpdateAppointmentStatusRequest request) {
         AppointmentStatus newStatus = AppointmentStatus.valueOf(request.getStatus().toUpperCase());
@@ -300,7 +421,7 @@ public class AppointmentApplicationService {
         String title = "";
         String message = "";
         EventType eventType = null;
-        String lang = "vi";
+        String lang;
 
         switch (appointment.getStatus()) {
             case ACCEPTED -> {
@@ -542,6 +663,26 @@ public class AppointmentApplicationService {
                 .canceledByUserId(appt.getCanceledByUserId())
                 .isSender(appt.getSenderId() != null && appt.getSenderId().equals(userId))
                 .build();
+    }
+
+    private String resolveListingName(Appointment appointment) {
+        if (appointment.getListing() != null && appointment.getListing().getName() != null) {
+            return appointment.getListing().getName();
+        }
+        if (appointment.isBlock()) {
+            return "Busy block";
+        }
+        return "Listing";
+    }
+
+    private String resolveListingAddress(Appointment appointment) {
+        if (appointment.getListing() != null) {
+            String address = buildPropertyAddress(appointment.getListing());
+            if (address != null && !address.isBlank()) {
+                return address;
+            }
+        }
+        return "-";
     }
 
     public void autoCompleteAppointment(UUID appointmentId) {

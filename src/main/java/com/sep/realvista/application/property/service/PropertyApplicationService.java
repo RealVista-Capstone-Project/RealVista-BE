@@ -10,6 +10,7 @@ import com.sep.realvista.application.property.dto.PropertyFeedItemResponse;
 import com.sep.realvista.application.property.dto.PropertyMediaRequest;
 import com.sep.realvista.application.property.dto.PropertySearchCriteria;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
+import com.sep.realvista.application.property.dto.PropertySummaryMetricsResponse;
 import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
 import com.sep.realvista.application.property.mapper.PropertyMapper;
 import com.sep.realvista.application.engagement.service.EngagementApplicationService;
@@ -65,6 +66,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -345,6 +348,51 @@ public class PropertyApplicationService {
                 .totalPages(propertiesPage.getTotalPages())
                 .first(propertiesPage.isFirst())
                 .last(propertiesPage.isLast())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public PropertySummaryMetricsResponse getMyPropertiesSummary() {
+        UUID userId = getCurrentUserId();
+        List<Property> properties = propertyRepository.findByOwnerIdOrAgentId(userId);
+        LocalDate currentMonthStartDate = LocalDate.now().withDayOfMonth(1);
+        LocalDate previousMonthStartDate = currentMonthStartDate.minusMonths(1);
+        LocalDate nextMonthStartDate = currentMonthStartDate.plusMonths(1);
+        LocalDateTime currentMonthStart = currentMonthStartDate.atStartOfDay();
+        LocalDateTime previousMonthStart = previousMonthStartDate.atStartOfDay();
+        LocalDateTime nextMonthStart = nextMonthStartDate.atStartOfDay();
+
+        long availableProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.AVAILABLE).count();
+        long reservedProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.RESERVED).count();
+        long soldProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.SOLD).count();
+        long rentedProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.RENTED).count();
+        long draftProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.DRAFT).count();
+        long pendingProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.PENDING).count();
+        long verifiedProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.VERIFIED).count();
+        long rejectedProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.REJECTED).count();
+        long currentMonthTotalProperties = properties.stream()
+                .filter(p -> p.getCreatedAt() != null
+                        && !p.getCreatedAt().isBefore(currentMonthStart)
+                        && p.getCreatedAt().isBefore(nextMonthStart))
+                .count();
+        long previousTotalProperties = properties.stream()
+                .filter(p -> p.getCreatedAt() != null
+                        && !p.getCreatedAt().isBefore(previousMonthStart)
+                        && p.getCreatedAt().isBefore(currentMonthStart))
+                .count();
+
+        return PropertySummaryMetricsResponse.builder()
+                .totalProperties(properties.size())
+                .currentMonthTotalProperties(currentMonthTotalProperties)
+                .previousTotalProperties(previousTotalProperties)
+                .availableProperties(availableProperties)
+                .reservedProperties(reservedProperties)
+                .soldProperties(soldProperties)
+                .rentedProperties(rentedProperties)
+                .draftProperties(draftProperties)
+                .pendingProperties(pendingProperties)
+                .verifiedProperties(verifiedProperties)
+                .rejectedProperties(rejectedProperties)
                 .build();
     }
 
