@@ -129,4 +129,6 @@ public interface ListingRepository {
     long countByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
 
     long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+
+    boolean has3dTour(UUID listingId);
 }

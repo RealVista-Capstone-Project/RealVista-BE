@@ -116,6 +116,12 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     long countByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+ 
+    @Query("SELECT COUNT(g) > 0 FROM Property3DGeneration g "
+            + "WHERE g.propertyId = (SELECT l.propertyId FROM Listing l WHERE l.listingId = :listingId) "
+            + "AND g.status = com.sep.realvista.domain.property.Property3DGenerationStatus.SUCCEEDED "
+            + "AND g.deleted = false")
+    boolean has3dTour(@Param("listingId") UUID listingId);
 
 
     @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status "

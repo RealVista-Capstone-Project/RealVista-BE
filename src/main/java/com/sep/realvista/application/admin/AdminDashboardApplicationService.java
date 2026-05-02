@@ -15,8 +15,11 @@ import com.sep.realvista.domain.report.ReportRepository;
 import com.sep.realvista.domain.report.ReportStatus;
 import com.sep.realvista.domain.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,8 +38,9 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AdminDashboardApplicationService {
+    private static final org.slf4j.Logger LOGGER =
+            org.slf4j.LoggerFactory.getLogger(AdminDashboardApplicationService.class);
 
     private final UserRepository userRepository;
     private final ListingRepository listingRepository;
@@ -90,8 +95,100 @@ public class AdminDashboardApplicationService {
                 .topAgents(getTopAgents(start, now, txs))
                 .systemHealth(calculateSystemHealth())
                 .recentActivities(getRecentActivities())
+                .detailedTransactions(getDetailedTransactions(txs.stream().limit(10).collect(Collectors.toList())))
                 .build();
     }
+
+@Transactional(readOnly = true)
+public Page<AdminStatsResponse.TransactionDetail> getPaginatedTransactions(
+        int page, int size, String type, LocalDateTime start, LocalDateTime end) {
+    
+    LocalDateTime now = end != null ? end : LocalDateTime.now();
+    LocalDateTime startTime = start != null ? start : now.minusDays(7).with(LocalTime.MIN);
+    
+    Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+    
+    // Sanitize input type
+    final String sanitizedType = (type != null) ? type.trim().toUpperCase() : "ALL";
+    List<String> targetPlanCodes = (!sanitizedType.equals("ALL")) ? getPlanCodesForType(sanitizedType) : null;
+    LOGGER.info("Filtering transactions by type: {}, planCodes: {}", sanitizedType, targetPlanCodes);
+
+    Page<com.sep.realvista.domain.billing.transaction.Transaction> txPage;
+    if (!sanitizedType.equals("ALL")) {
+        if (targetPlanCodes != null && !targetPlanCodes.isEmpty()) {
+            txPage = transactionRepository.findAllByCreatedAtBetweenAndPlanCodeInPaged(
+                    startTime, now, targetPlanCodes, pageable);
+        } else {
+            txPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+    } else {
+        txPage = transactionRepository.findAllByCreatedAtBetweenPaged(startTime, now, pageable);
+    }
+
+    Map<String, String> planNames = new HashMap<>();
+    Map<String, String> planTypes = new HashMap<>();
+    featurePackageRepository.findAllIncludingInactive().forEach(fp -> {
+        planNames.put(fp.getCode(), fp.getName());
+        planTypes.put(fp.getCode(), fp.getFeatureType().name());
+    });
+    boostPackageRepository.findAllIncludingInactive().forEach(bp -> {
+        planNames.put(bp.getCode(), bp.getName());
+        planTypes.put(bp.getCode(), "BOOST");
+    });
+
+    List<AdminStatsResponse.TransactionDetail> details = txPage.getContent().stream()
+            .map((com.sep.realvista.domain.billing.transaction.Transaction t) -> {
+                var user = userRepository.findById(t.getUserId()).orElse(null);
+                String rawType = planTypes.getOrDefault(t.getPlanCode(), t.getTransactionType().name());
+                
+                // Robust normalization for frontend consistency
+                String derivedType = rawType.replace("_PACKAGE", "").replace("_REQUEST", "");
+                String normalizedType = derivedType.startsWith("_") ? derivedType.substring(1) : derivedType;
+                
+                // Special case for AI_REQUEST -> AI
+                if ("AI".equalsIgnoreCase(normalizedType)) {
+                    normalizedType = "AI";
+                }
+
+                return AdminStatsResponse.TransactionDetail.builder()
+                        .id(t.getTransactionId().toString())
+                        .userName(user != null ? user.getBusinessName() : "Unknown")
+                        .userEmail(user != null ? user.getEmail().getValue() : "N/A")
+                        .userAvatar(user != null ? user.getAvatarUrl() : null)
+                        .type(normalizedType)
+                        .planName(planNames.getOrDefault(t.getPlanCode(), t.getPlanCode()))
+                        .amount(t.getAmount().doubleValue())
+                        .timestamp(t.getCreatedAt())
+                        .status(t.getPaymentStatus().name())
+                        .build();
+            })
+            .collect(Collectors.toList());
+
+    return new PageImpl<>(details, pageable, txPage.getTotalElements());
+}
+
+private List<String> getPlanCodesForType(String type) {
+    List<String> codes = new ArrayList<>();
+    LOGGER.info("Collecting plan codes for category: {}", type);
+    
+    if ("BOOST".equalsIgnoreCase(type)) {
+        boostPackageRepository.findAllIncludingInactive().forEach(p -> codes.add(p.getCode()));
+    } else {
+        featurePackageRepository.findAllIncludingInactive().forEach(p -> {
+            String rawEnumName = p.getFeatureType().name();
+            // Handle both _3D_TOUR and 3D_TOUR (and AI_REQUEST -> AI)
+            String derivedType = rawEnumName.replace("_PACKAGE", "").replace("_REQUEST", "");
+            String normalizedDerived = derivedType.startsWith("_") ? derivedType.substring(1) : derivedType;
+            String normalizedInput = type.startsWith("_") ? type.substring(1) : type;
+
+            if (normalizedDerived.equalsIgnoreCase(normalizedInput)) {
+                codes.add(p.getCode());
+            }
+        });
+    }
+    LOGGER.info("Found {} codes for category {}: {}", codes.size(), type, codes);
+    return codes;
+}
 
     private record DailyTrends(
         List<AdminStatsResponse.ChartData> revenueTrend,
@@ -100,7 +197,7 @@ public class AdminDashboardApplicationService {
     ) { }
 
     private DailyTrends calculateDailyTrends(
-            LocalDateTime start, 
+            LocalDateTime start,    
             int daysBetween, 
             List<com.sep.realvista.domain.billing.transaction.Transaction> txs) {
         
@@ -203,7 +300,7 @@ public class AdminDashboardApplicationService {
             if (countMap.containsKey(fp.getCode())) {
                 insights.add(AdminStatsResponse.ChartData.builder()
                         .id(fp.getFeaturePackageId().toString())
-                        .label(fp.getCode())
+                        .label(fp.getName())
                         .value((double) countMap.get(fp.getCode()))
                         .extra(Map.of("revenue", revMap.get(fp.getCode()), "price", fp.getPrice().doubleValue()))
                         .build());
@@ -216,7 +313,7 @@ public class AdminDashboardApplicationService {
                 if (!exists) {
                     insights.add(AdminStatsResponse.ChartData.builder()
                             .id(bp.getBoostPackageId().toString())
-                            .label(bp.getCode())
+                            .label(bp.getName())
                             .value((double) countMap.get(bp.getCode()))
                             .extra(Map.of("revenue", revMap.get(bp.getCode()), "price", bp.getPrice().doubleValue()))
                             .build());
@@ -230,7 +327,7 @@ public class AdminDashboardApplicationService {
 
     private List<AdminStatsResponse.ListingMetric> getTopListings(LocalDateTime start, LocalDateTime end) {
         List<Object[]> raw = listingRepository.findTopListings(start, end, PageRequest.of(0, 5));
-        return raw.stream().map(row -> {
+        return raw.stream().map((Object[] row) -> {
             UUID id = UUID.fromString(row[0].toString());
             double totalRev = ((Number) row[3]).doubleValue();
             long featuredCount = ((Number) row[4]).longValue();
@@ -252,6 +349,7 @@ public class AdminDashboardApplicationService {
                     .interactions(10 + (long) (Math.random() * 20))
                     .revenue(totalRev)
                     .breakdown(breakdown)
+                    .has3dTour(listingRepository.has3dTour(id))
                     .trend(Math.random() > 0.5 ? "up" : "stable").build();
         }).collect(Collectors.toList());
     }
@@ -269,11 +367,11 @@ public class AdminDashboardApplicationService {
         return agentRevMap.entrySet().stream()
                 .sorted(Map.Entry.<UUID, Double>comparingByValue().reversed())
                 .limit(5)
-                .map(entry -> {
+                .map((java.util.Map.Entry<UUID, Double> entry) -> {
                     UUID uId = entry.getKey();
                     var user = userRepository.findById(uId).orElse(null);
                     if (user == null) {
-                        return null;
+                        return (AdminStatsResponse.AgentMetric) null;
                     }
                     long lCount = listingRepository.countByUserIdAndCreatedAtBetween(uId, start, now);
                     return AdminStatsResponse.AgentMetric.builder()
@@ -306,6 +404,43 @@ public class AdminDashboardApplicationService {
         systemHealth.put("unresolvedReports", (double) reportRepository.countByStatus(ReportStatus.PENDING));
         systemHealth.put("serverStatus", 99.9);
         return systemHealth;
+    }
+
+    private List<AdminStatsResponse.TransactionDetail> getDetailedTransactions(
+            List<com.sep.realvista.domain.billing.transaction.Transaction> txs) {
+        Map<String, String> planNames = new HashMap<>();
+        Map<String, String> planTypes = new HashMap<>();
+
+        featurePackageRepository.findAllIncludingInactive().forEach(fp -> {
+            planNames.put(fp.getCode(), fp.getName());
+            planTypes.put(fp.getCode(), fp.getFeatureType().name());
+        });
+        boostPackageRepository.findAllIncludingInactive().forEach(bp -> {
+            planNames.put(bp.getCode(), bp.getName());
+            planTypes.put(bp.getCode(), "BOOST");
+        });
+
+        return txs.stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .limit(50)
+                .map((com.sep.realvista.domain.billing.transaction.Transaction t) -> {
+                    var user = userRepository.findById(t.getUserId()).orElse(null);
+                    String rawType = planTypes.getOrDefault(t.getPlanCode(), t.getTransactionType().name());
+                    String type = rawType.replace("_PACKAGE", "").replace("_REQUEST", "");
+
+                    return AdminStatsResponse.TransactionDetail.builder()
+                            .id(t.getTransactionId().toString())
+                            .userName(user != null ? user.getBusinessName() : "Unknown")
+                            .userEmail(user != null ? user.getEmail().getValue() : "N/A")
+                            .userAvatar(user != null ? user.getAvatarUrl() : null)
+                            .type(type)
+                            .planName(planNames.getOrDefault(t.getPlanCode(), t.getPlanCode()))
+                            .amount(t.getAmount().doubleValue())
+                            .timestamp(t.getCreatedAt())
+                            .status(t.getPaymentStatus().name())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     private List<AdminStatsResponse.ActivityData> getRecentActivities() {

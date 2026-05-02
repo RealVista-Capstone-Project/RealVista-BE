@@ -30,6 +30,27 @@ public interface TransactionJpaRepository extends JpaRepository<Transaction, UUI
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 
+    @Query(value = "SELECT t FROM Transaction t "
+            + "WHERE t.paymentStatus = 'COMPLETED' AND t.createdAt BETWEEN :start AND :end",
+            countQuery = "SELECT count(t) FROM Transaction t "
+            + "WHERE t.paymentStatus = 'COMPLETED' AND t.createdAt BETWEEN :start AND :end")
+    org.springframework.data.domain.Page<Transaction> findAllByCreatedAtBetweenPaged(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            org.springframework.data.domain.Pageable pageable);
+            
+    @Query(value = "SELECT t FROM Transaction t "
+            + "WHERE t.paymentStatus = 'COMPLETED' AND t.createdAt BETWEEN :start AND :end "
+            + "AND t.planCode IN :planCodes",
+            countQuery = "SELECT count(t) FROM Transaction t "
+            + "WHERE t.paymentStatus = 'COMPLETED' AND t.createdAt BETWEEN :start AND :end "
+            + "AND t.planCode IN :planCodes")
+    org.springframework.data.domain.Page<Transaction> findAllByCreatedAtBetweenAndPlanCodeInPaged(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("planCodes") List<String> planCodes,
+            org.springframework.data.domain.Pageable pageable);
+
     @Query("SELECT t FROM Transaction t "
             + "WHERE t.paymentStatus = :status AND t.createdAt BETWEEN :start AND :end")
     List<Transaction> findAllByCreatedAtBetweenAndPaymentStatus(

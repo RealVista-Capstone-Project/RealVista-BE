@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,6 +48,21 @@ public class AdminDashboardController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         log.info("Fetching admin platform statistics from {} to {}", startDate, endDate);
         AdminStatsResponse response = dashboardService.getStats(startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/transactions")
+    @Operation(summary = "Get paginated transaction list for revenue analysis")
+    public ResponseEntity<ApiResponse<Page<AdminStatsResponse.TransactionDetail>>> getTransactions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        log.info("Fetching admin transactions page {} size {} type {} from {} to {}",
+                page, size, type, startDate, endDate);
+        Page<AdminStatsResponse.TransactionDetail> response = 
+                dashboardService.getPaginatedTransactions(page, size, type, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

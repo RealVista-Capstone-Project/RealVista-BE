@@ -16,6 +16,13 @@ public interface TransactionRepository {
     List<Transaction> findAllByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
     double sumTotalAmountByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
     double sumTotalAmountByPaymentStatus(PaymentStatus status);
+    org.springframework.data.domain.Page<Transaction> findAllByCreatedAtBetweenPaged(
+            java.time.LocalDateTime start, java.time.LocalDateTime end, 
+            org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<Transaction> findAllByCreatedAtBetweenAndPlanCodeInPaged(
+            java.time.LocalDateTime start, java.time.LocalDateTime end, 
+            java.util.List<String> planCodes,
+            org.springframework.data.domain.Pageable pageable);
 }
 
 

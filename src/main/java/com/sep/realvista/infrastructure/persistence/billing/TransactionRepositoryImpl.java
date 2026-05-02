@@ -75,4 +75,19 @@ public class TransactionRepositoryImpl implements TransactionRepository {
     public double sumTotalAmountByPaymentStatus(PaymentStatus status) {
         return jpa.sumTotalAmountByPaymentStatus(status);
     }
+
+    @Override
+    public org.springframework.data.domain.Page<Transaction> findAllByCreatedAtBetweenPaged(
+            java.time.LocalDateTime start, java.time.LocalDateTime end, 
+            org.springframework.data.domain.Pageable pageable) {
+        return jpa.findAllByCreatedAtBetweenPaged(start, end, pageable);
+    }
+
+    @Override
+    public org.springframework.data.domain.Page<Transaction> findAllByCreatedAtBetweenAndPlanCodeInPaged(
+            java.time.LocalDateTime start, java.time.LocalDateTime end, 
+            java.util.List<String> planCodes,
+            org.springframework.data.domain.Pageable pageable) {
+        return jpa.findAllByCreatedAtBetweenAndPlanCodeInPaged(start, end, planCodes, pageable);
+    }
 }

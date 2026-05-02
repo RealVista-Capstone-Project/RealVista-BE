@@ -1,14 +1,18 @@
 package com.sep.realvista.application.admin.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-@Getter
+@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AdminStatsResponse {
     private List<ChartData> userGrowth;
     private List<ChartData> listingGrowth;
@@ -18,11 +22,13 @@ public class AdminStatsResponse {
     private List<ChartData> packageInsights;
     private List<AgentMetric> topAgents;
     private List<ActivityData> recentActivities;
-    private List<ActivityData> topUrgentReports;
+    private List<TransactionDetail> detailedTransactions;
     private Map<String, Double> systemHealth;
 
-    @Getter
+    @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ChartData {
         private String id;
         private String label;
@@ -30,8 +36,26 @@ public class AdminStatsResponse {
         private Map<String, Double> extra;
     }
 
-    @Getter
+    @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TransactionDetail {
+        private String id;
+        private String userName;
+        private String userEmail;
+        private String userAvatar;
+        private String type; // BOOST, LISTING, 3D_TOUR, AI
+        private String planName;
+        private double amount;
+        private LocalDateTime timestamp;
+        private String status;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ListingMetric {
         private String id;
         private String title;
@@ -40,11 +64,14 @@ public class AdminStatsResponse {
         private long interactions;
         private double revenue;
         private Map<String, Double> breakdown;
+        private boolean has3dTour;
         private String trend; // "up", "down", "stable"
     }
 
-    @Getter
+    @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AgentMetric {
         private String id;
         private String name;
@@ -54,8 +81,10 @@ public class AdminStatsResponse {
         private double revenueGenerated;
     }
 
-    @Getter
+    @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ActivityData {
         private String id;
         private String type;
