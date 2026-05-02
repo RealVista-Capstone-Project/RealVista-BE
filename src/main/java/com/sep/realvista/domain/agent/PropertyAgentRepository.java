@@ -12,6 +12,7 @@ import java.util.UUID;
 @Repository
 public interface PropertyAgentRepository extends JpaRepository<PropertyAgent, UUID> {
     Optional<PropertyAgent> findByPropertyId(UUID propertyId);
+    List<PropertyAgent> findByAgentId(UUID agentId);
     boolean existsByPropertyIdAndAgentId(UUID propertyId, UUID agentId);
 
     @Query("SELECT pa FROM PropertyAgent pa WHERE pa.propertyId = :propertyId AND pa.deleted = false")
