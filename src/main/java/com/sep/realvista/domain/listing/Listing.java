@@ -244,6 +244,14 @@ public class Listing extends BaseEntity {
         this.status = ListingStatus.BANNED;
     }
 
+    public void moveToDraft() {
+        if (this.status != ListingStatus.PUBLISHED && this.status != ListingStatus.PENDING) {
+            throw new IllegalStateException("Only published or pending listings can be moved to draft");
+        }
+        this.status = ListingStatus.DRAFT;
+        this.publishedAt = null;
+    }
+
     public boolean isActive() {
         return this.status == ListingStatus.PUBLISHED;
     }

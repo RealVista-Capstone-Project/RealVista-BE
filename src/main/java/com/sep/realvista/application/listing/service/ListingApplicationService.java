@@ -49,6 +49,7 @@ import com.sep.realvista.application.appointment.service.AppointmentApplicationS
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.notification.EntityType;
 import com.sep.realvista.domain.user.notification.EventType;
 import jakarta.persistence.criteria.JoinType;
@@ -168,6 +169,7 @@ public class ListingApplicationService {
     public ListingDetailResponse getListingDetail(UUID listingId, UUID userId, boolean recordView) {
         // Route through self (proxy) so @Cacheable on getCachedListingDetail fires correctly
         ListingDetailResponse response = self.getCachedListingDetail(listingId);
+        ensureListingDetailAccessible(response, userId);
         if (userId != null) {
             boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
             response.setIsFavorite(isFavorite);
@@ -181,6 +183,27 @@ public class ListingApplicationService {
         }
 
         return response;
+    }
+
+    private void ensureListingDetailAccessible(ListingDetailResponse listing, UUID userId) {
+        if (listing.getStatus() == ListingStatus.PUBLISHED) {
+            return;
+        }
+
+        boolean isListingCreator = userId != null && userId.equals(listing.getUserId());
+        boolean isPropertyOwner = userId != null
+                && listing.getPropertyOwner() != null
+                && userId.equals(listing.getPropertyOwner().getUserId());
+
+        if (!isListingCreator && !isPropertyOwner) {
+            throw new ResourceNotFoundException("Listing", listing.getListingId());
+        }
+
+        User requester = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        if (Boolean.TRUE.equals(requester.getDeleted()) || !requester.isActive()) {
+            throw new ResourceNotFoundException("Listing", listing.getListingId());
+        }
     }
 
     /**
@@ -579,16 +602,7 @@ public class ListingApplicationService {
 
         // Handle immediate publication if requested
         if (Boolean.TRUE.equals(request.getShouldPublish())) {
-            // 1. Verify associated property is available (active)
-            if (property.getStatus() != PropertyStatus.AVAILABLE) {
-                log.error("Cannot publish listing on create: Associated property {} is in status {}",
-                        property.getPropertyId(), property.getStatus());
-                throw new BusinessConflictException(
-                        "Associated property is not in active state (status: " + property.getStatus() + ")", 
-                        "ERROR_PROPERTY_NOT_AVAILABLE",
-                        new Object[]{property.getStatus()}
-                );
-            }
+            validatePropertyCanPublishListing(property, request.getListingType(), request.getAvailableFrom());
 
             // 2. Verify no other published listing of same type exists for this user/property
             boolean duplicateExists = listingRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
@@ -913,11 +927,17 @@ public class ListingApplicationService {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
 
-            // User is either creator or property owner
+            // Exclude soft-deleted listings
+            predicates.add(cb.equal(root.get("deleted"), false));
+
+            // User is either creator or property owner.
+            // When the owner views via isOwner, exclude listings whose creator (agent) has been deleted.
             var propertyJoin = root.join("property", JoinType.LEFT);
+            var userJoin = root.join("user", JoinType.LEFT);
             Predicate isCreator = cb.equal(root.get("userId"), userId);
             Predicate isOwner = cb.equal(propertyJoin.get("ownerId"), userId);
-            predicates.add(cb.or(isCreator, isOwner));
+            Predicate creatorNotDeleted = cb.isFalse(userJoin.get("deleted"));
+            predicates.add(cb.or(isCreator, cb.and(isOwner, creatorNotDeleted)));
 
             if (criteria != null) {
                 // Listing Type
@@ -994,12 +1014,7 @@ public class ListingApplicationService {
         Property property = propertyRepository.findById(listing.getPropertyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Property", listing.getPropertyId()));
 
-        if (property.getStatus() != PropertyStatus.AVAILABLE) {
-            log.error("Cannot publish listing {}: Associated property {} is in status {}",
-                    listingId, property.getPropertyId(), property.getStatus());
-            throw new BusinessConflictException("Associated property is not in active state (status: " 
-                    + property.getStatus() + ")", "ERROR_PROPERTY_NOT_AVAILABLE");
-        }
+        validatePropertyCanPublishListing(property, listing.getListingType(), listing.getAvailableFrom());
 
         // Verify no other published listing of the same type exists for the listing creator and property
         boolean duplicateExists = listingRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
@@ -1035,6 +1050,39 @@ public class ListingApplicationService {
                         "No active listing subscription with available quota"));
         sub.useQuota(1);
         userFeatureSubscriptionRepository.save(sub);
+    }
+
+    private void validatePropertyCanPublishListing(Property property, ListingType listingType,
+                                                   LocalDate availableFrom) {
+        if (property.getStatus() == PropertyStatus.AVAILABLE) {
+            return;
+        }
+
+        if (property.getStatus() == PropertyStatus.RENTED && listingType == ListingType.SALE) {
+            return;
+        }
+
+        if (property.getStatus() == PropertyStatus.RENTED && listingType == ListingType.RENT) {
+            if (!Boolean.TRUE.equals(property.getAllowRentListingWhenRented())) {
+                throw new BusinessConflictException(
+                        "Rent listings are disabled while this property is rented",
+                        "ERROR_RENT_LISTING_DISABLED_WHILE_RENTED");
+            }
+            if (availableFrom == null) {
+                throw new BusinessConflictException(
+                        "Available from date is required for rent listings on rented properties",
+                        "ERROR_AVAILABLE_FROM_REQUIRED_FOR_RENTED_PROPERTY");
+            }
+            return;
+        }
+
+        log.error("Cannot publish listing: Associated property {} is in status {}",
+                property.getPropertyId(), property.getStatus());
+        throw new BusinessConflictException(
+                "Associated property is not in active state (status: " + property.getStatus() + ")",
+                "ERROR_PROPERTY_NOT_AVAILABLE",
+                new Object[]{property.getStatus()}
+        );
     }
 
     /**
@@ -1184,9 +1232,8 @@ public class ListingApplicationService {
         }
         propertyRepository.save(property);
 
-        // 2. Synchronize all associated published listings, regardless of listing type.
-        // If the property is sold, related RENT listings must also become SOLD because
-        // the property is no longer available for rent.
+        // 2. Synchronize associated listings. Sold properties close everything;
+        // rented properties keep sale listings and only draft rent listings when the toggle is off.
         List<Listing> listings = listingRepository.findByPropertyId(propertyId);
         Set<UUID> usersToNotify = new HashSet<>();
         
@@ -1202,14 +1249,26 @@ public class ListingApplicationService {
                 continue;
             }
 
-            if (l.getStatus() == ListingStatus.PUBLISHED) {
+            if (l.getStatus() == ListingStatus.PUBLISHED || l.getStatus() == ListingStatus.PENDING) {
+                boolean shouldUpdate = targetPropertyStatus == PropertyStatus.SOLD
+                        || (targetPropertyStatus == PropertyStatus.RENTED
+                                && l.getListingType() == ListingType.RENT
+                                && !Boolean.TRUE.equals(property.getAllowRentListingWhenRented()));
+                if (!shouldUpdate) {
+                    continue;
+                }
+
+                if (targetPropertyStatus == PropertyStatus.SOLD && l.getStatus() != ListingStatus.PUBLISHED) {
+                    continue;
+                }
+
                 // Keep track of users whose listings were actually updated
                 usersToNotify.add(l.getUserId());
 
                 if (targetPropertyStatus == PropertyStatus.SOLD) {
                     l.markAsSoldDueToPropertyClosure(closedByUserId);
                 } else if (targetPropertyStatus == PropertyStatus.RENTED) {
-                    l.markAsRentedDueToPropertyClosure(closedByUserId);
+                    l.moveToDraft();
                 }
                 listingRepository.save(l);
 
