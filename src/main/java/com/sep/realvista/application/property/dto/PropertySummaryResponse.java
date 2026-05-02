@@ -101,4 +101,7 @@ public class PropertySummaryResponse {
 
     @JsonProperty("sold_at")
     private LocalDateTime soldAt;
+
+    @JsonProperty("allow_rent_listing_when_rented")
+    private Boolean allowRentListingWhenRented;
 }

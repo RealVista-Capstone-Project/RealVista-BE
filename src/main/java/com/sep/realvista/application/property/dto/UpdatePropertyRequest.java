@@ -64,6 +64,9 @@ public class UpdatePropertyRequest {
     @JsonProperty("price_range")
     private PriceRangeVO priceRange;
 
+    @JsonProperty("allow_rent_listing_when_rented")
+    private Boolean allowRentListingWhenRented;
+    
     /**
      * Admin-only: reassign the property to a different owner.
      * Ignored for non-admin update calls.
