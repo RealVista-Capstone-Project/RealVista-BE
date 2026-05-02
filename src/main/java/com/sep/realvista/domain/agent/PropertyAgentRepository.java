@@ -1,6 +1,8 @@
 package com.sep.realvista.domain.agent;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,4 +14,7 @@ public interface PropertyAgentRepository extends JpaRepository<PropertyAgent, UU
     Optional<PropertyAgent> findByPropertyId(UUID propertyId);
     List<PropertyAgent> findByAgentId(UUID agentId);
     boolean existsByPropertyIdAndAgentId(UUID propertyId, UUID agentId);
+
+    @Query("SELECT pa FROM PropertyAgent pa WHERE pa.propertyId = :propertyId AND pa.deleted = false")
+    List<PropertyAgent> findActiveByPropertyId(@Param("propertyId") UUID propertyId);
 }
