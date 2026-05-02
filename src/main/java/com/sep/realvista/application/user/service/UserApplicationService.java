@@ -536,17 +536,17 @@ public class UserApplicationService {
 
     private String ownerCleanupReason(CleanupCause cause) {
         return switch (cause) {
-            case BANNED -> "Owner account banned";
-            case DELETED -> "Owner account deleted";
-            case SUSPENDED -> "Owner account suspended";
+            case BANNED -> "Tài khoản chủ nhà đã bị khóa";
+            case DELETED -> "Tài khoản chủ nhà đã bị xóa";
+            case SUSPENDED -> "Tài khoản chủ nhà đã bị tạm khóa";
         };
     }
 
     private String userCleanupReason(CleanupCause cause) {
         return switch (cause) {
-            case BANNED -> "User account banned";
-            case DELETED -> "User account deleted";
-            case SUSPENDED -> "User account suspended";
+            case BANNED -> "Tài khoản người dùng đã bị khóa";
+            case DELETED -> "Tài khoản người dùng đã bị xóa";
+            case SUSPENDED -> "Tài khoản người dùng đã bị tạm khóa";
         };
     }
 

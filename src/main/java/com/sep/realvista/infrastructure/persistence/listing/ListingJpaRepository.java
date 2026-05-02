@@ -33,7 +33,10 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
 
     @Query("SELECT l FROM Listing l "
             + "LEFT JOIN l.property p "
-            + "WHERE (l.user.userId = :userId OR p.ownerId = :userId) AND l.deleted = false")
+            + "LEFT JOIN l.user u "
+            + "WHERE (l.user.userId = :userId "
+            + "   OR (p.ownerId = :userId AND (u IS NULL OR u.deleted = false))) "
+            + "AND l.deleted = false")
     List<Listing> findByUserIdOrPropertyOwnerId(@Param("userId") UUID userId);
 
     @Query("SELECT l FROM Listing l WHERE l.status = :status AND l.deleted = false")
