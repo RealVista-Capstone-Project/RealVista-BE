@@ -46,6 +46,7 @@ class PolicyServiceTest {
                 .title("Original Title")
                 .slug("test-slug")
                 .content("Original Content")
+                .isActive(true)
                 .build();
 
         policyDto = PolicyDto.builder()
@@ -53,6 +54,7 @@ class PolicyServiceTest {
                 .title("Original Title")
                 .slug("test-slug")
                 .content("Original Content")
+                .isActive(true)
                 .build();
     }
 
@@ -72,7 +74,7 @@ class PolicyServiceTest {
         when(policyRepository.findBySlug("invalid")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> policyService.getPolicyBySlug("invalid"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(RuntimeException.class); // Changed from IllegalArgumentException because ResourceNotFoundException is a RuntimeException
     }
 
     @Test
@@ -92,10 +94,11 @@ class PolicyServiceTest {
         when(policyRepository.save(any(Policy.class))).thenReturn(policy);
         when(policyMapper.toDto(policy)).thenReturn(policyDto);
 
-        PolicyDto result = policyService.updatePolicy(policyId, "New Title", "New Content");
+        PolicyDto result = policyService.updatePolicy(policyId, "New Title", "New Content", false);
 
         assertThat(policy.getTitle()).isEqualTo("New Title");
         assertThat(policy.getContent()).isEqualTo("New Content");
+        assertThat(policy.getIsActive()).isFalse();
         verify(policyRepository).save(policy);
         assertThat(result).isNotNull();
     }
@@ -105,7 +108,7 @@ class PolicyServiceTest {
         UUID invalidId = UUID.randomUUID();
         when(policyRepository.findById(invalidId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> policyService.updatePolicy(invalidId, "Title", "Content"))
+        assertThatThrownBy(() -> policyService.updatePolicy(invalidId, "Title", "Content", true))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

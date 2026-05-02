@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +24,26 @@ import java.util.UUID;
 public class UserRepositoryImpl implements UserRepository {
 
     private final UserJpaRepository jpaRepository;
+
+    @Override
+    public long count() {
+        return jpaRepository.count();
+    }
+
+    @Override
+    public long countByCreatedAtAfter(LocalDateTime date) {
+        return jpaRepository.countByCreatedAtAfter(date);
+    }
+
+    @Override
+    public long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end) {
+        return jpaRepository.countByCreatedAtBetween(start, end);
+    }
+
+    @Override
+    public List<User> findTop10ByOrderByCreatedAtDesc() {
+        return jpaRepository.findTop10ByOrderByCreatedAtDesc();
+    }
     
     @Override
     public Page<User> findAll(Specification<User> spec, Pageable pageable) {
@@ -76,5 +97,11 @@ public class UserRepositoryImpl implements UserRepository {
     public Optional<User> findByPhone(String phone) {
         return jpaRepository.findByPhone(phone);
     }
+
+    @Override
+    public long countByStatusAndCreatedAtAfter(com.sep.realvista.domain.user.UserStatus status, LocalDateTime date) {
+        return jpaRepository.countByStatusAndCreatedAtAfter(status, date);
+    }
 }
+
 

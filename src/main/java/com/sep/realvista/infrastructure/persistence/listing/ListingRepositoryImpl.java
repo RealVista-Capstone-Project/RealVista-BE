@@ -7,7 +7,6 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.search.MapSearchCriteria;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -21,11 +20,44 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-@Slf4j
 public class ListingRepositoryImpl implements ListingRepository {
+    private static final org.slf4j.Logger LOGGER =
+            org.slf4j.LoggerFactory.getLogger(ListingRepositoryImpl.class);
 
     private final ListingJpaRepository jpaRepository;
     private final ListingCustomRepository customRepository;
+
+    @Override
+    public long count() {
+        return jpaRepository.count();
+    }
+
+    @Override
+    public long countByStatus(ListingStatus status) {
+        return jpaRepository.countByStatus(status);
+    }
+
+    @Override
+    public List<Listing> findTop10ByOrderByUpdatedAtDesc() {
+        return jpaRepository.findTop10ByOrderByUpdatedAtDesc();
+    }
+
+
+    @Override
+    public List<Object[]> findTopListings(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+        return jpaRepository.findTopListings(startDate, endDate, pageable);
+    }
+    
+    @Override
+    public long countByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end) {
+        return jpaRepository.countByUserIdAndCreatedAtBetween(userId, start, end);
+    }
+
+
+    @Override
+    public long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end) {
+        return jpaRepository.countByCreatedAtBetween(start, end);
+    }
 
     @Override
     public Page<Listing> findAll(Specification<Listing> spec, Pageable pageable) {
@@ -205,25 +237,30 @@ public class ListingRepositoryImpl implements ListingRepository {
 
     @Override
     public List<SimilarListing> findSimilarListings(UUID listingId, int limit) {
-        log.debug("Finding similar listings for listingId: {}, limit: {}", listingId, limit);
+        LOGGER.debug("Finding similar listings for listingId: {}, limit: {}", listingId, limit);
         return customRepository.findSimilarListings(listingId, limit);
     }
 
     @Override
     public List<Listing> findPublishedListingsPublishedBefore(LocalDateTime cutoff) {
-        log.debug("Finding published listings published before: {}", cutoff);
+        LOGGER.debug("Finding published listings published before: {}", cutoff);
         return jpaRepository.findPublishedListingsPublishedBefore(cutoff);
     }
 
     @Override
     public List<Listing> findPublishedListingsPublishedBetween(LocalDateTime windowStart, LocalDateTime windowEnd) {
-        log.debug("Finding published listings published between: {} and {}", windowStart, windowEnd);
+        LOGGER.debug("Finding published listings published between: {} and {}", windowStart, windowEnd);
         return jpaRepository.findPublishedListingsPublishedBetween(windowStart, windowEnd);
     }
 
     @Override
     public List<Listing> findByStatusAndUpdatedAtBefore(ListingStatus status, LocalDateTime cutoff) {
-        log.debug("Finding listings with status {} updated before: {}", status, cutoff);
+        LOGGER.debug("Finding listings with status {} updated before: {}", status, cutoff);
         return jpaRepository.findByStatusAndUpdatedAtBefore(status, cutoff);
+    }
+
+    @Override
+    public boolean has3dTour(UUID listingId) {
+        return jpaRepository.has3dTour(listingId);
     }
 }

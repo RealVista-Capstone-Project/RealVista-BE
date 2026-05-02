@@ -25,16 +25,16 @@ public class PublicPolicyController {
     private final PolicyService policyService;
 
     @GetMapping
-    @Operation(summary = "Get all policies", description = "Retrieves a list of all policies")
+    @Operation(summary = "Get all policies", description = "Retrieves a list of all active policies")
     public ResponseEntity<ApiResponse<List<PolicyDto>>> getAllPolicies() {
-        log.info("Fetching all policies");
-        return ResponseEntity.ok(ApiResponse.success(policyService.getAllPolicies()));
+        log.info("Fetching all active policies");
+        return ResponseEntity.ok(ApiResponse.success(policyService.getAllActivePolicies()));
     }
 
     @GetMapping("/{slug}")
-    @Operation(summary = "Get policy by slug", description = "Retrieves policy content by slug")
+    @Operation(summary = "Get policy by slug", description = "Retrieves active policy content by slug")
     public ResponseEntity<ApiResponse<PolicyDto>> getPolicyBySlug(@PathVariable String slug) {
-        log.info("Fetching policy by slug: {}", slug);
-        return ResponseEntity.ok(ApiResponse.success(policyService.getPolicyBySlug(slug)));
+        log.info("Fetching active policy by slug: {}", slug);
+        return ResponseEntity.ok(ApiResponse.success(policyService.getActivePolicyBySlug(slug)));
     }
 }
