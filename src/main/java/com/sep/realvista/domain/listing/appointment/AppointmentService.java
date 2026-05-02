@@ -191,6 +191,11 @@ public class AppointmentService {
         return appointmentRepository.findByUserIdAndDateRange(userId, startDate, endDate);
     }
 
+    @Transactional(readOnly = true)
+    public List<Appointment> getAppointmentsByUserId(UUID userId, LocalDateTime startDate, LocalDateTime endDate) {
+        return appointmentRepository.findByUserIdAndDateRange(userId, startDate, endDate);
+    }
+
     @Transactional
     public Appointment updateAppointmentStatus(UUID appointmentId, UUID currentUserId,
             AppointmentStatus newStatus, String reason) {
