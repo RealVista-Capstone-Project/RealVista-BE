@@ -146,7 +146,19 @@ public class PropertyApplicationService {
         PropertyStatus finalStatus = isAgentCreatingForOwner ? PropertyStatus.PENDING : PropertyStatus.DRAFT;
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             try {
-                finalStatus = PropertyStatus.valueOf(request.getStatus().toUpperCase());
+                PropertyStatus requested = PropertyStatus.valueOf(request.getStatus().toUpperCase());
+                if (isAgentCreatingForOwner) {
+                    if (requested == PropertyStatus.DRAFT || requested == PropertyStatus.PENDING) {
+                        finalStatus = requested;
+                    } else {
+                        log.info(
+                                "Ignoring property status {} for agent-on-behalf-of-owner create; keeping {}",
+                                requested,
+                                finalStatus);
+                    }
+                } else {
+                    finalStatus = requested;
+                }
             } catch (IllegalArgumentException e) {
                 log.warn("Invalid property status provided: {}. Using default.", request.getStatus());
             }

@@ -125,6 +125,59 @@ class PropertyApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("createProperty should ignore AVAILABLE status when agent creates for owner")
+    void createPropertyShouldIgnoreAvailableWhenAgentCreatesForOwner() {
+        UUID agentId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID propertyId = UUID.randomUUID();
+        UUID propertyTypeId = UUID.randomUUID();
+        UUID locationId = UUID.randomUUID();
+        setupCurrentUser(agentId);
+
+        CreatePropertyRequest request = CreatePropertyRequest.builder()
+                .ownerId(ownerId)
+                .locationId(locationId)
+                .propertyTypeCode("APARTMENT")
+                .streetAddress("123 Test Street")
+                .latitude(BigDecimal.ONE)
+                .longitude(BigDecimal.ONE)
+                .status("AVAILABLE")
+                .build();
+
+        Property savedProperty = Property.builder()
+                .propertyId(propertyId)
+                .ownerId(ownerId)
+                .locationId(locationId)
+                .propertyTypeId(propertyTypeId)
+                .streetAddress("123 Test Street")
+                .latitude(BigDecimal.ONE)
+                .longitude(BigDecimal.ONE)
+                .status(PropertyStatus.PENDING)
+                .slug("slug")
+                .build();
+
+        when(propertyTypeRepository.findByCode("APARTMENT"))
+                .thenReturn(Optional.of(com.sep.realvista.domain.property.PropertyType.builder()
+                        .propertyTypeId(propertyTypeId)
+                        .code("APARTMENT")
+                        .build()));
+        when(propertyRepository.save(any(Property.class))).thenReturn(savedProperty);
+        when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(savedProperty));
+        when(propertyMediaRepository.findByPropertyId(propertyId)).thenReturn(List.of());
+        when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId)).thenReturn(List.of());
+        when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId)).thenReturn(List.of());
+        when(listingRepository.findByPropertyId(propertyId)).thenReturn(List.of());
+        when(propertyMapper.toDetailResponse(any(), any(), any(), any()))
+                .thenReturn(PropertyDetailResponse.builder().propertyId(propertyId).ownerId(ownerId).build());
+
+        propertyApplicationService.createProperty(request);
+
+        ArgumentCaptor<Property> propertyCaptor = ArgumentCaptor.forClass(Property.class);
+        verify(propertyRepository, org.mockito.Mockito.atLeastOnce()).save(propertyCaptor.capture());
+        assertThat(propertyCaptor.getAllValues().get(0).getStatus()).isEqualTo(PropertyStatus.PENDING);
+    }
+
+    @Test
     @DisplayName("createProperty should not auto-create engagement for owner self-create flow")
     void createPropertyShouldNotAutoCreateEngagementForOwnerSelfCreateFlow() {
         UUID ownerId = UUID.randomUUID();
