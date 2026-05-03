@@ -363,6 +363,21 @@ public class UserApplicationService {
     }
 
     /**
+     * Set a new password after validating a password-reset token (no current password).
+     */
+    @CacheEvict(value = "users", key = "#userId")
+    public void resetPasswordForgotten(UUID userId, String newPassword) {
+        log.info("Resetting password via forgot-password flow for user ID: {}", userId);
+
+        User user = userDomainService.getUserOrThrow(userId);
+        String newPasswordHash = passwordService.encode(newPassword);
+        user.updatePassword(newPasswordHash);
+        userRepository.save(user);
+
+        log.info("Password reset completed for user ID: {}", userId);
+    }
+
+    /**
      * Activate user account.
      */
     @CacheEvict(value = "users", key = "#userId")
