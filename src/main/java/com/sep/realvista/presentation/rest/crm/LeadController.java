@@ -6,6 +6,7 @@ import com.sep.realvista.application.crm.dto.AddLeadNoteRequest;
 import com.sep.realvista.application.crm.dto.CreateLeadRequest;
 import com.sep.realvista.application.crm.dto.LeadNoteResponse;
 import com.sep.realvista.application.crm.dto.LeadResponse;
+import com.sep.realvista.application.crm.dto.LeadStatusSummaryResultResponse;
 import com.sep.realvista.application.crm.dto.LeadSummaryResponse;
 import com.sep.realvista.application.crm.dto.UpdateLeadRequest;
 import com.sep.realvista.application.crm.dto.UpdateLeadStatusRequest;
@@ -79,6 +80,21 @@ public class LeadController {
         UUID agentId = userDetails.getUserId();
         LeadSummaryResponse result = leadApplicationService.getSummary(agentId, from, to, listingId, q);
         return ResponseEntity.ok(ApiResponse.success("Lead summary retrieved successfully", result));
+    }
+
+    @GetMapping("/status-summary")
+    @Operation(summary = "Lead status summary", description = "Returns CRM lead counts grouped by status.")
+    public ResponseEntity<ApiResponse<LeadStatusSummaryResultResponse>> getStatusSummary(
+            @AuthenticationPrincipal SecurityUserDetails userDetails,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) UUID listingId,
+            @RequestParam(required = false) String q
+    ) {
+        UUID agentId = userDetails.getUserId();
+        LeadStatusSummaryResultResponse result = leadApplicationService
+                .getStatusSummary(agentId, from, to, listingId, q);
+        return ResponseEntity.ok(ApiResponse.success("Lead status summary retrieved successfully", result));
     }
 
     @PostMapping

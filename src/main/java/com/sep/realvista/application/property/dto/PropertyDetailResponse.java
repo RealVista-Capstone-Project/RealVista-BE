@@ -85,4 +85,7 @@ public class PropertyDetailResponse {
 
     @JsonProperty("price_range")
     private PriceRangeVO priceRange;
+
+    @JsonProperty("allow_rent_listing_when_rented")
+    private Boolean allowRentListingWhenRented;
 }

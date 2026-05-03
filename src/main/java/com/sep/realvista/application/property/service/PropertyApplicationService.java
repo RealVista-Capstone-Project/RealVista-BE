@@ -1,6 +1,7 @@
 package com.sep.realvista.application.property.service;
 
 import com.sep.realvista.application.common.dto.PageResponse;
+import com.sep.realvista.application.appointment.service.AppointmentApplicationService;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyAttributeRequest;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
@@ -9,13 +10,18 @@ import com.sep.realvista.application.property.dto.PropertyFeedItemResponse;
 import com.sep.realvista.application.property.dto.PropertyMediaRequest;
 import com.sep.realvista.application.property.dto.PropertySearchCriteria;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
+import com.sep.realvista.application.property.dto.PropertySummaryMetricsResponse;
 import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
 import com.sep.realvista.application.property.mapper.PropertyMapper;
 import com.sep.realvista.application.engagement.service.EngagementApplicationService;
+import com.sep.realvista.application.notification.dto.SendNotificationRequest;
+import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.domain.agent.PropertyAgent;
 import com.sep.realvista.domain.agent.PropertyAgentRepository;
 import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.engagement.Engagement;
+import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyMedia;
@@ -33,19 +39,27 @@ import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
+import com.sep.realvista.domain.listing.appointment.Appointment;
 import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.listing.repository.AppointmentRepository;
 import com.sep.realvista.application.listing.dto.ListingSummaryDTO;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.notification.EntityType;
+import com.sep.realvista.domain.user.notification.EventType;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.infrastructure.persistence.property.amenity.AmenityJpaRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
+import com.sep.realvista.infrastructure.service.NotificationMessageService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -55,6 +69,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -81,11 +97,17 @@ public class PropertyApplicationService {
     private final PropertyAttributeRangeRepository propertyAttributeRangeRepository;
     private final PropertyTypeAttributeRepository propertyTypeAttributeRepository;
     private final ListingRepository listingRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final EngagementRepository engagementRepository;
+    private final AppointmentApplicationService appointmentApplicationService;
     private final PropertyMapper propertyMapper;
     private final EntityManager entityManager;
     private final AgentProposalRepository agentProposalRepository;
     private final SettingPreferenceRepository settingPreferenceRepository;
     private final EngagementApplicationService engagementApplicationService;
+    private final CacheManager cacheManager;
+    private final NotificationApplicationService notificationApplicationService;
+    private final NotificationMessageService notificationMessageService;
 
     private UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -144,6 +166,7 @@ public class PropertyApplicationService {
                 .descriptions(request.getDescriptions())
                 .extraAttributes(request.getExtraAttributes())
                 .priceRange(request.getPriceRange())
+                .allowRentListingWhenRented(Boolean.TRUE.equals(request.getAllowRentListingWhenRented()))
                 .status(finalStatus)
                 .slug(titleSlug)
                 .build();
@@ -179,6 +202,8 @@ public class PropertyApplicationService {
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+
+        boolean wasAllowRentListingWhenRented = Boolean.TRUE.equals(property.getAllowRentListingWhenRented());
 
         if (!property.getOwnerId().equals(ownerId)) {
             throw new DomainException(
@@ -244,6 +269,14 @@ public class PropertyApplicationService {
             property.updatePriceRange(request.getPriceRange());
         }
 
+        property.updateAllowRentListingWhenRented(request.getAllowRentListingWhenRented());
+
+        if (property.getStatus() == PropertyStatus.RENTED
+                && wasAllowRentListingWhenRented
+                && !Boolean.TRUE.equals(property.getAllowRentListingWhenRented())) {
+            draftRentListingsForRentedProperty(propertyId);
+        }
+
         propertyRepository.save(property);
         entityManager.flush();
         entityManager.clear();
@@ -296,14 +329,15 @@ public class PropertyApplicationService {
 
         String keyword = criteria != null ? criteria.getKeyword() : null;
         PropertyStatus status = criteria != null ? criteria.getStatus() : null;
+        List<PropertyStatus> statuses = criteria != null ? criteria.getStatuses() : null;
         Page<Property> propertiesPage;
 
         if (isAgent) {
             log.info("Getting properties for agent: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, status, pageable);
+            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, status, statuses, pageable);
         } else {
             log.info("Getting properties for owner: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, status, pageable);
+            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, status, statuses, pageable);
         }
 
         List<PropertySummaryResponse> content = propertiesPage.getContent().stream().map(property -> {
@@ -333,6 +367,51 @@ public class PropertyApplicationService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public PropertySummaryMetricsResponse getMyPropertiesSummary() {
+        UUID userId = getCurrentUserId();
+        List<Property> properties = propertyRepository.findByOwnerIdOrAgentId(userId);
+        LocalDate currentMonthStartDate = LocalDate.now().withDayOfMonth(1);
+        LocalDate previousMonthStartDate = currentMonthStartDate.minusMonths(1);
+        LocalDate nextMonthStartDate = currentMonthStartDate.plusMonths(1);
+        LocalDateTime currentMonthStart = currentMonthStartDate.atStartOfDay();
+        LocalDateTime previousMonthStart = previousMonthStartDate.atStartOfDay();
+        LocalDateTime nextMonthStart = nextMonthStartDate.atStartOfDay();
+
+        long availableProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.AVAILABLE).count();
+        long reservedProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.RESERVED).count();
+        long soldProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.SOLD).count();
+        long rentedProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.RENTED).count();
+        long draftProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.DRAFT).count();
+        long pendingProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.PENDING).count();
+        long verifiedProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.VERIFIED).count();
+        long rejectedProperties = properties.stream().filter(p -> p.getStatus() == PropertyStatus.REJECTED).count();
+        long currentMonthTotalProperties = properties.stream()
+                .filter(p -> p.getCreatedAt() != null
+                        && !p.getCreatedAt().isBefore(currentMonthStart)
+                        && p.getCreatedAt().isBefore(nextMonthStart))
+                .count();
+        long previousTotalProperties = properties.stream()
+                .filter(p -> p.getCreatedAt() != null
+                        && !p.getCreatedAt().isBefore(previousMonthStart)
+                        && p.getCreatedAt().isBefore(currentMonthStart))
+                .count();
+
+        return PropertySummaryMetricsResponse.builder()
+                .totalProperties(properties.size())
+                .currentMonthTotalProperties(currentMonthTotalProperties)
+                .previousTotalProperties(previousTotalProperties)
+                .availableProperties(availableProperties)
+                .reservedProperties(reservedProperties)
+                .soldProperties(soldProperties)
+                .rentedProperties(rentedProperties)
+                .draftProperties(draftProperties)
+                .pendingProperties(pendingProperties)
+                .verifiedProperties(verifiedProperties)
+                .rejectedProperties(rejectedProperties)
+                .build();
+    }
+
     private void applySoldByInfo(PropertySummaryResponse summary, Property property) {
         if (summary == null || property == null || property.getStatus() != PropertyStatus.SOLD) {
             return;
@@ -356,6 +435,33 @@ public class PropertyApplicationService {
             summary.setSoldByName(user.getFullName());
             summary.setSoldByPhone(user.getPhone());
         });
+    }
+
+    private void draftRentListingsForRentedProperty(UUID propertyId) {
+        List<Listing> changedListings = listingRepository.findByPropertyId(propertyId).stream()
+                .filter(listing -> listing.getListingType() == ListingType.RENT)
+                .filter(listing -> listing.getStatus() == ListingStatus.PUBLISHED
+                        || listing.getStatus() == ListingStatus.PENDING)
+                .peek(Listing::moveToDraft)
+                .toList();
+
+        if (changedListings.isEmpty()) {
+            return;
+        }
+
+        listingRepository.saveAll(changedListings);
+        evictListingDetailCache(changedListings);
+    }
+
+    private void evictListingDetailCache(List<Listing> listings) {
+        Cache listingCache = cacheManager.getCache("listings");
+        if (listingCache == null) {
+            return;
+        }
+
+        listings.stream()
+                .map(Listing::getListingId)
+                .forEach(listingCache::evict);
     }
 
     @Transactional(readOnly = true)
@@ -747,6 +853,7 @@ public class PropertyApplicationService {
 
         property.markAsDeleted();
         propertyRepository.save(property);
+        softDeleteListingsForProperty(propertyId, currentUserId);
         log.info("Property {} soft-deleted by user {}", propertyId, currentUserId);
     }
 
@@ -803,5 +910,273 @@ public class PropertyApplicationService {
 
             return response;
         }).collect(Collectors.toList());
+    }
+
+    // ── Admin-only methods ──────────────────────────────────────────────────────
+
+    /**
+     * Returns a paginated list of all properties (not filtered by owner/agent).
+     * Supports optional keyword, status, user, property type, and location filters.
+     * Admin only.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<PropertySummaryResponse> adminGetProperties(
+            PropertySearchCriteria criteria,
+            Pageable pageable) {
+        String keyword = criteria != null ? criteria.getKeyword() : null;
+        PropertyStatus status = criteria != null ? criteria.getStatus() : null;
+        UUID userId = criteria != null ? criteria.getUserId() : null;
+        UUID propertyTypeId = criteria != null ? criteria.getPropertyTypeId() : null;
+        UUID locationId = criteria != null ? criteria.getLocationId() : null;
+
+        log.info(
+                "Admin fetching properties with keyword={}, status={}, userId={}, propertyTypeId={}, locationId={}",
+                keyword, status, userId, propertyTypeId, locationId);
+
+        Page<Property> page = propertyRepository.findByAdminCriteria(
+                keyword, status, userId, propertyTypeId, locationId, pageable);
+
+        List<PropertySummaryResponse> content = page.getContent().stream().map(property -> {
+            UUID propId = property.getPropertyId();
+            List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propId);
+            List<PropertyAttributeValue> attributes =
+                    propertyAttributeValueRepository.findByPropertyIdWithAttribute(propId);
+            List<PropertyAmenity> amenities = propertyAmenityRepository.findByPropertyIdWithAmenity(propId);
+            PropertySummaryResponse summary = propertyMapper.toSummaryResponse(property, media, attributes, amenities);
+            userRepository.findById(property.getOwnerId()).ifPresent(owner -> {
+                summary.setOwnerName(owner.getFullName());
+                summary.setOwnerEmail(owner.getEmail() != null ? owner.getEmail().toString() : null);
+                summary.setOwnerAvatarUrl(owner.getAvatarUrl());
+                summary.setOwnerPhone(owner.getPhone());
+            });
+            applySoldByInfo(summary, property);
+            return summary;
+        }).collect(Collectors.toList());
+
+        return PageResponse.<PropertySummaryResponse>builder()
+                .content(content)
+                .page(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .first(page.isFirst())
+                .last(page.isLast())
+                .build();
+    }
+
+    /**
+     * Admin-only update: skips owner check, optionally reassigns the property owner.
+     * Notifies the owner (and active agent if any) after update.
+     */
+    @Transactional
+    public PropertyDetailResponse adminUpdateProperty(UUID propertyId, UpdatePropertyRequest request) {
+        log.info("Admin updating property {}", propertyId);
+
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+
+        UUID previousOwnerId = property.getOwnerId();
+
+        // Resolve location
+        UUID newLocationId = request.getLocationId();
+        if (newLocationId == null && request.getLatitude() != null && request.getLongitude() != null) {
+            newLocationId = resolveLocationId(request.getLatitude(), request.getLongitude());
+        }
+
+        if (newLocationId != null || request.getPropertyTypeCode() != null) {
+            property.updateLocationAndType(
+                    newLocationId,
+                    request.getPropertyTypeCode() != null ? resolvePropertyTypeId(request.getPropertyTypeCode()) : null
+            );
+        }
+
+        property.updateDetails(
+                request.getStreetAddress(),
+                request.getDescriptions(),
+                null
+        );
+
+        property.updateDimensions(
+                request.getLandSizeM2(),
+                request.getUsableSizeM2(),
+                request.getWidthM(),
+                request.getLengthM()
+        );
+
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            property.updateCoordinates(request.getLatitude(), request.getLongitude());
+        }
+
+        if (request.getPriceRange() != null) {
+            property.updatePriceRange(request.getPriceRange());
+        }
+
+        // Reassign owner if requested
+        UUID newOwnerId = request.getNewOwnerId();
+        if (newOwnerId != null && !newOwnerId.equals(previousOwnerId)) {
+            userRepository.findById(newOwnerId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", newOwnerId));
+            property.reassignOwner(newOwnerId);
+            List<Listing> listings = listingRepository.findByPropertyId(propertyId);
+            List<UUID> listingIds = listings.stream()
+                    .map(Listing::getListingId)
+                    .toList();
+
+            List<Engagement> engagements = engagementRepository.findByListingIdInOrPropertyIdIn(
+                    listingIds, List.of(propertyId));
+            engagements.forEach(engagement -> {
+                engagement.detachPropertyAndListing();
+                engagement.markAsDeleted();
+            });
+            engagementRepository.saveAll(engagements);
+
+            List<Appointment> appointments = listingIds.isEmpty()
+                    ? List.of()
+                    : appointmentRepository.findByListingIdInAndDeletedFalse(listingIds);
+            appointments.forEach(Appointment::markAsDeleted);
+            appointmentRepository.saveAll(appointments);
+
+            List<PropertyAgent> propertyAgents = propertyAgentRepository.findActiveByPropertyId(propertyId);
+            propertyAgents.forEach(PropertyAgent::markAsDeleted);
+            propertyAgentRepository.saveAll(propertyAgents);
+
+            for (Listing listing : listings) {
+                listing.markAsDeleted();
+            }
+            if (!listings.isEmpty()) {
+                listingRepository.saveAll(listings);
+            }
+            log.info(
+                    "Admin reassigning property {} owner from {} to {} "
+                            + "and deleting {} listings, {} appointments, {} engagements",
+                    propertyId,
+                    previousOwnerId,
+                    newOwnerId,
+                    listings.size(),
+                    appointments.size(),
+                    engagements.size());
+        }
+
+        propertyRepository.save(property);
+        log.info("Admin updated property {}", propertyId);
+
+        // Send notifications
+        String address = property.getStreetAddress() != null ? property.getStreetAddress() : propertyId.toString();
+        Set<UUID> notifyIds = new java.util.LinkedHashSet<>();
+        notifyIds.add(previousOwnerId);
+        if (newOwnerId != null && !newOwnerId.equals(previousOwnerId)) {
+            notifyIds.add(newOwnerId);
+        }
+        // Notify active agents if any
+        propertyAgentRepository.findActiveByPropertyId(propertyId)
+                .forEach(pa -> notifyIds.add(pa.getAgentId()));
+
+        for (UUID recipientId : notifyIds) {
+            try {
+                userRepository.findById(recipientId).ifPresent(user -> {
+                    String lang = getLanguageForUser(recipientId);
+                    String title = notificationMessageService.getMessage("PROPERTY_UPDATED_BY_ADMIN_TITLE", lang);
+                    String message = notificationMessageService.getMessage(
+                            "PROPERTY_UPDATED_BY_ADMIN_MESSAGE", lang, address);
+                    notificationApplicationService.sendNotification(SendNotificationRequest.builder()
+                            .userId(user.getUserId())
+                            .userEmail(user.getEmail() != null ? user.getEmail().getValue() : null)
+                            .title(title)
+                            .message(message)
+                            .eventType(EventType.PROPERTY_UPDATED_BY_ADMIN)
+                            .entityType(EntityType.PROPERTY)
+                            .entityId(propertyId)
+                            .build());
+                });
+            } catch (Exception e) {
+                log.error("Failed to send admin-update notification to user {}: {}", recipientId, e.getMessage());
+            }
+        }
+
+        return getPropertyDetails(propertyId);
+    }
+
+    /**
+     * Admin-only delete: skips owner check. Notifies owner and active agent before soft-deleting.
+     */
+    @Transactional
+    public void adminDeleteProperty(UUID propertyId) {
+        UUID currentUserId = getCurrentUserId();
+        log.info("Admin soft-deleting property {}", propertyId);
+
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
+
+        String address = property.getStreetAddress() != null ? property.getStreetAddress() : propertyId.toString();
+        UUID ownerId = property.getOwnerId();
+
+        Set<UUID> notifyIds = new java.util.LinkedHashSet<>();
+        if (ownerId != null) {
+            notifyIds.add(ownerId);
+        }
+        propertyAgentRepository.findActiveByPropertyId(propertyId)
+                .forEach(pa -> notifyIds.add(pa.getAgentId()));
+
+        for (UUID recipientId : notifyIds) {
+            try {
+                userRepository.findById(recipientId).ifPresent(user -> {
+                    String lang = getLanguageForUser(recipientId);
+                    String title = notificationMessageService.getMessage("PROPERTY_DELETED_BY_ADMIN_TITLE", lang);
+                    String message = notificationMessageService.getMessage(
+                            "PROPERTY_DELETED_BY_ADMIN_MESSAGE", lang, address);
+                    notificationApplicationService.sendNotification(SendNotificationRequest.builder()
+                            .userId(user.getUserId())
+                            .userEmail(user.getEmail() != null ? user.getEmail().getValue() : null)
+                            .title(title)
+                            .message(message)
+                            .eventType(EventType.PROPERTY_DELETED_BY_ADMIN)
+                            .entityType(EntityType.PROPERTY)
+                            .entityId(propertyId)
+                            .build());
+                });
+            } catch (Exception e) {
+                log.error("Failed to send admin-delete notification to user {}: {}", recipientId, e.getMessage());
+            }
+        }
+
+        property.markAsDeleted();
+        propertyRepository.save(property);
+        softDeleteListingsForProperty(propertyId, currentUserId);
+        log.info("Admin soft-deleted property {}", propertyId);
+    }
+
+    private void softDeleteListingsForProperty(UUID propertyId, UUID cancelledByUserId) {
+        List<Listing> listings = listingRepository.findByPropertyId(propertyId);
+        List<UUID> listingIds = listings.stream()
+                .map(Listing::getListingId)
+                .toList();
+
+        List<Engagement> engagements = engagementRepository.findByListingIdInOrPropertyIdIn(
+                listingIds, List.of(propertyId));
+        engagements.forEach(engagement -> {
+            engagement.detachPropertyAndListing();
+            engagement.markAsDeleted();
+        });
+        engagementRepository.saveAll(engagements);
+
+        String cancellationReason = "REASON_PROPERTY_DELETED";
+        listings.forEach(listing -> appointmentApplicationService.cancelActiveAppointmentsByListingId(
+                listing.getListingId(), cancelledByUserId, cancellationReason));
+        listings.forEach(Listing::markAsDeleted);
+        listingRepository.saveAll(listings);
+        log.info(
+                "Soft-deleted {} listings and {} engagements for property {}",
+                listings.size(),
+                engagements.size(),
+                propertyId);
+    }
+
+    private String getLanguageForUser(UUID userId) {
+        if (userId == null) {
+            return "vi";
+        }
+        return settingPreferenceRepository.findByUserId(userId)
+                .map(SettingPreference::getPreferredLanguage)
+                .orElse("vi");
     }
 }

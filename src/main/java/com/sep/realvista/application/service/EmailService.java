@@ -62,4 +62,26 @@ public interface EmailService {
      */
     CompletableFuture<Void> sendTemplateMessageAsync(String to, String subject, String templateName, 
                                                      java.util.Map<String, Object> variables);
+
+    /**
+     * Send an email message using a template from the database.
+     *
+     * @param to           Recipient email address
+     * @param templateKey  Key of the template in database
+     * @param language     Language of the template (e.g., "en", "vi")
+     * @param variables    Variables to be used in the template
+     */
+    void sendDbTemplateMessage(String to, String templateKey, String language, java.util.Map<String, Object> variables);
+
+    /**
+     * Send an email message using a template from the database asynchronously.
+     *
+     * @param to           Recipient email address
+     * @param templateKey  Key of the template in database
+     * @param language     Language of the template (e.g., "en", "vi")
+     * @param variables    Variables to be used in the template
+     * @return CompletableFuture representing the async operation
+     */
+    CompletableFuture<Void> sendDbTemplateMessageAsync(String to, String templateKey, String language, 
+                                                       java.util.Map<String, Object> variables);
 }

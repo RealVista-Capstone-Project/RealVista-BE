@@ -29,9 +29,29 @@ public class PolicyRepositoryImpl implements PolicyRepository {
     public Optional<Policy> findBySlug(String slug) {
         return jpaRepository.findBySlug(slug);
     }
+    
+    @Override
+    public Optional<Policy> findActiveBySlug(String slug) {
+        return jpaRepository.findBySlugAndIsActiveTrue(slug);
+    }
 
     @Override
     public List<Policy> findAll() {
         return jpaRepository.findAll();
+    }
+    
+    @Override
+    public List<Policy> findAllActive() {
+        return jpaRepository.findAllByIsActiveTrue();
+    }
+
+    @Override
+    public boolean existsById(UUID id) {
+        return jpaRepository.existsById(id);
+    }
+
+    @Override
+    public void deleteById(UUID id) {
+        jpaRepository.deleteById(id);
     }
 }

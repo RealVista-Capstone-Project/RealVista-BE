@@ -38,11 +38,14 @@ public class PropertyRepositoryImpl implements PropertyRepository {
             UUID ownerId,
             String keyword,
             PropertyStatus status,
+            List<PropertyStatus> statuses,
             Pageable pageable) {
         String keywordPattern = (keyword == null || keyword.isBlank())
                 ? null
                 : "%" + keyword.trim().toLowerCase() + "%";
-        return jpaRepository.findByOwnerIdAndKeyword(ownerId, keywordPattern, status, pageable);
+        List<PropertyStatus> statusFilter = statuses == null || statuses.isEmpty() ? null : statuses;
+        PropertyStatus singleStatus = statusFilter == null ? status : null;
+        return jpaRepository.findByOwnerIdAndKeyword(ownerId, keywordPattern, singleStatus, statusFilter, pageable);
     }
 
     @Override
@@ -50,11 +53,14 @@ public class PropertyRepositoryImpl implements PropertyRepository {
             UUID agentId,
             String keyword,
             PropertyStatus status,
+            List<PropertyStatus> statuses,
             Pageable pageable) {
         String keywordPattern = (keyword == null || keyword.isBlank())
                 ? null
                 : "%" + keyword.trim().toLowerCase() + "%";
-        return jpaRepository.findByAgentIdAndKeyword(agentId, keywordPattern, status, pageable);
+        List<PropertyStatus> statusFilter = statuses == null || statuses.isEmpty() ? null : statuses;
+        PropertyStatus singleStatus = statusFilter == null ? status : null;
+        return jpaRepository.findByAgentIdAndKeyword(agentId, keywordPattern, singleStatus, statusFilter, pageable);
     }
 
     @Override
@@ -112,5 +118,20 @@ public class PropertyRepositoryImpl implements PropertyRepository {
                 ? null
                 : "%" + keyword.trim().toLowerCase(java.util.Locale.ROOT) + "%";
         return jpaRepository.findPropertyFeed(agentId, keywordPattern, propertyTypeId, locationId, pageable);
+    }
+
+    @Override
+    public org.springframework.data.domain.Page<Property> findByAdminCriteria(
+            String keyword,
+            com.sep.realvista.domain.property.PropertyStatus status,
+            UUID userId,
+            UUID propertyTypeId,
+            UUID locationId,
+            org.springframework.data.domain.Pageable pageable) {
+        String keywordPattern = (keyword == null || keyword.isBlank())
+                ? null
+                : "%" + keyword.trim().toLowerCase(java.util.Locale.ROOT) + "%";
+        return jpaRepository.findByAdminCriteria(
+                keywordPattern, status, userId, propertyTypeId, locationId, pageable);
     }
 }

@@ -72,4 +72,7 @@ public class CreatePropertyRequest {
 
     @JsonProperty("price_range")
     private PriceRangeVO priceRange;
+
+    @JsonProperty("allow_rent_listing_when_rented")
+    private Boolean allowRentListingWhenRented;
 }

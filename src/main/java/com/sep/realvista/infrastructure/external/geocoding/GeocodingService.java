@@ -60,7 +60,7 @@ public class GeocodingService {
             return BoundingBox.zero();
         }
 
-        String url = UriComponentsBuilder.fromHttpUrl(GEOCODE_URL)
+        String url = UriComponentsBuilder.fromUriString(GEOCODE_URL)
                 .queryParam("address", addressQuery)
                 .queryParam("key", apiKey)
                 .build()

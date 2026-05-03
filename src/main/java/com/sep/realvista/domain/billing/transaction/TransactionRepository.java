@@ -9,4 +9,20 @@ public interface TransactionRepository {
     Optional<Transaction> findById(UUID id);
     Optional<Transaction> findByOrderCode(Long orderCode);
     List<Transaction> findByUserId(UUID userId);
+    List<Transaction> findAll();
+    long count();
+    List<Transaction> findTop10ByOrderByCreatedAtDesc();
+    double sumTotalAmount();
+    List<Transaction> findAllByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+    double sumTotalAmountByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+    double sumTotalAmountByPaymentStatus(PaymentStatus status);
+    org.springframework.data.domain.Page<Transaction> findAllByCreatedAtBetweenPaged(
+            java.time.LocalDateTime start, java.time.LocalDateTime end, 
+            org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<Transaction> findAllByCreatedAtBetweenAndPlanCodeInPaged(
+            java.time.LocalDateTime start, java.time.LocalDateTime end, 
+            java.util.List<String> planCodes,
+            org.springframework.data.domain.Pageable pageable);
 }
+
+

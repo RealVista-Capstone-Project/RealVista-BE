@@ -1,6 +1,7 @@
 package com.sep.realvista.unit.application.appointment;
 
 import com.sep.realvista.application.appointment.dto.BookTourRequest;
+import com.sep.realvista.application.appointment.dto.AppointmentSummaryResponse;
 import com.sep.realvista.application.appointment.service.AppointmentApplicationService;
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
@@ -38,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -160,12 +162,6 @@ class AppointmentApplicationServiceTest {
         when(settingPreferenceRepository.findByUserId(any()))
                 .thenReturn(java.util.Optional.empty());
 
-        when(notificationMessageService.getMessage(anyString(), anyString()))
-                .thenReturn("Mock Title");
-        
-        when(notificationMessageService.getMessage(anyString(), anyString(), any(), any(), any(), any()))
-                .thenReturn("Mock Message");
-
         // Act
         applicationService.bookTour(userId, request);
 
@@ -182,23 +178,139 @@ class AppointmentApplicationServiceTest {
         assertThat(lead.getEmail()).isEqualTo("sender@test.com");
 
         // Verify confirmation email sent to sender
-        verify(emailService).sendTemplateMessageAsync(
+        verify(emailService).sendDbTemplateMessageAsync(
                 eq("sender@test.com"),
-                eq("Đặt lịch tham quan: Test Listing"),
-                eq("tour-booking-confirmation"),
+                eq("TOUR_BOOKING_CONFIRMATION"),
+                eq("vi"),
                 anyMap()
         );
 
         // Verify notification email sent to owner
-        verify(emailService).sendTemplateMessageAsync(
+        verify(emailService).sendDbTemplateMessageAsync(
                 eq("owner@test.com"),
-                eq("Yêu cầu tham quan mới: Test Listing"),
-                eq("tour-booking-notification"),
+                eq("TOUR_BOOKING_NOTIFICATION"),
+                eq("vi"),
                 anyMap()
         );
 
-        // Verify in-app/push notifications sent to both owner and sender
+        // Verify in-app notifications sent to both owner and sender
         verify(notificationApplicationService, atLeastOnce())
-                .sendNotification(any(SendNotificationRequest.class));
+                .sendDbNotification(any(), anyString(), anyString(), anyMap(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Should exclude busy blocks from upcoming appointments in summary")
+    void shouldExcludeBusyBlocksFromUpcomingAppointmentsInSummary() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        LocalDateTime start = LocalDateTime.now().minusDays(1);
+        LocalDateTime end = LocalDateTime.now().plusDays(7);
+        LocalDateTime futureSlot = LocalDateTime.now().plusHours(3);
+
+        Appointment futureTour = Appointment.builder()
+                .appointmentId(UUID.randomUUID())
+                .senderId(userId)
+                .receiverId(UUID.randomUUID())
+                .startTime(futureSlot)
+                .endTime(futureSlot.plusMinutes(30))
+                .status(AppointmentStatus.ACCEPTED)
+                .appointmentType(AppointmentType.TOUR)
+                .build();
+
+        Appointment futureBusyBlock = Appointment.builder()
+                .appointmentId(UUID.randomUUID())
+                .senderId(userId)
+                .receiverId(userId)
+                .startTime(futureSlot.plusHours(1))
+                .endTime(futureSlot.plusHours(1).plusMinutes(30))
+                .status(AppointmentStatus.ACCEPTED)
+                .appointmentType(AppointmentType.BLOCK)
+                .build();
+
+        when(appointmentService.getAppointmentsByUserId(eq(userId), eq(start), eq(end), isNull()))
+                .thenReturn(List.of(futureTour, futureBusyBlock));
+
+        // Act
+        AppointmentSummaryResponse result = applicationService.getAppointmentSummary(userId, start, end);
+
+        // Assert
+        assertThat(result.getUpcomingAppointments()).isEqualTo(1);
+        assertThat(result.getTotalAppointments()).isEqualTo(2);
+        assertThat(result.getAcceptedAppointments()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Should keep legacy status counters unchanged in summary")
+    void shouldKeepLegacyStatusCountersUnchangedInSummary() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        LocalDateTime start = LocalDateTime.now().minusDays(2);
+        LocalDateTime end = LocalDateTime.now().plusDays(2);
+        LocalDateTime now = LocalDateTime.now();
+
+        Appointment pendingTour = Appointment.builder()
+                .appointmentId(UUID.randomUUID())
+                .senderId(userId)
+                .receiverId(UUID.randomUUID())
+                .startTime(now.plusHours(2))
+                .endTime(now.plusHours(2).plusMinutes(30))
+                .status(AppointmentStatus.PENDING)
+                .appointmentType(AppointmentType.TOUR)
+                .build();
+
+        Appointment acceptedBlock = Appointment.builder()
+                .appointmentId(UUID.randomUUID())
+                .senderId(userId)
+                .receiverId(userId)
+                .startTime(now.plusHours(4))
+                .endTime(now.plusHours(4).plusMinutes(30))
+                .status(AppointmentStatus.ACCEPTED)
+                .appointmentType(AppointmentType.BLOCK)
+                .build();
+
+        Appointment rejectedTour = Appointment.builder()
+                .appointmentId(UUID.randomUUID())
+                .senderId(userId)
+                .receiverId(UUID.randomUUID())
+                .startTime(now.minusHours(3))
+                .endTime(now.minusHours(2).plusMinutes(30))
+                .status(AppointmentStatus.REJECTED)
+                .appointmentType(AppointmentType.TOUR)
+                .build();
+
+        Appointment canceledTour = Appointment.builder()
+                .appointmentId(UUID.randomUUID())
+                .senderId(userId)
+                .receiverId(UUID.randomUUID())
+                .startTime(now.minusHours(6))
+                .endTime(now.minusHours(5).plusMinutes(30))
+                .status(AppointmentStatus.CANCELED)
+                .appointmentType(AppointmentType.TOUR)
+                .build();
+
+        Appointment completedTour = Appointment.builder()
+                .appointmentId(UUID.randomUUID())
+                .senderId(userId)
+                .receiverId(UUID.randomUUID())
+                .startTime(now.minusDays(1))
+                .endTime(now.minusDays(1).plusMinutes(30))
+                .status(AppointmentStatus.COMPLETED)
+                .appointmentType(AppointmentType.TOUR)
+                .build();
+
+        when(appointmentService.getAppointmentsByUserId(eq(userId), eq(start), eq(end), isNull()))
+                .thenReturn(List.of(pendingTour, acceptedBlock, rejectedTour, canceledTour, completedTour));
+
+        // Act
+        AppointmentSummaryResponse result = applicationService.getAppointmentSummary(userId, start, end);
+
+        // Assert
+        assertThat(result.getTotalAppointments()).isEqualTo(5);
+        assertThat(result.getPendingAppointments()).isEqualTo(1);
+        assertThat(result.getAcceptedAppointments()).isEqualTo(1);
+        assertThat(result.getRejectedAppointments()).isEqualTo(1);
+        assertThat(result.getCanceledAppointments()).isEqualTo(1);
+        assertThat(result.getCompletedAppointments()).isEqualTo(1);
+        assertThat(result.getUpcomingAppointments()).isEqualTo(1);
     }
 }

@@ -4,6 +4,7 @@ import com.sep.realvista.domain.billing.boost.BoostType;
 import com.sep.realvista.domain.billing.boost.ListingBoost;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,4 +26,12 @@ public interface ListingBoostRepository {
     List<ListingBoost> findAllActiveByListingIds(List<UUID> listingIds, LocalDate now);
 
     long countActiveByBoostPackageId(UUID boostPackageId);
+
+    long count();
+
+    double sumTotalRevenue();
+
+    double sumTotalRevenueBetween(LocalDateTime start, LocalDateTime end);
+
+    double sumRevenueByPackageAndPeriod(UUID boostPackageId, LocalDateTime start, LocalDateTime end);
 }

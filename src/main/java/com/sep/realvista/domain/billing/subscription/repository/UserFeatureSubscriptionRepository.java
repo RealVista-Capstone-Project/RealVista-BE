@@ -4,6 +4,7 @@ import com.sep.realvista.domain.billing.subscription.FeatureType;
 import com.sep.realvista.domain.billing.subscription.UserFeatureSubscription;
 import com.sep.realvista.domain.billing.subscription.UserFeatureSubscriptionStatus;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,4 +27,10 @@ public interface UserFeatureSubscriptionRepository {
     List<UserFeatureSubscription> findByStatus(UserFeatureSubscriptionStatus status);
 
     long countActiveByFeaturePackageId(UUID featurePackageId);
+
+    double sumTotalRevenue();
+
+    double sumTotalRevenueBetween(LocalDateTime start, LocalDateTime end);
+    
+    double sumRevenueByPackageAndPeriod(UUID featurePackageId, LocalDateTime start, LocalDateTime end);
 }

@@ -53,6 +53,8 @@ public interface ListingMapper {
     @Mapping(target = "costBreakdown", ignore = true)
     @Mapping(target = "isFavorite", ignore = true)
     @Mapping(target = "isCreatedByOwner", ignore = true)
+    @Mapping(target = "userType", ignore = true)
+    @Mapping(target = "propertyOwner", ignore = true)
     @Mapping(target = "listingId", source = "listingId")
     @Mapping(target = "propertyId", source = "propertyId")
     @Mapping(target = "userId", source = "userId")
