@@ -21,6 +21,8 @@ public interface LeaseAgreementRepository {
 
     Optional<LeaseAgreement> findByDocusignEnvelopeId(String envelopeId);
 
+    List<LeaseAgreement> findBySignedDocumentStatusIn(List<SignedDocumentStatus> statuses, int limit);
+
     Page<LeaseAgreement> findByPropertyId(UUID propertyId, Pageable pageable);
 
     Page<LeaseAgreement> findByRenterId(UUID renterId, Pageable pageable);

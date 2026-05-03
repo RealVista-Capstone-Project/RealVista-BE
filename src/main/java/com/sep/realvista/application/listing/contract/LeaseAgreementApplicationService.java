@@ -491,6 +491,7 @@ public class LeaseAgreementApplicationService {
         if (lease.getStatus() == LeaseStatus.PENDING_RENTER
             || lease.getStatus() == LeaseStatus.PENDING_LANDLORD) {
           lease.renterSignViaDocuSign();
+          lease.markSignedDocumentPending();
           // Auto-mark the property as RENTED now that the lease is ACTIVE
           propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
             property.markAsRented();

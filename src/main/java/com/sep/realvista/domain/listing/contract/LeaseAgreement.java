@@ -117,6 +117,20 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "docusign_status", length = 50)
     private String docusignStatus;
 
+    @Column(name = "signed_document_url", columnDefinition = "TEXT")
+    private String signedDocumentUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "signed_document_status", nullable = false, length = 30)
+    @Builder.Default
+    private SignedDocumentStatus signedDocumentStatus = SignedDocumentStatus.NOT_REQUESTED;
+
+    @Column(name = "signed_document_error", columnDefinition = "TEXT")
+    private String signedDocumentError;
+
+    @Column(name = "signed_document_processed_at")
+    private LocalDateTime signedDocumentProcessedAt;
+
     public void submitToLandlord() {
         this.status = LeaseStatus.PENDING_LANDLORD;
     }
@@ -179,5 +193,30 @@ public class LeaseAgreement extends BaseEntity {
 
     public void setLeaseDocumentUrl(String url) {
         this.leaseDocumentUrl = url;
+    }
+
+    public void markSignedDocumentPending() {
+        if (this.signedDocumentStatus != SignedDocumentStatus.COMPLETED) {
+            this.signedDocumentStatus = SignedDocumentStatus.PENDING;
+            this.signedDocumentError = null;
+        }
+    }
+
+    public void markSignedDocumentProcessing() {
+        this.signedDocumentStatus = SignedDocumentStatus.PROCESSING;
+        this.signedDocumentError = null;
+    }
+
+    public void completeSignedDocument(String documentUrl) {
+        this.signedDocumentUrl = documentUrl;
+        this.signedDocumentStatus = SignedDocumentStatus.COMPLETED;
+        this.signedDocumentError = null;
+        this.signedDocumentProcessedAt = LocalDateTime.now();
+    }
+
+    public void failSignedDocumentProcessing(String errorMessage) {
+        this.signedDocumentStatus = SignedDocumentStatus.FAILED;
+        this.signedDocumentError = errorMessage;
+        this.signedDocumentProcessedAt = LocalDateTime.now();
     }
 }

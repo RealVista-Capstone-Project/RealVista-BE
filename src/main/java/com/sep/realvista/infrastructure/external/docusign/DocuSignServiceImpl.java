@@ -206,6 +206,27 @@ public class DocuSignServiceImpl implements DocuSignService {
     }
 
     @Override
+    public byte[] downloadCompletedDocument(String envelopeId) {
+        if (!isAvailable()) {
+            log.warn("DocuSign not available — cannot download completed document for envelope: {}", envelopeId);
+            return null;
+        }
+
+        ensureAuthenticated();
+
+        try {
+            EnvelopesApi envelopesApi = new EnvelopesApi(apiClient);
+            byte[] documentBytes = envelopesApi.getDocument(
+                    docuSignConfig.getAccountId(), envelopeId, "combined"
+            );
+            log.info("Downloaded completed DocuSign document for envelope: {}", envelopeId);
+            return documentBytes;
+        } catch (ApiException e) {
+            throw new DocuSignException("Failed to download completed document: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public String addLandlordSigner(
             String envelopeId,
             byte[] documentBytes,

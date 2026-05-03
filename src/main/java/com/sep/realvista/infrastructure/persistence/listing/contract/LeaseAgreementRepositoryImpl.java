@@ -3,8 +3,10 @@ package com.sep.realvista.infrastructure.persistence.listing.contract;
 import com.sep.realvista.domain.listing.contract.LeaseAgreement;
 import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.listing.contract.LeaseStatus;
+import com.sep.realvista.domain.listing.contract.SignedDocumentStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
@@ -31,6 +33,11 @@ public class LeaseAgreementRepositoryImpl implements LeaseAgreementRepository {
     @Override
     public Optional<LeaseAgreement> findByDocusignEnvelopeId(String envelopeId) {
         return jpaRepository.findByDocusignEnvelopeId(envelopeId);
+    }
+
+    @Override
+    public List<LeaseAgreement> findBySignedDocumentStatusIn(List<SignedDocumentStatus> statuses, int limit) {
+        return jpaRepository.findBySignedDocumentStatusIn(statuses, PageRequest.of(0, limit));
     }
 
     @Override

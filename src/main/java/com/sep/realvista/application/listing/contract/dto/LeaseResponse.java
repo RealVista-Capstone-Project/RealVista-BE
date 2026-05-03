@@ -2,6 +2,7 @@ package com.sep.realvista.application.listing.contract.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sep.realvista.domain.listing.contract.LeaseStatus;
+import com.sep.realvista.domain.listing.contract.SignedDocumentStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -78,6 +79,21 @@ public class LeaseResponse {
     /** Current DocuSign envelope status (e.g. "sent", "completed", "voided"). */
     @JsonProperty("docusign_status")
     private String docusignStatus;
+
+    /** Final signed DocuSign PDF URL after background upload completes. */
+    @JsonProperty("signed_document_url")
+    private String signedDocumentUrl;
+
+    /** Background processing status for the final signed PDF. */
+    @JsonProperty("signed_document_status")
+    private SignedDocumentStatus signedDocumentStatus;
+
+    /** Last background processing error, present only when status is FAILED. */
+    @JsonProperty("signed_document_error")
+    private String signedDocumentError;
+
+    @JsonProperty("signed_document_processed_at")
+    private LocalDateTime signedDocumentProcessedAt;
 
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
