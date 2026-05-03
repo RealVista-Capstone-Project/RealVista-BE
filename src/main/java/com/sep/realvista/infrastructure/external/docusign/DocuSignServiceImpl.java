@@ -290,6 +290,8 @@ public class DocuSignServiceImpl implements DocuSignService {
                     buildTextTab("landlordName", data.getLandlordName()),
                     buildTextTab("handoverDate", data.getHandoverDate()),
                     buildTextTab("leaseDurationMonths", data.getLeaseDurationMonths()),
+                    buildTextTab("propertyAvailable", data.getPropertyAvailable()),
+                    buildTextTab("propertyUsed", data.getPropertyUsed()),
                     buildTextTab("monthlyRent", data.getMonthlyRent()),
                     buildTextTab("monthlyRentByText", data.getMonthlyRentByText()),
                     buildTextTab("securityDeposit", data.getSecurityDeposit()),
@@ -297,7 +299,11 @@ public class DocuSignServiceImpl implements DocuSignService {
                     buildTextTab("contractDayOfWeek", data.getContractDayOfWeek()),
                     buildTextTab("contractDay", data.getContractDay()),
                     buildTextTab("contractMonth", data.getContractMonth()),
-                    buildTextTab("contractYear", data.getContractYear())
+                    buildTextTab("contractYear", data.getContractYear()),
+                    buildTextTab("currentWeekday", data.getCurrentWeekday()),
+                    buildTextTab("currentDay", data.getCurrentDay()),
+                    buildTextTab("currentMonth", data.getCurrentMonth()),
+                    buildTextTab("currentYear", data.getCurrentYear())
             ));
 
             // Build tabs with dynamic field values for landlord role
@@ -307,6 +313,8 @@ public class DocuSignServiceImpl implements DocuSignService {
                     buildTextTab("landlordName", data.getLandlordName()),
                     buildTextTab("handoverDate", data.getHandoverDate()),
                     buildTextTab("leaseDurationMonths", data.getLeaseDurationMonths()),
+                    buildTextTab("propertyAvailable", data.getPropertyAvailable()),
+                    buildTextTab("propertyUsed", data.getPropertyUsed()),
                     buildTextTab("monthlyRent", data.getMonthlyRent()),
                     buildTextTab("monthlyRentByText", data.getMonthlyRentByText()),
                     buildTextTab("securityDeposit", data.getSecurityDeposit()),
@@ -314,7 +322,11 @@ public class DocuSignServiceImpl implements DocuSignService {
                     buildTextTab("contractDayOfWeek", data.getContractDayOfWeek()),
                     buildTextTab("contractDay", data.getContractDay()),
                     buildTextTab("contractMonth", data.getContractMonth()),
-                    buildTextTab("contractYear", data.getContractYear())
+                    buildTextTab("contractYear", data.getContractYear()),
+                    buildTextTab("currentWeekday", data.getCurrentWeekday()),
+                    buildTextTab("currentDay", data.getCurrentDay()),
+                    buildTextTab("currentMonth", data.getCurrentMonth()),
+                    buildTextTab("currentYear", data.getCurrentYear())
             ));
 
             // Landlord Signer (routing order 1 — signs first)

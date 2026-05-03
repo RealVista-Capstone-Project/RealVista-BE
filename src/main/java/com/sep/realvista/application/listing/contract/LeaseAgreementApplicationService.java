@@ -345,6 +345,8 @@ public class LeaseAgreementApplicationService {
     if (docuSignConfig.isTemplateAvailable()) {
       // Template-based flow: populate dynamic fields from lease + user data
       User renter = findUserOrThrow(lease.getRenterId());
+      Property property = propertyRepository.findById(lease.getPropertyId())
+          .orElseThrow(() -> new ResourceNotFoundException("Property", lease.getPropertyId()));
 
       // Compute contract creation date fields (current date at signing time)
       LocalDate contractDate = LocalDate.now();
@@ -362,7 +364,9 @@ public class LeaseAgreementApplicationService {
           .handoverDate(lease.getLeaseStartDate() != null
               ? lease.getLeaseStartDate().format(handoverFormatter)
               : "")
-          .leaseDurationMonths(String.valueOf(lease.getLeaseDurationMonths()))
+          .leaseDurationMonths(formatLeaseDuration(lease.getLeaseDurationMonths()))
+          .propertyAvailable(formatArea(property.getLandSizeM2()))
+          .propertyUsed(formatArea(property.getUsableSizeM2()))
           .monthlyRent(lease.getMonthlyRent() != null
               ? VietnameseCurrencyUtil.formatAmount(lease.getMonthlyRent())
               : "")
@@ -379,6 +383,10 @@ public class LeaseAgreementApplicationService {
           .contractDay(String.format("%02d", contractDate.getDayOfMonth()))
           .contractMonth(String.format("%02d", contractDate.getMonthValue()))
           .contractYear(String.valueOf(contractDate.getYear()))
+          .currentWeekday(formatCurrentWeekday(contractDate))
+          .currentDay(String.valueOf(contractDate.getDayOfMonth()))
+          .currentMonth(String.valueOf(contractDate.getMonthValue()))
+          .currentYear(String.valueOf(contractDate.getYear()))
           .build();
 
       envelopeId = docuSignService.createEnvelopeFromTemplate(
@@ -626,6 +634,32 @@ public class LeaseAgreementApplicationService {
       throw new BusinessConflictException(
           "Failed to download lease document from URL: " + documentUrl, "ERROR_LEASE_DOCUMENT_DOWNLOAD_FAILED");
     }
+  }
+
+  private String formatLeaseDuration(Integer durationMonths) {
+    if (durationMonths == null) {
+      return "";
+    }
+
+    if (durationMonths % 12 == 0) {
+      return String.valueOf(durationMonths / 12);
+    }
+
+    return java.math.BigDecimal.valueOf(durationMonths)
+        .divide(java.math.BigDecimal.valueOf(12), 2, java.math.RoundingMode.HALF_UP)
+        .stripTrailingZeros()
+        .toPlainString();
+  }
+
+  private String formatArea(java.math.BigDecimal area) {
+    return area != null ? area.stripTrailingZeros().toPlainString() : "";
+  }
+
+  private String formatCurrentWeekday(LocalDate date) {
+    if (date.getDayOfWeek().getValue() == 7) {
+      return "Chủ Nhật";
+    }
+    return "Thứ " + (date.getDayOfWeek().getValue() + 1);
   }
 
   private String buildDefaultReturnUrl(UUID leaseId, String role, String locale) {
