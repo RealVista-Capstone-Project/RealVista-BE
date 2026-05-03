@@ -130,6 +130,26 @@ public class PropertyApplicationService {
         }
     }
 
+    private void applyOwnerPhoneDisplay(PropertySummaryResponse summary, SettingPreference preference) {
+        String ownerPhone = summary.getOwnerPhone();
+        if (ownerPhone == null || ownerPhone.isBlank()) {
+            summary.setOwnerPhoneDisplay(null);
+            summary.setIsOwnerPhoneHidden(null);
+            return;
+        }
+
+        boolean isPhoneHidden = preference != null && Boolean.TRUE.equals(preference.getHidePhoneNumber());
+        summary.setIsOwnerPhoneHidden(isPhoneHidden);
+        summary.setOwnerPhoneDisplay(isPhoneHidden ? maskPhone(ownerPhone) : ownerPhone);
+    }
+
+    private String maskPhone(String phone) {
+        if (phone == null || phone.length() < 4) {
+            return "****";
+        }
+        return phone.substring(0, 2) + "******" + phone.substring(phone.length() - 2);
+    }
+
     @Transactional
     public PropertyDetailResponse createProperty(CreatePropertyRequest request) {
         UUID currentUserId = getCurrentUserId();
@@ -146,7 +166,19 @@ public class PropertyApplicationService {
         PropertyStatus finalStatus = isAgentCreatingForOwner ? PropertyStatus.PENDING : PropertyStatus.DRAFT;
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             try {
-                finalStatus = PropertyStatus.valueOf(request.getStatus().toUpperCase());
+                PropertyStatus requested = PropertyStatus.valueOf(request.getStatus().toUpperCase());
+                if (isAgentCreatingForOwner) {
+                    if (requested == PropertyStatus.DRAFT || requested == PropertyStatus.PENDING) {
+                        finalStatus = requested;
+                    } else {
+                        log.info(
+                                "Ignoring property status {} for agent-on-behalf-of-owner create; keeping {}",
+                                requested,
+                                finalStatus);
+                    }
+                } else {
+                    finalStatus = requested;
+                }
             } catch (IllegalArgumentException e) {
                 log.warn("Invalid property status provided: {}. Using default.", request.getStatus());
             }
@@ -340,6 +372,14 @@ public class PropertyApplicationService {
             propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, status, statuses, pageable);
         }
 
+        Set<UUID> ownerIds = propertiesPage.getContent().stream()
+                .map(Property::getOwnerId)
+                .collect(Collectors.toSet());
+        Map<UUID, User> ownersById = userRepository.findAllByIdIn(ownerIds).stream()
+                .collect(Collectors.toMap(User::getUserId, Function.identity()));
+        Map<UUID, SettingPreference> prefsByUserId = settingPreferenceRepository.findByUserIdIn(ownerIds).stream()
+                .collect(Collectors.toMap(SettingPreference::getUserId, Function.identity(), (a, b) -> a));
+
         List<PropertySummaryResponse> content = propertiesPage.getContent().stream().map(property -> {
             UUID propId = property.getPropertyId();
 
@@ -352,6 +392,14 @@ public class PropertyApplicationService {
                     propertyAmenityRepository.findByPropertyIdWithAmenity(propId);
 
             PropertySummaryResponse summary = propertyMapper.toSummaryResponse(property, media, attributes, amenities);
+            User owner = ownersById.get(property.getOwnerId());
+            if (owner != null) {
+                summary.setOwnerName(owner.getFullName());
+                summary.setOwnerEmail(owner.getEmail() != null ? owner.getEmail().getValue() : null);
+                summary.setOwnerAvatarUrl(owner.getAvatarUrl());
+                summary.setOwnerPhone(owner.getPhone());
+            }
+            applyOwnerPhoneDisplay(summary, prefsByUserId.get(property.getOwnerId()));
             applySoldByInfo(summary, property);
             return summary;
         }).collect(Collectors.toList());
@@ -773,7 +821,7 @@ public class PropertyApplicationService {
     @Transactional
     public PropertyDetailResponse verifyPropertyByAgent(UUID propertyId) {
         UUID agentId = getCurrentUserId();
-        log.info("Agent {} verifying property {}", agentId, propertyId);
+        log.info("Agent {} verifying property {} (pending -> available)", agentId, propertyId);
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property", propertyId));
@@ -787,7 +835,7 @@ public class PropertyApplicationService {
         property.verifyByAgent();
         propertyRepository.save(property);
 
-        log.info("Property {} verified by agent {}", propertyId, agentId);
+        log.info("Property {} moved to AVAILABLE by agent {}", propertyId, agentId);
 
         return getPropertyDetails(propertyId);
     }

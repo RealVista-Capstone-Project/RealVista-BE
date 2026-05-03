@@ -124,7 +124,7 @@ public class Property extends BaseEntity {
         if (this.status != PropertyStatus.PENDING) {
             throw new IllegalStateException("Only pending properties can be verified by agent");
         }
-        this.status = PropertyStatus.VERIFIED;
+        this.status = PropertyStatus.AVAILABLE;
     }
 
     public void reserve() {
