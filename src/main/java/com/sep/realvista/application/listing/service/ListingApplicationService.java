@@ -2,6 +2,7 @@ package com.sep.realvista.application.listing.service;
 
 import com.sep.realvista.application.listing.dto.CostBreakdownDTO;
 import com.sep.realvista.application.listing.dto.CreateListingRequest;
+import com.sep.realvista.application.listing.dto.ListingCompareDataResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ManagedListingSearchCriteria;
@@ -10,6 +11,7 @@ import com.sep.realvista.application.listing.dto.PriceChangeType;
 import com.sep.realvista.application.listing.dto.PriceHistoryDTO;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.RelatedListingsResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingDTO;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.dto.UpdateListingRequest;
@@ -39,6 +41,7 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.shared.util.AddressFormatter;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
@@ -108,6 +111,7 @@ public class ListingApplicationService {
     private final UserRepository userRepository;
     private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
     private final EngagementRepository engagementRepository;
+    private final com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository listingBoostRepository;
     // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
     // ensuring @Cacheable on getCachedListingDetail is actually triggered.
     @Lazy
@@ -1396,6 +1400,42 @@ public class ListingApplicationService {
     }
 
     /**
+     * Get related listings by property ID.
+     * Returns both RENT and SALE listings for the same property if they exist and are active (PUBLISHED).
+     *
+     * @param propertyId the property ID
+     * @return related listings response with rent and sale listings
+     */
+    @Transactional(readOnly = true)
+    public RelatedListingsResponse getRelatedListingsByProperty(UUID propertyId) {
+        log.info("Fetching related listings for property ID: {}", propertyId);
+
+        List<Listing> propertyListings = listingRepository.findByPropertyId(propertyId);
+
+        Listing rentListing = propertyListings.stream()
+                .filter(l -> l.getListingType() == ListingType.RENT)
+                .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+                .findFirst()
+                .orElse(null);
+
+        Listing saleListing = propertyListings.stream()
+                .filter(l -> l.getListingType() == ListingType.SALE)
+                .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+                .findFirst()
+                .orElse(null);
+
+        RelatedListingsResponse response = RelatedListingsResponse.builder()
+                .rentListing(rentListing != null ? listingMapper.toListingResponse(rentListing) : null)
+                .saleListing(saleListing != null ? listingMapper.toListingResponse(saleListing) : null)
+                .build();
+
+        log.info("Found related listings for property {}: rent={}, sale={}",
+                propertyId, rentListing != null, saleListing != null);
+
+        return response;
+    }
+
+    /**
      * Bans a listing and cancels all its active appointments.
      *
      * @param listingId the listing ID to ban
@@ -1420,5 +1460,196 @@ public class ListingApplicationService {
         appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
 
         log.info("Successfully banned listing ID: {} and cancelled active appointments", listingId);
+    }
+
+    // ==================== Compare Operations ====================
+
+    /**
+     * Get compare data for multiple listings.
+     * Returns comprehensive data for each listing including media, attributes, amenities,
+     * and boost status (featured/hot) for comparison purposes.
+     *
+     * @param listingIds list of listing IDs to compare
+     * @return list of compare data responses
+     * @throws ResourceNotFoundException if any listing not found
+     */
+    @Transactional(readOnly = true)
+    public List<ListingCompareDataResponse> getCompareData(List<UUID> listingIds) {
+        log.info("Fetching compare data for {} listings: {}", listingIds.size(), listingIds);
+
+        return listingIds.stream()
+                .map(this::getSingleCompareData)
+                .collect(Collectors.toList());
+    }
+
+    private ListingCompareDataResponse getSingleCompareData(UUID listingId) {
+        log.debug("Fetching compare data for listing ID: {}", listingId);
+
+        // Fetch listing
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> {
+                    log.error("Listing not found in getCompareData with ID: {}", listingId);
+                    return new ResourceNotFoundException("Listing", listingId);
+                });
+
+        // Verify property exists
+        Property property = propertyRepository.findById(listing.getPropertyId())
+                .orElseThrow(() -> {
+                    log.error("Property not found for listing ID: {}, property ID: {}",
+                            listingId, listing.getPropertyId());
+                    return new ResourceNotFoundException("Property", listing.getPropertyId());
+                });
+
+        // Fetch listing media
+        var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
+
+        // Fetch property attribute values
+        List<PropertyAttributeValue> attributeValues = propertyAttributeValueRepository
+                .findByPropertyIdWithAttribute(property.getPropertyId());
+
+        // Fetch property amenities
+        List<PropertyAmenity> propertyAmenities = propertyAmenityRepository
+                .findByPropertyIdWithAmenity(property.getPropertyId());
+
+        // Check boost status
+        List<com.sep.realvista.domain.billing.boost.ListingBoost> boosts = 
+                listingBoostRepository.findActiveByListingId(listingId);
+        boolean isFeatured = boosts.stream()
+                .anyMatch(b -> b.getBoostType() == com.sep.realvista.domain.billing.boost.BoostType.FEATURED);
+        boolean isHot = boosts.stream()
+                .anyMatch(b -> b.getBoostType() == com.sep.realvista.domain.billing.boost.BoostType.HOT_BADGE);
+
+        // Build response
+        return buildCompareDataResponse(
+                listing, property, listingMedias,
+                attributeValues, propertyAmenities, isFeatured, isHot);
+    }
+
+    private ListingCompareDataResponse buildCompareDataResponse(
+            Listing listing,
+            Property property,
+            List<ListingMedia> listingMedias,
+            List<PropertyAttributeValue> attributeValues,
+            List<PropertyAmenity> propertyAmenities,
+            boolean isFeatured,
+            boolean isHot) {
+
+        // Map attributes to DTOs
+        List<PropertyAttributeDTO> attributeDTOs = attributeValues.stream()
+                .map(pav -> {
+                    var attr = pav.getPropertyAttribute();
+                    return PropertyAttributeDTO.builder()
+                            .attributeId(attr.getPropertyAttributeId())
+                            .attributeCode(attr.getCode())
+                            .attributeName(attr.getName())
+                            .dataType(attr.getDataType().name())
+                            .icon(attr.getIcon())
+                            .unit(attr.getUnit())
+                            .valueNumber(pav.getValueNumber())
+                            .valueText(pav.getValueText())
+                            .valueBoolean(pav.getValueBoolean())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        // Map amenities to DTOs
+        List<com.sep.realvista.application.listing.dto.AmenityDTO> amenityDTOs =
+                propertyAmenities.stream()
+                        .map(pa -> com.sep.realvista.application.listing.dto.AmenityDTO.builder()
+                                .amenityId(pa.getAmenityId())
+                                .amenityName(pa.getAmenity() != null
+                                        ? pa.getAmenity().getAmenityName()
+                                        : null)
+                                .amenityType(pa.getAmenity() != null
+                                        && pa.getAmenity().getAmenityType() != null
+                                                ? pa.getAmenity().getAmenityType().name()
+                                                : null)
+                                .build())
+                        .collect(Collectors.toList());
+
+        // Find key attribute values
+        Integer bedrooms = findAttributeValueAsInteger(attributeValues, "BEDROOMS");
+        Integer bathrooms = findAttributeValueAsInteger(attributeValues, "BATHROOMS");
+        Integer floor = findAttributeValueAsInteger(attributeValues, "FLOOR");
+        Integer totalFloors = findAttributeValueAsInteger(attributeValues, "TOTAL_FLOORS");
+        String direction = findAttributeValueAsString(attributeValues, "DIRECTION");
+
+        // Get thumbnail URL from linked PropertyMedia
+        String thumbnailUrl = listingMedias.stream()
+                .filter(lm -> Boolean.TRUE.equals(lm.getIsPrimary()))
+                .findFirst()
+                .map(lm -> lm.getPropertyMedia() != null
+                        ? lm.getPropertyMedia().getMediaUrl()
+                        : null)
+                .orElseGet(() -> {
+                    if (listingMedias.isEmpty()) {
+                        return null;
+                    }
+                    PropertyMedia pm = listingMedias.get(0).getPropertyMedia();
+                    return pm != null ? pm.getMediaUrl() : null;
+                });
+
+        // Build full address (Property has no district/city directly)
+        String fullAddress = AddressFormatter.formatFullAddress(
+                property.getStreetAddress(),
+                property.getLocation() != null
+                        ? property.getLocation().getName()
+                        : null,
+                null,
+                null
+        );
+
+        return ListingCompareDataResponse.builder()
+                .listingId(listing.getListingId())
+                .slug(listing.getSlug())
+                .name(listing.getName())
+                .price(listing.getPrice())
+                .minPrice(listing.getMinPrice())
+                .maxPrice(listing.getMaxPrice())
+                .listingType(listing.getListingType().name())
+                .isNegotiable(listing.getIsNegotiable())
+                .isFeatured(isFeatured)
+                .isHot(isHot)
+                .thumbnailUrl(thumbnailUrl)
+                .mediaCount(listingMedias.size())
+                .propertyType(property.getPropertyType() != null
+                        ? listingMapper.mapPropertyTypeInfo(property.getPropertyType())
+                        : null)
+                .location(property.getLocation() != null
+                        ? listingMapper.mapLocationInfo(property.getLocation())
+                        : null)
+                .fullAddress(fullAddress)
+                .usableSizeM2(property.getUsableSizeM2())
+                .landSizeM2(property.getLandSizeM2())
+                .widthM(property.getWidthM())
+                .lengthM(property.getLengthM())
+                .bedrooms(bedrooms)
+                .bathrooms(bathrooms)
+                .floor(floor)
+                .totalFloors(totalFloors)
+                .direction(direction)
+                .attributes(attributeDTOs)
+                .amenities(amenityDTOs)
+                .availableFrom(listing.getAvailableFrom())
+                .publishedAt(listing.getPublishedAt())
+                .content(listing.getContent())
+                .build();
+    }
+
+    private Integer findAttributeValueAsInteger(List<PropertyAttributeValue> attributeValues, String attributeCode) {
+        return attributeValues.stream()
+                .filter(pav -> attributeCode.equals(pav.getPropertyAttribute().getCode()))
+                .findFirst()
+                .map(PropertyAttributeValue::getValueNumber)
+                .map(BigDecimal::intValue)
+                .orElse(null);
+    }
+
+    private String findAttributeValueAsString(List<PropertyAttributeValue> attributeValues, String attributeCode) {
+        return attributeValues.stream()
+                .filter(pav -> attributeCode.equals(pav.getPropertyAttribute().getCode()))
+                .findFirst()
+                .map(PropertyAttributeValue::getValueText)
+                .orElse(null);
     }
 }

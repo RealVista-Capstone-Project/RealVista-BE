@@ -27,6 +27,15 @@ public interface ListingMediaRepository {
      */
     List<ListingMedia> findPrimaryByListingIds(List<UUID> listingIds);
 
+    /**
+     * Find all listing IDs that have 3D media among the given listing IDs.
+     * Returns distinct listing IDs that have at least one non-deleted 3D media.
+     *
+     * @param listingIds list of listing IDs to check
+     * @return list of listing IDs that have 3D media
+     */
+    List<UUID> findListingIdsWith3DMedia(List<UUID> listingIds);
+
     void deleteById(UUID id);
 
     void deleteByListingId(UUID listingId);
