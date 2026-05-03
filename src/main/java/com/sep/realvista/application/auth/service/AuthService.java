@@ -4,7 +4,10 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.sep.realvista.application.auth.dto.AuthenticationResponse;
 import com.sep.realvista.application.auth.dto.GoogleIdTokenRequest;
 import com.sep.realvista.application.auth.dto.LoginRequest;
+import com.sep.realvista.application.auth.dto.ResetPasswordRequest;
 import com.sep.realvista.application.auth.mapper.AuthenticationMapper;
+import com.sep.realvista.application.service.EmailService;
+import com.sep.realvista.application.service.OtpService;
 import com.sep.realvista.application.user.dto.CreateUserRequest;
 import com.sep.realvista.application.user.dto.UserResponse;
 import com.sep.realvista.application.user.service.UserApplicationService;
@@ -24,6 +27,13 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
 /**
  * Application service for authentication operations.
  * <p>
@@ -35,12 +45,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class AuthService {
 
+    private static final String PASSWORD_RESET_KEY_PREFIX = "pwdreset:";
+    private static final int PASSWORD_RESET_EXPIRY_MINUTES = 30;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final UserApplicationService userApplicationService;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
     private final UserRepository userRepository;
     private final AuthenticationMapper authenticationMapper;
     private final GoogleTokenVerifier googleTokenVerifier;
+    private final OtpService otpService;
+    private final EmailService emailService;
 
     @Transactional
     public UserResponse register(CreateUserRequest request) {
@@ -174,6 +190,93 @@ public class AuthService {
                     "ERROR_GOOGLE_AUTH_FAILED"
             );
         }
+    }
+
+    /**
+     * Request a password reset email. Always completes without revealing whether the email exists.
+     * <p>
+     * Reset emails are only sent for {@link UserStatus#ACTIVE} and {@link UserStatus#VERIFIED} accounts.
+     * {@link UserStatus#SUSPENDED} and {@link UserStatus#BANNED} are ignored (same generic response).
+     */
+    public void requestPasswordReset(String rawEmail, String uiLocale, String frontendBaseUrl) {
+        if (rawEmail == null || rawEmail.isBlank()) {
+            return;
+        }
+        String normalized = rawEmail.trim().toLowerCase(Locale.ROOT);
+        Optional<User> userOpt = userRepository.findByEmailValue(normalized);
+        if (userOpt.isEmpty()) {
+            log.debug("Password reset requested for unknown email (generic response)");
+            return;
+        }
+        User user = userOpt.get();
+        if (user.getStatus() == UserStatus.SUSPENDED || user.getStatus() == UserStatus.BANNED) {
+            log.warn("Password reset ignored for ineligible status {} user {}", user.getStatus(), normalized);
+            return;
+        }
+
+        String token = generatePasswordResetToken();
+        otpService.store(PASSWORD_RESET_KEY_PREFIX + token, user.getUserId().toString(), PASSWORD_RESET_EXPIRY_MINUTES);
+
+        String base = frontendBaseUrl == null ? "" : frontendBaseUrl.replaceAll("/+$", "");
+        String locale = "en".equalsIgnoreCase(uiLocale) ? "en" : "vi";
+        String resetLink = base + "/" + locale + "/reset-password?token=" + token;
+
+        String displayName = user.getFullName();
+        if (displayName == null || displayName.isBlank()) {
+            displayName = normalized;
+        }
+
+        emailService.sendDbTemplateMessageAsync(
+                normalized,
+                "PASSWORD_RESET",
+                locale,
+                Map.of(
+                        "userName", displayName,
+                        "resetLink", resetLink,
+                        "expiryMinutes", PASSWORD_RESET_EXPIRY_MINUTES
+                )
+        );
+        log.info("Password reset email queued for {}", normalized);
+    }
+
+    /**
+     * Complete password reset using a one-time token from email.
+     */
+    @Transactional
+    public void resetPasswordWithToken(ResetPasswordRequest request) {
+        String token = request.getToken() == null ? "" : request.getToken().trim();
+        if (token.isEmpty()) {
+            throw new BusinessConflictException(
+                    "Invalid or expired reset link",
+                    "ERROR_INVALID_OR_EXPIRED_RESET_TOKEN"
+            );
+        }
+        String userIdStr = otpService.get(PASSWORD_RESET_KEY_PREFIX + token);
+        if (userIdStr == null || userIdStr.isBlank()) {
+            throw new BusinessConflictException(
+                    "Invalid or expired reset link",
+                    "ERROR_INVALID_OR_EXPIRED_RESET_TOKEN"
+            );
+        }
+        UUID userId;
+        try {
+            userId = UUID.fromString(userIdStr);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessConflictException(
+                    "Invalid or expired reset link",
+                    "ERROR_INVALID_OR_EXPIRED_RESET_TOKEN"
+            );
+        }
+
+        userApplicationService.resetPasswordForgotten(userId, request.getNewPassword());
+        otpService.remove(PASSWORD_RESET_KEY_PREFIX + token);
+        log.info("Password reset with token completed for user {}", userId);
+    }
+
+    private static String generatePasswordResetToken() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     private User findOrCreateGoogleUser(String email, String firstName,
