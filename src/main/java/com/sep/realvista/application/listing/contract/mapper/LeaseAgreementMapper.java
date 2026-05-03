@@ -30,6 +30,8 @@ public interface LeaseAgreementMapper {
     @Mapping(target = "propertyTitle", source = "property.streetAddress")
     @Mapping(target = "propertyAddress", source = "property.streetAddress")
     @Mapping(target = "propertyType", source = "property.propertyType")
+    @Mapping(target = "propertyThumbnailUrl", ignore = true)
+    @Mapping(target = "propertyImageUrl", ignore = true)
     LeaseResponse toResponse(LeaseAgreement leaseAgreement);
 
     default String mapEmail(Email email) {

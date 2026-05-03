@@ -139,4 +139,10 @@ public class LeaseResponse {
 
     @JsonProperty("property_type")
     private String propertyType;
+
+    @JsonProperty("property_thumbnail_url")
+    private String propertyThumbnailUrl;
+
+    @JsonProperty("property_image_url")
+    private String propertyImageUrl;
 }

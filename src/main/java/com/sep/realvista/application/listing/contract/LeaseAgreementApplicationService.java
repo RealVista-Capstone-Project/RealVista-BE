@@ -18,6 +18,8 @@ import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.listing.contract.LeaseStatus;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.PropertyMedia;
+import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.application.common.util.VietnameseCurrencyUtil;
@@ -60,6 +62,7 @@ public class LeaseAgreementApplicationService {
 
   private final LeaseAgreementRepository leaseAgreementRepository;
   private final PropertyRepository propertyRepository;
+  private final PropertyMediaRepository propertyMediaRepository;
   private final ListingRepository listingRepository;
   private final UserRepository userRepository;
   private final DocuSignService docuSignService;
@@ -694,27 +697,60 @@ public class LeaseAgreementApplicationService {
       response.setRenterFullName(renter.getFullName());
       response.setRenterEmail(renter.getEmail().getValue());
       response.setRenterPhone(renter.getPhone());
-      response.setRenterAvatarUrl(renter.getAvatarUrl());
+      response.setRenterAvatarUrl(nullToEmpty(renter.getAvatarUrl()));
     });
+    response.setRenterAvatarUrl(nullToEmpty(response.getRenterAvatarUrl()));
 
     // Enrich landlord info
     userRepository.findById(lease.getLandlordId()).ifPresent(landlord -> {
       response.setLandlordFullName(landlord.getFullName());
       response.setLandlordEmail(landlord.getEmail().getValue());
       response.setLandlordPhone(landlord.getPhone());
-      response.setLandlordAvatarUrl(landlord.getAvatarUrl());
+      response.setLandlordAvatarUrl(nullToEmpty(landlord.getAvatarUrl()));
     });
+    response.setLandlordAvatarUrl(nullToEmpty(response.getLandlordAvatarUrl()));
 
-    // Enrich property info (lazy association — safe within @Transactional context)
+    // Enrich property info. The lazy association may be absent in paged list queries,
+    // so fall back to the repository to keep list responses display-ready.
     Property property = lease.getProperty();
+    if (property == null) {
+      property = propertyRepository.findById(lease.getPropertyId()).orElse(null);
+    }
     if (property != null) {
       response.setPropertyTitle(property.getStreetAddress());
       response.setPropertyAddress(property.getStreetAddress());
       if (property.getPropertyType() != null) {
         response.setPropertyType(property.getPropertyType().getName());
       }
+      enrichPropertyMedia(response, property.getPropertyId());
     }
 
     return response;
+  }
+
+  private void enrichPropertyMedia(LeaseResponse response, UUID propertyId) {
+    List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propertyId).stream()
+        .filter(PropertyMedia::isImage)
+        .toList();
+
+    PropertyMedia selected = media.stream()
+        .filter(item -> Boolean.TRUE.equals(item.getIsPrimary()))
+        .findFirst()
+        .orElseGet(() -> media.stream().findFirst().orElse(null));
+
+    if (selected != null) {
+      response.setPropertyThumbnailUrl(nullToEmpty(selected.getThumbnailUrl() != null
+          ? selected.getThumbnailUrl()
+          : selected.getMediaUrl()));
+      response.setPropertyImageUrl(nullToEmpty(selected.getMediaUrl()));
+      return;
+    }
+
+    response.setPropertyThumbnailUrl("");
+    response.setPropertyImageUrl("");
+  }
+
+  private String nullToEmpty(String value) {
+    return value != null ? value : "";
   }
 }
