@@ -5,5 +5,11 @@ public enum ReportReason {
     FAKE_INFO,
     DUPLICATE,
     HARASSMENT,
+    SPAM,
+    MISLEADING,
+    INAPPROPRIATE,
+    WRONG_INFO,
+    FAKE_PROFILE,
+    VIOLATES_TERMS,
     OTHER
 }

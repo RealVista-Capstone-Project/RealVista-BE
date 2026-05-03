@@ -10,6 +10,7 @@ import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.application.listing.dto.ManagedListingSearchCriteria;
 import com.sep.realvista.application.listing.dto.ManagedListingSummaryDTO;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
+import com.sep.realvista.application.listing.dto.RelatedListingsResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
@@ -188,9 +189,9 @@ public class ListingController {
         @GetMapping("/{idOrSlug}/similar")
         @Operation(summary = "Get similar listings",
                         description = "Retrieves listings similar to the given listing "
-                        + "based on property type, price range, area, and common attributes. "
-                        + "Results are sorted by similarity score (descending) "
-                        + "and published date (descending). Accepts either UUID or slug.")
+                                        + "based on property type, price range, area, and common attributes. "
+                                        + "Results are sorted by similarity score (descending) "
+                                        + "and published date (descending). Accepts either UUID or slug.")
         public ResponseEntity<ApiResponse<SimilarListingsResponse>> getSimilarListings(
                         @PathVariable String idOrSlug,
                         @Parameter(description = "Maximum number of results to return (default: 5, max: 10)")
@@ -210,6 +211,29 @@ public class ListingController {
                                         limit, userId);
                         return ResponseEntity.ok(ApiResponse.success("Similar listings retrieved successfully",
                                         similarListings));
+                } finally {
+                        MDC.remove("traceId");
+                }
+        }
+
+        @GetMapping("/property/{propertyId}/related")
+        @Operation(summary = "Get related listings by property",
+                        description = "Retrieves both RENT and SALE listings for the same property "
+                                        + "if they exist and are published. Useful for showing rent vs buy comparison.")
+        public ResponseEntity<ApiResponse<RelatedListingsResponse>> getRelatedListingsByProperty(
+                        @PathVariable UUID propertyId) {
+
+                String traceId = UUID.randomUUID().toString();
+                MDC.put("traceId", traceId);
+
+                try {
+                        log.info("Fetching related listings for property - traceId: {}, propertyId: {}",
+                                        traceId, propertyId);
+
+                        RelatedListingsResponse relatedListings = listingApplicationService
+                                        .getRelatedListingsByProperty(propertyId);
+                        return ResponseEntity.ok(ApiResponse.success("Related listings retrieved successfully",
+                                        relatedListings));
                 } finally {
                         MDC.remove("traceId");
                 }

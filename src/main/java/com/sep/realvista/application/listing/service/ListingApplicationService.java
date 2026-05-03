@@ -10,6 +10,7 @@ import com.sep.realvista.application.listing.dto.PriceChangeType;
 import com.sep.realvista.application.listing.dto.PriceHistoryDTO;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.RelatedListingsResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingDTO;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.dto.UpdateListingRequest;
@@ -1393,6 +1394,42 @@ public class ListingApplicationService {
         return settingPreferenceRepository.findByUserId(userId)
                 .map(com.sep.realvista.domain.user.preference.SettingPreference::getPreferredLanguage)
                 .orElse("vi");
+    }
+
+    /**
+     * Get related listings by property ID.
+     * Returns both RENT and SALE listings for the same property if they exist and are active (PUBLISHED).
+     *
+     * @param propertyId the property ID
+     * @return related listings response with rent and sale listings
+     */
+    @Transactional(readOnly = true)
+    public RelatedListingsResponse getRelatedListingsByProperty(UUID propertyId) {
+        log.info("Fetching related listings for property ID: {}", propertyId);
+
+        List<Listing> propertyListings = listingRepository.findByPropertyId(propertyId);
+
+        Listing rentListing = propertyListings.stream()
+                .filter(l -> l.getListingType() == ListingType.RENT)
+                .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+                .findFirst()
+                .orElse(null);
+
+        Listing saleListing = propertyListings.stream()
+                .filter(l -> l.getListingType() == ListingType.SALE)
+                .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+                .findFirst()
+                .orElse(null);
+
+        RelatedListingsResponse response = RelatedListingsResponse.builder()
+                .rentListing(rentListing != null ? listingMapper.toListingResponse(rentListing) : null)
+                .saleListing(saleListing != null ? listingMapper.toListingResponse(saleListing) : null)
+                .build();
+
+        log.info("Found related listings for property {}: rent={}, sale={}",
+                propertyId, rentListing != null, saleListing != null);
+
+        return response;
     }
 
     /**

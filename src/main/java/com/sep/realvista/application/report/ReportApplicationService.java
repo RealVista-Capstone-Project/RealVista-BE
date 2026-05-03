@@ -1,6 +1,7 @@
 package com.sep.realvista.application.report;
 
 import com.sep.realvista.application.common.dto.PageResponse;
+import com.sep.realvista.application.report.dto.CreateReportRequest;
 import com.sep.realvista.application.report.dto.ReportDto;
 import com.sep.realvista.application.report.mapper.ReportMapper;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
@@ -90,5 +91,26 @@ public class ReportApplicationService {
                 .orElseThrow(() -> new IllegalArgumentException("Report not found"));
         report.dismiss(adminNote);
         reportRepository.save(report);
+    }
+
+    @Transactional
+    public ReportDto createReport(UUID reporterUserId, CreateReportRequest request) {
+        Report.ReportBuilder builder = Report.builder()
+                .reporterUserId(reporterUserId)
+                .reportTargetType(request.getTargetType())
+                .reportReason(request.getReason())
+                .description(request.getDescription())
+                .evidenceMediaUrl(request.getEvidenceMediaUrl())
+                .status(com.sep.realvista.domain.report.ReportStatus.PENDING);
+
+        if (request.getTargetType() == com.sep.realvista.domain.report.ReportTargetType.LISTING) {
+            builder.reportedListingId(request.getTargetId());
+        } else if (request.getTargetType() == com.sep.realvista.domain.report.ReportTargetType.USER) {
+            builder.reportedUserId(request.getTargetId());
+        }
+
+        Report report = builder.build();
+        Report saved = reportRepository.save(report);
+        return reportMapper.toDto(saved);
     }
 }
