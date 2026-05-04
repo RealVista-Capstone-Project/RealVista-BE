@@ -107,6 +107,15 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "terminated_at")
     private LocalDateTime terminatedAt;
 
+    @Column(name = "cancel_reason", columnDefinition = "TEXT")
+    private String cancelReason;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancelled_by")
+    private UUID cancelledBy;
+
     @Column(name = "verified_by")
     private UUID verifiedBy;
 
@@ -150,6 +159,13 @@ public class LeaseAgreement extends BaseEntity {
     }
 
     public void reject(String reason) {
+        if (this.status != LeaseStatus.DRAFT
+                && this.status != LeaseStatus.PENDING_LANDLORD
+                && this.status != LeaseStatus.PENDING_RENTER) {
+            throw new BusinessConflictException(
+                    "Only a DRAFT or pending signing lease can be rejected. Current status: " + this.status,
+                    "ERROR_LEASE_INVALID_STATUS_FOR_REJECT");
+        }
         this.status = LeaseStatus.REJECTED;
         this.rejectReason = reason;
     }
@@ -162,6 +178,22 @@ public class LeaseAgreement extends BaseEntity {
         this.status = LeaseStatus.TERMINATED;
         this.terminationReason = reason;
         this.terminatedAt = LocalDateTime.now();
+    }
+
+    public void cancel(String reason, UUID cancelledBy) {
+        if (this.status != LeaseStatus.DRAFT
+                && this.status != LeaseStatus.PENDING_LANDLORD
+                && this.status != LeaseStatus.PENDING_RENTER) {
+            throw new BusinessConflictException(
+                    "Only a DRAFT or pending signing lease can be cancelled. Current status: " + this.status);
+        }
+        this.status = LeaseStatus.CANCELLED;
+        this.cancelReason = reason;
+        this.cancelledBy = cancelledBy;
+        this.cancelledAt = LocalDateTime.now();
+        if (this.docusignEnvelopeId != null) {
+            this.docusignStatus = "cancelled";
+        }
     }
 
     public void expire() {

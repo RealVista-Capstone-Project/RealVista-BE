@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -68,6 +69,11 @@ public class LeaseAgreementRepositoryImpl implements LeaseAgreementRepository {
     @Override
     public List<LeaseAgreement> findActiveLeasesByPropertyId(UUID propertyId) {
         return jpaRepository.findByPropertyIdAndStatus(propertyId, LeaseStatus.ACTIVE);
+    }
+
+    @Override
+    public List<LeaseAgreement> findActiveLeasesEndingBefore(LocalDate date) {
+        return jpaRepository.findByStatusAndLeaseEndDateBefore(LeaseStatus.ACTIVE, date);
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.sep.realvista.domain.listing.contract;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +35,8 @@ public interface LeaseAgreementRepository {
     Page<LeaseAgreement> findByLandlordIdAndStatus(UUID landlordId, LeaseStatus status, Pageable pageable);
 
     List<LeaseAgreement> findActiveLeasesByPropertyId(UUID propertyId);
+
+    List<LeaseAgreement> findActiveLeasesEndingBefore(LocalDate date);
 
     Page<LeaseAgreement> findByAgentId(UUID agentId, Pageable pageable);
 

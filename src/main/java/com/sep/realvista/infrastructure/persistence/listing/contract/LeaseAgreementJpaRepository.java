@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -57,6 +58,16 @@ public interface LeaseAgreementJpaRepository extends JpaRepository<LeaseAgreemen
     List<LeaseAgreement> findByPropertyIdAndStatus(
             @Param("propertyId") UUID propertyId,
             @Param("status") LeaseStatus status
+    );
+
+    @Query("SELECT la FROM LeaseAgreement la "
+            + "WHERE la.status = :status "
+            + "AND la.leaseEndDate IS NOT NULL "
+            + "AND la.leaseEndDate < :date "
+            + "AND la.deleted = false")
+    List<LeaseAgreement> findByStatusAndLeaseEndDateBefore(
+            @Param("status") LeaseStatus status,
+            @Param("date") LocalDate date
     );
 
     @Query("SELECT la FROM LeaseAgreement la WHERE la.agentId = :agentId AND la.deleted = false")
