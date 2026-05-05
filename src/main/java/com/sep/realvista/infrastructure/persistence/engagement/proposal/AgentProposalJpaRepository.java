@@ -1,6 +1,7 @@
 package com.sep.realvista.infrastructure.persistence.engagement.proposal;
 
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
+import com.sep.realvista.domain.engagement.proposal.AgentProposalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,7 +19,14 @@ public interface AgentProposalJpaRepository extends JpaRepository<AgentProposal,
            + "WHERE ap.userId = :userId AND ap.status != 'ARCHIVED'")
     Page<AgentProposal> findByUserId(@Param("userId") UUID userId, Pageable pageable);
 
-    boolean existsByUserIdAndTitle(UUID userId, String title);
+    boolean existsByUserIdAndTitleAndStatusNotAndDeletedFalse(
+            UUID userId,
+            String title,
+            AgentProposalStatus status);
 
-    boolean existsByUserIdAndTitleAndAgentProposalIdNot(UUID userId, String title, UUID agentProposalId);
+    boolean existsByUserIdAndTitleAndAgentProposalIdNotAndStatusNotAndDeletedFalse(
+            UUID userId,
+            String title,
+            UUID agentProposalId,
+            AgentProposalStatus status);
 }
