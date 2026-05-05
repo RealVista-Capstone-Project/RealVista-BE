@@ -20,6 +20,8 @@ import com.sep.realvista.domain.billing.subscription.FeaturePackageTierHelper;
 import com.sep.realvista.domain.billing.subscription.FeatureType;
 import com.sep.realvista.domain.billing.subscription.UserFeatureSubscription;
 import com.sep.realvista.domain.billing.subscription.UserFeatureSubscriptionStatus;
+import com.sep.realvista.domain.billing.subscription.repository.AiFeatureUsageRepository;
+import com.sep.realvista.domain.billing.subscription.AiFeature;
 import com.sep.realvista.domain.billing.subscription.repository.FeaturePackageRepository;
 import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubscriptionRepository;
 import com.sep.realvista.domain.billing.transaction.PaymentMethod;
@@ -68,6 +70,7 @@ public class BillingApplicationService {
     private final VnPayService vnPayService;
     private final VnPayProperties vnPayProperties;
     private final TransactionTemplate transactionTemplate;
+    private final AiFeatureUsageRepository aiFeatureUsageRepository;
 
     @Value("${spring.application.frontend.url}")
     private String frontendUrl;
@@ -744,6 +747,11 @@ public class BillingApplicationService {
 
             UserFeatureSubscription saved = userFeatureSubscriptionRepository.save(sub);
             txn.complete(saved.getUserFeatureSubscriptionId());
+
+            // Reset AI usage for today if upgrading/activating AI package
+            if (pkg.getFeatureType() == FeatureType.AI_REQUEST) {
+                resetAiUsageForToday(txn.getUserId());
+            }
         } else {
             // BOOST type - cancel existing active boost if user buys a different one
             cancelActiveBoostPackages(txn.getUserId());
@@ -886,4 +894,14 @@ public class BillingApplicationService {
         });
     }
 
+    private void resetAiUsageForToday(UUID userId) {
+        LocalDate today = LocalDate.now();
+        aiFeatureUsageRepository.findByUserIdAndAiFeatureAndPeriod(
+                userId, AiFeature.AI_ASSISTANT, today, today
+        ).ifPresent(usage -> {
+            log.info("Resetting AI usage for user={} today because of package activation/upgrade", userId);
+            usage.resetUsage();
+            aiFeatureUsageRepository.save(usage);
+        });
+    }
 }

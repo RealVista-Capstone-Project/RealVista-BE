@@ -24,9 +24,14 @@ public class SubscriptionExpirationService {
      */
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
-    public void expireExpiredSubscriptions() {
-        log.info("Starting subscription expiration check...");
+    public void dailyMaintenance() {
+        log.info("Starting daily subscription maintenance...");
+        expireExpiredSubscriptions();
+        resetAiQuotas();
+        log.info("Daily subscription maintenance completed.");
+    }
 
+    private void expireExpiredSubscriptions() {
         List<UserFeatureSubscription> activeSubscriptions =
                 subscriptionRepository.findByStatus(UserFeatureSubscriptionStatus.ACTIVE);
 
@@ -45,7 +50,41 @@ public class SubscriptionExpirationService {
                         sub.getUserFeatureSubscriptionId(), sub.getUserId(), sub.getEndDate());
             }
         }
+        log.info("{} subscriptions expired.", expiredCount);
+    }
 
-        log.info("Subscription expiration check completed. {} subscriptions expired.", expiredCount);
+    private void resetAiQuotas() {
+        log.info("Resetting AI quotas for the new day...");
+        // Reset both ACTIVE and EXHAUSTED subscriptions (if they are not expired)
+        List<UserFeatureSubscription> activeSubs =
+                subscriptionRepository.findByStatus(UserFeatureSubscriptionStatus.ACTIVE);
+        List<UserFeatureSubscription> exhaustedSubs =
+                subscriptionRepository.findByStatus(UserFeatureSubscriptionStatus.EXHAUSTED);
+        
+        int resetCount = 0;
+        
+        for (UserFeatureSubscription sub : activeSubs) {
+            if (isAiSubscription(sub)) {
+                sub.resetQuota();
+                subscriptionRepository.save(sub);
+                resetCount++;
+            }
+        }
+        
+        for (UserFeatureSubscription sub : exhaustedSubs) {
+            if (isAiSubscription(sub)) {
+                sub.resetQuota();
+                subscriptionRepository.save(sub);
+                resetCount++;
+            }
+        }
+        
+        log.info("Reset AI quotas for {} subscriptions.", resetCount);
+    }
+
+    private boolean isAiSubscription(UserFeatureSubscription sub) {
+        return sub.getFeaturePackage() != null
+                && com.sep.realvista.domain.billing.subscription.FeatureType.AI_REQUEST
+                .equals(sub.getFeaturePackage().getFeatureType());
     }
 }

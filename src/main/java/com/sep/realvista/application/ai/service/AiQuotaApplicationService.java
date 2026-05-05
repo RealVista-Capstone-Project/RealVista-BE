@@ -82,6 +82,11 @@ public class AiQuotaApplicationService {
         // 4. Increment and save
         usage.incrementUsage();
         usageRepository.save(usage);
+        
+        // 5. Also decrement remaining quota in the subscription for UI sync
+        activeSub.useQuota(1);
+        subscriptionRepository.save(activeSub);
+        
         return true;
     }
 
@@ -130,14 +135,9 @@ public class AiQuotaApplicationService {
         if (unlimited) {
             status.put("remaining", -1);
         } else {
-            // Get today's usage
-            LocalDate today = LocalDate.now();
-            int usageCount = usageRepository.findByUserIdAndAiFeatureAndPeriod(
-                    userId, AiFeature.AI_ASSISTANT, today, today)
-                    .map(AiFeatureUsage::getUsageCount)
-                    .orElse(0);
-
-            status.put("remaining", Math.max(0, quotaLimit - usageCount));
+            // Use the remaining quota directly from the subscription for consistency
+            Integer remaining = activeSub.getRemainingQuota();
+            status.put("remaining", remaining != null ? Math.max(0, remaining) : 0);
         }
 
         return status;
