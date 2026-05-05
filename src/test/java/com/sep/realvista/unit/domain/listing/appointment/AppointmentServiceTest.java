@@ -8,6 +8,7 @@ import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.appointment.Appointment;
 import com.sep.realvista.domain.listing.appointment.AppointmentService;
+import com.sep.realvista.domain.listing.appointment.AppointmentAuditLogRepository;
 import com.sep.realvista.domain.listing.appointment.AppointmentStatus;
 import com.sep.realvista.domain.listing.appointment.BookTourResult;
 import com.sep.realvista.domain.listing.repository.AppointmentRepository;
@@ -49,6 +50,8 @@ class AppointmentServiceTest {
     private ListingRepository listingRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private AppointmentAuditLogRepository auditLogRepository;
 
     @InjectMocks
     private AppointmentService appointmentService;
