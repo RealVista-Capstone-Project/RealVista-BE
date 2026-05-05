@@ -1,6 +1,7 @@
 package com.sep.realvista.domain.billing.subscription;
 
 import com.sep.realvista.domain.common.entity.BaseEntity;
+import com.sep.realvista.domain.common.exception.InsufficientQuotaException;
 import com.sep.realvista.domain.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -91,11 +92,16 @@ public class UserFeatureSubscription extends BaseEntity {
     }
 
     public void useQuota(int amount) {
-        if (remainingQuota != null && remainingQuota > 0) {
-            this.remainingQuota = Math.max(0, this.remainingQuota - amount);
-            if (this.remainingQuota <= 0) {
-                this.status = UserFeatureSubscriptionStatus.EXHAUSTED;
-            }
+        if (remainingQuota == null) {
+            return;
+        }
+        if (remainingQuota < amount) {
+            throw new InsufficientQuotaException(
+                    "Insufficient 3D tour quota. Required: " + amount + ", available: " + remainingQuota);
+        }
+        this.remainingQuota -= amount;
+        if (this.remainingQuota <= 0) {
+            this.status = UserFeatureSubscriptionStatus.EXHAUSTED;
         }
     }
 
