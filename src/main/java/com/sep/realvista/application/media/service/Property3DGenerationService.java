@@ -61,12 +61,13 @@ public class Property3DGenerationService {
                 .findFirst()
                 .orElseThrow(() -> new InsufficientQuotaException(
                         "No active 3D tour subscription with available quota"));
-        sub.useQuota(1);
+        int creditCost = getCreditCost(request.getModel());
+        sub.useQuota(creditCost);
         userFeatureSubscriptionRepository.save(sub);
 
         // Build generate request
         MarbleGenerateRequest marbleRequest = MarbleGenerateRequest.builder()
-                .model(request.getModel() != null ? request.getModel() : "Marble 0.1-plus")
+                .model(request.getModel() != null ? request.getModel() : "marble-1.0")
                 .displayName(request.getDisplayName() != null 
                         ? request.getDisplayName() : "Property 3D World")
                 .worldPrompt(MarbleGenerateRequest.WorldPrompt.builder()
@@ -267,6 +268,23 @@ public class Property3DGenerationService {
             generationRepository.save(generation);
             eventPublisher.publishEvent(new Property3DGenerationCompletedEvent(
                     this, generation.getPropertyId(), generation.getUploaderId(), false));
+        }
+    }
+
+    private int getCreditCost(String model) {
+        if (model == null) {
+            return 3;
+        }
+        switch (model) {
+            case "marble-1.0-draft":
+                return 1;
+            case "marble-1.0":
+            case "marble-1.1":
+                return 3;
+            case "marble-1.1-plus":
+                return 5;
+            default:
+                return 3;
         }
     }
 
