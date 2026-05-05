@@ -2,6 +2,7 @@ package com.sep.realvista.infrastructure.persistence.engagement.proposal;
 
 import com.sep.realvista.domain.engagement.proposal.AgentProposal;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
+import com.sep.realvista.domain.engagement.proposal.AgentProposalStatus;
 import com.sep.realvista.infrastructure.persistence.engagement.hired.EngagementJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -40,12 +41,14 @@ public class AgentProposalRepositoryImpl implements AgentProposalRepository {
 
     @Override
     public boolean existsByUserIdAndTitle(UUID userId, String title) {
-        return jpaRepository.existsByUserIdAndTitle(userId, title);
+        return jpaRepository.existsByUserIdAndTitleAndStatusNotAndDeletedFalse(
+                userId, title, AgentProposalStatus.ARCHIVED);
     }
 
     @Override
     public boolean existsByUserIdAndTitleExcludingId(UUID userId, String title, UUID excludeId) {
-        return jpaRepository.existsByUserIdAndTitleAndAgentProposalIdNot(userId, title, excludeId);
+        return jpaRepository.existsByUserIdAndTitleAndAgentProposalIdNotAndStatusNotAndDeletedFalse(
+                userId, title, excludeId, AgentProposalStatus.ARCHIVED);
     }
 
     @Override
