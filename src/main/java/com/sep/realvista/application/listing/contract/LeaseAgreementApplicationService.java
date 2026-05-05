@@ -95,7 +95,7 @@ public class LeaseAgreementApplicationService {
       throw new BusinessConflictException(
           "Property is not available for leasing. Current status: " + property.getStatus(),
           "ERROR_LEASE_PROPERTY_NOT_AVAILABLE",
-          new Object[] { property.getStatus() });
+          new Object[] {property.getStatus()});
     }
 
     // 3. Validate no active lease already exists for this property
@@ -147,6 +147,31 @@ public class LeaseAgreementApplicationService {
       lease.expire();
       leaseAgreementRepository.save(lease);
       log.info("Lease {} expired after end date {}", lease.getLeaseAgreementId(), lease.getLeaseEndDate());
+    }
+  }
+
+  /**
+   * Sends idempotent lease expiry reminders for the supported reminder windows.
+   */
+  @Scheduled(cron = "0 15 1 * * *")
+  public void sendLeaseExpiryReminders() {
+    LocalDate today = LocalDate.now();
+    sendLeaseExpiryRemindersForWindow(30, today.plusDays(30));
+    sendLeaseExpiryRemindersForWindow(7, today.plusDays(7));
+    sendLeaseExpiryRemindersForWindow(0, today);
+  }
+
+  private void sendLeaseExpiryRemindersForWindow(int daysBeforeExpiry, LocalDate targetDate) {
+    List<LeaseAgreement> leases = leaseAgreementRepository.findActiveLeasesEndingOn(targetDate);
+    for (LeaseAgreement lease : leases) {
+      if (lease.isExpiryReminderSent(daysBeforeExpiry)) {
+        continue;
+      }
+
+      notifyLeaseExpiryReminder(lease, daysBeforeExpiry);
+      lease.markExpiryReminderSent(daysBeforeExpiry);
+      leaseAgreementRepository.save(lease);
+      log.info("Lease {} expiry reminder sent for {} day window", lease.getLeaseAgreementId(), daysBeforeExpiry);
     }
   }
 
@@ -521,6 +546,7 @@ public class LeaseAgreementApplicationService {
         // needed).
         if (lease.getStatus() == LeaseStatus.PENDING_RENTER
             || lease.getStatus() == LeaseStatus.PENDING_LANDLORD) {
+          assertNoOtherActiveLeaseForProperty(lease);
           lease.renterSignViaDocuSign();
           lease.markSignedDocumentPending();
           // Auto-mark the property as RENTED now that the lease is ACTIVE
@@ -565,6 +591,42 @@ public class LeaseAgreementApplicationService {
     } catch (Exception e) {
       log.warn("Failed to send lease signed notification to user {} for lease {}: {}",
           userId, leaseId, e.getMessage());
+    }
+  }
+
+  private void notifyLeaseExpiryReminder(LeaseAgreement lease, int daysBeforeExpiry) {
+    String propertyAddress = propertyRepository.findById(lease.getPropertyId())
+        .map(Property::getStreetAddress)
+        .orElse("");
+    Map<String, Object> variables = Map.of(
+        "leaseId", lease.getLeaseAgreementId().toString(),
+        "propertyAddress", propertyAddress,
+        "leaseEndDate", lease.getLeaseEndDate() != null ? lease.getLeaseEndDate().toString() : "",
+        "daysBeforeExpiry", daysBeforeExpiry
+    );
+
+    notifyLeaseExpiryReminderRecipient(lease.getLandlordId(), variables, lease.getLeaseAgreementId());
+    notifyLeaseExpiryReminderRecipient(lease.getRenterId(), variables, lease.getLeaseAgreementId());
+    if (lease.getAgentId() != null) {
+      notifyLeaseExpiryReminderRecipient(lease.getAgentId(), variables, lease.getLeaseAgreementId());
+    }
+  }
+
+  private void notifyLeaseExpiryReminderRecipient(UUID userId, Map<String, Object> variables, UUID leaseId) {
+    try {
+      notificationService.sendDbNotification(
+          userId,
+          "LEASE_EXPIRY_REMINDER",
+          "vi",
+          variables,
+          EventType.LEASE_EXPIRY_REMINDER,
+          EntityType.LEASE,
+          leaseId
+      );
+    } catch (RuntimeException e) {
+      log.warn("Failed to send lease expiry reminder to user {} for lease {}: {}",
+          userId, leaseId, e.getMessage());
+      throw e;
     }
   }
 
@@ -714,6 +776,17 @@ public class LeaseAgreementApplicationService {
   }
 
   // ── Private Helpers ───────────────────────────────────────────────────────
+
+  private void assertNoOtherActiveLeaseForProperty(LeaseAgreement lease) {
+    boolean anotherActiveLeaseExists = leaseAgreementRepository.findActiveLeasesByPropertyId(lease.getPropertyId())
+        .stream()
+        .anyMatch(activeLease -> !activeLease.getLeaseAgreementId().equals(lease.getLeaseAgreementId()));
+    if (anotherActiveLeaseExists) {
+      throw new BusinessConflictException(
+          "Another active lease already exists for this property.",
+          "ERROR_LEASE_ACTIVE_EXISTS");
+    }
+  }
 
   private LeaseAgreement findLeaseOrThrow(UUID leaseId) {
     return leaseAgreementRepository.findById(leaseId)

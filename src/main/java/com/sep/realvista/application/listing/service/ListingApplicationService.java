@@ -27,6 +27,8 @@ import com.sep.realvista.domain.engagement.EngagementStatus;
 import com.sep.realvista.domain.engagement.EngagementType;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.domain.user.preference.SettingPreference;
+import com.sep.realvista.domain.listing.contract.LeaseAgreement;
+import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.ListingStatus;
@@ -108,6 +110,7 @@ public class ListingApplicationService {
     private final UserRepository userRepository;
     private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
     private final EngagementRepository engagementRepository;
+    private final LeaseAgreementRepository leaseAgreementRepository;
     // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
     // ensuring @Cacheable on getCachedListingDetail is actually triggered.
     @Lazy
@@ -729,6 +732,12 @@ public class ListingApplicationService {
             listing.setListingType(request.getListingType());
         }
 
+        if (listing.getStatus() == ListingStatus.PUBLISHED) {
+            Property property = propertyRepository.findById(listing.getPropertyId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Property", listing.getPropertyId()));
+            validatePropertyCanPublishListing(property, listing.getListingType(), listing.getAvailableFrom());
+        }
+
         // Save listing
         Listing updatedListing = listingRepository.save(listing);
 
@@ -1072,6 +1081,24 @@ public class ListingApplicationService {
                 throw new BusinessConflictException(
                         "Available from date is required for rent listings on rented properties",
                         "ERROR_AVAILABLE_FROM_REQUIRED_FOR_RENTED_PROPERTY");
+            }
+            LocalDate today = LocalDate.now();
+            if (!availableFrom.isAfter(today)) {
+                throw new BusinessConflictException(
+                        "Available from date must be in the future for rent listings on rented properties",
+                        "ERROR_AVAILABLE_FROM_MUST_BE_FUTURE_FOR_RENTED_PROPERTY");
+            }
+            LocalDate currentLeaseEndDate = leaseAgreementRepository
+                    .findActiveLeasesByPropertyId(property.getPropertyId())
+                    .stream()
+                    .map(LeaseAgreement::getLeaseEndDate)
+                    .filter(java.util.Objects::nonNull)
+                    .max(LocalDate::compareTo)
+                    .orElse(null);
+            if (currentLeaseEndDate != null && availableFrom.isBefore(currentLeaseEndDate.plusDays(1))) {
+                throw new BusinessConflictException(
+                        "Available from date must be after the current lease end date",
+                        "ERROR_AVAILABLE_FROM_BEFORE_CURRENT_LEASE_END");
             }
             return;
         }

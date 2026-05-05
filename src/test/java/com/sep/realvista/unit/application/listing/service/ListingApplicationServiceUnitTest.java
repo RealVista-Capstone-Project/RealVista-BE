@@ -1,6 +1,7 @@
 package com.sep.realvista.unit.application.listing.service;
 
 import com.sep.realvista.application.listing.dto.CreateListingRequest;
+import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.dto.AgentInfoDTO;
 import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
@@ -26,6 +27,9 @@ import com.sep.realvista.domain.listing.ListingMedia;
 import com.sep.realvista.domain.listing.ListingStatus;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.analytics.ListingPriceHistory;
+import com.sep.realvista.domain.listing.contract.LeaseAgreement;
+import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
+import com.sep.realvista.domain.listing.contract.LeaseStatus;
 import com.sep.realvista.domain.listing.repository.ListingMediaRepository;
 import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
@@ -132,6 +136,9 @@ class ListingApplicationServiceUnitTest {
 
         @Mock
         private EngagementRepository engagementRepository;
+
+        @Mock
+        private LeaseAgreementRepository leaseAgreementRepository;
 
         @InjectMocks
         private ListingApplicationService listingApplicationService;
@@ -1372,6 +1379,96 @@ class ListingApplicationServiceUnitTest {
 
                 assertThat(engagement.getListingId()).isEqualTo(listingId);
                 verify(engagementRepository).save(engagement);
+        }
+
+        @Test
+        @DisplayName("updateListing blocks rented repost with today availability")
+        void updateListing_whenRentedPropertyAvailableToday_shouldFail() {
+                Property rentedProperty = rentedProperty(true);
+                UpdateListingRequest request = UpdateListingRequest.builder()
+                                .availableFrom(LocalDate.now())
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(rentedProperty));
+
+                assertThatThrownBy(() -> listingApplicationService.updateListing(listingId, request, userId))
+                                .isInstanceOf(BusinessConflictException.class)
+                                .hasMessageContaining("Available from date must be in the future");
+
+                verify(listingRepository, never()).save(any(Listing.class));
+        }
+
+        @Test
+        @DisplayName("updateListing blocks rented repost before current lease end")
+        void updateListing_whenAvailableBeforeCurrentLeaseEnd_shouldFail() {
+                Property rentedProperty = rentedProperty(true);
+                LocalDate leaseEndDate = LocalDate.now().plusDays(20);
+                UpdateListingRequest request = UpdateListingRequest.builder()
+                                .availableFrom(leaseEndDate)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(rentedProperty));
+                when(leaseAgreementRepository.findActiveLeasesByPropertyId(propertyId))
+                                .thenReturn(List.of(activeLeaseForProperty(leaseEndDate)));
+
+                assertThatThrownBy(() -> listingApplicationService.updateListing(listingId, request, userId))
+                                .isInstanceOf(BusinessConflictException.class)
+                                .hasMessageContaining("Available from date must be after the current lease end date");
+
+                verify(listingRepository, never()).save(any(Listing.class));
+        }
+
+        @Test
+        @DisplayName("updateListing allows rented repost after current lease end and keeps property rented")
+        void updateListing_whenAvailableAfterCurrentLeaseEnd_shouldSucceed() {
+                Property rentedProperty = rentedProperty(true);
+                LocalDate leaseEndDate = LocalDate.now().plusDays(20);
+                UpdateListingRequest request = UpdateListingRequest.builder()
+                                .availableFrom(leaseEndDate.plusDays(1))
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(rentedProperty));
+                when(leaseAgreementRepository.findActiveLeasesByPropertyId(propertyId))
+                                .thenReturn(List.of(activeLeaseForProperty(leaseEndDate)));
+                when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(listingMapper.toListingResponse(any(Listing.class))).thenReturn(ListingResponse.builder().build());
+
+                listingApplicationService.updateListing(listingId, request, userId);
+
+                assertThat(rentedProperty.getStatus()).isEqualTo(PropertyStatus.RENTED);
+                assertThat(testListing.getAvailableFrom()).isEqualTo(leaseEndDate.plusDays(1));
+                verify(listingRepository, atLeastOnce()).save(testListing);
+        }
+
+        private Property rentedProperty(boolean allowRentListingWhenRented) {
+                return Property.builder()
+                                .propertyId(propertyId)
+                                .ownerId(userId)
+                                .streetAddress("123 Main St")
+                                .latitude(new BigDecimal("10.776389"))
+                                .longitude(new BigDecimal("106.701944"))
+                                .landSizeM2(new BigDecimal("100.50"))
+                                .usableSizeM2(new BigDecimal("85.00"))
+                                .descriptions("Beautiful property")
+                                .status(PropertyStatus.RENTED)
+                                .allowRentListingWhenRented(allowRentListingWhenRented)
+                                .build();
+        }
+
+        private LeaseAgreement activeLeaseForProperty(LocalDate leaseEndDate) {
+                return LeaseAgreement.builder()
+                                .leaseAgreementId(UUID.randomUUID())
+                                .propertyId(propertyId)
+                                .renterId(UUID.randomUUID())
+                                .landlordId(userId)
+                                .leaseStartDate(leaseEndDate.minusMonths(1))
+                                .leaseEndDate(leaseEndDate)
+                                .leaseDurationMonths(1)
+                                .status(LeaseStatus.ACTIVE)
+                                .build();
         }
 
         @Test

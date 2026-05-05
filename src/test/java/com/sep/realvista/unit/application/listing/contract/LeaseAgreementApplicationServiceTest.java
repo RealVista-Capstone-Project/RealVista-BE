@@ -9,6 +9,8 @@ import com.sep.realvista.domain.listing.contract.LeaseAgreement;
 import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.listing.contract.LeaseStatus;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
+import com.sep.realvista.domain.user.notification.EntityType;
+import com.sep.realvista.domain.user.notification.EventType;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.UserRepository;
@@ -29,6 +31,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -92,6 +95,56 @@ class LeaseAgreementApplicationServiceTest {
 
         verify(leaseAgreementRepository, never()).save(any());
         verify(propertyRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("sendLeaseExpiryReminders sends 30-day reminder once")
+    void sendLeaseExpiryReminders_sendsThirtyDayReminderOnce() {
+        LocalDate today = LocalDate.now();
+        LeaseAgreement lease = activeLease(today.plusDays(30));
+        when(leaseAgreementRepository.findActiveLeasesEndingOn(today.plusDays(30))).thenReturn(List.of(lease));
+        when(leaseAgreementRepository.findActiveLeasesEndingOn(today.plusDays(7))).thenReturn(List.of());
+        when(leaseAgreementRepository.findActiveLeasesEndingOn(today)).thenReturn(List.of());
+        when(leaseAgreementRepository.save(any(LeaseAgreement.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.sendLeaseExpiryReminders();
+        service.sendLeaseExpiryReminders();
+
+        verify(notificationService).sendDbNotification(
+                eq(lease.getLandlordId()),
+                eq("LEASE_EXPIRY_REMINDER"),
+                eq("vi"),
+                any(),
+                eq(EventType.LEASE_EXPIRY_REMINDER),
+                eq(EntityType.LEASE),
+                eq(lease.getLeaseAgreementId())
+        );
+        verify(notificationService).sendDbNotification(
+                eq(lease.getRenterId()),
+                eq("LEASE_EXPIRY_REMINDER"),
+                eq("vi"),
+                any(),
+                eq(EventType.LEASE_EXPIRY_REMINDER),
+                eq(EntityType.LEASE),
+                eq(lease.getLeaseAgreementId())
+        );
+        verify(leaseAgreementRepository).save(lease);
+    }
+
+    @Test
+    @DisplayName("sendLeaseExpiryReminders ignores already sent reminders")
+    void sendLeaseExpiryReminders_ignoresAlreadySentReminder() {
+        LocalDate today = LocalDate.now();
+        LeaseAgreement lease = activeLease(today.plusDays(7));
+        lease.markExpiryReminderSent(7);
+        when(leaseAgreementRepository.findActiveLeasesEndingOn(today.plusDays(30))).thenReturn(List.of());
+        when(leaseAgreementRepository.findActiveLeasesEndingOn(today.plusDays(7))).thenReturn(List.of(lease));
+        when(leaseAgreementRepository.findActiveLeasesEndingOn(today)).thenReturn(List.of());
+
+        service.sendLeaseExpiryReminders();
+
+        verify(notificationService, never()).sendDbNotification(any(), any(), any(), any(), any(), any(), any());
+        verify(leaseAgreementRepository, never()).save(any());
     }
 
     @Test

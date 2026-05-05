@@ -38,6 +38,8 @@ public interface LeaseAgreementRepository {
 
     List<LeaseAgreement> findActiveLeasesEndingBefore(LocalDate date);
 
+    List<LeaseAgreement> findActiveLeasesEndingOn(LocalDate date);
+
     Page<LeaseAgreement> findByAgentId(UUID agentId, Pageable pageable);
 
     Page<LeaseAgreement> findByAgentIdAndStatus(UUID agentId, LeaseStatus status, Pageable pageable);

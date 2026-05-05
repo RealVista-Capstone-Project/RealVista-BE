@@ -140,6 +140,15 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "signed_document_processed_at")
     private LocalDateTime signedDocumentProcessedAt;
 
+    @Column(name = "expiry_reminder_30_sent_at")
+    private LocalDateTime expiryReminder30SentAt;
+
+    @Column(name = "expiry_reminder_7_sent_at")
+    private LocalDateTime expiryReminder7SentAt;
+
+    @Column(name = "expiry_reminder_due_sent_at")
+    private LocalDateTime expiryReminderDueSentAt;
+
     public void submitToLandlord() {
         this.status = LeaseStatus.PENDING_LANDLORD;
     }
@@ -198,6 +207,37 @@ public class LeaseAgreement extends BaseEntity {
 
     public void expire() {
         this.status = LeaseStatus.EXPIRED;
+    }
+
+    public boolean isExpiryReminderSent(int daysBeforeExpiry) {
+        return switch (daysBeforeExpiry) {
+            case 30 -> this.expiryReminder30SentAt != null;
+            case 7 -> this.expiryReminder7SentAt != null;
+            case 0 -> this.expiryReminderDueSentAt != null;
+            default -> throw unsupportedExpiryReminderWindow(daysBeforeExpiry);
+        };
+    }
+
+    public void markExpiryReminderSent(int daysBeforeExpiry) {
+        LocalDateTime now = LocalDateTime.now();
+        switch (daysBeforeExpiry) {
+            case 30:
+                this.expiryReminder30SentAt = now;
+                break;
+            case 7:
+                this.expiryReminder7SentAt = now;
+                break;
+            case 0:
+                this.expiryReminderDueSentAt = now;
+                break;
+            default:
+                throw unsupportedExpiryReminderWindow(daysBeforeExpiry);
+        }
+    }
+
+    private IllegalArgumentException unsupportedExpiryReminderWindow(int daysBeforeExpiry) {
+        return new IllegalArgumentException(
+                "Unsupported lease expiry reminder window: " + daysBeforeExpiry);
     }
 
     // ── DocuSign business methods ──

@@ -70,6 +70,15 @@ public interface LeaseAgreementJpaRepository extends JpaRepository<LeaseAgreemen
             @Param("date") LocalDate date
     );
 
+    @Query("SELECT la FROM LeaseAgreement la "
+            + "WHERE la.status = :status "
+            + "AND la.leaseEndDate = :date "
+            + "AND la.deleted = false")
+    List<LeaseAgreement> findByStatusAndLeaseEndDate(
+            @Param("status") LeaseStatus status,
+            @Param("date") LocalDate date
+    );
+
     @Query("SELECT la FROM LeaseAgreement la WHERE la.agentId = :agentId AND la.deleted = false")
     Page<LeaseAgreement> findByAgentId(@Param("agentId") UUID agentId, Pageable pageable);
 

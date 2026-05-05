@@ -77,6 +77,11 @@ public class LeaseAgreementRepositoryImpl implements LeaseAgreementRepository {
     }
 
     @Override
+    public List<LeaseAgreement> findActiveLeasesEndingOn(LocalDate date) {
+        return jpaRepository.findByStatusAndLeaseEndDate(LeaseStatus.ACTIVE, date);
+    }
+
+    @Override
     public Page<LeaseAgreement> findByAgentId(UUID agentId, Pageable pageable) {
         return jpaRepository.findByAgentId(agentId, pageable);
     }
