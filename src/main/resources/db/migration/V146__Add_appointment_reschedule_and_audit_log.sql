@@ -1,4 +1,4 @@
--- V141__Add_appointment_reschedule_and_audit_log.sql
+-- V146__Add_appointment_reschedule_and_audit_log.sql
 
 -- 1. Update appointments table to support rescheduling
 ALTER TABLE appointments
