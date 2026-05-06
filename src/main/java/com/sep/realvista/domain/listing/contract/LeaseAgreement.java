@@ -107,6 +107,15 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "terminated_at")
     private LocalDateTime terminatedAt;
 
+    @Column(name = "cancel_reason", columnDefinition = "TEXT")
+    private String cancelReason;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancelled_by")
+    private UUID cancelledBy;
+
     @Column(name = "verified_by")
     private UUID verifiedBy;
 
@@ -116,6 +125,29 @@ public class LeaseAgreement extends BaseEntity {
 
     @Column(name = "docusign_status", length = 50)
     private String docusignStatus;
+
+    @Column(name = "signed_document_url", columnDefinition = "TEXT")
+    private String signedDocumentUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "signed_document_status", nullable = false, length = 30)
+    @Builder.Default
+    private SignedDocumentStatus signedDocumentStatus = SignedDocumentStatus.NOT_REQUESTED;
+
+    @Column(name = "signed_document_error", columnDefinition = "TEXT")
+    private String signedDocumentError;
+
+    @Column(name = "signed_document_processed_at")
+    private LocalDateTime signedDocumentProcessedAt;
+
+    @Column(name = "expiry_reminder_30_sent_at")
+    private LocalDateTime expiryReminder30SentAt;
+
+    @Column(name = "expiry_reminder_7_sent_at")
+    private LocalDateTime expiryReminder7SentAt;
+
+    @Column(name = "expiry_reminder_due_sent_at")
+    private LocalDateTime expiryReminderDueSentAt;
 
     public void submitToLandlord() {
         this.status = LeaseStatus.PENDING_LANDLORD;
@@ -136,6 +168,13 @@ public class LeaseAgreement extends BaseEntity {
     }
 
     public void reject(String reason) {
+        if (this.status != LeaseStatus.DRAFT
+                && this.status != LeaseStatus.PENDING_LANDLORD
+                && this.status != LeaseStatus.PENDING_RENTER) {
+            throw new BusinessConflictException(
+                    "Only a DRAFT or pending signing lease can be rejected. Current status: " + this.status,
+                    "ERROR_LEASE_INVALID_STATUS_FOR_REJECT");
+        }
         this.status = LeaseStatus.REJECTED;
         this.rejectReason = reason;
     }
@@ -150,8 +189,55 @@ public class LeaseAgreement extends BaseEntity {
         this.terminatedAt = LocalDateTime.now();
     }
 
+    public void cancel(String reason, UUID cancelledBy) {
+        if (this.status != LeaseStatus.DRAFT
+                && this.status != LeaseStatus.PENDING_LANDLORD
+                && this.status != LeaseStatus.PENDING_RENTER) {
+            throw new BusinessConflictException(
+                    "Only a DRAFT or pending signing lease can be cancelled. Current status: " + this.status);
+        }
+        this.status = LeaseStatus.CANCELLED;
+        this.cancelReason = reason;
+        this.cancelledBy = cancelledBy;
+        this.cancelledAt = LocalDateTime.now();
+        if (this.docusignEnvelopeId != null) {
+            this.docusignStatus = "cancelled";
+        }
+    }
+
     public void expire() {
         this.status = LeaseStatus.EXPIRED;
+    }
+
+    public boolean isExpiryReminderSent(int daysBeforeExpiry) {
+        return switch (daysBeforeExpiry) {
+            case 30 -> this.expiryReminder30SentAt != null;
+            case 7 -> this.expiryReminder7SentAt != null;
+            case 0 -> this.expiryReminderDueSentAt != null;
+            default -> throw unsupportedExpiryReminderWindow(daysBeforeExpiry);
+        };
+    }
+
+    public void markExpiryReminderSent(int daysBeforeExpiry) {
+        LocalDateTime now = LocalDateTime.now();
+        switch (daysBeforeExpiry) {
+            case 30:
+                this.expiryReminder30SentAt = now;
+                break;
+            case 7:
+                this.expiryReminder7SentAt = now;
+                break;
+            case 0:
+                this.expiryReminderDueSentAt = now;
+                break;
+            default:
+                throw unsupportedExpiryReminderWindow(daysBeforeExpiry);
+        }
+    }
+
+    private IllegalArgumentException unsupportedExpiryReminderWindow(int daysBeforeExpiry) {
+        return new IllegalArgumentException(
+                "Unsupported lease expiry reminder window: " + daysBeforeExpiry);
     }
 
     // ── DocuSign business methods ──
@@ -179,5 +265,30 @@ public class LeaseAgreement extends BaseEntity {
 
     public void setLeaseDocumentUrl(String url) {
         this.leaseDocumentUrl = url;
+    }
+
+    public void markSignedDocumentPending() {
+        if (this.signedDocumentStatus != SignedDocumentStatus.COMPLETED) {
+            this.signedDocumentStatus = SignedDocumentStatus.PENDING;
+            this.signedDocumentError = null;
+        }
+    }
+
+    public void markSignedDocumentProcessing() {
+        this.signedDocumentStatus = SignedDocumentStatus.PROCESSING;
+        this.signedDocumentError = null;
+    }
+
+    public void completeSignedDocument(String documentUrl) {
+        this.signedDocumentUrl = documentUrl;
+        this.signedDocumentStatus = SignedDocumentStatus.COMPLETED;
+        this.signedDocumentError = null;
+        this.signedDocumentProcessedAt = LocalDateTime.now();
+    }
+
+    public void failSignedDocumentProcessing(String errorMessage) {
+        this.signedDocumentStatus = SignedDocumentStatus.FAILED;
+        this.signedDocumentError = errorMessage;
+        this.signedDocumentProcessedAt = LocalDateTime.now();
     }
 }

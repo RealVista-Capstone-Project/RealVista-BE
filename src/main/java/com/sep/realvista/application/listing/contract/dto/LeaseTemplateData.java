@@ -46,6 +46,12 @@ public class LeaseTemplateData {
     /** Lease duration in months (tab label: leaseDurationMonths). */
     private String leaseDurationMonths;
 
+    /** Property land/available area as a number only (tab label: propertyAvailable). */
+    private String propertyAvailable;
+
+    /** Property usable area as a number only (tab label: propertyUsed). */
+    private String propertyUsed;
+
     /**
      * Monthly rent amount formatted with dot thousands separator (tab label: monthlyRent).
      * Example: "1.500.000"
@@ -93,4 +99,16 @@ public class LeaseTemplateData {
      * Example: "2026"
      */
     private String contractYear;
+
+    /** Current weekday in Vietnamese numeric style (tab label: currentWeekday). */
+    private String currentWeekday;
+
+    /** Current day number (tab label: currentDay). */
+    private String currentDay;
+
+    /** Current month number (tab label: currentMonth). */
+    private String currentMonth;
+
+    /** Current year number (tab label: currentYear). */
+    private String currentYear;
 }
