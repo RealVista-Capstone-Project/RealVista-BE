@@ -14,6 +14,7 @@ public class AppointmentSummaryResponse {
     long rejectedAppointments;
     long canceledAppointments;
     long completedAppointments;
+    long reschedulePendingAppointments;
     long upcomingAppointments;
     long currentMonthUpcomingAppointments;
     long previousUpcomingAppointments;
