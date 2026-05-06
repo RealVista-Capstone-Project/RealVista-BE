@@ -35,10 +35,10 @@ class AppointmentControllerTest {
         UUID listingId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(1);
         List<LocalTime> slots = List.of(LocalTime.of(9, 0), LocalTime.of(10, 0));
-        when(appointmentApplicationService.getAvailableSlots(listingId, date)).thenReturn(slots);
+        when(appointmentApplicationService.getAvailableSlots(listingId, date, null)).thenReturn(slots);
 
         // Act
-        var response = appointmentController.getAvailableSlots(listingId, date);
+        var response = appointmentController.getAvailableSlots(listingId, date, null);
 
         // Assert
         assertThat(response.getStatusCode().value()).isEqualTo(200);
