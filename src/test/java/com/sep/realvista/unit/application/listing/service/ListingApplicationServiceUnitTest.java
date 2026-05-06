@@ -71,6 +71,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -1441,6 +1442,43 @@ class ListingApplicationServiceUnitTest {
                 assertThat(rentedProperty.getStatus()).isEqualTo(PropertyStatus.RENTED);
                 assertThat(testListing.getAvailableFrom()).isEqualTo(leaseEndDate.plusDays(1));
                 verify(listingRepository, atLeastOnce()).save(testListing);
+        }
+
+        @Test
+        @DisplayName("updateListing skips null media IDs and does not throw")
+        void updateListing_whenMediaIdsContainNull_shouldSkipNullAndNotThrow() {
+                UUID mediaId = UUID.randomUUID();
+                testListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.DRAFT)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .price(new BigDecimal("2700.00"))
+                                .isNegotiable(false)
+                                .build();
+                List<UUID> mediaIds = new ArrayList<>();
+                mediaIds.add(mediaId);
+                mediaIds.add(null);
+                UpdateListingRequest request = UpdateListingRequest.builder()
+                                .mediaIds(mediaIds)
+                                .primaryMediaId(mediaId)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(listingMediaRepository.findByListingId(listingId)).thenReturn(Collections.emptyList());
+                when(listingMapper.toListingResponse(any(Listing.class))).thenReturn(ListingResponse.builder().build());
+
+                assertThatCode(() -> listingApplicationService.updateListing(listingId, request, userId))
+                                .doesNotThrowAnyException();
+
+                verify(listingMediaRepository, times(1)).save(argThat(media ->
+                                mediaId.equals(media.getPropertyMediaId())));
+                verify(listingMediaRepository, never()).save(argThat(media ->
+                                media.getPropertyMediaId() == null));
         }
 
         private Property rentedProperty(boolean allowRentListingWhenRented) {

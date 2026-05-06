@@ -789,13 +789,16 @@ public class ListingApplicationService {
       // Update remaining or add new
       for (int i = 0; i < mediaIds.size(); i++) {
         UUID mediaId = mediaIds.get(i);
+        if (mediaId == null) {
+          continue; // skip null IDs sent from client
+        }
         boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
         // Primary media always gets display_order 0; others follow list index
         int displayOrder = isPrimary ? 0 : i;
 
         Listing finalUpdatedListing = updatedListing;
         existingMediaList.stream()
-            .filter(m -> m.getPropertyMediaId().equals(mediaId))
+            .filter(m -> mediaId.equals(m.getPropertyMediaId()))
             .findFirst()
             .ifPresentOrElse(
                 existing -> {
