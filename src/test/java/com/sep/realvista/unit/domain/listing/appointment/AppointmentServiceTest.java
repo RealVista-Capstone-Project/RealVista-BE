@@ -8,6 +8,7 @@ import com.sep.realvista.domain.listing.Listing;
 import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.appointment.Appointment;
 import com.sep.realvista.domain.listing.appointment.AppointmentService;
+import com.sep.realvista.domain.listing.appointment.AppointmentAuditLogRepository;
 import com.sep.realvista.domain.listing.appointment.AppointmentStatus;
 import com.sep.realvista.domain.listing.appointment.BookTourResult;
 import com.sep.realvista.domain.listing.repository.AppointmentRepository;
@@ -49,6 +50,8 @@ class AppointmentServiceTest {
     private ListingRepository listingRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private AppointmentAuditLogRepository auditLogRepository;
 
     @InjectMocks
     private AppointmentService appointmentService;
@@ -101,7 +104,7 @@ class AppointmentServiceTest {
         void shouldRejectPastDate() {
             LocalDate pastDate = LocalDate.now().minusDays(1);
 
-            assertThatThrownBy(() -> appointmentService.getAvailableSlots(listingId, pastDate))
+            assertThatThrownBy(() -> appointmentService.getAvailableSlots(listingId, pastDate, null))
                     .isInstanceOf(InvalidBookingRequestException.class)
                     .hasMessageContaining("past date");
         }
@@ -112,7 +115,7 @@ class AppointmentServiceTest {
             LocalDate futureDate = LocalDate.now().plusDays(1);
             when(listingRepository.findById(listingId)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> appointmentService.getAvailableSlots(listingId, futureDate))
+            assertThatThrownBy(() -> appointmentService.getAvailableSlots(listingId, futureDate, null))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
 
@@ -122,11 +125,11 @@ class AppointmentServiceTest {
             LocalDate futureDate = LocalDate.now().plusDays(1);
             when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
             when(userRepository.findById(ownerId)).thenReturn(Optional.of(owner));
-            when(appointmentRepository.findByReceiverIdAndStartTimeBetweenAndStatusIn(
-                    any(), any(), any(), any()
+            when(appointmentRepository.findOverlappingAppointments(
+                    any(), any(), any(), any(), any()
             )).thenReturn(Collections.emptyList());
 
-            List<LocalTime> slots = appointmentService.getAvailableSlots(listingId, futureDate);
+            List<LocalTime> slots = appointmentService.getAvailableSlots(listingId, futureDate, null);
 
             // 8:00 to 17:00 in 30-min intervals = 18 slots
             assertThat(slots).hasSize(18);
@@ -149,11 +152,11 @@ class AppointmentServiceTest {
                     .status(AppointmentStatus.PENDING)
                     .build();
 
-            when(appointmentRepository.findByReceiverIdAndStartTimeBetweenAndStatusIn(
-                    any(), any(), any(), any()
+            when(appointmentRepository.findOverlappingAppointments(
+                    any(), any(), any(), any(), any()
             )).thenReturn(List.of(bookedAppointment));
 
-            List<LocalTime> slots = appointmentService.getAvailableSlots(listingId, futureDate);
+            List<LocalTime> slots = appointmentService.getAvailableSlots(listingId, futureDate, null);
 
             assertThat(slots).doesNotContain(LocalTime.of(10, 0));
             assertThat(slots).hasSize(17);
@@ -222,8 +225,8 @@ class AppointmentServiceTest {
                     .status(AppointmentStatus.PENDING)
                     .build();
 
-            when(appointmentRepository.findByReceiverIdAndStartTimeBetweenAndStatusIn(
-                    any(), any(), any(), any()
+            when(appointmentRepository.findOverlappingAppointments(
+                    any(), any(), any(), any(), any()
             )).thenReturn(List.of(existing));
 
             assertThatThrownBy(() -> appointmentService.bookTour(
@@ -238,8 +241,8 @@ class AppointmentServiceTest {
             when(listingRepository.findById(listingId)).thenReturn(Optional.of(listing));
             when(userRepository.findById(senderId)).thenReturn(Optional.of(sender));
             when(userRepository.findById(ownerId)).thenReturn(Optional.of(owner));
-            when(appointmentRepository.findByReceiverIdAndStartTimeBetweenAndStatusIn(
-                    any(), any(), any(), any()
+            when(appointmentRepository.findOverlappingAppointments(
+                    any(), any(), any(), any(), any()
             )).thenReturn(Collections.emptyList());
             when(appointmentRepository.save(any(Appointment.class))).thenAnswer(inv -> inv.getArgument(0));
 

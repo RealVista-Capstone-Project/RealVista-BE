@@ -40,8 +40,23 @@ public class Policy extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    public void updatePolicy(String title, String content) {
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
+
+    @Builder.Default
+    private Integer version = 1;
+
+    public void updatePolicy(String title, String content, Boolean isActive) {
         this.title = title;
         this.content = content;
+        if (isActive != null) {
+            this.isActive = isActive;
+        }
+    }
+
+    public void toggleActive() {
+        this.isActive = !this.isActive;
     }
 }
+

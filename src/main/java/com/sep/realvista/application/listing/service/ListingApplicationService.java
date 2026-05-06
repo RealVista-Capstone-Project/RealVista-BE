@@ -2,6 +2,7 @@ package com.sep.realvista.application.listing.service;
 
 import com.sep.realvista.application.listing.dto.CostBreakdownDTO;
 import com.sep.realvista.application.listing.dto.CreateListingRequest;
+import com.sep.realvista.application.listing.dto.ListingCompareDataResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ManagedListingSearchCriteria;
@@ -10,6 +11,7 @@ import com.sep.realvista.application.listing.dto.PriceChangeType;
 import com.sep.realvista.application.listing.dto.PriceHistoryDTO;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.RelatedListingsResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingDTO;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.dto.UpdateListingRequest;
@@ -39,6 +41,7 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.shared.util.AddressFormatter;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
@@ -49,6 +52,7 @@ import com.sep.realvista.application.appointment.service.AppointmentApplicationS
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.notification.EntityType;
 import com.sep.realvista.domain.user.notification.EventType;
 import jakarta.persistence.criteria.JoinType;
@@ -69,6 +73,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -105,6 +111,7 @@ public class ListingApplicationService {
     private final UserRepository userRepository;
     private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
     private final EngagementRepository engagementRepository;
+    private final com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository listingBoostRepository;
     // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
     // ensuring @Cacheable on getCachedListingDetail is actually triggered.
     @Lazy
@@ -166,6 +173,7 @@ public class ListingApplicationService {
     public ListingDetailResponse getListingDetail(UUID listingId, UUID userId, boolean recordView) {
         // Route through self (proxy) so @Cacheable on getCachedListingDetail fires correctly
         ListingDetailResponse response = self.getCachedListingDetail(listingId);
+        ensureListingDetailAccessible(response, userId);
         if (userId != null) {
             boolean isFavorite = bookmarkRepository.existsByUserIdAndListingId(userId, listingId);
             response.setIsFavorite(isFavorite);
@@ -179,6 +187,27 @@ public class ListingApplicationService {
         }
 
         return response;
+    }
+
+    private void ensureListingDetailAccessible(ListingDetailResponse listing, UUID userId) {
+        if (listing.getStatus() == ListingStatus.PUBLISHED) {
+            return;
+        }
+
+        boolean isListingCreator = userId != null && userId.equals(listing.getUserId());
+        boolean isPropertyOwner = userId != null
+                && listing.getPropertyOwner() != null
+                && userId.equals(listing.getPropertyOwner().getUserId());
+
+        if (!isListingCreator && !isPropertyOwner) {
+            throw new ResourceNotFoundException("Listing", listing.getListingId());
+        }
+
+        User requester = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        if (Boolean.TRUE.equals(requester.getDeleted()) || !requester.isActive()) {
+            throw new ResourceNotFoundException("Listing", listing.getListingId());
+        }
     }
 
     /**
@@ -577,16 +606,7 @@ public class ListingApplicationService {
 
         // Handle immediate publication if requested
         if (Boolean.TRUE.equals(request.getShouldPublish())) {
-            // 1. Verify associated property is available (active)
-            if (property.getStatus() != PropertyStatus.AVAILABLE) {
-                log.error("Cannot publish listing on create: Associated property {} is in status {}",
-                        property.getPropertyId(), property.getStatus());
-                throw new BusinessConflictException(
-                        "Associated property is not in active state (status: " + property.getStatus() + ")", 
-                        "ERROR_PROPERTY_NOT_AVAILABLE",
-                        new Object[]{property.getStatus()}
-                );
-            }
+            validatePropertyCanPublishListing(property, request.getListingType(), request.getAvailableFrom());
 
             // 2. Verify no other published listing of same type exists for this user/property
             boolean duplicateExists = listingRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
@@ -869,15 +889,39 @@ public class ListingApplicationService {
         log.info("Fetching managed listings summary for user ID: {}", userId);
 
         List<Listing> allListings = listingRepository.findByUserIdOrPropertyOwnerId(userId);
+        LocalDate currentMonthStartDate = LocalDate.now().withDayOfMonth(1);
+        LocalDate previousMonthStartDate = currentMonthStartDate.minusMonths(1);
+        LocalDate nextMonthStartDate = currentMonthStartDate.plusMonths(1);
+        LocalDateTime currentMonthStart = currentMonthStartDate.atStartOfDay();
+        LocalDateTime previousMonthStart = previousMonthStartDate.atStartOfDay();
+        LocalDateTime nextMonthStart = nextMonthStartDate.atStartOfDay();
 
         long total = allListings.size();
         long rent = allListings.stream().filter(l -> ListingType.RENT.equals(l.getListingType())).count();
         long sale = allListings.stream().filter(l -> ListingType.SALE.equals(l.getListingType())).count();
+        long currentMonthAll = listingRepository.countByUserIdOrPropertyOwnerIdAndCreatedAtBetween(
+                userId, currentMonthStart, nextMonthStart);
+        long previousAll = listingRepository.countByUserIdOrPropertyOwnerIdAndCreatedAtBetween(
+                userId, previousMonthStart, currentMonthStart);
+        long currentMonthRent = listingRepository.countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+                userId, ListingType.RENT, currentMonthStart, nextMonthStart);
+        long previousRent = listingRepository.countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+                userId, ListingType.RENT, previousMonthStart, currentMonthStart);
+        long currentMonthSale = listingRepository.countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+                userId, ListingType.SALE, currentMonthStart, nextMonthStart);
+        long previousSale = listingRepository.countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+                userId, ListingType.SALE, previousMonthStart, currentMonthStart);
 
         return ManagedListingSummaryDTO.builder()
                 .all(total)
                 .rent(rent)
                 .sale(sale)
+                .currentMonthAll(currentMonthAll)
+                .currentMonthRent(currentMonthRent)
+                .currentMonthSale(currentMonthSale)
+                .previousAll(previousAll)
+                .previousRent(previousRent)
+                .previousSale(previousSale)
                 .build();
     }
 
@@ -887,11 +931,17 @@ public class ListingApplicationService {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
 
-            // User is either creator or property owner
+            // Exclude soft-deleted listings
+            predicates.add(cb.equal(root.get("deleted"), false));
+
+            // User is either creator or property owner.
+            // When the owner views via isOwner, exclude listings whose creator (agent) has been deleted.
             var propertyJoin = root.join("property", JoinType.LEFT);
+            var userJoin = root.join("user", JoinType.LEFT);
             Predicate isCreator = cb.equal(root.get("userId"), userId);
             Predicate isOwner = cb.equal(propertyJoin.get("ownerId"), userId);
-            predicates.add(cb.or(isCreator, isOwner));
+            Predicate creatorNotDeleted = cb.isFalse(userJoin.get("deleted"));
+            predicates.add(cb.or(isCreator, cb.and(isOwner, creatorNotDeleted)));
 
             if (criteria != null) {
                 // Listing Type
@@ -968,12 +1018,7 @@ public class ListingApplicationService {
         Property property = propertyRepository.findById(listing.getPropertyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Property", listing.getPropertyId()));
 
-        if (property.getStatus() != PropertyStatus.AVAILABLE) {
-            log.error("Cannot publish listing {}: Associated property {} is in status {}",
-                    listingId, property.getPropertyId(), property.getStatus());
-            throw new BusinessConflictException("Associated property is not in active state (status: " 
-                    + property.getStatus() + ")", "ERROR_PROPERTY_NOT_AVAILABLE");
-        }
+        validatePropertyCanPublishListing(property, listing.getListingType(), listing.getAvailableFrom());
 
         // Verify no other published listing of the same type exists for the listing creator and property
         boolean duplicateExists = listingRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
@@ -1009,6 +1054,39 @@ public class ListingApplicationService {
                         "No active listing subscription with available quota"));
         sub.useQuota(1);
         userFeatureSubscriptionRepository.save(sub);
+    }
+
+    private void validatePropertyCanPublishListing(Property property, ListingType listingType,
+                                                   LocalDate availableFrom) {
+        if (property.getStatus() == PropertyStatus.AVAILABLE) {
+            return;
+        }
+
+        if (property.getStatus() == PropertyStatus.RENTED && listingType == ListingType.SALE) {
+            return;
+        }
+
+        if (property.getStatus() == PropertyStatus.RENTED && listingType == ListingType.RENT) {
+            if (!Boolean.TRUE.equals(property.getAllowRentListingWhenRented())) {
+                throw new BusinessConflictException(
+                        "Rent listings are disabled while this property is rented",
+                        "ERROR_RENT_LISTING_DISABLED_WHILE_RENTED");
+            }
+            if (availableFrom == null) {
+                throw new BusinessConflictException(
+                        "Available from date is required for rent listings on rented properties",
+                        "ERROR_AVAILABLE_FROM_REQUIRED_FOR_RENTED_PROPERTY");
+            }
+            return;
+        }
+
+        log.error("Cannot publish listing: Associated property {} is in status {}",
+                property.getPropertyId(), property.getStatus());
+        throw new BusinessConflictException(
+                "Associated property is not in active state (status: " + property.getStatus() + ")",
+                "ERROR_PROPERTY_NOT_AVAILABLE",
+                new Object[]{property.getStatus()}
+        );
     }
 
     /**
@@ -1158,9 +1236,8 @@ public class ListingApplicationService {
         }
         propertyRepository.save(property);
 
-        // 2. Synchronize all associated published listings, regardless of listing type.
-        // If the property is sold, related RENT listings must also become SOLD because
-        // the property is no longer available for rent.
+        // 2. Synchronize associated listings. Sold properties close everything;
+        // rented properties keep sale listings and only draft rent listings when the toggle is off.
         List<Listing> listings = listingRepository.findByPropertyId(propertyId);
         Set<UUID> usersToNotify = new HashSet<>();
         
@@ -1176,14 +1253,26 @@ public class ListingApplicationService {
                 continue;
             }
 
-            if (l.getStatus() == ListingStatus.PUBLISHED) {
+            if (l.getStatus() == ListingStatus.PUBLISHED || l.getStatus() == ListingStatus.PENDING) {
+                boolean shouldUpdate = targetPropertyStatus == PropertyStatus.SOLD
+                        || (targetPropertyStatus == PropertyStatus.RENTED
+                                && l.getListingType() == ListingType.RENT
+                                && !Boolean.TRUE.equals(property.getAllowRentListingWhenRented()));
+                if (!shouldUpdate) {
+                    continue;
+                }
+
+                if (targetPropertyStatus == PropertyStatus.SOLD && l.getStatus() != ListingStatus.PUBLISHED) {
+                    continue;
+                }
+
                 // Keep track of users whose listings were actually updated
                 usersToNotify.add(l.getUserId());
 
                 if (targetPropertyStatus == PropertyStatus.SOLD) {
                     l.markAsSoldDueToPropertyClosure(closedByUserId);
                 } else if (targetPropertyStatus == PropertyStatus.RENTED) {
-                    l.markAsRentedDueToPropertyClosure(closedByUserId);
+                    l.moveToDraft();
                 }
                 listingRepository.save(l);
 
@@ -1308,5 +1397,259 @@ public class ListingApplicationService {
         return settingPreferenceRepository.findByUserId(userId)
                 .map(com.sep.realvista.domain.user.preference.SettingPreference::getPreferredLanguage)
                 .orElse("vi");
+    }
+
+    /**
+     * Get related listings by property ID.
+     * Returns both RENT and SALE listings for the same property if they exist and are active (PUBLISHED).
+     *
+     * @param propertyId the property ID
+     * @return related listings response with rent and sale listings
+     */
+    @Transactional(readOnly = true)
+    public RelatedListingsResponse getRelatedListingsByProperty(UUID propertyId) {
+        log.info("Fetching related listings for property ID: {}", propertyId);
+
+        List<Listing> propertyListings = listingRepository.findByPropertyId(propertyId);
+
+        Listing rentListing = propertyListings.stream()
+                .filter(l -> l.getListingType() == ListingType.RENT)
+                .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+                .findFirst()
+                .orElse(null);
+
+        Listing saleListing = propertyListings.stream()
+                .filter(l -> l.getListingType() == ListingType.SALE)
+                .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+                .findFirst()
+                .orElse(null);
+
+        RelatedListingsResponse response = RelatedListingsResponse.builder()
+                .rentListing(rentListing != null ? listingMapper.toListingResponse(rentListing) : null)
+                .saleListing(saleListing != null ? listingMapper.toListingResponse(saleListing) : null)
+                .build();
+
+        log.info("Found related listings for property {}: rent={}, sale={}",
+                propertyId, rentListing != null, saleListing != null);
+
+        return response;
+    }
+
+    /**
+     * Bans a listing and cancels all its active appointments.
+     *
+     * @param listingId the listing ID to ban
+     */
+    @CacheEvict(value = "listings", allEntries = true)
+    public void banListing(UUID listingId) {
+        log.info("Banning listing ID: {}", listingId);
+
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
+
+        if (listing.getStatus() == ListingStatus.BANNED) {
+            log.warn("Listing ID: {} is already banned", listingId);
+            return;
+        }
+
+        listing.ban();
+        listingRepository.save(listing);
+
+        // Cancel all active appointments
+        String reason = "Tin đăng này đã bị quản trị viên chặn do vi phạm chính sách.";
+        appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
+
+        log.info("Successfully banned listing ID: {} and cancelled active appointments", listingId);
+    }
+
+    // ==================== Compare Operations ====================
+
+    /**
+     * Get compare data for multiple listings.
+     * Returns comprehensive data for each listing including media, attributes, amenities,
+     * and boost status (featured/hot) for comparison purposes.
+     *
+     * @param listingIds list of listing IDs to compare
+     * @return list of compare data responses
+     * @throws ResourceNotFoundException if any listing not found
+     */
+    @Transactional(readOnly = true)
+    public List<ListingCompareDataResponse> getCompareData(List<UUID> listingIds) {
+        log.info("Fetching compare data for {} listings: {}", listingIds.size(), listingIds);
+
+        return listingIds.stream()
+                .map(this::getSingleCompareData)
+                .collect(Collectors.toList());
+    }
+
+    private ListingCompareDataResponse getSingleCompareData(UUID listingId) {
+        log.debug("Fetching compare data for listing ID: {}", listingId);
+
+        // Fetch listing
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> {
+                    log.error("Listing not found in getCompareData with ID: {}", listingId);
+                    return new ResourceNotFoundException("Listing", listingId);
+                });
+
+        // Verify property exists
+        Property property = propertyRepository.findById(listing.getPropertyId())
+                .orElseThrow(() -> {
+                    log.error("Property not found for listing ID: {}, property ID: {}",
+                            listingId, listing.getPropertyId());
+                    return new ResourceNotFoundException("Property", listing.getPropertyId());
+                });
+
+        // Fetch listing media
+        var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
+
+        // Fetch property attribute values
+        List<PropertyAttributeValue> attributeValues = propertyAttributeValueRepository
+                .findByPropertyIdWithAttribute(property.getPropertyId());
+
+        // Fetch property amenities
+        List<PropertyAmenity> propertyAmenities = propertyAmenityRepository
+                .findByPropertyIdWithAmenity(property.getPropertyId());
+
+        // Check boost status
+        List<com.sep.realvista.domain.billing.boost.ListingBoost> boosts = 
+                listingBoostRepository.findActiveByListingId(listingId);
+        boolean isFeatured = boosts.stream()
+                .anyMatch(b -> b.getBoostType() == com.sep.realvista.domain.billing.boost.BoostType.FEATURED);
+        boolean isHot = boosts.stream()
+                .anyMatch(b -> b.getBoostType() == com.sep.realvista.domain.billing.boost.BoostType.HOT_BADGE);
+
+        // Build response
+        return buildCompareDataResponse(
+                listing, property, listingMedias,
+                attributeValues, propertyAmenities, isFeatured, isHot);
+    }
+
+    private ListingCompareDataResponse buildCompareDataResponse(
+            Listing listing,
+            Property property,
+            List<ListingMedia> listingMedias,
+            List<PropertyAttributeValue> attributeValues,
+            List<PropertyAmenity> propertyAmenities,
+            boolean isFeatured,
+            boolean isHot) {
+
+        // Map attributes to DTOs
+        List<PropertyAttributeDTO> attributeDTOs = attributeValues.stream()
+                .map(pav -> {
+                    var attr = pav.getPropertyAttribute();
+                    return PropertyAttributeDTO.builder()
+                            .attributeId(attr.getPropertyAttributeId())
+                            .attributeCode(attr.getCode())
+                            .attributeName(attr.getName())
+                            .dataType(attr.getDataType().name())
+                            .icon(attr.getIcon())
+                            .unit(attr.getUnit())
+                            .valueNumber(pav.getValueNumber())
+                            .valueText(pav.getValueText())
+                            .valueBoolean(pav.getValueBoolean())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        // Map amenities to DTOs
+        List<com.sep.realvista.application.listing.dto.AmenityDTO> amenityDTOs =
+                propertyAmenities.stream()
+                        .map(pa -> com.sep.realvista.application.listing.dto.AmenityDTO.builder()
+                                .amenityId(pa.getAmenityId())
+                                .amenityName(pa.getAmenity() != null
+                                        ? pa.getAmenity().getAmenityName()
+                                        : null)
+                                .amenityType(pa.getAmenity() != null
+                                        && pa.getAmenity().getAmenityType() != null
+                                                ? pa.getAmenity().getAmenityType().name()
+                                                : null)
+                                .build())
+                        .collect(Collectors.toList());
+
+        // Find key attribute values
+        Integer bedrooms = findAttributeValueAsInteger(attributeValues, "BEDROOMS");
+        Integer bathrooms = findAttributeValueAsInteger(attributeValues, "BATHROOMS");
+        Integer floor = findAttributeValueAsInteger(attributeValues, "FLOOR");
+        Integer totalFloors = findAttributeValueAsInteger(attributeValues, "TOTAL_FLOORS");
+        String direction = findAttributeValueAsString(attributeValues, "DIRECTION");
+
+        // Get thumbnail URL from linked PropertyMedia
+        String thumbnailUrl = listingMedias.stream()
+                .filter(lm -> Boolean.TRUE.equals(lm.getIsPrimary()))
+                .findFirst()
+                .map(lm -> lm.getPropertyMedia() != null
+                        ? lm.getPropertyMedia().getMediaUrl()
+                        : null)
+                .orElseGet(() -> {
+                    if (listingMedias.isEmpty()) {
+                        return null;
+                    }
+                    PropertyMedia pm = listingMedias.get(0).getPropertyMedia();
+                    return pm != null ? pm.getMediaUrl() : null;
+                });
+
+        // Build full address (Property has no district/city directly)
+        String fullAddress = AddressFormatter.formatFullAddress(
+                property.getStreetAddress(),
+                property.getLocation() != null
+                        ? property.getLocation().getName()
+                        : null,
+                null,
+                null
+        );
+
+        return ListingCompareDataResponse.builder()
+                .listingId(listing.getListingId())
+                .slug(listing.getSlug())
+                .name(listing.getName())
+                .price(listing.getPrice())
+                .minPrice(listing.getMinPrice())
+                .maxPrice(listing.getMaxPrice())
+                .listingType(listing.getListingType().name())
+                .isNegotiable(listing.getIsNegotiable())
+                .isFeatured(isFeatured)
+                .isHot(isHot)
+                .thumbnailUrl(thumbnailUrl)
+                .mediaCount(listingMedias.size())
+                .propertyType(property.getPropertyType() != null
+                        ? listingMapper.mapPropertyTypeInfo(property.getPropertyType())
+                        : null)
+                .location(property.getLocation() != null
+                        ? listingMapper.mapLocationInfo(property.getLocation())
+                        : null)
+                .fullAddress(fullAddress)
+                .usableSizeM2(property.getUsableSizeM2())
+                .landSizeM2(property.getLandSizeM2())
+                .widthM(property.getWidthM())
+                .lengthM(property.getLengthM())
+                .bedrooms(bedrooms)
+                .bathrooms(bathrooms)
+                .floor(floor)
+                .totalFloors(totalFloors)
+                .direction(direction)
+                .attributes(attributeDTOs)
+                .amenities(amenityDTOs)
+                .availableFrom(listing.getAvailableFrom())
+                .publishedAt(listing.getPublishedAt())
+                .content(listing.getContent())
+                .build();
+    }
+
+    private Integer findAttributeValueAsInteger(List<PropertyAttributeValue> attributeValues, String attributeCode) {
+        return attributeValues.stream()
+                .filter(pav -> attributeCode.equals(pav.getPropertyAttribute().getCode()))
+                .findFirst()
+                .map(PropertyAttributeValue::getValueNumber)
+                .map(BigDecimal::intValue)
+                .orElse(null);
+    }
+
+    private String findAttributeValueAsString(List<PropertyAttributeValue> attributeValues, String attributeCode) {
+        return attributeValues.stream()
+                .filter(pav -> attributeCode.equals(pav.getPropertyAttribute().getCode()))
+                .findFirst()
+                .map(PropertyAttributeValue::getValueText)
+                .orElse(null);
     }
 }

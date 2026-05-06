@@ -2,7 +2,6 @@ package com.sep.realvista.infrastructure.ratelimit;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Rate limiting filter for sensitive auth endpoints.
- * Limits POST /api/v1/auth/register and POST /api/v1/auth/login
+ * Limits POST /api/v1/auth/register, /login, /forgot-password, and /reset-password
  * to 5 requests per minute per client IP address using Bucket4j.
  */
 @Component
@@ -33,6 +32,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private static final String REGISTER_PATH = "/api/v1/auth/register";
     private static final String LOGIN_PATH = "/api/v1/auth/login";
+    private static final String FORGOT_PASSWORD_PATH = "/api/v1/auth/forgot-password";
+    private static final String RESET_PASSWORD_PATH = "/api/v1/auth/reset-password";
     private static final String POST_METHOD = "POST";
     private static final String FORWARDED_FOR_HEADER = "X-Forwarded-For";
     private static final String JSON_CONTENT_TYPE = "application/json";
@@ -48,7 +49,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        boolean isRateLimitedPath = REGISTER_PATH.equals(path) || LOGIN_PATH.equals(path);
+        boolean isRateLimitedPath = REGISTER_PATH.equals(path)
+                || LOGIN_PATH.equals(path)
+                || FORGOT_PASSWORD_PATH.equals(path)
+                || RESET_PASSWORD_PATH.equals(path);
 
         if (!isRateLimitedPath || !POST_METHOD.equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
@@ -68,10 +72,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket createNewBucket() {
-        Bandwidth limit = Bandwidth.classic(
-                RATE_LIMIT_CAPACITY,
-                Refill.greedy(RATE_LIMIT_CAPACITY, RATE_LIMIT_PERIOD)
-        );
+        Bandwidth limit = Bandwidth.builder()
+                .capacity(RATE_LIMIT_CAPACITY)
+                .refillGreedy(RATE_LIMIT_CAPACITY, RATE_LIMIT_PERIOD)
+                .build();
         return Bucket.builder().addLimit(limit).build();
     }
 

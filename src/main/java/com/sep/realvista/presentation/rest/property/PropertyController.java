@@ -10,6 +10,7 @@ import com.sep.realvista.application.property.dto.PropertyDetailResponse;
 import com.sep.realvista.application.property.dto.PropertyFeedCriteria;
 import com.sep.realvista.application.property.dto.PropertyFeedItemResponse;
 import com.sep.realvista.application.property.dto.PropertySearchCriteria;
+import com.sep.realvista.application.property.dto.PropertySummaryMetricsResponse;
 import com.sep.realvista.application.property.dto.PropertySummaryResponse;
 import com.sep.realvista.application.property.dto.UpdatePropertyRequest;
 import com.sep.realvista.application.property.service.PropertyApplicationService;
@@ -99,6 +100,16 @@ public class PropertyController {
         pageable);
 
     return ResponseEntity.ok(ApiResponse.success("My properties retrieved successfully", response));
+  }
+
+  @GetMapping("/me/summary")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(summary = "Get current user's property summary metrics", description = "Retrieves aggregated property"
+      + " counts by status for the authenticated user.")
+  public ResponseEntity<ApiResponse<PropertySummaryMetricsResponse>> getMyPropertiesSummary() {
+    log.info("REST request to get current user's property summary metrics");
+    PropertySummaryMetricsResponse response = propertyApplicationService.getMyPropertiesSummary();
+    return ResponseEntity.ok(ApiResponse.success("Property summary metrics retrieved successfully", response));
   }
 
   @GetMapping("/amenities")
@@ -220,5 +231,50 @@ public class PropertyController {
     PageResponse<PropertyFeedItemResponse> response = propertyApplicationService.getPropertyFeed(agentId, criteria,
         pageable);
     return ResponseEntity.ok(ApiResponse.success("Property feed retrieved successfully", response));
+  }
+
+  // ── Admin endpoints ────────────────────────────────────────────────────────
+
+  @GetMapping("/admin")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Admin: list all properties",
+      description = "Returns a paginated list of all properties. Supports optional keyword, status, "
+          + "user, type and location filters.")
+  public ResponseEntity<ApiResponse<PageResponse<PropertySummaryResponse>>> adminGetProperties(
+      @ParameterObject PropertySearchCriteria criteria,
+      @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
+      @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size) {
+    log.info("Admin REST request to list all properties");
+    org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
+        org.springframework.data.domain.Sort.by("createdAt").descending());
+    PageResponse<PropertySummaryResponse> response = propertyApplicationService.adminGetProperties(criteria, pageable);
+    return ResponseEntity.ok(ApiResponse.success("Properties retrieved successfully", response));
+  }
+
+  @PutMapping("/admin/{propertyId}")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Admin: update any property",
+      description = "Allows an admin to update any property, bypassing owner check. "
+          + "Optionally reassigns the owner via 'new_owner_id'.")
+  public ResponseEntity<ApiResponse<PropertyDetailResponse>> adminUpdateProperty(
+      @PathVariable UUID propertyId,
+      @RequestBody UpdatePropertyRequest request) {
+    log.info("Admin REST request to update property {}", propertyId);
+    PropertyDetailResponse response = propertyApplicationService.adminUpdateProperty(propertyId, request);
+    return ResponseEntity.ok(ApiResponse.success("Property updated successfully", response));
+  }
+
+  @DeleteMapping("/admin/{propertyId}")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Admin: delete any property",
+      description = "Allows an admin to soft-delete any property, bypassing owner check. "
+          + "Notifies the owner and active agent.")
+  public ResponseEntity<ApiResponse<Void>> adminDeleteProperty(@PathVariable UUID propertyId) {
+    log.info("Admin REST request to soft-delete property {}", propertyId);
+    propertyApplicationService.adminDeleteProperty(propertyId);
+    return ResponseEntity.ok(ApiResponse.success("Property deleted successfully", null));
   }
 }

@@ -1,0 +1,9 @@
+-- Seed sample reports for testing
+INSERT INTO reports (report_id, reporter_user_id, reported_listing_id, reported_user_id, report_target_type, report_reason, description, status, created_at, updated_at)
+VALUES 
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'agent001@realvista.com' LIMIT 1), (SELECT listing_id FROM listings LIMIT 1), NULL, 'LISTING', 'SCAM', 'Nội dung trùng lặp nhiều lần', 'PENDING', now() - interval '2 days', now() - interval '2 days'),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'agent002@realvista.com' LIMIT 1), (SELECT listing_id FROM listings OFFSET 1 LIMIT 1), NULL, 'LISTING', 'FAKE_INFO', 'Thông tin sai lệch về giá', 'PENDING', now() - interval '5 hours', now() - interval '5 hours'),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'agent003@realvista.com' LIMIT 1), (SELECT listing_id FROM listings OFFSET 2 LIMIT 1), NULL, 'LISTING', 'OTHER', 'Hình ảnh không phù hợp', 'RESOLVED', now() - interval '1 week', now() - interval '6 days'),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'agent004@realvista.com' LIMIT 1), NULL, (SELECT user_id FROM users WHERE email = 'agent010@realvista.com' LIMIT 1), 'USER', 'HARASSMENT', 'Quấy rối qua tin nhắn', 'PENDING', now() - interval '1 day', now() - interval '1 day'),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'agent005@realvista.com' LIMIT 1), (SELECT listing_id FROM listings OFFSET 3 LIMIT 1), NULL, 'LISTING', 'OTHER', 'Địa chỉ không tồn tại', 'DISMISSED', now() - interval '3 days', now() - interval '2 days'),
+(gen_random_uuid(), (SELECT user_id FROM users WHERE email = 'agent001@realvista.com' LIMIT 1), NULL, (SELECT user_id FROM users WHERE email = 'agent011@realvista.com' LIMIT 1), 'USER', 'SCAM', 'Dấu hiệu lừa đảo đa cấp', 'PENDING', now() - interval '10 hours', now() - interval '10 hours');

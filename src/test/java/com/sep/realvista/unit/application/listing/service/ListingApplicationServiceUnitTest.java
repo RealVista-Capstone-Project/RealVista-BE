@@ -1,5 +1,7 @@
 package com.sep.realvista.unit.application.listing.service;
 
+import com.sep.realvista.application.listing.dto.CreateListingRequest;
+import com.sep.realvista.application.listing.dto.AgentInfoDTO;
 import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.PriceChangeType;
@@ -10,6 +12,9 @@ import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.mapper.ListingMapper;
 import com.sep.realvista.application.listing.service.CostBreakdownService;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
+import com.sep.realvista.domain.billing.subscription.FeatureType;
+import com.sep.realvista.domain.billing.subscription.UserFeatureSubscription;
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.billing.subscription.repository.UserFeatureSubscriptionRepository;
 import com.sep.realvista.domain.engagement.Engagement;
@@ -38,6 +43,8 @@ import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.listing.bookmark.BookmarkRepository;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeValueRepository;
 import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.domain.user.User;
+import com.sep.realvista.domain.user.UserStatus;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
 import com.sep.realvista.application.listing.service.ListingAnalyticsService;
@@ -51,6 +58,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -353,6 +361,186 @@ class ListingApplicationServiceUnitTest {
         }
 
         @Test
+        @DisplayName("Should return draft listing detail when requester is active creator")
+        void getListingDetail_whenDraftAndRequesterIsActiveCreator_shouldReturnDetail() {
+                // Arrange
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.DRAFT)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .price(new BigDecimal("2700.00"))
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(List.of(testMedia));
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.empty());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList(), any()))
+                                .thenReturn(expectedResponse);
+                when(userRepository.findById(userId)).thenReturn(Optional.of(User.builder()
+                                .userId(userId)
+                                .status(UserStatus.ACTIVE)
+                                .build()));
+                when(bookmarkRepository.existsByUserIdAndListingId(userId, listingId)).thenReturn(false);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
+
+                // Act
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, userId, false);
+
+                // Assert
+                assertThat(actualResponse).isNotNull();
+                assertThat(actualResponse.getStatus()).isEqualTo(ListingStatus.DRAFT);
+                verify(userRepository, atLeastOnce()).findById(userId);
+                verify(bookmarkRepository).existsByUserIdAndListingId(userId, listingId);
+        }
+
+        @Test
+        @DisplayName("Should return rented listing detail when requester is active property owner")
+        void getListingDetail_whenRentedAndRequesterIsActivePropertyOwner_shouldReturnDetail() {
+                // Arrange
+                UUID agentId = userId;
+                UUID ownerId = UUID.randomUUID();
+                Property ownerProperty = Property.builder()
+                                .propertyId(propertyId)
+                                .ownerId(ownerId)
+                                .streetAddress("123 Main St")
+                                .build();
+                Listing agentListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(agentId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.RENTED)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .price(new BigDecimal("2700.00"))
+                                .build();
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(agentId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.RENTED)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .price(new BigDecimal("2700.00"))
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(agentListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(ownerProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(List.of(testMedia));
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(new ArrayList<>());
+                when(settingPreferenceRepository.findByUserId(agentId)).thenReturn(Optional.empty());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
+                                any(Listing.class), anyList(), anyList(), anyList(), any()))
+                                .thenReturn(expectedResponse);
+                when(userRepository.findById(ownerId)).thenReturn(Optional.of(User.builder()
+                                .userId(ownerId)
+                                .status(UserStatus.ACTIVE)
+                                .build()));
+                when(listingMapper.mapAgentInfo(any(User.class), any()))
+                                .thenReturn(AgentInfoDTO.builder().userId(ownerId).build());
+                when(bookmarkRepository.existsByUserIdAndListingId(ownerId, listingId)).thenReturn(false);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
+
+                // Act
+                ListingDetailResponse actualResponse = listingApplicationService.getListingDetail(listingId, ownerId, false);
+
+                // Assert
+                assertThat(actualResponse).isNotNull();
+                assertThat(actualResponse.getStatus()).isEqualTo(ListingStatus.RENTED);
+                verify(userRepository, atLeastOnce()).findById(ownerId);
+                verify(bookmarkRepository).existsByUserIdAndListingId(ownerId, listingId);
+        }
+
+        @Test
+        @DisplayName("Should hide draft listing detail when requester is banned creator")
+        void getListingDetail_whenDraftAndRequesterIsBannedCreator_shouldThrowNotFound() {
+                // Arrange
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .status(ListingStatus.DRAFT)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.empty());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
+                                .thenReturn(expectedResponse);
+                when(userRepository.findById(userId)).thenReturn(Optional.of(User.builder()
+                                .userId(userId)
+                                .status(UserStatus.BANNED)
+                                .build()));
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
+
+                // Act & Assert
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId, userId, true))
+                                .isInstanceOf(ResourceNotFoundException.class)
+                                .hasMessageContaining("Listing")
+                                .hasMessageContaining(listingId.toString());
+
+                verify(bookmarkRepository, never()).existsByUserIdAndListingId(any(), any());
+                verify(listingAnalyticsService, never()).recordView(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should hide draft listing detail when requester is not creator")
+        void getListingDetail_whenDraftAndRequesterIsNotCreator_shouldThrowNotFound() {
+                // Arrange
+                UUID otherUserId = UUID.randomUUID();
+                ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .status(ListingStatus.DRAFT)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(testProperty));
+                when(listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAttributeValueRepository.findByPropertyIdWithAttribute(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
+                                .thenReturn(Collections.emptyList());
+                when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.empty());
+                when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
+                                .thenReturn(expectedResponse);
+                when(costBreakdownService.calculateCostBreakdown(any(Listing.class))).thenReturn(null);
+
+                // Act & Assert
+                assertThatThrownBy(() -> listingApplicationService.getListingDetail(listingId, otherUserId, false))
+                                .isInstanceOf(ResourceNotFoundException.class)
+                                .hasMessageContaining("Listing")
+                                .hasMessageContaining(listingId.toString());
+
+                verify(userRepository, never()).findById(otherUserId);
+                verify(bookmarkRepository, never()).existsByUserIdAndListingId(any(), any());
+        }
+
+        @Test
         @DisplayName("Should throw ResourceNotFoundException when listing does not exist")
         void getListingDetail_whenListingDoesNotExist_shouldThrowException() {
                 // Arrange
@@ -390,11 +578,202 @@ class ListingApplicationServiceUnitTest {
         }
 
         @Test
+        @DisplayName("Should reject publishing rent listing on rented property when toggle is off")
+        void publishListing_whenRentedRentAndToggleOff_shouldThrowConflict() {
+                Property rentedProperty = Property.builder()
+                                .propertyId(propertyId)
+                                .ownerId(userId)
+                                .status(PropertyStatus.RENTED)
+                                .allowRentListingWhenRented(false)
+                                .build();
+                Listing draftRentListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.DRAFT)
+                                .name("Future rent")
+                                .slug("future-rent")
+                                .price(BigDecimal.valueOf(1000))
+                                .availableFrom(LocalDate.now().plusMonths(1))
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(draftRentListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(rentedProperty));
+
+                assertThatThrownBy(() -> listingApplicationService.publishListing(listingId, userId))
+                                .isInstanceOf(BusinessConflictException.class)
+                                .hasMessageContaining("Rent listings are disabled");
+
+                verify(listingRepository, never()).save(any());
+                verify(userFeatureSubscriptionRepository, never())
+                                .findActiveByUserIdAndFeatureTypeForUpdate(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should reject publishing rent listing on rented property without available date")
+        void publishListing_whenRentedRentWithoutAvailableFrom_shouldThrowConflict() {
+                Property rentedProperty = Property.builder()
+                                .propertyId(propertyId)
+                                .ownerId(userId)
+                                .status(PropertyStatus.RENTED)
+                                .allowRentListingWhenRented(true)
+                                .build();
+                Listing draftRentListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.DRAFT)
+                                .name("Future rent")
+                                .slug("future-rent")
+                                .price(BigDecimal.valueOf(1000))
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(draftRentListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(rentedProperty));
+
+                assertThatThrownBy(() -> listingApplicationService.publishListing(listingId, userId))
+                                .isInstanceOf(BusinessConflictException.class)
+                                .hasMessageContaining("Available from date is required");
+
+                verify(listingRepository, never()).save(any());
+                verify(userFeatureSubscriptionRepository, never())
+                                .findActiveByUserIdAndFeatureTypeForUpdate(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should allow publishing sale listing on rented property")
+        void publishListing_whenRentedSale_shouldPublish() {
+                Property rentedProperty = Property.builder()
+                                .propertyId(propertyId)
+                                .ownerId(userId)
+                                .status(PropertyStatus.RENTED)
+                                .allowRentListingWhenRented(false)
+                                .build();
+                Listing draftSaleListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.SALE)
+                                .status(ListingStatus.DRAFT)
+                                .name("Tenant occupied sale")
+                                .slug("tenant-occupied-sale")
+                                .price(BigDecimal.valueOf(200000))
+                                .build();
+                UserFeatureSubscription subscription = UserFeatureSubscription.builder()
+                                .userId(userId)
+                                .featurePackageId(UUID.randomUUID())
+                                .startDate(LocalDate.now())
+                                .remainingQuota(2)
+                                .build();
+                ListingResponse response = ListingResponse.builder()
+                                .listingId(listingId)
+                                .status(ListingStatus.PUBLISHED)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(draftSaleListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(rentedProperty));
+                when(listingRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
+                                propertyId, ListingType.SALE, ListingStatus.PUBLISHED, userId)).thenReturn(false);
+                when(userFeatureSubscriptionRepository.findActiveByUserIdAndFeatureTypeForUpdate(
+                                userId, FeatureType.LISTING)).thenReturn(List.of(subscription));
+                when(listingRepository.save(draftSaleListing)).thenReturn(draftSaleListing);
+                when(listingMapper.toListingResponse(draftSaleListing)).thenReturn(response);
+
+                ListingResponse result = listingApplicationService.publishListing(listingId, userId);
+
+                assertThat(result.getStatus()).isEqualTo(ListingStatus.PUBLISHED);
+                assertThat(draftSaleListing.getStatus()).isEqualTo(ListingStatus.PUBLISHED);
+                assertThat(subscription.getRemainingQuota()).isEqualTo(1);
+                verify(userFeatureSubscriptionRepository).save(subscription);
+        }
+
+        @Test
+        @DisplayName("Should draft other rent listings and keep sale listings when property is marked rented")
+        void markAsRented_whenToggleOff_shouldDraftOtherRentListingsOnly() {
+                UUID otherRentId = UUID.randomUUID();
+                UUID pendingRentId = UUID.randomUUID();
+                UUID saleId = UUID.randomUUID();
+                Property availableProperty = Property.builder()
+                                .propertyId(propertyId)
+                                .ownerId(userId)
+                                .status(PropertyStatus.AVAILABLE)
+                                .allowRentListingWhenRented(false)
+                                .build();
+                Listing triggeringListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.PUBLISHED)
+                                .name("Current rent")
+                                .slug("current-rent")
+                                .price(BigDecimal.valueOf(1000))
+                                .build();
+                Listing otherRentListing = Listing.builder()
+                                .listingId(otherRentId)
+                                .propertyId(propertyId)
+                                .userId(UUID.randomUUID())
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.PUBLISHED)
+                                .name("Other rent")
+                                .slug("other-rent")
+                                .price(BigDecimal.valueOf(1100))
+                                .build();
+                Listing pendingRentListing = Listing.builder()
+                                .listingId(pendingRentId)
+                                .propertyId(propertyId)
+                                .userId(UUID.randomUUID())
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.PENDING)
+                                .name("Pending rent")
+                                .slug("pending-rent")
+                                .price(BigDecimal.valueOf(1200))
+                                .build();
+                Listing saleListing = Listing.builder()
+                                .listingId(saleId)
+                                .propertyId(propertyId)
+                                .userId(UUID.randomUUID())
+                                .listingType(ListingType.SALE)
+                                .status(ListingStatus.PUBLISHED)
+                                .name("Sale listing")
+                                .slug("sale-listing")
+                                .price(BigDecimal.valueOf(200000))
+                                .build();
+                ListingResponse response = ListingResponse.builder()
+                                .listingId(listingId)
+                                .status(ListingStatus.RENTED)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(triggeringListing));
+                when(propertyRepository.findById(propertyId)).thenReturn(Optional.of(availableProperty));
+                when(listingRepository.findByPropertyId(propertyId)).thenReturn(List.of(
+                                triggeringListing, otherRentListing, pendingRentListing, saleListing));
+                when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(listingMapper.toListingResponse(triggeringListing)).thenReturn(response);
+                when(engagementRepository.findByListingIdInOrPropertyIdIn(anyList(), anyList())).thenReturn(List.of());
+
+                listingApplicationService.markAsRented(listingId, userId);
+
+                assertThat(triggeringListing.getStatus()).isEqualTo(ListingStatus.RENTED);
+                assertThat(otherRentListing.getStatus()).isEqualTo(ListingStatus.DRAFT);
+                assertThat(pendingRentListing.getStatus()).isEqualTo(ListingStatus.DRAFT);
+                assertThat(saleListing.getStatus()).isEqualTo(ListingStatus.PUBLISHED);
+                assertThat(availableProperty.getStatus()).isEqualTo(PropertyStatus.RENTED);
+                verify(listingRepository).save(otherRentListing);
+                verify(listingRepository).save(pendingRentListing);
+                verify(listingRepository, never()).save(saleListing);
+        }
+
+        @Test
         @DisplayName("Should pass media list to mapper when media exists")
         void getListingDetail_whenMediaExists_shouldPassMediaToMapper() {
                 // Arrange
                 ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
                                 .listingId(listingId)
+                                .userId(userId)
+                                .status(ListingStatus.PUBLISHED)
                                 .slug("test-listing-slug")
                                 .name("Test Listing Name")
                                 .media(List.of()) // Empty media list is fine for this test
@@ -430,6 +809,8 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
                                 .listingId(listingId)
+                                .userId(userId)
+                                .status(ListingStatus.PUBLISHED)
                                 .slug("test-listing-slug")
                                 .name("Test Listing Name")
                                 .build();
@@ -464,6 +845,8 @@ class ListingApplicationServiceUnitTest {
                 // Arrange
                 ListingDetailResponse expectedResponse = ListingDetailResponse.builder()
                                 .listingId(listingId)
+                                .userId(userId)
+                                .status(ListingStatus.PUBLISHED)
                                 .slug("test-listing-slug")
                                 .name("Test Listing Name")
                                 .build();
@@ -858,7 +1241,11 @@ class ListingApplicationServiceUnitTest {
                 when(propertyAmenityRepository.findByPropertyIdWithAmenity(propertyId))
                                 .thenReturn(Collections.emptyList());
                 when(settingPreferenceRepository.findByUserId(userId)).thenReturn(Optional.of(preference));
-                ListingDetailResponse response = new ListingDetailResponse();
+                ListingDetailResponse response = ListingDetailResponse.builder()
+                                .listingId(listingId)
+                                .userId(userId)
+                                .status(ListingStatus.PUBLISHED)
+                                .build();
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
                                 .thenReturn(response);
 
@@ -885,7 +1272,11 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(Collections.emptyList());
                 when(bookmarkRepository.existsByUserIdAndListingId(userId, listingId)).thenReturn(false);
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
-                                .thenReturn(new ListingDetailResponse());
+                                .thenReturn(ListingDetailResponse.builder()
+                                                .listingId(listingId)
+                                                .userId(userId)
+                                                .status(ListingStatus.PUBLISHED)
+                                                .build());
 
                 // Act
                 listingApplicationService.getListingDetail(listingId, userId, true);
@@ -908,7 +1299,11 @@ class ListingApplicationServiceUnitTest {
                                 .thenReturn(Collections.emptyList());
                 when(bookmarkRepository.existsByUserIdAndListingId(userId, listingId)).thenReturn(false);
                 when(listingMapper.toDetailResponseWithMediaAttributesAndAmenities(any(), any(), any(), any(), any()))
-                                .thenReturn(new ListingDetailResponse());
+                                .thenReturn(ListingDetailResponse.builder()
+                                                .listingId(listingId)
+                                                .userId(userId)
+                                                .status(ListingStatus.PUBLISHED)
+                                                .build());
 
                 // Act
                 listingApplicationService.getListingDetail(listingId, userId, false);

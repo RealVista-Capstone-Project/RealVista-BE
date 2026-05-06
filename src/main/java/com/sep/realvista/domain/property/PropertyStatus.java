@@ -5,14 +5,14 @@ package com.sep.realvista.domain.property;
  * 
  * <p>Status flow:
  * <pre>
- * DRAFT -> PENDING -> VERIFIED/REJECTED
+ * DRAFT -> PENDING -> AVAILABLE/VERIFIED/REJECTED
  *                         |
- *                    AVAILABLE -> RESERVED -> SOLD
+ *                    RESERVED -> SOLD
  * </pre>
  * 
  * <ul>
  *   <li>DRAFT: Initial state, property being created/edited</li>
- *   <li>PENDING: Submitted for verification by admin/verifier</li>
+ *   <li>PENDING: Submitted for verification by admin/verifier/agent OTP flow</li>
  *   <li>VERIFIED: Passed verification, ready to be listed</li>
  *   <li>REJECTED: Failed verification, needs correction</li>
  *   <li>AVAILABLE: Active and can be listed for sale/rent</li>

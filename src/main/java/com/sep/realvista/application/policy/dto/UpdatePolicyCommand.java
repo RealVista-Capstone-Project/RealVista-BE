@@ -16,4 +16,9 @@ public class UpdatePolicyCommand {
 
     @NotBlank(message = "Content is required")
     private String content;
+
+    @com.fasterxml.jackson.annotation.JsonProperty("is_active")
+    private Boolean isActive;
 }
+
+

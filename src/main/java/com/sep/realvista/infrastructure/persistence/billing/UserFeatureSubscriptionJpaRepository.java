@@ -70,4 +70,19 @@ public interface UserFeatureSubscriptionJpaRepository extends JpaRepository<User
     @Query("SELECT COUNT(ufs) FROM UserFeatureSubscription ufs "
             + "WHERE ufs.featurePackageId = :id AND ufs.status = 'ACTIVE' AND ufs.deleted = false")
     long countActiveByFeaturePackageId(@Param("id") UUID id);
+
+    @Query("SELECT COALESCE(SUM(fp.price), 0) FROM UserFeatureSubscription ufs "
+            + "JOIN ufs.featurePackage fp WHERE ufs.deleted = false")
+    double sumTotalRevenue();
+
+    @Query("SELECT COALESCE(SUM(fp.price), 0) FROM UserFeatureSubscription ufs JOIN ufs.featurePackage fp "
+            + "WHERE ufs.deleted = false AND ufs.createdAt BETWEEN :start AND :end")
+    double sumTotalRevenueBetween(@Param("start") java.time.LocalDateTime start, 
+                                @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COALESCE(SUM(fp.price), 0) FROM UserFeatureSubscription ufs JOIN ufs.featurePackage fp "
+            + "WHERE ufs.deleted = false AND ufs.featurePackageId = :id AND ufs.createdAt BETWEEN :start AND :end")
+    double sumRevenueByPackageAndPeriod(@Param("id") UUID id, 
+                                      @Param("start") java.time.LocalDateTime start, 
+                                      @Param("end") java.time.LocalDateTime end);
 }

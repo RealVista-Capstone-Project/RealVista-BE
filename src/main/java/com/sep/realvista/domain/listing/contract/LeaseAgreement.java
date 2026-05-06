@@ -55,8 +55,16 @@ public class LeaseAgreement extends BaseEntity {
     @Column(name = "renter_id", nullable = false)
     private UUID renterId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "renter_id", insertable = false, updatable = false)
+    private com.sep.realvista.domain.user.User renter;
+
     @Column(name = "landlord_id", nullable = false)
     private UUID landlordId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "landlord_id", insertable = false, updatable = false)
+    private com.sep.realvista.domain.user.User landlord;
 
     @Column(name = "agent_id")
     private UUID agentId;

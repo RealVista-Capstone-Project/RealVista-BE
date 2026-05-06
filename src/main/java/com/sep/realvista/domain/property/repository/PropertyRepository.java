@@ -23,12 +23,14 @@ public interface PropertyRepository {
             UUID ownerId,
             String keyword,
             PropertyStatus status,
+            List<PropertyStatus> statuses,
             Pageable pageable);
 
     org.springframework.data.domain.Page<Property> findByAgentIdAndCriteria(
             UUID agentId,
             String keyword,
             PropertyStatus status,
+            List<PropertyStatus> statuses,
             Pageable pageable);
 
     boolean existsById(UUID id);
@@ -43,6 +45,27 @@ public interface PropertyRepository {
     List<Property> searchByAddress(String address);
 
     long countByLocationIds(List<UUID> locationIds);
+
+    /**
+     * Admin-only: finds all non-deleted properties with optional keyword, status, user,
+     * property type, and location filters.
+     *
+     * @param keyword  optional keyword to search street address or descriptions
+     * @param status   optional status filter
+     * @param userId         optional user ID — when provided, matches properties where the user is owner
+     *                       or active agent
+     * @param propertyTypeId optional property type ID
+     * @param locationId     optional city, district, ward, or exact location ID
+     * @param pageable pagination parameters
+     * @return page of properties
+     */
+    org.springframework.data.domain.Page<Property> findByAdminCriteria(
+            String keyword,
+            PropertyStatus status,
+            UUID userId,
+            UUID propertyTypeId,
+            UUID locationId,
+            org.springframework.data.domain.Pageable pageable);
 
     /**
      * Finds a paginated feed of properties available for agent proposals.

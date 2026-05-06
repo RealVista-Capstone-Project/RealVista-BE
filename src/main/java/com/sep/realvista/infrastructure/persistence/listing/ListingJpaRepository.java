@@ -7,8 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,8 +35,35 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
 
     @Query("SELECT l FROM Listing l "
             + "LEFT JOIN l.property p "
-            + "WHERE (l.user.userId = :userId OR p.ownerId = :userId) AND l.deleted = false")
+            + "LEFT JOIN l.user u "
+            + "WHERE (l.user.userId = :userId "
+            + "   OR (p.ownerId = :userId AND (u IS NULL OR u.deleted = false))) "
+            + "AND l.deleted = false")
     List<Listing> findByUserIdOrPropertyOwnerId(@Param("userId") UUID userId);
+
+    @Query("SELECT COUNT(l) FROM Listing l "
+            + "LEFT JOIN l.property p "
+            + "WHERE (l.user.userId = :userId OR p.ownerId = :userId) "
+            + "AND l.deleted = false "
+            + "AND l.createdAt >= :start "
+            + "AND l.createdAt < :end")
+    long countByUserIdOrPropertyOwnerIdAndCreatedAtBetween(
+            @Param("userId") UUID userId,
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COUNT(l) FROM Listing l "
+            + "LEFT JOIN l.property p "
+            + "WHERE (l.user.userId = :userId OR p.ownerId = :userId) "
+            + "AND l.listingType = :listingType "
+            + "AND l.deleted = false "
+            + "AND l.createdAt >= :start "
+            + "AND l.createdAt < :end")
+    long countByUserIdOrPropertyOwnerIdAndListingTypeAndCreatedAtBetween(
+            @Param("userId") UUID userId,
+            @Param("listingType") ListingType listingType,
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
 
     @Query("SELECT l FROM Listing l WHERE l.status = :status AND l.deleted = false")
     List<Listing> findByStatus(@Param("status") ListingStatus status);
@@ -65,15 +94,48 @@ public interface ListingJpaRepository extends JpaRepository<Listing, UUID>, JpaS
     List<Listing> findByStatusAndUpdatedAtBefore(@Param("status") ListingStatus status,
                                                  @Param("cutoff") java.time.LocalDateTime cutoff);
 
+    long countByStatus(ListingStatus status);
+
+    List<Listing> findTop10ByOrderByUpdatedAtDesc();
+    
+    
+    @Query("SELECT l.listingId, l.name, m.thumbnailUrl, "
+            + "COALESCE(SUM(bp.price * 1.0 / NULLIF(bp.featuredQuota + bp.hotBadgeQuota, 0)), 0), "
+            + "COUNT(CASE WHEN b.boostType = 'FEATURED' THEN 1 END), "
+            + "COUNT(CASE WHEN b.boostType = 'HOT_BADGE' THEN 1 END) "
+            + "FROM Listing l "
+            + "LEFT JOIN l.property p "
+            + "LEFT JOIN p.mediaList m ON m.isPrimary = true "
+            + "LEFT JOIN l.boosts b ON b.deleted = false AND b.createdAt BETWEEN :startDate AND :endDate "
+            + "LEFT JOIN b.boostPackage bp "
+            + "WHERE l.deleted = false AND l.status <> com.sep.realvista.domain.listing.ListingStatus.BANNED "
+            + "GROUP BY l.listingId, l.name, m.thumbnailUrl "
+            + "ORDER BY COALESCE(SUM(bp.price * 1.0 / NULLIF(bp.featuredQuota + bp.hotBadgeQuota, 0)), 0) DESC, "
+            + "l.name ASC")
+    List<Object[]> findTopListings(@Param("startDate") LocalDateTime startDate, 
+                                  @Param("endDate") LocalDateTime endDate,
+                                  Pageable pageable);
+
+    long countByUserIdAndCreatedAtBetween(UUID userId, LocalDateTime start, LocalDateTime end);
+
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+ 
+    @Query("SELECT COUNT(g) > 0 FROM Property3DGeneration g "
+            + "WHERE g.propertyId = (SELECT l.propertyId FROM Listing l WHERE l.listingId = :listingId) "
+            + "AND g.status = com.sep.realvista.domain.property.Property3DGenerationStatus.SUCCEEDED "
+            + "AND g.deleted = false")
+    boolean has3dTour(@Param("listingId") UUID listingId);
+
+
     @Query("SELECT l FROM Listing l WHERE l.listingType = :listingType AND l.status = :status "
             + "AND l.deleted = false")
     List<Listing> findByListingTypeAndStatus(@Param("listingType") ListingType listingType,
             @Param("status") ListingStatus status);
 
-    @Query("SELECT l FROM Listing l WHERE l.listingId = :id AND l.deleted = false")
+    @Query("SELECT l FROM Listing l WHERE l.listingId = :id AND l.deleted = false AND l.status <> 'BANNED'")
     Optional<Listing> findActiveById(@Param("id") UUID id);
 
-    @Query("SELECT l FROM Listing l WHERE l.slug = :slug AND l.deleted = false")
+    @Query("SELECT l FROM Listing l WHERE l.slug = :slug AND l.deleted = false AND l.status <> 'BANNED'")
     Optional<Listing> findBySlugAndDeletedFalse(@Param("slug") String slug);
 
     @Query("SELECT l FROM Listing l WHERE l.deleted = false")

@@ -95,7 +95,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.userId")
     @Operation(summary = "Get user by ID", description = "Retrieves user details by ID")
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();
@@ -108,7 +108,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.userId")
     @Operation(summary = "Update user profile", description = "Updates user profile information")
     public ResponseEntity<ApiResponse<UserResponse>> updateUser(
             @PathVariable UUID id,
@@ -124,7 +124,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/password")
-    @PreAuthorize("#id == authentication.principal.id")
+    @PreAuthorize("#id == authentication.principal.userId")
     @Operation(summary = "Change password", description = "Changes user password")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @PathVariable UUID id,
@@ -179,7 +179,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.id")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.userId")
     @Operation(summary = "Delete user", description = "Soft deletes a user account")
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
         String traceId = UUID.randomUUID().toString();

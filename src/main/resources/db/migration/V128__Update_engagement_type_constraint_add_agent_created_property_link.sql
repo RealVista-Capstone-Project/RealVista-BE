@@ -14,4 +14,3 @@ ALTER TABLE engagements
             'OWNER_INVITATION',
             'AGENT_CREATED_PROPERTY_LINK'
         ));
-

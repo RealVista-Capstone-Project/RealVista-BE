@@ -3,6 +3,7 @@ package com.sep.realvista.presentation.rest.listing;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.listing.dto.CreateListingRequest;
+import com.sep.realvista.application.listing.dto.ListingCompareDataResponse;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.ListingResponse;
 import com.sep.realvista.application.listing.dto.ListingSearchCriteria;
@@ -10,6 +11,7 @@ import com.sep.realvista.application.listing.dto.ListingSearchResponse;
 import com.sep.realvista.application.listing.dto.ManagedListingSearchCriteria;
 import com.sep.realvista.application.listing.dto.ManagedListingSummaryDTO;
 import com.sep.realvista.application.listing.dto.PriceHistoryResponse;
+import com.sep.realvista.application.listing.dto.RelatedListingsResponse;
 import com.sep.realvista.application.listing.dto.SimilarListingsResponse;
 import com.sep.realvista.application.listing.dto.UpdateListingRequest;
 import com.sep.realvista.application.listing.service.ListingApplicationService;
@@ -130,6 +132,9 @@ public class ListingController {
                                         idOrSlug, recordView);
 
                         UUID userId = userDetails != null ? userDetails.getUserId() : null;
+                        boolean isAdmin = userDetails != null && userDetails.getAuthorities().stream()
+                                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                        
                         ListingDetailResponse listing;
 
                         // Try to parse as UUID first
@@ -146,6 +151,14 @@ public class ListingController {
                                         log.error("Failed to get listing by slug: {}", idOrSlug, ex);
                                         throw ex;
                                 }
+                        }
+                        
+                        // Enforce access control for BANNED listings
+                        if (listing.getStatus() == com.sep.realvista.domain.listing.ListingStatus.BANNED
+                                        && !isAdmin) {
+                                log.warn("Access denied to BANNED listing {} for user {}", idOrSlug, userId);
+                                throw new com.sep.realvista.domain.common.exception.ResourceNotFoundException(
+                                                "Listing", idOrSlug);
                         }
 
                         return ResponseEntity.ok(ApiResponse.success("Listing retrieved successfully", listing));
@@ -177,9 +190,9 @@ public class ListingController {
         @GetMapping("/{idOrSlug}/similar")
         @Operation(summary = "Get similar listings",
                         description = "Retrieves listings similar to the given listing "
-                        + "based on property type, price range, area, and common attributes. "
-                        + "Results are sorted by similarity score (descending) "
-                        + "and published date (descending). Accepts either UUID or slug.")
+                                        + "based on property type, price range, area, and common attributes. "
+                                        + "Results are sorted by similarity score (descending) "
+                                        + "and published date (descending). Accepts either UUID or slug.")
         public ResponseEntity<ApiResponse<SimilarListingsResponse>> getSimilarListings(
                         @PathVariable String idOrSlug,
                         @Parameter(description = "Maximum number of results to return (default: 5, max: 10)")
@@ -199,6 +212,29 @@ public class ListingController {
                                         limit, userId);
                         return ResponseEntity.ok(ApiResponse.success("Similar listings retrieved successfully",
                                         similarListings));
+                } finally {
+                        MDC.remove("traceId");
+                }
+        }
+
+        @GetMapping("/property/{propertyId}/related")
+        @Operation(summary = "Get related listings by property",
+                        description = "Retrieves both RENT and SALE listings for the same property "
+                                        + "if they exist and are published. Useful for showing rent vs buy comparison.")
+        public ResponseEntity<ApiResponse<RelatedListingsResponse>> getRelatedListingsByProperty(
+                        @PathVariable UUID propertyId) {
+
+                String traceId = UUID.randomUUID().toString();
+                MDC.put("traceId", traceId);
+
+                try {
+                        log.info("Fetching related listings for property - traceId: {}, propertyId: {}",
+                                        traceId, propertyId);
+
+                        RelatedListingsResponse relatedListings = listingApplicationService
+                                        .getRelatedListingsByProperty(propertyId);
+                        return ResponseEntity.ok(ApiResponse.success("Related listings retrieved successfully",
+                                        relatedListings));
                 } finally {
                         MDC.remove("traceId");
                 }
@@ -396,5 +432,42 @@ public class ListingController {
                                 .markAsRented(listingId, userDetails.getUserId());
 
                 return ResponseEntity.ok(ApiResponse.success("Listing marked as rented", response));
+        }
+
+        // ==================== Compare Operations ====================
+
+        @GetMapping("/compare")
+        @Operation(summary = "Get compare data for multiple listings",
+                        description = "Retrieves detailed data for comparing multiple listings. "
+                                        + "Accepts multiple listing UUIDs as query parameters. "
+                                        + "Maximum 3 listings can be compared at once. "
+                                        + "Returns comprehensive data including media, attributes, amenities, "
+                                        + "and boost status (featured/hot) for each listing.")
+        public ResponseEntity<ApiResponse<java.util.List<ListingCompareDataResponse>>> getCompareData(
+                        @RequestParam(name = "ids")
+                        @Parameter(description = "List of listing UUIDs to compare (max 3)")
+                        java.util.List<UUID> ids) {
+
+                String traceId = UUID.randomUUID().toString();
+                MDC.put("traceId", traceId);
+
+                try {
+                        if (ids == null || ids.isEmpty()) {
+                                throw new IllegalArgumentException("At least one listing ID is required");
+                        }
+                        if (ids.size() > 3) {
+                                throw new IllegalArgumentException("Maximum 3 listings can be compared at once");
+                        }
+
+                        log.info("Fetching compare data - traceId: {}, ids: {}", traceId, ids);
+
+                        java.util.List<ListingCompareDataResponse> compareData = listingApplicationService
+                                        .getCompareData(ids);
+
+                        return ResponseEntity.ok(ApiResponse.success("Compare data retrieved successfully",
+                                        compareData));
+                } finally {
+                        MDC.remove("traceId");
+                }
         }
 }

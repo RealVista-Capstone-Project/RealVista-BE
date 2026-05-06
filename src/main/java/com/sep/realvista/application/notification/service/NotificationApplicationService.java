@@ -16,6 +16,10 @@ import com.sep.realvista.domain.user.notification.NotificationRepository;
 import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.user.preference.SettingPreference;
 import com.sep.realvista.domain.user.preference.SettingPreferenceRepository;
+import com.sep.realvista.domain.user.UserRepository;
+import com.sep.realvista.application.service.TemplateEngineService;
+import com.sep.realvista.domain.user.notification.NotificationTemplate;
+import com.sep.realvista.domain.user.notification.NotificationTemplateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -45,6 +49,9 @@ public class NotificationApplicationService {
     private final SimpMessagingTemplate messagingTemplate;
     private final SettingPreferenceRepository settingPreferenceRepository;
     private final ObjectMapper objectMapper;
+    private final NotificationTemplateRepository templateRepository;
+    private final TemplateEngineService templateEngineService;
+    private final UserRepository userRepository;
 
     /**
      * Send a notification to a user via all channels.
@@ -96,6 +103,36 @@ public class NotificationApplicationService {
         }
 
         log.info("Notification sent successfully to user {} via enabled channels", request.getUserId());
+    }
+
+    /**
+     * Send a notification using a database template.
+     */
+    public void sendDbNotification(UUID userId, String templateKey, String language, Map<String, Object> variables,
+                                  EventType eventType, EntityType entityType, UUID entityId) {
+        NotificationTemplate template = templateRepository.findByTemplateKeyAndLanguage(templateKey, language)
+                .orElseThrow(() -> new DomainException("Notification template not found: " + templateKey, 
+                        "ERROR_TEMPLATE_NOT_FOUND"));
+
+        // Get user email for WebSocket
+        com.sep.realvista.domain.user.User user = userRepository.findById(userId)
+                .orElseThrow(() -> new DomainException("User not found: " + userId, "ERROR_USER_NOT_FOUND"));
+
+        TemplateEngineService.RenderedTemplate rendered = templateEngineService.preview(
+                template.getTitle(), template.getContentBody(), variables);
+
+        SendNotificationRequest request = SendNotificationRequest.builder()
+                .userId(userId)
+                .userEmail(user.getEmail().getValue())
+                .title(rendered.title())
+                .message(rendered.body())
+                .eventType(eventType)
+                .entityType(entityType)
+                .entityId(entityId)
+                .metadata(new HashMap<>()) // Default empty metadata
+                .build();
+
+        sendNotification(request);
     }
 
     /** Get paginated notifications for a user. */
