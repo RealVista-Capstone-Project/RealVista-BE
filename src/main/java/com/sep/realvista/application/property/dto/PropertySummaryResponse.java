@@ -81,6 +81,12 @@ public class PropertySummaryResponse {
     @JsonProperty("owner_phone")
     private String ownerPhone;
 
+    @JsonProperty("owner_phone_display")
+    private String ownerPhoneDisplay;
+
+    @JsonProperty("is_owner_phone_hidden")
+    private Boolean isOwnerPhoneHidden;
+
     @JsonProperty("has_3d")
     private boolean has3d;
 

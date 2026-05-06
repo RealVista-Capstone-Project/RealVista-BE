@@ -46,6 +46,11 @@ public class ListingMediaRepositoryImpl implements ListingMediaRepository {
     }
 
     @Override
+    public List<UUID> findListingIdsWith3DMedia(List<UUID> listingIds) {
+        return jpaRepository.findListingIdsWith3DMedia(listingIds);
+    }
+
+    @Override
     public void deleteById(UUID id) {
         jpaRepository.deleteById(id);
     }
