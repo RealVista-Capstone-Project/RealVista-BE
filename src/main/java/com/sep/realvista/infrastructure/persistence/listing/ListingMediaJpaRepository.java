@@ -14,12 +14,26 @@ import java.util.UUID;
  */
 public interface ListingMediaJpaRepository extends JpaRepository<ListingMedia, UUID> {
 
-        @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId = :listingId "
-                        + "AND lm.deleted = false ORDER BY lm.displayOrder ASC")
+        @Query("SELECT lm FROM ListingMedia lm "
+                        + "LEFT JOIN FETCH lm.propertyMedia pm "
+                        + "WHERE lm.listingId = :listingId "
+                        + "AND lm.deleted = false "
+                        + "AND (pm IS NULL OR pm.deleted = false) "
+                        + "ORDER BY lm.displayOrder ASC")
         List<ListingMedia> findByListingId(UUID listingId);
 
-        @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId = :listingId "
-                        + "AND lm.deleted = false ORDER BY lm.displayOrder ASC")
+        @Query("SELECT lm FROM ListingMedia lm "
+                        + "LEFT JOIN FETCH lm.propertyMedia "
+                        + "WHERE lm.listingId = :listingId "
+                        + "ORDER BY lm.displayOrder ASC")
+        List<ListingMedia> findAllByListingId(@Param("listingId") UUID listingId);
+
+        @Query("SELECT lm FROM ListingMedia lm "
+                        + "LEFT JOIN FETCH lm.propertyMedia pm "
+                        + "WHERE lm.listingId = :listingId "
+                        + "AND lm.deleted = false "
+                        + "AND (pm IS NULL OR pm.deleted = false) "
+                        + "ORDER BY lm.displayOrder ASC")
         List<ListingMedia> findByListingIdOrderByDisplayOrder(@Param("listingId") UUID listingId);
 
         @Query("SELECT lm FROM ListingMedia lm WHERE lm.listingId = :listingId "

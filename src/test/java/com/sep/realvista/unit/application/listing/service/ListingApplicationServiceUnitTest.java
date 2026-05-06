@@ -1445,6 +1445,48 @@ class ListingApplicationServiceUnitTest {
         }
 
         @Test
+        @DisplayName("updateListing restores previously removed media when selected again")
+        void updateListing_whenMediaWasPreviouslyRemoved_shouldRestoreExistingRow() {
+                UUID mediaId = UUID.randomUUID();
+                ListingMedia deletedMedia = ListingMedia.builder()
+                                .listingMediaId(UUID.randomUUID())
+                                .listingId(listingId)
+                                .propertyMediaId(mediaId)
+                                .displayOrder(5)
+                                .isPrimary(false)
+                                .build();
+                deletedMedia.markAsDeleted();
+                testListing = Listing.builder()
+                                .listingId(listingId)
+                                .propertyId(propertyId)
+                                .userId(userId)
+                                .listingType(ListingType.RENT)
+                                .status(ListingStatus.DRAFT)
+                                .slug("test-listing-slug")
+                                .name("Test Listing Name")
+                                .price(new BigDecimal("2700.00"))
+                                .isNegotiable(false)
+                                .build();
+                UpdateListingRequest request = UpdateListingRequest.builder()
+                                .mediaIds(List.of(mediaId))
+                                .primaryMediaId(mediaId)
+                                .build();
+
+                when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
+                when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(listingMediaRepository.findAllByListingId(listingId)).thenReturn(List.of(deletedMedia));
+                when(listingMapper.toListingResponse(any(Listing.class))).thenReturn(ListingResponse.builder().build());
+
+                listingApplicationService.updateListing(listingId, request, userId);
+
+                assertThat(deletedMedia.getDeleted()).isFalse();
+                assertThat(deletedMedia.getDisplayOrder()).isZero();
+                assertThat(deletedMedia.getIsPrimary()).isTrue();
+                verify(listingMediaRepository).save(deletedMedia);
+                verify(listingMediaRepository, never()).deleteById(any(UUID.class));
+        }
+
+        @Test
         @DisplayName("updateListing skips null media IDs and does not throw")
         void updateListing_whenMediaIdsContainNull_shouldSkipNullAndNotThrow() {
                 UUID mediaId = UUID.randomUUID();
@@ -1469,7 +1511,7 @@ class ListingApplicationServiceUnitTest {
 
                 when(listingRepository.findById(listingId)).thenReturn(Optional.of(testListing));
                 when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> invocation.getArgument(0));
-                when(listingMediaRepository.findByListingId(listingId)).thenReturn(Collections.emptyList());
+                when(listingMediaRepository.findAllByListingId(listingId)).thenReturn(Collections.emptyList());
                 when(listingMapper.toListingResponse(any(Listing.class))).thenReturn(ListingResponse.builder().build());
 
                 assertThatCode(() -> listingApplicationService.updateListing(listingId, request, userId))

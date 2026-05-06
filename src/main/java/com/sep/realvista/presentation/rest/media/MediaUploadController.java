@@ -81,6 +81,10 @@ public class MediaUploadController {
                     example = "123e4567-e89b-12d3-a456-426614174000")
             @RequestParam(value = "propertyId", required = false) UUID propertyId,
 
+            @Parameter(description = "Optional listing ID to immediately attach the uploaded media to",
+                    example = "123e4567-e89b-12d3-a456-426614174000")
+            @RequestParam(value = "listingId", required = false) UUID listingId,
+
             @AuthenticationPrincipal SecurityUserDetails userDetails
     ) {
         // Debug logging
@@ -90,11 +94,11 @@ public class MediaUploadController {
                 auth != null ? auth.getName() : "null",
                 auth != null ? auth.getAuthorities() : "null");
 
-        log.info("Received upload request for file: {} to folder: {}, propertyId: {}",
-                file.getOriginalFilename(), folder, propertyId);
+        log.info("Received upload request for file: {} to folder: {}, propertyId: {}, listingId: {}",
+                file.getOriginalFilename(), folder, propertyId, listingId);
 
         MediaUploadResponse response = mediaUploadService
-                .uploadMedia(file, folder, propertyId, userDetails.getUserId());
+                .uploadMedia(file, folder, propertyId, listingId, userDetails.getUserId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -135,10 +139,14 @@ public class MediaUploadController {
                     example = "123e4567-e89b-12d3-a456-426614174000")
             @RequestParam(value = "propertyId", required = false) UUID propertyId,
 
+            @Parameter(description = "Optional listing ID to immediately attach the uploaded media to",
+                    example = "123e4567-e89b-12d3-a456-426614174000")
+            @RequestParam(value = "listingId", required = false) UUID listingId,
+
             @AuthenticationPrincipal SecurityUserDetails userDetails
     ) {
-        log.info("Received bulk upload request for {} files to folder: {}, propertyId: {}",
-                files.size(), folder, propertyId);
+        log.info("Received bulk upload request for {} files to folder: {}, propertyId: {}, listingId: {}",
+                files.size(), folder, propertyId, listingId);
 
         if (files.isEmpty()) {
             return ResponseEntity
@@ -147,7 +155,7 @@ public class MediaUploadController {
         }
 
         BulkMediaUploadResponse response =
-                mediaUploadService.uploadMultipleMedia(files, folder, propertyId, userDetails.getUserId());
+                mediaUploadService.uploadMultipleMedia(files, folder, propertyId, listingId, userDetails.getUserId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

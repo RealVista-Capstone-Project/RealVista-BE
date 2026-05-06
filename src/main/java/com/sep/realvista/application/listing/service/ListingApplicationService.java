@@ -64,6 +64,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -683,7 +684,10 @@ public class ListingApplicationService {
    * @throws IllegalStateException     if user is not the listing creator or
    *                                   property owner
    */
-  @CacheEvict(value = "listings", key = "#listingId")
+  @Caching(evict = {
+      @CacheEvict(value = "listings", key = "#listingId", beforeInvocation = true),
+      @CacheEvict(value = "similarListings", allEntries = true, beforeInvocation = true)
+  })
   public ListingResponse updateListing(
       UUID listingId,
       UpdateListingRequest request,
@@ -777,21 +781,25 @@ public class ListingApplicationService {
     List<UUID> mediaIds = request.getMediaIds();
 
     if (mediaIds != null) {
-      var existingMediaList = listingMediaRepository.findByListingId(updatedListing.getListingId());
+      List<UUID> requestedMediaIds = mediaIds.stream()
+          .filter(java.util.Objects::nonNull)
+          .distinct()
+          .collect(Collectors.toList());
+      var existingMediaList = listingMediaRepository.findAllByListingId(updatedListing.getListingId());
 
       // Remove media no longer selected
       for (ListingMedia existingMedia : existingMediaList) {
-        if (!mediaIds.contains(existingMedia.getPropertyMediaId())) {
-          listingMediaRepository.deleteById(existingMedia.getListingMediaId());
+        if (!requestedMediaIds.contains(existingMedia.getPropertyMediaId())) {
+          existingMedia.markAsDeleted();
+          listingMediaRepository.save(existingMedia);
         }
       }
 
-      // Update remaining or add new
-      for (int i = 0; i < mediaIds.size(); i++) {
-        UUID mediaId = mediaIds.get(i);
-        if (mediaId == null) {
-          continue; // skip null IDs sent from client
-        }
+      // Update remaining or add new. If a previously removed media is selected
+      // again, restore it instead of inserting a duplicate row; listing_medias has
+      // a unique constraint on (listing_id, property_media_id).
+      for (int i = 0; i < requestedMediaIds.size(); i++) {
+        UUID mediaId = requestedMediaIds.get(i);
         boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
         // Primary media always gets display_order 0; others follow list index
         int displayOrder = isPrimary ? 0 : i;
@@ -802,6 +810,7 @@ public class ListingApplicationService {
             .findFirst()
             .ifPresentOrElse(
                 existing -> {
+                  existing.restore();
                   existing.updateDisplayOrder(displayOrder);
                   if (isPrimary) {
                     existing.markAsPrimary();
@@ -816,7 +825,7 @@ public class ListingApplicationService {
                   listingMediaRepository.save(newMedia);
                 });
       }
-      log.info("Updated media for listing ID: {} ({} total items)", listingId, mediaIds.size());
+      log.info("Updated media for listing ID: {} ({} total items)", listingId, requestedMediaIds.size());
     }
 
     log.info("Successfully updated listing ID: {}", listingId);

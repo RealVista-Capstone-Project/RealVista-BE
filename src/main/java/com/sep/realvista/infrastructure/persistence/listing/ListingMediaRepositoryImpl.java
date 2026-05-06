@@ -31,6 +31,11 @@ public class ListingMediaRepositoryImpl implements ListingMediaRepository {
     }
 
     @Override
+    public List<ListingMedia> findAllByListingId(UUID listingId) {
+        return jpaRepository.findAllByListingId(listingId);
+    }
+
+    @Override
     public List<ListingMedia> findByListingIdOrderByDisplayOrderAsc(UUID listingId) {
         return jpaRepository.findByListingIdOrderByDisplayOrder(listingId);
     }

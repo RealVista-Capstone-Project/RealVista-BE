@@ -15,6 +15,9 @@ public class MediaUploadResponse {
     @JsonProperty("media_id")
     private java.util.UUID mediaId;
 
+    @JsonProperty("listing_media_id")
+    private java.util.UUID listingMediaId;
+
     @JsonProperty("media_url")
     private String mediaUrl;
 

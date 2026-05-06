@@ -14,6 +14,8 @@ public interface ListingMediaRepository {
 
     List<ListingMedia> findByListingId(UUID listingId);
 
+    List<ListingMedia> findAllByListingId(UUID listingId);
+
     List<ListingMedia> findByListingIdOrderByDisplayOrderAsc(UUID listingId);
 
     Optional<ListingMedia> findPrimaryByListingId(UUID listingId);
