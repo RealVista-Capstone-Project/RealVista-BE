@@ -32,6 +32,8 @@ public class MediaDTO {
     private Boolean isPropertyStandard;
     @JsonProperty("display_order")
     private Integer displayOrder;
+    @JsonProperty("upload_by")
+    private UUID uploadBy;
     @JsonProperty("metadata")
     private Map<String, Object> metadata;
 

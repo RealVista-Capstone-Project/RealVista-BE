@@ -388,6 +388,13 @@ public class PropertyApplicationService {
 
             List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propId);
 
+            if (isAgent) {
+                media = media.stream()
+                        .filter(m -> m.getUploadBy().equals(property.getOwnerId())
+                                || m.getUploadBy().equals(userId))
+                        .collect(Collectors.toList());
+            }
+
             List<PropertyAttributeValue> attributes =
                     propertyAttributeValueRepository.findByPropertyIdWithAttribute(propId);
 
