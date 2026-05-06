@@ -274,7 +274,7 @@ class ListingControllerComponentTest {
         void getListingDetail_withValidId_shouldReturnOk() throws Exception {
                 // Arrange
                 UUID listingId = mockListingResponse.getListingId();
-                when(listingApplicationService.getListingDetail(any(UUID.class), any(), anyBoolean()))
+                when(listingApplicationService.getListingDetail(any(UUID.class), any(), anyBoolean(), anyBoolean()))
                                 .thenReturn(mockListingResponse);
 
                 // Act & Assert
@@ -310,7 +310,7 @@ class ListingControllerComponentTest {
         void getListingDetail_withNonExistentId_shouldReturnNotFound() throws Exception {
                 // Arrange
                 UUID nonExistentId = UUID.randomUUID();
-                when(listingApplicationService.getListingDetail(any(UUID.class), any(), anyBoolean()))
+                when(listingApplicationService.getListingDetail(any(UUID.class), any(), anyBoolean(), anyBoolean()))
                                 .thenThrow(new com.sep.realvista.domain.common.exception.ResourceNotFoundException(
                                                 "Listing", nonExistentId));
 

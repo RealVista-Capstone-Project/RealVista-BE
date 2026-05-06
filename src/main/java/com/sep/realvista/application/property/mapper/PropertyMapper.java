@@ -269,6 +269,7 @@ public class PropertyMapper {
                 .isPrimary(pm.getIsPrimary())
                 .isPropertyStandard(pm.getIsPropertyStandard())
                 .displayOrder(0)
+                .uploadBy(pm.getUploadBy())
                 .metadata(pm.getMetadata())
                 .build();
     }

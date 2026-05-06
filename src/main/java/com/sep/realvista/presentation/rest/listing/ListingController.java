@@ -123,6 +123,7 @@ public class ListingController {
         public ResponseEntity<ApiResponse<ListingDetailResponse>> getListingDetail(
                         @PathVariable String idOrSlug,
                         @RequestParam(defaultValue = "false") boolean recordView,
+                        @RequestParam(defaultValue = "false") boolean editing,
                         @AuthenticationPrincipal SecurityUserDetails userDetails) {
                 String traceId = UUID.randomUUID().toString();
                 MDC.put("traceId", traceId);
@@ -140,13 +141,13 @@ public class ListingController {
                         // Try to parse as UUID first
                         try {
                                 UUID id = UUID.fromString(idOrSlug);
-                                listing = listingApplicationService.getListingDetail(id, userId, recordView);
+                                listing = listingApplicationService.getListingDetail(id, userId, recordView, editing);
                         } catch (IllegalArgumentException e) {
                                 // Not a valid UUID, treat as slug
                                 log.debug("Input is not a valid UUID, treating as slug: {}", idOrSlug);
                                 try {
                                         listing = listingApplicationService.getListingBySlug(idOrSlug, userId,
-                                                        recordView);
+                                                        recordView, editing);
                                 } catch (Exception ex) {
                                         log.error("Failed to get listing by slug: {}", idOrSlug, ex);
                                         throw ex;
