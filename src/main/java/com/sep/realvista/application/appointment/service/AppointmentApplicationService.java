@@ -9,6 +9,8 @@ import com.sep.realvista.application.appointment.dto.AppointmentResponse;
 import com.sep.realvista.application.appointment.dto.AppointmentSummaryResponse;
 import com.sep.realvista.application.appointment.dto.SyncBlocksRequest;
 import com.sep.realvista.application.appointment.dto.UpdateAppointmentStatusRequest;
+import com.sep.realvista.application.appointment.dto.ProposeRescheduleRequest;
+import com.sep.realvista.application.appointment.dto.RespondRescheduleRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.application.service.EmailService;
 import com.sep.realvista.domain.agent.lead.LeadPriority;
@@ -65,9 +67,9 @@ public class AppointmentApplicationService {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     @Transactional(readOnly = true)
-    public List<LocalTime> getAvailableSlots(UUID listingId, LocalDate date) {
-        log.info("Fetching available slots for listingId: {} on date: {}", listingId, date);
-        return appointmentService.getAvailableSlots(listingId, date);
+    public List<LocalTime> getAvailableSlots(UUID listingId, LocalDate date, UUID excludeId) {
+        log.info("Fetching available slots for listingId: {} on date: {}, excludeId: {}", listingId, date, excludeId);
+        return appointmentService.getAvailableSlots(listingId, date, excludeId);
     }
 
     public void bookTour(UUID userId, BookTourRequest request) {
@@ -289,6 +291,8 @@ public class AppointmentApplicationService {
                 .filter(a -> a.getStatus() == AppointmentStatus.CANCELED).count();
         long completedAppointments = appointments.stream()
                 .filter(a -> a.getStatus() == AppointmentStatus.COMPLETED).count();
+        long reschedulePendingAppointments = appointments.stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.RESCHEDULE_PENDING).count();
         long upcomingAppointments = appointments.stream()
                 .filter(a -> a.isTour()
                         && a.getStartTime() != null
@@ -316,6 +320,7 @@ public class AppointmentApplicationService {
                 .rejectedAppointments(rejectedAppointments)
                 .canceledAppointments(canceledAppointments)
                 .completedAppointments(completedAppointments)
+                .reschedulePendingAppointments(reschedulePendingAppointments)
                 .upcomingAppointments(upcomingAppointments)
                 .currentMonthUpcomingAppointments(currentMonthUpcomingAppointments)
                 .previousUpcomingAppointments(previousMonthUpcomingAppointments)
@@ -389,6 +394,73 @@ public class AppointmentApplicationService {
         }
 
         return mapToResponse(updated, userId);
+    }
+
+    public AppointmentResponse proposeReschedule(UUID userId, UUID appointmentId, ProposeRescheduleRequest request) {
+        Appointment updated = appointmentService.proposeReschedule(
+                appointmentId, userId, request.getStartTime(), request.getEndTime(), request.getReason());
+
+        if (updated.isTour()) {
+            sendRescheduleProposalNotification(updated, userId);
+        }
+
+        return mapToResponse(updated, userId);
+    }
+
+    public AppointmentResponse respondToReschedule(UUID userId, UUID appointmentId, RespondRescheduleRequest request) {
+        Appointment updated;
+        if (Boolean.TRUE.equals(request.getConfirm())) {
+            updated = appointmentService.confirmReschedule(appointmentId, userId);
+            if (updated.isTour()) {
+                sendAppointmentStatusNotifications(updated); // This will send ACCEPTED notification
+                sendAppointmentStatusEmails(updated);
+            }
+        } else {
+            updated = appointmentService.rejectReschedule(appointmentId, userId, request.getReason());
+            if (updated.isTour()) {
+                sendAppointmentStatusNotifications(updated); // This will send REJECTED notification
+                sendAppointmentStatusEmails(updated);
+            }
+        }
+
+        return mapToResponse(updated, userId);
+    }
+
+    public AppointmentResponse cancelRescheduleProposal(UUID userId, UUID appointmentId) {
+        Appointment updated = appointmentService.cancelRescheduleProposal(appointmentId, userId);
+        
+        // No special notification needed for self-cancellation as per spec, 
+        // but we could notify the other party that the proposal was withdrawn.
+        
+        return mapToResponse(updated, userId);
+    }
+
+    private void sendRescheduleProposalNotification(Appointment appointment, UUID actorId) {
+        User sender = appointment.getSender();
+        User receiver = appointment.getReceiver();
+        User actor = actorId.equals(sender.getUserId()) ? sender : receiver;
+        User recipient = actorId.equals(sender.getUserId()) ? receiver : sender;
+
+        String listingName = appointment.getListing() != null ? appointment.getListing().getName() : "Listing";
+        String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
+        String tourTime = appointment.getStartTime().format(TIME_FORMATTER)
+                + " - " + appointment.getEndTime().format(TIME_FORMATTER);
+
+        String lang = getUserLanguage(recipient.getUserId());
+        notificationApplicationService.sendDbNotification(
+                recipient.getUserId(),
+                "APPOINTMENT_RESCHEDULE_PROPOSED",
+                lang,
+                Map.of(
+                        "actorName", actor.getFullName(),
+                        "listingName", listingName,
+                        "tourDate", tourDate,
+                        "tourTime", tourTime,
+                        "reason", appointment.getRescheduleReason() != null ? appointment.getRescheduleReason() : ""
+                ),
+                EventType.APPOINTMENT_RESCHEDULE_PROPOSED,
+                EntityType.APPOINTMENT,
+                appointment.getAppointmentId());
     }
 
     private void sendAppointmentStatusNotifications(Appointment appointment) {
@@ -657,12 +729,16 @@ public class AppointmentApplicationService {
                 .receiverName(appt.getReceiver() != null ? appt.getReceiver().getFullName() : null)
                 .startTime(appt.getStartTime())
                 .endTime(appt.getEndTime())
+                .proposedStartTime(appt.getProposedStartTime())
+                .proposedEndTime(appt.getProposedEndTime())
                 .status(appt.getStatus() != null ? appt.getStatus().name() : null)
                 .appointmentType(appt.getAppointmentType() != null ? appt.getAppointmentType().name() : null)
                 .senderNotes(appt.getSenderNotes())
                 .rejectionReason(appt.getRejectionReason())
                 .cancellationReason(appt.getCancellationReason())
                 .canceledByUserId(appt.getCanceledByUserId())
+                .lastModifiedByUserId(appt.getLastModifiedByUserId())
+                .rescheduleReason(appt.getRescheduleReason())
                 .isSender(appt.getSenderId() != null && appt.getSenderId().equals(userId))
                 .build();
     }

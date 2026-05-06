@@ -63,4 +63,8 @@ public class AiFeatureUsage extends BaseEntity {
     public void incrementUsage() {
         this.usageCount++;
     }
+
+    public void resetUsage() {
+        this.usageCount = 0;
+    }
 }
