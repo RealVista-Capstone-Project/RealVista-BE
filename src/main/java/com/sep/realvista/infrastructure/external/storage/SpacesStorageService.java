@@ -77,6 +77,41 @@ public class SpacesStorageService {
         }
     }
 
+    public String uploadBytes(byte[] bytes, String folder, String fileName, String contentType) throws IOException {
+        if (bytes == null || bytes.length == 0) {
+            throw new IOException("File bytes are empty or null");
+        }
+        if (fileName == null || fileName.isBlank()) {
+            throw new IOException("File name is required");
+        }
+        if (contentType == null || contentType.isBlank()) {
+            throw new IOException("Content type is required");
+        }
+
+        String key = buildKey(folder, fileName);
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(spacesConfig.getBucketName())
+                    .key(key)
+                    .contentType(contentType)
+                    .acl(ObjectCannedACL.PUBLIC_READ)
+                    .build();
+
+            PutObjectResponse response = s3Client.putObject(
+                    putObjectRequest,
+                    RequestBody.fromBytes(bytes)
+            );
+
+            String fileUrl = buildFileUrl(key);
+            log.info("Bytes uploaded successfully to Spaces: {} - ETag: {}", fileUrl, response.eTag());
+            return fileUrl;
+        } catch (S3Exception e) {
+            log.error("Failed to upload bytes to DigitalOcean Spaces: {}", e.awsErrorDetails().errorMessage(), e);
+            throw new IOException("Failed to upload file: " + e.awsErrorDetails().errorMessage(), e);
+        }
+    }
+
     public void deleteFile(String fileUrl) {
         try {
             String key = extractKeyFromUrl(fileUrl);

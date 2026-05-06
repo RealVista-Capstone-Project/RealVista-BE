@@ -3,11 +3,14 @@ package com.sep.realvista.infrastructure.persistence.listing.contract;
 import com.sep.realvista.domain.listing.contract.LeaseAgreement;
 import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.listing.contract.LeaseStatus;
+import com.sep.realvista.domain.listing.contract.SignedDocumentStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +34,11 @@ public class LeaseAgreementRepositoryImpl implements LeaseAgreementRepository {
     @Override
     public Optional<LeaseAgreement> findByDocusignEnvelopeId(String envelopeId) {
         return jpaRepository.findByDocusignEnvelopeId(envelopeId);
+    }
+
+    @Override
+    public List<LeaseAgreement> findBySignedDocumentStatusIn(List<SignedDocumentStatus> statuses, int limit) {
+        return jpaRepository.findBySignedDocumentStatusIn(statuses, PageRequest.of(0, limit));
     }
 
     @Override
@@ -61,6 +69,21 @@ public class LeaseAgreementRepositoryImpl implements LeaseAgreementRepository {
     @Override
     public List<LeaseAgreement> findActiveLeasesByPropertyId(UUID propertyId) {
         return jpaRepository.findByPropertyIdAndStatus(propertyId, LeaseStatus.ACTIVE);
+    }
+
+    @Override
+    public List<LeaseAgreement> findActiveLeasesWithAgentByPropertyId(UUID propertyId) {
+        return jpaRepository.findActiveWithAgentByPropertyId(propertyId);
+    }
+
+    @Override
+    public List<LeaseAgreement> findActiveLeasesEndingBefore(LocalDate date) {
+        return jpaRepository.findByStatusAndLeaseEndDateBefore(LeaseStatus.ACTIVE, date);
+    }
+
+    @Override
+    public List<LeaseAgreement> findActiveLeasesEndingOn(LocalDate date) {
+        return jpaRepository.findByStatusAndLeaseEndDate(LeaseStatus.ACTIVE, date);
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.sep.realvista.application.listing.contract;
 
 import com.sep.realvista.application.common.dto.PageResponse;
+import com.sep.realvista.application.listing.contract.dto.CancelLeaseRequest;
 import com.sep.realvista.application.listing.contract.dto.CreateLeaseRequest;
 import com.sep.realvista.application.listing.contract.dto.LeaseResponse;
 import com.sep.realvista.application.listing.contract.dto.LeaseTemplateData;
@@ -13,11 +14,16 @@ import com.sep.realvista.infrastructure.config.DocuSignConfig;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.ListingStatus;
+import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.contract.LeaseAgreement;
 import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.listing.contract.LeaseStatus;
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.PropertyMedia;
+import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.application.common.util.VietnameseCurrencyUtil;
@@ -25,11 +31,14 @@ import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.notification.EntityType;
 import com.sep.realvista.domain.user.notification.EventType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -60,6 +69,7 @@ public class LeaseAgreementApplicationService {
 
   private final LeaseAgreementRepository leaseAgreementRepository;
   private final PropertyRepository propertyRepository;
+  private final PropertyMediaRepository propertyMediaRepository;
   private final ListingRepository listingRepository;
   private final UserRepository userRepository;
   private final DocuSignService docuSignService;
@@ -67,6 +77,7 @@ public class LeaseAgreementApplicationService {
   private final LeaseAgreementMapper leaseAgreementMapper;
   private final RestTemplate restTemplate;
   private final NotificationApplicationService notificationService;
+  private final CacheManager cacheManager;
 
   // ── CRUD Operations ───────────────────────────────────────────────────────
 
@@ -90,8 +101,7 @@ public class LeaseAgreementApplicationService {
       throw new BusinessConflictException(
           "Property is not available for leasing. Current status: " + property.getStatus(),
           "ERROR_LEASE_PROPERTY_NOT_AVAILABLE",
-          new Object[]{property.getStatus()}
-      );
+          new Object[] {property.getStatus()});
     }
 
     // 3. Validate no active lease already exists for this property
@@ -126,6 +136,49 @@ public class LeaseAgreementApplicationService {
   public LeaseResponse getLeaseById(UUID leaseId) {
     LeaseAgreement lease = findLeaseOrThrow(leaseId);
     return toEnrichedResponse(lease);
+  }
+
+  /**
+   * Expires active leases whose fixed end date has already passed.
+   * <p>
+   * Property availability is intentionally unchanged because an expired contract
+   * does not prove the tenant has returned possession.
+   */
+  @Scheduled(cron = "0 0 1 * * *")
+  public void expireActiveLeasesPastEndDate() {
+    LocalDate today = LocalDate.now();
+    List<LeaseAgreement> leasesToExpire = leaseAgreementRepository.findActiveLeasesEndingBefore(today);
+
+    for (LeaseAgreement lease : leasesToExpire) {
+      lease.expire();
+      leaseAgreementRepository.save(lease);
+      log.info("Lease {} expired after end date {}", lease.getLeaseAgreementId(), lease.getLeaseEndDate());
+    }
+  }
+
+  /**
+   * Sends idempotent lease expiry reminders for the supported reminder windows.
+   */
+  @Scheduled(cron = "0 15 1 * * *")
+  public void sendLeaseExpiryReminders() {
+    LocalDate today = LocalDate.now();
+    sendLeaseExpiryRemindersForWindow(30, today.plusDays(30));
+    sendLeaseExpiryRemindersForWindow(7, today.plusDays(7));
+    sendLeaseExpiryRemindersForWindow(0, today);
+  }
+
+  private void sendLeaseExpiryRemindersForWindow(int daysBeforeExpiry, LocalDate targetDate) {
+    List<LeaseAgreement> leases = leaseAgreementRepository.findActiveLeasesEndingOn(targetDate);
+    for (LeaseAgreement lease : leases) {
+      if (lease.isExpiryReminderSent(daysBeforeExpiry)) {
+        continue;
+      }
+
+      notifyLeaseExpiryReminder(lease, daysBeforeExpiry);
+      lease.markExpiryReminderSent(daysBeforeExpiry);
+      leaseAgreementRepository.save(lease);
+      log.info("Lease {} expiry reminder sent for {} day window", lease.getLeaseAgreementId(), daysBeforeExpiry);
+    }
   }
 
   @Transactional(readOnly = true)
@@ -202,11 +255,12 @@ public class LeaseAgreementApplicationService {
     if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
       throw new BusinessConflictException(
           "Lease must be in PENDING_LANDLORD status to send renter for signing. "
-              + "Current status: " + lease.getStatus(), "ERROR_LEASE_INVALID_STATUS_FOR_LANDLORD");
+              + "Current status: " + lease.getStatus(),
+          "ERROR_LEASE_INVALID_STATUS_FOR_LANDLORD");
     }
 
     User renter = findUserOrThrow(lease.getRenterId());
-    
+
     if (renter.getPhone() == null || renter.getPhone().isBlank()) {
       throw new BusinessConflictException(
           "Renter must have a valid phone number for SMS Authentication.",
@@ -322,7 +376,7 @@ public class LeaseAgreementApplicationService {
     }
 
     User landlord = findUserOrThrow(lease.getLandlordId());
-    
+
     if (landlord.getPhone() == null || landlord.getPhone().isBlank()) {
       throw new BusinessConflictException(
           "Landlord must have a valid phone number for SMS Authentication.",
@@ -345,6 +399,8 @@ public class LeaseAgreementApplicationService {
     if (docuSignConfig.isTemplateAvailable()) {
       // Template-based flow: populate dynamic fields from lease + user data
       User renter = findUserOrThrow(lease.getRenterId());
+      Property property = propertyRepository.findById(lease.getPropertyId())
+          .orElseThrow(() -> new ResourceNotFoundException("Property", lease.getPropertyId()));
 
       // Compute contract creation date fields (current date at signing time)
       LocalDate contractDate = LocalDate.now();
@@ -362,7 +418,9 @@ public class LeaseAgreementApplicationService {
           .handoverDate(lease.getLeaseStartDate() != null
               ? lease.getLeaseStartDate().format(handoverFormatter)
               : "")
-          .leaseDurationMonths(String.valueOf(lease.getLeaseDurationMonths()))
+          .leaseDurationMonths(formatLeaseDuration(lease.getLeaseDurationMonths()))
+          .propertyAvailable(formatArea(property.getLandSizeM2()))
+          .propertyUsed(formatArea(property.getUsableSizeM2()))
           .monthlyRent(lease.getMonthlyRent() != null
               ? VietnameseCurrencyUtil.formatAmount(lease.getMonthlyRent())
               : "")
@@ -379,6 +437,10 @@ public class LeaseAgreementApplicationService {
           .contractDay(String.format("%02d", contractDate.getDayOfMonth()))
           .contractMonth(String.format("%02d", contractDate.getMonthValue()))
           .contractYear(String.valueOf(contractDate.getYear()))
+          .currentWeekday(formatCurrentWeekday(contractDate))
+          .currentDay(String.valueOf(contractDate.getDayOfMonth()))
+          .currentMonth(String.valueOf(contractDate.getMonthValue()))
+          .currentYear(String.valueOf(contractDate.getYear()))
           .build();
 
       envelopeId = docuSignService.createEnvelopeFromTemplate(
@@ -490,20 +552,146 @@ public class LeaseAgreementApplicationService {
         // needed).
         if (lease.getStatus() == LeaseStatus.PENDING_RENTER
             || lease.getStatus() == LeaseStatus.PENDING_LANDLORD) {
+          assertNoOtherActiveLeaseForProperty(lease);
           lease.renterSignViaDocuSign();
-          // Auto-mark the property as RENTED now that the lease is ACTIVE
-          propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
-            property.markAsRented();
-            propertyRepository.save(property);
-            log.info("Property {} automatically marked as RENTED after lease {} completed signing",
-                lease.getPropertyId(), lease.getLeaseAgreementId());
-          });
+          lease.markSignedDocumentPending();
+          // Auto-mark the property and its published rent listings as RENTED now that the lease is ACTIVE
+          markPropertyAndRentListingsAsRented(lease);
+          notifyLeaseSigned(lease);
         }
       }
       case "declined", "voided" -> {
         lease.reject("DocuSign envelope was " + eventStatus);
       }
       default -> lease.updateDocuSignStatus(eventStatus);
+    }
+  }
+
+  private void markPropertyAndRentListingsAsRented(LeaseAgreement lease) {
+    propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
+      property.markAsRented();
+      propertyRepository.save(property);
+      log.info("Property {} automatically marked as RENTED after lease {} completed signing",
+          lease.getPropertyId(), lease.getLeaseAgreementId());
+    });
+
+    UUID closedByUserId = lease.getAgentId() != null ? lease.getAgentId() : lease.getLandlordId();
+    List<Listing> rentedListings = listingRepository.findByPropertyId(lease.getPropertyId()).stream()
+        .filter(listing -> listing.getListingType() == ListingType.RENT)
+        .filter(listing -> listing.getStatus() == ListingStatus.PUBLISHED)
+        .peek(listing -> listing.markAsRentedDueToPropertyClosure(closedByUserId))
+        .toList();
+
+    if (!rentedListings.isEmpty()) {
+      listingRepository.saveAll(rentedListings);
+      evictListingCacheForListings(rentedListings);
+      log.info("Marked {} rent listings as RENTED after lease {} completed signing for property {}",
+          rentedListings.size(), lease.getLeaseAgreementId(), lease.getPropertyId());
+    }
+  }
+
+  private void evictListingCacheForListings(List<Listing> listings) {
+    Cache listingCache = cacheManager.getCache("listings");
+    if (listingCache == null) {
+      return;
+    }
+    listings.stream()
+        .map(Listing::getListingId)
+        .forEach(id -> {
+          listingCache.evict(id);
+          log.debug("Evicted listing cache for ID: {}", id);
+        });
+  }
+
+  private void notifyLeaseSigned(LeaseAgreement lease) {
+    String propertyAddress = propertyRepository.findById(lease.getPropertyId())
+        .map(Property::getStreetAddress)
+        .orElse("");
+    Map<String, Object> variables = Map.of(
+        "leaseId", lease.getLeaseAgreementId().toString(),
+        "propertyAddress", propertyAddress);
+
+    notifyLeaseSignedRecipient(lease.getLandlordId(), variables, lease.getLeaseAgreementId());
+    notifyLeaseSignedRecipient(lease.getRenterId(), variables, lease.getLeaseAgreementId());
+  }
+
+  private void notifyLeaseSignedRecipient(UUID userId, Map<String, Object> variables, UUID leaseId) {
+    try {
+      notificationService.sendDbNotification(
+          userId,
+          "LEASE_SIGNED",
+          "vi",
+          variables,
+          EventType.LEASE_SIGNED,
+          EntityType.LEASE,
+          leaseId);
+    } catch (Exception e) {
+      log.warn("Failed to send lease signed notification to user {} for lease {}: {}",
+          userId, leaseId, e.getMessage());
+    }
+  }
+
+  private void notifyLeaseExpiryReminder(LeaseAgreement lease, int daysBeforeExpiry) {
+    String propertyAddress = propertyRepository.findById(lease.getPropertyId())
+        .map(Property::getStreetAddress)
+        .orElse("");
+    Map<String, Object> variables = Map.of(
+        "leaseId", lease.getLeaseAgreementId().toString(),
+        "propertyAddress", propertyAddress,
+        "leaseEndDate", lease.getLeaseEndDate() != null ? lease.getLeaseEndDate().toString() : "",
+        "daysBeforeExpiry", daysBeforeExpiry
+    );
+
+    notifyLeaseExpiryReminderRecipient(lease.getLandlordId(), variables, lease.getLeaseAgreementId());
+    notifyLeaseExpiryReminderRecipient(lease.getRenterId(), variables, lease.getLeaseAgreementId());
+    if (lease.getAgentId() != null) {
+      notifyLeaseExpiryReminderRecipient(lease.getAgentId(), variables, lease.getLeaseAgreementId());
+    }
+  }
+
+  private void notifyLeaseExpiryReminderRecipient(UUID userId, Map<String, Object> variables, UUID leaseId) {
+    try {
+      notificationService.sendDbNotification(
+          userId,
+          "LEASE_EXPIRY_REMINDER",
+          "vi",
+          variables,
+          EventType.LEASE_EXPIRY_REMINDER,
+          EntityType.LEASE,
+          leaseId
+      );
+    } catch (RuntimeException e) {
+      log.warn("Failed to send lease expiry reminder to user {} for lease {}: {}",
+          userId, leaseId, e.getMessage());
+      throw e;
+    }
+  }
+
+  private void notifyLandlordSigned(LeaseAgreement lease) {
+    String propertyAddress = propertyRepository.findById(lease.getPropertyId())
+        .map(Property::getStreetAddress)
+        .orElse("");
+    Map<String, Object> variables = Map.of(
+        "leaseId", lease.getLeaseAgreementId().toString(),
+        "propertyAddress", propertyAddress);
+
+    notifyLandlordSignedRecipient(lease.getLandlordId(), variables, lease.getLeaseAgreementId());
+    notifyLandlordSignedRecipient(lease.getRenterId(), variables, lease.getLeaseAgreementId());
+  }
+
+  private void notifyLandlordSignedRecipient(UUID userId, Map<String, Object> variables, UUID leaseId) {
+    try {
+      notificationService.sendDbNotification(
+          userId,
+          "LEASE_LANDLORD_SIGNED",
+          "vi",
+          variables,
+          EventType.LEASE_LANDLORD_SIGNED,
+          EntityType.LEASE,
+          leaseId);
+    } catch (Exception e) {
+      log.warn("Failed to send landlord signed notification to user {} for lease {}: {}",
+          userId, leaseId, e.getMessage());
     }
   }
 
@@ -519,13 +707,20 @@ public class LeaseAgreementApplicationService {
   public LeaseResponse confirmLandlordSigned(UUID leaseId) {
     LeaseAgreement lease = findLeaseOrThrow(leaseId);
 
+    if (lease.getStatus() == LeaseStatus.PENDING_RENTER) {
+      log.info("Lease {} landlord signing was already confirmed; returning current PENDING_RENTER state", leaseId);
+      return toEnrichedResponse(lease);
+    }
+
     if (lease.getStatus() != LeaseStatus.PENDING_LANDLORD) {
       throw new BusinessConflictException(
           "Lease must be in PENDING_LANDLORD status to confirm landlord signing. "
-              + "Current status: " + lease.getStatus(), "ERROR_LEASE_INVALID_STATUS_FOR_LANDLORD");
+              + "Current status: " + lease.getStatus(),
+          "ERROR_LEASE_INVALID_STATUS_FOR_LANDLORD");
     }
 
     lease.submitToRenter();
+    notifyLandlordSigned(lease);
     log.info("Lease {} transitioned to PENDING_RENTER after landlord confirmed signing", leaseId);
     return toEnrichedResponse(leaseAgreementRepository.save(lease));
   }
@@ -534,6 +729,32 @@ public class LeaseAgreementApplicationService {
     LeaseAgreement lease = findLeaseOrThrow(leaseId);
     lease.reject(reason);
     return toEnrichedResponse(leaseAgreementRepository.save(lease));
+  }
+
+  /**
+   * Cancels a lease agreement before it becomes active.
+   * <p>
+   * This is different from termination: cancellation is allowed only while the
+   * contract is still a draft or in the DocuSign signing phase. Either the renter
+   * or landlord can cancel their own contract; admins can cancel any contract.
+   */
+  public LeaseResponse cancelLease(UUID leaseId, CancelLeaseRequest request) {
+    LeaseAgreement lease = findLeaseOrThrow(leaseId);
+    UUID callerId = getCurrentUserId();
+
+    if (!lease.getLandlordId().equals(callerId)
+        && !lease.getRenterId().equals(callerId)
+        && !hasCurrentUserRole("ROLE_ADMIN")) {
+      throw new BusinessConflictException(
+          "Only the landlord, renter, or an admin can cancel this lease.",
+          "ERROR_LEASE_CANCEL_PARTICIPANT_ONLY");
+    }
+
+    String reason = request != null ? request.getReason() : null;
+    lease.cancel(reason, callerId);
+    LeaseAgreement saved = leaseAgreementRepository.save(lease);
+    log.info("Lease {} cancelled by user {} — reason: {}", leaseId, callerId, reason);
+    return toEnrichedResponse(saved);
   }
 
   /**
@@ -586,13 +807,23 @@ public class LeaseAgreementApplicationService {
         Map.of("reason", reason != null ? reason : "Không có lý do cụ thể"),
         EventType.LEASE_TERMINATED,
         EntityType.LEASE,
-        leaseId
-    );
+        leaseId);
 
     return toEnrichedResponse(lease);
   }
 
   // ── Private Helpers ───────────────────────────────────────────────────────
+
+  private void assertNoOtherActiveLeaseForProperty(LeaseAgreement lease) {
+    boolean anotherActiveLeaseExists = leaseAgreementRepository.findActiveLeasesByPropertyId(lease.getPropertyId())
+        .stream()
+        .anyMatch(activeLease -> !activeLease.getLeaseAgreementId().equals(lease.getLeaseAgreementId()));
+    if (anotherActiveLeaseExists) {
+      throw new BusinessConflictException(
+          "Another active lease already exists for this property.",
+          "ERROR_LEASE_ACTIVE_EXISTS");
+    }
+  }
 
   private LeaseAgreement findLeaseOrThrow(UUID leaseId) {
     return leaseAgreementRepository.findById(leaseId)
@@ -614,6 +845,12 @@ public class LeaseAgreementApplicationService {
         "ERROR_USER_NOT_IN_SECURITY_CONTEXT");
   }
 
+  private boolean hasCurrentUserRole(String role) {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    return auth != null && auth.getAuthorities().stream()
+        .anyMatch(authority -> role.equals(authority.getAuthority()));
+  }
+
   /**
    * Downloads a document from a URL (e.g. DigitalOcean Spaces CDN) as raw bytes.
    */
@@ -625,6 +862,32 @@ public class LeaseAgreementApplicationService {
       throw new BusinessConflictException(
           "Failed to download lease document from URL: " + documentUrl, "ERROR_LEASE_DOCUMENT_DOWNLOAD_FAILED");
     }
+  }
+
+  private String formatLeaseDuration(Integer durationMonths) {
+    if (durationMonths == null) {
+      return "";
+    }
+
+    if (durationMonths % 12 == 0) {
+      return String.valueOf(durationMonths / 12);
+    }
+
+    return java.math.BigDecimal.valueOf(durationMonths)
+        .divide(java.math.BigDecimal.valueOf(12), 2, java.math.RoundingMode.HALF_UP)
+        .stripTrailingZeros()
+        .toPlainString();
+  }
+
+  private String formatArea(java.math.BigDecimal area) {
+    return area != null ? area.stripTrailingZeros().toPlainString() : "";
+  }
+
+  private String formatCurrentWeekday(LocalDate date) {
+    if (date.getDayOfWeek().getValue() == 7) {
+      return "Chủ Nhật";
+    }
+    return "Thứ " + (date.getDayOfWeek().getValue() + 1);
   }
 
   private String buildDefaultReturnUrl(UUID leaseId, String role, String locale) {
@@ -659,27 +922,61 @@ public class LeaseAgreementApplicationService {
       response.setRenterFullName(renter.getFullName());
       response.setRenterEmail(renter.getEmail().getValue());
       response.setRenterPhone(renter.getPhone());
-      response.setRenterAvatarUrl(renter.getAvatarUrl());
+      response.setRenterAvatarUrl(nullToEmpty(renter.getAvatarUrl()));
     });
+    response.setRenterAvatarUrl(nullToEmpty(response.getRenterAvatarUrl()));
 
     // Enrich landlord info
     userRepository.findById(lease.getLandlordId()).ifPresent(landlord -> {
       response.setLandlordFullName(landlord.getFullName());
       response.setLandlordEmail(landlord.getEmail().getValue());
       response.setLandlordPhone(landlord.getPhone());
-      response.setLandlordAvatarUrl(landlord.getAvatarUrl());
+      response.setLandlordAvatarUrl(nullToEmpty(landlord.getAvatarUrl()));
     });
+    response.setLandlordAvatarUrl(nullToEmpty(response.getLandlordAvatarUrl()));
 
-    // Enrich property info (lazy association — safe within @Transactional context)
+    // Enrich property info. The lazy association may be absent in paged list
+    // queries,
+    // so fall back to the repository to keep list responses display-ready.
     Property property = lease.getProperty();
+    if (property == null) {
+      property = propertyRepository.findById(lease.getPropertyId()).orElse(null);
+    }
     if (property != null) {
       response.setPropertyTitle(property.getStreetAddress());
       response.setPropertyAddress(property.getStreetAddress());
       if (property.getPropertyType() != null) {
         response.setPropertyType(property.getPropertyType().getName());
       }
+      enrichPropertyMedia(response, property.getPropertyId());
     }
 
     return response;
+  }
+
+  private void enrichPropertyMedia(LeaseResponse response, UUID propertyId) {
+    List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propertyId).stream()
+        .filter(PropertyMedia::isImage)
+        .toList();
+
+    PropertyMedia selected = media.stream()
+        .filter(item -> Boolean.TRUE.equals(item.getIsPrimary()))
+        .findFirst()
+        .orElseGet(() -> media.stream().findFirst().orElse(null));
+
+    if (selected != null) {
+      response.setPropertyThumbnailUrl(nullToEmpty(selected.getThumbnailUrl() != null
+          ? selected.getThumbnailUrl()
+          : selected.getMediaUrl()));
+      response.setPropertyImageUrl(nullToEmpty(selected.getMediaUrl()));
+      return;
+    }
+
+    response.setPropertyThumbnailUrl("");
+    response.setPropertyImageUrl("");
+  }
+
+  private String nullToEmpty(String value) {
+    return value != null ? value : "";
   }
 }
