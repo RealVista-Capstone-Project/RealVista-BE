@@ -14,6 +14,9 @@ import com.sep.realvista.infrastructure.config.DocuSignConfig;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.ListingStatus;
+import com.sep.realvista.domain.listing.ListingType;
 import com.sep.realvista.domain.listing.contract.LeaseAgreement;
 import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.listing.contract.LeaseStatus;
@@ -549,13 +552,8 @@ public class LeaseAgreementApplicationService {
           assertNoOtherActiveLeaseForProperty(lease);
           lease.renterSignViaDocuSign();
           lease.markSignedDocumentPending();
-          // Auto-mark the property as RENTED now that the lease is ACTIVE
-          propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
-            property.markAsRented();
-            propertyRepository.save(property);
-            log.info("Property {} automatically marked as RENTED after lease {} completed signing",
-                lease.getPropertyId(), lease.getLeaseAgreementId());
-          });
+          // Auto-mark the property and its published rent listings as RENTED now that the lease is ACTIVE
+          markPropertyAndRentListingsAsRented(lease);
           notifyLeaseSigned(lease);
         }
       }
@@ -563,6 +561,28 @@ public class LeaseAgreementApplicationService {
         lease.reject("DocuSign envelope was " + eventStatus);
       }
       default -> lease.updateDocuSignStatus(eventStatus);
+    }
+  }
+
+  private void markPropertyAndRentListingsAsRented(LeaseAgreement lease) {
+    propertyRepository.findById(lease.getPropertyId()).ifPresent(property -> {
+      property.markAsRented();
+      propertyRepository.save(property);
+      log.info("Property {} automatically marked as RENTED after lease {} completed signing",
+          lease.getPropertyId(), lease.getLeaseAgreementId());
+    });
+
+    UUID closedByUserId = lease.getAgentId() != null ? lease.getAgentId() : lease.getLandlordId();
+    List<Listing> rentedListings = listingRepository.findByPropertyId(lease.getPropertyId()).stream()
+        .filter(listing -> listing.getListingType() == ListingType.RENT)
+        .filter(listing -> listing.getStatus() == ListingStatus.PUBLISHED)
+        .peek(listing -> listing.markAsRentedDueToPropertyClosure(closedByUserId))
+        .toList();
+
+    if (!rentedListings.isEmpty()) {
+      listingRepository.saveAll(rentedListings);
+      log.info("Marked {} rent listings as RENTED after lease {} completed signing for property {}",
+          rentedListings.size(), lease.getLeaseAgreementId(), lease.getPropertyId());
     }
   }
 

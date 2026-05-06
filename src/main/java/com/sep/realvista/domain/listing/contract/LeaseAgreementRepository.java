@@ -36,6 +36,8 @@ public interface LeaseAgreementRepository {
 
     List<LeaseAgreement> findActiveLeasesByPropertyId(UUID propertyId);
 
+    List<LeaseAgreement> findActiveLeasesWithAgentByPropertyId(UUID propertyId);
+
     List<LeaseAgreement> findActiveLeasesEndingBefore(LocalDate date);
 
     List<LeaseAgreement> findActiveLeasesEndingOn(LocalDate date);

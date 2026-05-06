@@ -61,6 +61,14 @@ public interface LeaseAgreementJpaRepository extends JpaRepository<LeaseAgreemen
     );
 
     @Query("SELECT la FROM LeaseAgreement la "
+            + "WHERE la.propertyId = :propertyId "
+            + "AND la.status = com.sep.realvista.domain.listing.contract.LeaseStatus.ACTIVE "
+            + "AND la.agentId IS NOT NULL "
+            + "AND la.deleted = false "
+            + "ORDER BY la.updatedAt DESC")
+    List<LeaseAgreement> findActiveWithAgentByPropertyId(@Param("propertyId") UUID propertyId);
+
+    @Query("SELECT la FROM LeaseAgreement la "
             + "WHERE la.status = :status "
             + "AND la.leaseEndDate IS NOT NULL "
             + "AND la.leaseEndDate < :date "
