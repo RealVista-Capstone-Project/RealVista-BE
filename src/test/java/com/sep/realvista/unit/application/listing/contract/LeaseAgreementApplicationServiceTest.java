@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.CacheManager;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
@@ -49,6 +50,7 @@ class LeaseAgreementApplicationServiceTest {
     @Mock LeaseAgreementMapper leaseAgreementMapper;
     @Mock RestTemplate restTemplate;
     @Mock NotificationApplicationService notificationService;
+    @Mock CacheManager cacheManager;
 
     LeaseAgreementApplicationService service;
 
@@ -64,7 +66,8 @@ class LeaseAgreementApplicationServiceTest {
                 docuSignConfig,
                 leaseAgreementMapper,
                 restTemplate,
-                notificationService
+                notificationService,
+                cacheManager
         );
     }
 

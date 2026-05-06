@@ -31,6 +31,8 @@ import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.notification.EntityType;
 import com.sep.realvista.domain.user.notification.EventType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -75,6 +77,7 @@ public class LeaseAgreementApplicationService {
   private final LeaseAgreementMapper leaseAgreementMapper;
   private final RestTemplate restTemplate;
   private final NotificationApplicationService notificationService;
+  private final CacheManager cacheManager;
 
   // ── CRUD Operations ───────────────────────────────────────────────────────
 
@@ -581,9 +584,23 @@ public class LeaseAgreementApplicationService {
 
     if (!rentedListings.isEmpty()) {
       listingRepository.saveAll(rentedListings);
+      evictListingCacheForListings(rentedListings);
       log.info("Marked {} rent listings as RENTED after lease {} completed signing for property {}",
           rentedListings.size(), lease.getLeaseAgreementId(), lease.getPropertyId());
     }
+  }
+
+  private void evictListingCacheForListings(List<Listing> listings) {
+    Cache listingCache = cacheManager.getCache("listings");
+    if (listingCache == null) {
+      return;
+    }
+    listings.stream()
+        .map(Listing::getListingId)
+        .forEach(id -> {
+          listingCache.evict(id);
+          log.debug("Evicted listing cache for ID: {}", id);
+        });
   }
 
   private void notifyLeaseSigned(LeaseAgreement lease) {
