@@ -68,6 +68,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -171,6 +173,11 @@ public class ListingApplicationService {
      */
     @Transactional(readOnly = true)
     public ListingDetailResponse getListingDetail(UUID listingId, UUID userId, boolean recordView) {
+        return getListingDetail(listingId, userId, recordView, false);
+    }
+
+    @Transactional(readOnly = true)
+    public ListingDetailResponse getListingDetail(UUID listingId, UUID userId, boolean recordView, boolean editing) {
         // Route through self (proxy) so @Cacheable on getCachedListingDetail fires correctly
         ListingDetailResponse response = self.getCachedListingDetail(listingId);
         ensureListingDetailAccessible(response, userId);
@@ -184,6 +191,20 @@ public class ListingApplicationService {
         // Record view for analytics (async - does not slow down response)
         if (recordView) {
             listingAnalyticsService.recordView(listingId, userId);
+        }
+
+        // Filter media for agents when editing: only show media uploaded by property owner or this agent
+        if (editing && userId != null) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean isAgent = auth != null && auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_AGENT"));
+            if (isAgent && response.getPropertyOwner() != null) {
+                UUID propertyOwnerId = response.getPropertyOwner().getUserId();
+                response.setMedia(response.getMedia().stream()
+                        .filter(m -> m.getUploadBy().equals(propertyOwnerId)
+                                || m.getUploadBy().equals(userId))
+                        .collect(Collectors.toList()));
+            }
         }
 
         return response;
@@ -287,6 +308,11 @@ public class ListingApplicationService {
      */
     @Transactional(readOnly = true)
     public ListingDetailResponse getListingBySlug(String slug, UUID userId, boolean recordView) {
+        return getListingBySlug(slug, userId, recordView, false);
+    }
+
+    @Transactional(readOnly = true)
+    public ListingDetailResponse getListingBySlug(String slug, UUID userId, boolean recordView, boolean editing) {
         log.info("Fetching listing detail for slug: {}", slug);
         // Find listing by slug (not cached, lightweight operation)
         Listing listing = listingRepository.findBySlug(slug)
@@ -295,7 +321,7 @@ public class ListingApplicationService {
                     return new ResourceNotFoundException("Listing with slug: " + slug);
                 });
         // Delegate to getListingDetail which handles caching by listingId
-        return getListingDetail(listing.getListingId(), userId, recordView);
+        return getListingDetail(listing.getListingId(), userId, recordView, editing);
     }
 
     /**
