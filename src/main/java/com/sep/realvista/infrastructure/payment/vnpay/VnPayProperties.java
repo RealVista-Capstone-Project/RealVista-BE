@@ -13,6 +13,8 @@ public class VnPayProperties {
     private String tmnCode;
     private String hashSecret;
     private String payUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+    /** QueryDR / refund API host path (POST JSON). */
+    private String queryUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
     /**
      * Browser Return URL — must match merchant portal exactly (same string as sent in vnp_ReturnUrl).
      * FE forwards vnp_* query params from this page to the API verify endpoint.

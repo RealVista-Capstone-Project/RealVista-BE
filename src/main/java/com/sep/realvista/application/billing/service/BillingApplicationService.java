@@ -33,15 +33,19 @@ import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.infrastructure.payment.payos.PayOsPaymentRequestInfo;
 import com.sep.realvista.infrastructure.payment.payos.PayOsPaymentResult;
 import com.sep.realvista.infrastructure.payment.payos.PayOsService;
+import com.sep.realvista.infrastructure.payment.vnpay.VnPayPaymentLink;
 import com.sep.realvista.infrastructure.payment.vnpay.VnPayProperties;
+import com.sep.realvista.infrastructure.payment.vnpay.VnPayQueryResult;
 import com.sep.realvista.infrastructure.payment.vnpay.VnPayService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -229,13 +233,16 @@ public class BillingApplicationService {
                     .build();
 
         } else {
-            String checkoutUrl = vnPayService.buildPaymentUrl(
-                    order.getCheckoutOrderId().toString(), amountLong / 10, vnPayOrderInfo, vnPayReturnUrl, clientIp);
+            // VNPay: send full amount (VnPayService multiplies by 100 internally per VNPay spec).
+            VnPayPaymentLink link = vnPayService.buildPaymentUrl(
+                    order.getCheckoutOrderId().toString(), amountLong, vnPayOrderInfo, vnPayReturnUrl, clientIp);
+            order.setVnpCreateDate(link.createDate());
+            checkoutOrderRepository.save(order);
 
             return CheckoutResponse.builder()
                     .checkoutOrderId(order.getCheckoutOrderId().toString())
                     .orderCode(order.getOrderCode())
-                    .checkoutUrl(checkoutUrl)
+                    .checkoutUrl(link.checkoutUrl())
                     .paymentMethod("VNPAY")
                     .planName(planName)
                     .amount(amountLong)
@@ -303,7 +310,11 @@ public class BillingApplicationService {
                     return Map.of("RspCode", "02", "Message", "Order already confirmed");
                 }
                 if (vnPayService.isSuccess(responseCode)) {
-                    completeCheckoutOrder(order);
+                    try {
+                        completeCheckoutOrder(order);
+                    } catch (DataIntegrityViolationException ex) {
+                        log.info("VNPay IPN: concurrent confirm (race) ref={}", txnRef);
+                    }
                     log.info("VNPay IPN: payment success ref={}", txnRef);
                     return Map.of("RspCode", "00", "Message", "Confirm Success");
                 } else {
@@ -337,10 +348,7 @@ public class BillingApplicationService {
             UUID checkoutOrderId = UUID.fromString(txnRef);
             return checkoutOrderRepository.findById(checkoutOrderId).map(order -> {
                 if (vnPayService.isSuccess(responseCode)) {
-                    if (transactionRepository.findByOrderCode(order.getOrderCode()).isEmpty()) {
-                        completeCheckoutOrder(order);
-                    }
-                    return frontendUrl + "/vi/subscribe?payment=success";
+                    return frontendUrl + "/vi/subscribe?payment=success&checkout_order_id=" + checkoutOrderId;
                 } else {
                     return frontendUrl + "/vi/subscribe?payment=failed";
                 }
@@ -351,6 +359,83 @@ public class BillingApplicationService {
         } catch (IllegalArgumentException e) {
             return frontendUrl + "/vi/subscribe?payment=failed";
         }
+    }
+
+    /**
+     * Confirms VNPay payment via QueryDR, then creates transaction and activates package (idempotent with IPN).
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public TransactionStatusResponse verifyVnPayTransaction(
+            UUID checkoutOrderId, UUID requestingUserId, String clientIp) {
+        CheckoutOrder order = checkoutOrderRepository.findById(checkoutOrderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Checkout order not found"));
+
+        if (!order.getUserId().equals(requestingUserId)) {
+            throw new ResourceNotFoundException("Checkout order not found");
+        }
+        if (order.getPaymentMethod() != PaymentMethod.VNPAY) {
+            throw new DomainException(
+                    "Only VNPay checkout orders can be verified with QueryDR",
+                    "ERROR_BILLING_VNPAY_ORDER_ONLY");
+        }
+
+        Transaction existingTxn = transactionRepository.findByOrderCode(order.getOrderCode()).orElse(null);
+        if (existingTxn != null) {
+            return toTransactionStatusResponse(existingTxn);
+        }
+
+        if (order.getVnpCreateDate() == null || order.getVnpCreateDate().isBlank()) {
+            throw new DomainException(
+                    "Checkout order is missing VNPay create timestamp",
+                    "ERROR_BILLING_VNPAY_ORDER_INVALID");
+        }
+
+        final VnPayQueryResult result;
+        try {
+            result = vnPayService.queryTransaction(
+                    order.getCheckoutOrderId().toString(),
+                    order.getVnpCreateDate(),
+                    clientIp);
+        } catch (RestClientException ex) {
+            log.warn("VNPay QueryDR HTTP error", ex);
+            throw new BusinessConflictException(
+                    "Không thể kết nối VNPay để xác thực giao dịch",
+                    "ERROR_BILLING_VNPAY_NOT_VERIFIED");
+        }
+
+        if (result.isPending()) {
+            throw new BusinessConflictException(
+                    "Giao dịch đang chờ ghi nhận tại VNPay",
+                    "ERROR_BILLING_VNPAY_PENDING");
+        }
+        if (!result.isSettled()) {
+            throw new BusinessConflictException(
+                    "Giao dịch chưa được VNPay xác nhận thanh toán thành công",
+                    "ERROR_BILLING_VNPAY_NOT_VERIFIED");
+        }
+
+        long expectedAmount = order.getAmount().longValue() * 100L;
+        if (result.amount() == null || result.amount() != expectedAmount) {
+            throw new BusinessConflictException(
+                    "Số tiền giao dịch không khớp",
+                    "ERROR_BILLING_VNPAY_AMOUNT_MISMATCH");
+        }
+
+        transactionTemplate.executeWithoutResult(status -> {
+            Transaction txn = transactionRepository.findByOrderCode(order.getOrderCode()).orElse(null);
+            if (txn != null) {
+                return;
+            }
+            try {
+                completeCheckoutOrder(order);
+            } catch (DataIntegrityViolationException ex) {
+                log.info("VNPay verify race with IPN for orderCode={}", order.getOrderCode());
+            }
+        });
+
+        Transaction txn = transactionRepository.findByOrderCode(order.getOrderCode())
+                .orElseThrow(() -> new IllegalStateException("Expected transaction after VNPay verify"));
+        return toTransactionStatusResponse(txn);
     }
 
     // -------------------------------------------------------------------------

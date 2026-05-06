@@ -8,6 +8,7 @@ import com.sep.realvista.application.billing.dto.CheckoutResponse;
 import com.sep.realvista.application.billing.dto.FeaturePackageResponse;
 import com.sep.realvista.application.billing.dto.TransactionResponse;
 import com.sep.realvista.application.billing.dto.TransactionStatusResponse;
+import com.sep.realvista.application.billing.dto.VnPayVerifyRequest;
 import com.sep.realvista.application.billing.service.BillingApplicationService;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.domain.billing.subscription.FeatureType;
@@ -271,6 +272,21 @@ public class BillingController {
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(redirectUrl))
                 .build();
+    }
+
+    @PostMapping("/payment/vnpay-verify")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @Operation(summary = "Verify VNPay payment via QueryDR and activate subscription or boost")
+    public ResponseEntity<ApiResponse<TransactionStatusResponse>> verifyVnPay(
+            @Valid @RequestBody VnPayVerifyRequest body,
+            @AuthenticationPrincipal SecurityUserDetails currentUser,
+            HttpServletRequest httpRequest
+    ) {
+        TransactionStatusResponse status = billingService.verifyVnPayTransaction(
+                body.getCheckoutOrderId(),
+                currentUser.getUserId(),
+                getClientIp(httpRequest));
+        return ResponseEntity.ok(ApiResponse.success(status));
     }
 
     // -------------------------------------------------------------------------
