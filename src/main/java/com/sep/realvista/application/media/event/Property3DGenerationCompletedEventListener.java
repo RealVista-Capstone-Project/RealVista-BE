@@ -36,11 +36,11 @@ public class Property3DGenerationCompletedEventListener {
             return;
         }
 
-        String title = event.isSuccess() ? "3D Tour Generated Successfully" : "3D Tour Generation Failed";
+        String title = event.isSuccess() ? "Tour 3D đã được tạo thành công" : "Tạo Tour 3D thất bại";
         String message = event.isSuccess() 
-                ? "Your 3D Tour is ready to view for the property."
-                : "We couldn't generate the 3D Tour for your property. "
-                        + "Please try again with different images.";
+                ? "Tour 3D của bạn đã sẵn sàng để xem cho bất động sản."
+                : "Không thể tạo Tour 3D cho bất động sản của bạn. "
+                        + "Vui lòng thử lại với ảnh khác.";
         
         EventType eventType = event.isSuccess() 
                 ? EventType.PROPERTY_3D_GENERATED : EventType.PROPERTY_3D_FAILED;
