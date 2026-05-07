@@ -42,8 +42,8 @@ import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.shared.util.AddressFormatter;
-import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.MediaType;
+import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
@@ -100,30 +100,32 @@ import java.util.stream.Collectors;
 @Transactional
 @Slf4j
 public class ListingApplicationService {
-    private final ListingRepository listingRepository;
-    private final ListingMediaRepository listingMediaRepository;
-    private final ListingPriceHistoryRepository listingPriceHistoryRepository;
-    private final PropertyRepository propertyRepository;
-    private final PropertyAttributeValueRepository propertyAttributeValueRepository;
-    private final PropertyAmenityRepository propertyAmenityRepository;
-    private final ListingMapper listingMapper;
-    private final CostBreakdownService costBreakdownService;
-    private final BookmarkRepository bookmarkRepository;
-    private final PriceChangeNotificationService priceChangeNotificationService;
-    private final ListingAnalyticsService listingAnalyticsService;
-    private final SettingPreferenceRepository settingPreferenceRepository;
-    private final com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
-    private final NotificationApplicationService notificationApplicationService;
-    private final AppointmentApplicationService appointmentApplicationService;
-    private final UserRepository userRepository;
-    private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
-    private final EngagementRepository engagementRepository;
-    private final com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository listingBoostRepository;
-    // Self-injection via @Lazy to route internal calls through the Spring AOP proxy,
-    // ensuring @Cacheable on getCachedListingDetail is actually triggered.
-    @Lazy
-    @Autowired
-    private ListingApplicationService self;
+  private final ListingRepository listingRepository;
+  private final ListingMediaRepository listingMediaRepository;
+  private final ListingPriceHistoryRepository listingPriceHistoryRepository;
+  private final PropertyRepository propertyRepository;
+  private final PropertyAttributeValueRepository propertyAttributeValueRepository;
+  private final PropertyAmenityRepository propertyAmenityRepository;
+  private final ListingMapper listingMapper;
+  private final CostBreakdownService costBreakdownService;
+  private final BookmarkRepository bookmarkRepository;
+  private final ListingAnalyticsService listingAnalyticsService;
+  private final SettingPreferenceRepository settingPreferenceRepository;
+  private final com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
+  private final NotificationApplicationService notificationApplicationService;
+  private final AppointmentApplicationService appointmentApplicationService;
+  private final UserRepository userRepository;
+  private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
+  private final EngagementRepository engagementRepository;
+  private final LeaseAgreementRepository leaseAgreementRepository;
+  private final PriceChangeNotificationService priceChangeNotificationService;
+  private final com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository listingBoostRepository;
+  // Self-injection via @Lazy to route internal calls through the Spring AOP
+  // proxy,
+  // ensuring @Cacheable on getCachedListingDetail is actually triggered.
+  @Lazy
+  @Autowired
+  private ListingApplicationService self;
 
   /**
    * Verifies if a user can modify a listing.
@@ -230,71 +232,10 @@ public class ListingApplicationService {
       throw new ResourceNotFoundException("Listing", listing.getListingId());
     }
 
-    /**
-     * Internal method to get cached listing detail without user-specific data.
-     * This method is cached by listingId only (not per-user).
-     *
-     * @param listingId the listing ID
-     * @return listing detail response (is_favorite will be null)
-     * @throws ResourceNotFoundException if listing not found
-     */
-    @Cacheable(value = "listings", key = "#listingId")
-    public ListingDetailResponse getCachedListingDetail(UUID listingId) {
-        log.info("Fetching listing detail for ID: {}", listingId);
-        // Fetch listing with all associations
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> {
-                    log.error("Listing not found in getCachedListingDetail with ID: {}", listingId);
-                    return new ResourceNotFoundException("Listing", listingId);
-                });
-        // Verify property exists and is accessible
-        Property property = propertyRepository.findById(listing.getPropertyId())
-                .orElseThrow(() -> {
-                    log.error("Property not found for listing ID: {}, property ID: {}",
-                            listingId, listing.getPropertyId());
-                    return new ResourceNotFoundException("Property", listing.getPropertyId());
-                });
-        // Fetch listing media
-        var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
-        // Fetch property attribute values (bedrooms, bathrooms, etc.)
-        List<PropertyAttributeValue> attributeValues = propertyAttributeValueRepository
-                .findByPropertyIdWithAttribute(property.getPropertyId());
-        // Fetch property amenities (gym, pool, security, etc.)
-        List<PropertyAmenity> propertyAmenities = propertyAmenityRepository
-                .findByPropertyIdWithAmenity(property.getPropertyId());
-        // Attach property and user for DTO mapping (read-only, not persisted)
-        listing.attachProperty(property);
-        // Fetch agent's privacy preferences
-        SettingPreference preference = settingPreferenceRepository.findByUserId(listing.getUserId())
-                .orElse(null);
-
-        log.info("Successfully fetched listing detail for ID: {} with {} attributes and {} amenities",
-                listingId, attributeValues.size(), propertyAmenities.size());
-
-        ListingDetailResponse response = listingMapper.toDetailResponseWithMediaAttributesAndAmenities(
-                listing, listingMedias, attributeValues, propertyAmenities, preference);
-
-        // Set isCreatedByOwner flag
-        boolean isCreatedByOwner = listing.getUserId().equals(property.getOwnerId());
-        response.setIsCreatedByOwner(isCreatedByOwner);
-
-        // Set property owner info
-        com.sep.realvista.domain.user.User propertyOwner = userRepository.findById(property.getOwnerId())
-                .orElse(null);
-        if (propertyOwner != null) {
-            SettingPreference ownerPreference = settingPreferenceRepository
-                    .findByUserId(propertyOwner.getUserId()).orElse(null);
-            response.setPropertyOwner(listingMapper.mapAgentInfo(propertyOwner, ownerPreference));
-        }
-
-        // Calculate and add cost breakdown (only for RENT listings)
-        CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
-        response.setCostBreakdown(costBreakdown);
-
-        response.setThreeDRoomNames(buildThreeDRoomNames(listingMedias));
-
-        // Note: is_favorite is NOT set here - it will be set by the public method
-        return response;
+    User requester = userRepository.findById(userId)
+        .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+    if (Boolean.TRUE.equals(requester.getDeleted()) || !requester.isActive()) {
+      throw new ResourceNotFoundException("Listing", listing.getListingId());
     }
   }
 
@@ -358,6 +299,8 @@ public class ListingApplicationService {
     // Calculate and add cost breakdown (only for RENT listings)
     CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
     response.setCostBreakdown(costBreakdown);
+
+    response.setThreeDRoomNames(buildThreeDRoomNames(listingMedias));
 
     // Note: is_favorite is NOT set here - it will be set by the public method
     return response;
@@ -575,404 +518,11 @@ public class ListingApplicationService {
   public PriceHistoryResponse getPriceHistory(UUID listingId) {
     log.info("Fetching price history for listing ID: {}", listingId);
 
-        // Fetch price history entries
-        List<ListingPriceHistory> historyEntries = listingPriceHistoryRepository
-                .findByListingIdOrderByCreatedAtDesc(listingId);
-
-        // Build price history DTOs with calculated changes
-        // Entries are ordered DESC (newest first), so we compare each entry
-        // to the NEXT (older) entry to determine if price increased/decreased
-        List<PriceHistoryDTO> priceHistoryDTOs = new ArrayList<>();
-
-        for (int i = 0; i < historyEntries.size(); i++) {
-            ListingPriceHistory entry = historyEntries.get(i);
-            PriceChangeType changeType;
-            BigDecimal priceChange = null;
-            Double priceChangePercent = null;
-
-            // Null safety check for entry price
-            if (entry.getPrice() == null) {
-                log.warn("Skipping price history entry with null price for listing ID: {}",
-                        listingId);
-                continue;
-            }
-
-            // Look ahead to the next (older) entry for comparison
-            if (i + 1 < historyEntries.size()) {
-                BigDecimal olderPrice = historyEntries.get(i + 1).getPrice();
-
-                // Null safety check for older price
-                if (olderPrice == null) {
-                    changeType = PriceChangeType.UNCHANGED;
-                    priceChange = BigDecimal.ZERO;
-                    priceChangePercent = 0d;
-                } else {
-                    int comparison = entry.getPrice().compareTo(olderPrice);
-                    if (comparison > 0) {
-                        changeType = PriceChangeType.INCREASED;
-                    } else if (comparison < 0) {
-                        changeType = PriceChangeType.DECREASED;
-                    } else {
-                        changeType = PriceChangeType.UNCHANGED;
-                    }
-
-                    priceChange = entry.getPrice().subtract(olderPrice);
-
-                    if (olderPrice.compareTo(BigDecimal.ZERO) > 0) {
-                        priceChangePercent = priceChange
-                                .divide(olderPrice, 4, RoundingMode.HALF_UP)
-                                .multiply(BigDecimal.valueOf(100))
-                                .doubleValue();
-                    }
-                }
-            } else {
-                // Last entry (oldest in history) - this is the initial price
-                changeType = PriceChangeType.INITIAL;
-            }
-
-            PriceHistoryDTO dto = PriceHistoryDTO.builder()
-                    .priceHistoryId(entry.getListingPriceHistoryId())
-                    .price(entry.getPrice())
-                    .minPrice(entry.getMinPrice())
-                    .maxPrice(entry.getMaxPrice())
-                    .changedAt(entry.getCreatedAt())
-                    .priceChange(priceChange)
-                    .priceChangePercent(priceChangePercent)
-                    .changeType(changeType)
-                    .build();
-
-            priceHistoryDTOs.add(dto);
-        }
-
-        log.info("Successfully fetched {} price history entries for listing ID: {}",
-                priceHistoryDTOs.size(), listingId);
-
-        return PriceHistoryResponse.builder()
-                .listingId(listingId)
-                .currentPrice(listing.getPrice())
-                .priceHistory(priceHistoryDTOs)
-                .build();
-    }
-
-    /**
-     * Create a new listing.
-     *
-     * @param request the create listing request
-     * @param userId  the user ID creating the listing
-     * @return listing response
-     * @throws ResourceNotFoundException if property not found
-     */
-    public ListingResponse createListing(
-            CreateListingRequest request,
-            UUID userId) {
-        log.info("Creating new listing for user ID: {}, property ID: {}", userId, request.getPropertyId());
-
-        // Verify property exists
-        Property property = propertyRepository.findById(request.getPropertyId())
-                .orElseThrow(() -> {
-                    log.error("Property not found with ID: {}", request.getPropertyId());
-                    return new ResourceNotFoundException("Property", request.getPropertyId());
-                });
-
-        // Build listing entity in DRAFT status initially
-        Listing listing = Listing.builder()
-                .propertyId(request.getPropertyId())
-                .userId(userId)
-                .listingType(request.getListingType())
-                .name(request.getName())
-                .slug("placeholder-" + UUID.randomUUID()) // temporary unique slug; updated after persist
-                .price(request.getPrice())
-                .minPrice(request.getMinPrice())
-                .maxPrice(request.getMaxPrice())
-                .isNegotiable(request.getIsNegotiable() != null ? request.getIsNegotiable() : false)
-                .availableFrom(request.getAvailableFrom())
-                .content(request.getContent())
-                .status(ListingStatus.DRAFT)
-                .build();
-
-        // Handle immediate publication if requested
-        if (Boolean.TRUE.equals(request.getShouldPublish())) {
-            validatePropertyCanPublishListing(property, request.getListingType(), request.getAvailableFrom());
-
-            // 2. Verify no other published listing of same type exists for this user/property
-            boolean duplicateExists = listingRepository.existsByPropertyIdAndListingTypeAndStatusAndUserId(
-                    property.getPropertyId(), request.getListingType(), ListingStatus.PUBLISHED, userId);
-            if (duplicateExists) {
-                log.error("Listing creator {} already has a published {} listing for property {}",
-                        userId, request.getListingType(), property.getPropertyId());
-                throw new BusinessConflictException(String.format(
-                        "A published listing of type %s already exists for this property and user.",
-                        request.getListingType().name()), "ERROR_DUPLICATE_LISTING_PUBLISH");
-            }
-
-            consumeListingQuotaIfFirstPublish(listing, userId);
-            listing.publish();
-        }
-
-        // Persist first so that the real listingId is generated by the DB/Hibernate
-        Listing savedListing = listingRepository.save(listing);
-
-        // Now generate the proper SEO slug using the real persisted ID
-        String slug = com.sep.realvista.shared.util.ShortIdUtils.generateSlug(
-                request.getName(), savedListing.getListingId());
-        savedListing.updateSlug(slug);
-        savedListing = listingRepository.save(savedListing);
-
-        // Create initial price history entry
-        ListingPriceHistory priceHistory = ListingPriceHistory.builder()
-                .listingId(savedListing.getListingId())
-                .price(savedListing.getPrice())
-                .minPrice(savedListing.getMinPrice())
-                .maxPrice(savedListing.getMaxPrice())
-                .changedBy(savedListing.getUserId())
-                .build();
-        listingPriceHistoryRepository.save(priceHistory);
-
-        // 3. Persist media relationships if provided
-        List<UUID> mediaIds = request.getMediaIds();
-        if (mediaIds != null && !mediaIds.isEmpty()) {
-            for (int displayOrder = 0; displayOrder < mediaIds.size(); displayOrder++) {
-                UUID mediaId = mediaIds.get(displayOrder);
-                if (mediaId == null) {
-                    continue; // skip null IDs sent from client
-                }
-                boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
-                ListingMedia listingMedia = ListingMedia.create(
-                        savedListing.getListingId(), mediaId, displayOrder, isPrimary);
-                listingMediaRepository.save(listingMedia);
-            }
-            log.info("Saved {} media records for listing ID: {}", mediaIds.size(), savedListing.getListingId());
-        }
-
-        log.info("Successfully created listing with ID: {}", savedListing.getListingId());
-
-        return listingMapper.toListingResponse(savedListing);
-    }
-
-    /**
-     * Update an existing listing.
-     *
-     * @param listingId the listing ID
-     * @param request   the update listing request
-     * @param userId    the user ID performing the update
-     * @return updated listing response
-     * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the listing creator or property owner
-     */
-    @CacheEvict(value = "listings", key = "#listingId")
-    public ListingResponse updateListing(
-            UUID listingId,
-            UpdateListingRequest request,
-            UUID userId) {
-        log.info("Updating listing ID: {} by user ID: {}", listingId, userId);
-
-        // Fetch listing
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> {
-                    log.error("Listing not found in updateListing with ID: {}", listingId);
-                    return new ResourceNotFoundException("Listing", listingId);
-                });
-
-        // Verify ownership (listing creator OR property owner)
-        verifyListingModificationAuthorization(listing, userId, "update");
-
-        // Track if price changed for price history
-        boolean priceChanged = false;
-        BigDecimal oldPrice = listing.getPrice();
-
-        // Update fields
-        if (request.getName() != null && !listing.getName().equals(request.getName())) {
-            listing.updateSlug(com.sep.realvista.shared.util.ShortIdUtils.generateSlug(
-                    request.getName(), listingId));
-            listing.setName(request.getName());
-        }
-
-        if (request.getPrice() != null || request.getMinPrice() != null
-                || request.getMaxPrice() != null
-                || request.getIsNegotiable() != null) {
-            BigDecimal newPrice = request.getPrice() != null ? request.getPrice() : listing.getPrice();
-            if (!newPrice.equals(oldPrice)) {
-                priceChanged = true;
-            }
-            listing.updatePricing(
-                    request.getPrice(),
-                    request.getMinPrice(),
-                    request.getMaxPrice(),
-                    request.getIsNegotiable());
-        }
-
-        if (request.getAvailableFrom() != null) {
-            listing.setAvailableFrom(request.getAvailableFrom());
-        }
-
-        // Update listing type if requested and allowed
-        if (request.getListingType() != null && !listing.getListingType().equals(request.getListingType())) {
-            if (listing.getStatus() == ListingStatus.PUBLISHED
-                    || listing.getStatus() == ListingStatus.SOLD
-                    || listing.getStatus() == ListingStatus.RENTED) {
-                log.error("Cannot change listing type for listing ID: {} in status: {}",
-                        listingId, listing.getStatus());
-                throw new BusinessConflictException(
-                        "Cannot change listing type for a listing that is Published, Sold, or Rented",
-                        "ERROR_FORBIDDEN_TYPE_CHANGE");
-            }
-            listing.setListingType(request.getListingType());
-        }
-
-        // Save listing
-        Listing updatedListing = listingRepository.save(listing);
-
-        // Create price history entry if price changed
-        if (priceChanged) {
-            ListingPriceHistory priceHistory = ListingPriceHistory.builder()
-                    .listingId(updatedListing.getListingId())
-                    .price(updatedListing.getPrice())
-                    .minPrice(updatedListing.getMinPrice())
-                    .maxPrice(updatedListing.getMaxPrice())
-                    .changedBy(userId)
-                    .build();
-            listingPriceHistoryRepository.save(priceHistory);
-            log.info("Created price history entry for listing ID: {} (old: {}, new: {})",
-                    listingId, oldPrice, updatedListing.getPrice());
-
-            try {
-                priceChangeNotificationService.notifyBookmarkUsersAboutPriceChange(
-                        updatedListing.getListingId(),
-                        updatedListing.getName(),
-                        oldPrice,
-                        updatedListing.getPrice(),
-                        userId);
-            } catch (Exception e) {
-                log.error("Failed to fan-out price-change notifications for listing {}: {}",
-                        updatedListing.getListingId(), e.getMessage(), e);
-            }
-        }
-
-        if (request.getContent() != null) {
-            listing.setContent(request.getContent());
-        }
-
-        // Save listing again if content changed (or just once at the end)
-        updatedListing = listingRepository.save(listing);
-
-        // Update Listing Media if provided
-        List<UUID> mediaIds = request.getMediaIds();
-
-        if (mediaIds != null) {
-            var existingMediaList = listingMediaRepository.findByListingId(updatedListing.getListingId());
-
-            // Remove media no longer selected
-            for (ListingMedia existingMedia : existingMediaList) {
-                if (!mediaIds.contains(existingMedia.getPropertyMediaId())) {
-                    listingMediaRepository.deleteById(existingMedia.getListingMediaId());
-                }
-            }
-
-            // Update remaining or add new
-            for (int i = 0; i < mediaIds.size(); i++) {
-                UUID mediaId = mediaIds.get(i);
-                boolean isPrimary = mediaId.equals(request.getPrimaryMediaId());
-                // Primary media always gets display_order 0; others follow list index
-                int displayOrder = isPrimary ? 0 : i;
-
-                Listing finalUpdatedListing = updatedListing;
-                existingMediaList.stream()
-                        .filter(m -> m.getPropertyMediaId().equals(mediaId))
-                        .findFirst()
-                        .ifPresentOrElse(
-                                existing -> {
-                                    existing.updateDisplayOrder(displayOrder);
-                                    if (isPrimary) {
-                                        existing.markAsPrimary();
-                                    } else {
-                                        existing.removePrimary();
-                                    }
-                                    listingMediaRepository.save(existing);
-                                },
-                                () -> {
-                                    ListingMedia newMedia = ListingMedia.create(
-                                            finalUpdatedListing.getListingId(), mediaId, displayOrder, isPrimary);
-                                    listingMediaRepository.save(newMedia);
-                                }
-                        );
-            }
-            log.info("Updated media for listing ID: {} ({} total items)", listingId, mediaIds.size());
-        }
-
-        log.info("Successfully updated listing ID: {}", listingId);
-
-        return listingMapper.toListingResponse(updatedListing);
-    }
-
-    /**
-     * Delete a listing (soft delete).
-     *
-     * @param listingId the listing ID
-     * @param userId    the user ID performing the deletion
-     * @throws ResourceNotFoundException if listing not found
-     * @throws IllegalStateException     if user is not the listing creator or property owner
-     */
-    public void deleteListing(UUID listingId, UUID userId) {
-        log.info("Deleting listing ID: {} by user ID: {}", listingId, userId);
-
-        // Fetch listing
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> {
-                    log.error("Listing not found deleteListing with ID: {}", listingId);
-                    return new ResourceNotFoundException("Listing", listingId);
-                });
-
-        // Verify ownership (listing creator OR property owner)
-        verifyListingModificationAuthorization(listing, userId, "delete");
-
-        // Soft delete
-        listingRepository.deleteById(listingId);
-
-        log.info("Successfully deleted listing ID: {}", listingId);
-    }
-
-    /**
-     * Get managed listings with pagination, search, and sort.
-     * Returns listings where the user is either the listing creator OR the property owner.
-     *
-     * @param userId   the user ID
-     * @param criteria search criteria
-     * @param pageable pagination info
-     * @return page of user's listings
-     */
-    @Transactional(readOnly = true)
-    public Page<ListingResponse> getManagedListings(
-            UUID userId, ManagedListingSearchCriteria criteria, Pageable pageable) {
-        log.info("Fetching managed listings for user ID: {}", userId);
-
-        Specification<Listing> spec = buildManagedListingSpec(userId, criteria);
-
-        // Handle sorting if specified
-        Pageable effectivePageable = pageable;
-        if (criteria.getSortBy() != null && !criteria.getSortBy().isBlank()) {
-            Sort sort = switch (criteria.getSortBy()) {
-                case "oldest" -> Sort.by(Sort.Direction.ASC, "createdAt");
-                case "priceAsc" -> Sort.by(Sort.Direction.ASC, "price");
-                case "priceDesc" -> Sort.by(Sort.Direction.DESC, "price");
-                default -> Sort.by(Sort.Direction.DESC, "createdAt");
-            };
-            effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
-        } else if (pageable.getSort().isUnsorted()) {
-            effectivePageable = PageRequest.of(pageable.getPageNumber(),
-                    pageable.getPageSize(),
-                    Sort.by(Sort.Direction.DESC, "createdAt"));
-        }
-
-        Page<Listing> listings = listingRepository.findAll(spec, effectivePageable);
-
-        return listings.map(listing -> {
-            ListingResponse response = listingMapper.toListingResponse(listing);
-            // If thumbnail is null, fetch it from repository
-            if (response.getThumbnail() == null) {
-                listingRepository.findThumbnailByListingId(listing.getListingId())
-                        .ifPresent(response::setThumbnail);
-            }
-            return response;
+    // Verify listing exists
+    Listing listing = listingRepository.findById(listingId)
+        .orElseThrow(() -> {
+          log.error("Listing not found getPriceHistory with ID: {}", listingId);
+          return new ResourceNotFoundException("Listing", listingId);
         });
 
     // Fetch price history entries
@@ -1119,23 +669,15 @@ public class ListingApplicationService {
     savedListing.updateSlug(slug);
     savedListing = listingRepository.save(savedListing);
 
-            // User is either creator or property owner.
-            // When the owner views via isOwner, exclude listings whose creator (agent) has been deleted.
-            var propertyJoin = root.join("property", JoinType.LEFT);
-            var userJoin = root.join("user", JoinType.LEFT);
-            Predicate isCreator = cb.equal(root.get("userId"), userId);
-            Predicate isOwner = cb.equal(propertyJoin.get("ownerId"), userId);
-            Predicate creatorNotDeleted = cb.isFalse(userJoin.get("deleted"));
-            Predicate isAgentCreated = cb.and(isOwner, cb.notEqual(root.get("userId"), userId), creatorNotDeleted);
-
-            String createdBy = criteria != null ? criteria.getCreatedBy() : null;
-            if ("SELF".equalsIgnoreCase(createdBy)) {
-                predicates.add(isCreator);
-            } else if ("AGENT".equalsIgnoreCase(createdBy)) {
-                predicates.add(isAgentCreated);
-            } else {
-                predicates.add(cb.or(isCreator, cb.and(isOwner, creatorNotDeleted)));
-            }
+    // Create initial price history entry
+    ListingPriceHistory priceHistory = ListingPriceHistory.builder()
+        .listingId(savedListing.getListingId())
+        .price(savedListing.getPrice())
+        .minPrice(savedListing.getMinPrice())
+        .maxPrice(savedListing.getMaxPrice())
+        .changedBy(savedListing.getUserId())
+        .build();
+    listingPriceHistoryRepository.save(priceHistory);
 
     // 3. Persist media relationships if provided
     List<UUID> mediaIds = request.getMediaIds();
@@ -1250,6 +792,18 @@ public class ListingApplicationService {
       listingPriceHistoryRepository.save(priceHistory);
       log.info("Created price history entry for listing ID: {} (old: {}, new: {})",
           listingId, oldPrice, updatedListing.getPrice());
+
+      try {
+        priceChangeNotificationService.notifyBookmarkUsersAboutPriceChange(
+            updatedListing.getListingId(),
+            updatedListing.getName(),
+            oldPrice,
+            updatedListing.getPrice(),
+            userId);
+      } catch (Exception e) {
+        log.error("Failed to fan-out price-change notifications for listing {}: {}",
+            updatedListing.getListingId(), e.getMessage(), e);
+      }
     }
 
     if (request.getContent() != null) {
@@ -1850,32 +1404,363 @@ public class ListingApplicationService {
             userId, e.getMessage());
       }
     }
+  }
 
-    /**
-     * One label per THREE_D media on the listing, ordered like the gallery. Blank string = unnamed room.
-     */
-    private List<String> buildThreeDRoomNames(List<ListingMedia> listingMedias) {
-        if (listingMedias == null || listingMedias.isEmpty()) {
-            return List.of();
-        }
-        return listingMedias.stream()
-                .filter(lm -> lm.getPropertyMedia() != null && !Boolean.TRUE.equals(lm.getDeleted()))
-                .filter(lm -> lm.getPropertyMedia().getMediaType() == MediaType.THREE_D)
-                .sorted(Comparator.comparing(
-                        ListingMedia::getDisplayOrder,
-                        Comparator.nullsLast(Integer::compareTo)))
-                .map(lm -> extractThreeDRoomLabel(lm.getPropertyMedia().getMetadata()))
-                .collect(Collectors.toList());
+  private void sendOwnerEngagementReviewReminder(Property property, PropertyStatus status) {
+    UUID ownerId = property.getOwnerId();
+    if (ownerId == null) {
+      return;
     }
 
-    private static String extractThreeDRoomLabel(Map<String, Object> metadata) {
-        if (metadata == null) {
-            return "";
-        }
-        Object roomName = metadata.get("room_name");
-        if (roomName instanceof String s) {
-            return s.trim();
-        }
-        return "";
+    List<Engagement> engagements = engagementRepository.findByListingIdInOrPropertyIdIn(
+        Collections.emptyList(), List.of(property.getPropertyId()));
+
+    long actionableCount = engagements.stream()
+        .filter(engagement -> engagement.getStatus() == EngagementStatus.ACCEPTED)
+        .count();
+
+    if (actionableCount == 0) {
+      return;
     }
+
+    userRepository.findById(ownerId).ifPresent(owner -> {
+      if (owner.getEmail() == null || owner.getEmail().getValue() == null
+          || owner.getEmail().getValue().isBlank()) {
+        return;
+      }
+      try {
+        String lang = getLanguageForUser(ownerId);
+        String title = notificationMessageService.getMessage(
+            "OWNER_ENGAGEMENT_REVIEW_REMINDER_TITLE", lang);
+        String message = notificationMessageService.getMessage(
+            "OWNER_ENGAGEMENT_REVIEW_REMINDER_MESSAGE",
+            lang,
+            property.getStreetAddress() != null ? property.getStreetAddress() : "—",
+            getStatusLabelForReminder(status, lang),
+            actionableCount);
+
+        Map<String, String> metadata = Map.of(
+            "property_id", property.getPropertyId().toString(),
+            "source", "listing_closed",
+            "target_path", "/dashboard/manage-agent",
+            "engagement_count", String.valueOf(actionableCount));
+
+        notificationApplicationService.sendNotification(SendNotificationRequest.builder()
+            .userId(owner.getUserId())
+            .userEmail(owner.getEmail().getValue())
+            .title(title)
+            .message(message)
+            .eventType(EventType.OWNER_ENGAGEMENT_REVIEW_REMINDER)
+            .entityType(EntityType.PROPERTY)
+            .entityId(property.getPropertyId())
+            .metadata(metadata)
+            .build());
+      } catch (Exception e) {
+        log.error("Failed to send owner engagement reminder for property {}: {}",
+            property.getPropertyId(), e.getMessage());
+      }
+    });
+  }
+
+  private String getStatusLabelForReminder(PropertyStatus status, String lang) {
+    boolean isEn = "en".equalsIgnoreCase(lang);
+    if (status == PropertyStatus.SOLD) {
+      return isEn ? "sold" : "đã bán";
+    }
+    if (status == PropertyStatus.RENTED) {
+      return isEn ? "rented" : "đã cho thuê";
+    }
+    return isEn ? "closed" : "đã đóng";
+  }
+
+  private String getLanguageForUser(UUID userId) {
+    if (userId == null) {
+      return "vi";
+    }
+    return settingPreferenceRepository.findByUserId(userId)
+        .map(com.sep.realvista.domain.user.preference.SettingPreference::getPreferredLanguage)
+        .orElse("vi");
+  }
+
+  /**
+   * Get related listings by property ID.
+   * Returns both RENT and SALE listings for the same property if they exist and
+   * are active (PUBLISHED).
+   *
+   * @param propertyId the property ID
+   * @return related listings response with rent and sale listings
+   */
+  @Transactional(readOnly = true)
+  public RelatedListingsResponse getRelatedListingsByProperty(UUID propertyId) {
+    log.info("Fetching related listings for property ID: {}", propertyId);
+
+    List<Listing> propertyListings = listingRepository.findByPropertyId(propertyId);
+
+    Listing rentListing = propertyListings.stream()
+        .filter(l -> l.getListingType() == ListingType.RENT)
+        .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+        .findFirst()
+        .orElse(null);
+
+    Listing saleListing = propertyListings.stream()
+        .filter(l -> l.getListingType() == ListingType.SALE)
+        .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
+        .findFirst()
+        .orElse(null);
+
+    RelatedListingsResponse response = RelatedListingsResponse.builder()
+        .rentListing(rentListing != null ? listingMapper.toListingResponse(rentListing) : null)
+        .saleListing(saleListing != null ? listingMapper.toListingResponse(saleListing) : null)
+        .build();
+
+    log.info("Found related listings for property {}: rent={}, sale={}",
+        propertyId, rentListing != null, saleListing != null);
+
+    return response;
+  }
+
+  /**
+   * Bans a listing and cancels all its active appointments.
+   *
+   * @param listingId the listing ID to ban
+   */
+  @CacheEvict(value = "listings", allEntries = true)
+  public void banListing(UUID listingId) {
+    log.info("Banning listing ID: {}", listingId);
+
+    Listing listing = listingRepository.findById(listingId)
+        .orElseThrow(() -> new ResourceNotFoundException("Listing", listingId));
+
+    if (listing.getStatus() == ListingStatus.BANNED) {
+      log.warn("Listing ID: {} is already banned", listingId);
+      return;
+    }
+
+    listing.ban();
+    listingRepository.save(listing);
+
+    // Cancel all active appointments
+    String reason = "Tin đăng này đã bị quản trị viên chặn do vi phạm chính sách.";
+    appointmentApplicationService.cancelActiveAppointmentsByListingId(listingId, listing.getUserId(), reason);
+
+    log.info("Successfully banned listing ID: {} and cancelled active appointments", listingId);
+  }
+
+  // ==================== Compare Operations ====================
+
+  /**
+   * Get compare data for multiple listings.
+   * Returns comprehensive data for each listing including media, attributes,
+   * amenities,
+   * and boost status (featured/hot) for comparison purposes.
+   *
+   * @param listingIds list of listing IDs to compare
+   * @return list of compare data responses
+   * @throws ResourceNotFoundException if any listing not found
+   */
+  @Transactional(readOnly = true)
+  public List<ListingCompareDataResponse> getCompareData(List<UUID> listingIds) {
+    log.info("Fetching compare data for {} listings: {}", listingIds.size(), listingIds);
+
+    return listingIds.stream()
+        .map(this::getSingleCompareData)
+        .collect(Collectors.toList());
+  }
+
+  private ListingCompareDataResponse getSingleCompareData(UUID listingId) {
+    log.debug("Fetching compare data for listing ID: {}", listingId);
+
+    // Fetch listing
+    Listing listing = listingRepository.findById(listingId)
+        .orElseThrow(() -> {
+          log.error("Listing not found in getCompareData with ID: {}", listingId);
+          return new ResourceNotFoundException("Listing", listingId);
+        });
+
+    // Verify property exists
+    Property property = propertyRepository.findById(listing.getPropertyId())
+        .orElseThrow(() -> {
+          log.error("Property not found for listing ID: {}, property ID: {}",
+              listingId, listing.getPropertyId());
+          return new ResourceNotFoundException("Property", listing.getPropertyId());
+        });
+
+    // Fetch listing media
+    var listingMedias = listingMediaRepository.findByListingIdOrderByDisplayOrderAsc(listingId);
+
+    // Fetch property attribute values
+    List<PropertyAttributeValue> attributeValues = propertyAttributeValueRepository
+        .findByPropertyIdWithAttribute(property.getPropertyId());
+
+    // Fetch property amenities
+    List<PropertyAmenity> propertyAmenities = propertyAmenityRepository
+        .findByPropertyIdWithAmenity(property.getPropertyId());
+
+    // Check boost status
+    List<com.sep.realvista.domain.billing.boost.ListingBoost> boosts = listingBoostRepository
+        .findActiveByListingId(listingId);
+    boolean isFeatured = boosts.stream()
+        .anyMatch(b -> b.getBoostType() == com.sep.realvista.domain.billing.boost.BoostType.FEATURED);
+    boolean isHot = boosts.stream()
+        .anyMatch(b -> b.getBoostType() == com.sep.realvista.domain.billing.boost.BoostType.HOT_BADGE);
+
+    // Build response
+    return buildCompareDataResponse(
+        listing, property, listingMedias,
+        attributeValues, propertyAmenities, isFeatured, isHot);
+  }
+
+  private ListingCompareDataResponse buildCompareDataResponse(
+      Listing listing,
+      Property property,
+      List<ListingMedia> listingMedias,
+      List<PropertyAttributeValue> attributeValues,
+      List<PropertyAmenity> propertyAmenities,
+      boolean isFeatured,
+      boolean isHot) {
+
+    // Map attributes to DTOs
+    List<PropertyAttributeDTO> attributeDTOs = attributeValues.stream()
+        .map(pav -> {
+          var attr = pav.getPropertyAttribute();
+          return PropertyAttributeDTO.builder()
+              .attributeId(attr.getPropertyAttributeId())
+              .attributeCode(attr.getCode())
+              .attributeName(attr.getName())
+              .dataType(attr.getDataType().name())
+              .icon(attr.getIcon())
+              .unit(attr.getUnit())
+              .valueNumber(pav.getValueNumber())
+              .valueText(pav.getValueText())
+              .valueBoolean(pav.getValueBoolean())
+              .build();
+        })
+        .collect(Collectors.toList());
+
+    // Map amenities to DTOs
+    List<com.sep.realvista.application.listing.dto.AmenityDTO> amenityDTOs = propertyAmenities.stream()
+        .map(pa -> com.sep.realvista.application.listing.dto.AmenityDTO.builder()
+            .amenityId(pa.getAmenityId())
+            .amenityName(pa.getAmenity() != null
+                ? pa.getAmenity().getAmenityName()
+                : null)
+            .amenityType(pa.getAmenity() != null
+                && pa.getAmenity().getAmenityType() != null
+                    ? pa.getAmenity().getAmenityType().name()
+                    : null)
+            .build())
+        .collect(Collectors.toList());
+
+    // Find key attribute values
+    Integer bedrooms = findAttributeValueAsInteger(attributeValues, "BEDROOMS");
+    Integer bathrooms = findAttributeValueAsInteger(attributeValues, "BATHROOMS");
+    Integer floor = findAttributeValueAsInteger(attributeValues, "FLOOR");
+    Integer totalFloors = findAttributeValueAsInteger(attributeValues, "TOTAL_FLOORS");
+    String direction = findAttributeValueAsString(attributeValues, "DIRECTION");
+
+    // Get thumbnail URL from linked PropertyMedia
+    String thumbnailUrl = listingMedias.stream()
+        .filter(lm -> Boolean.TRUE.equals(lm.getIsPrimary()))
+        .findFirst()
+        .map(lm -> lm.getPropertyMedia() != null
+            ? lm.getPropertyMedia().getMediaUrl()
+            : null)
+        .orElseGet(() -> {
+          if (listingMedias.isEmpty()) {
+            return null;
+          }
+          PropertyMedia pm = listingMedias.get(0).getPropertyMedia();
+          return pm != null ? pm.getMediaUrl() : null;
+        });
+
+    // Build full address (Property has no district/city directly)
+    String fullAddress = AddressFormatter.formatFullAddress(
+        property.getStreetAddress(),
+        property.getLocation() != null
+            ? property.getLocation().getName()
+            : null,
+        null,
+        null);
+
+    return ListingCompareDataResponse.builder()
+        .listingId(listing.getListingId())
+        .slug(listing.getSlug())
+        .name(listing.getName())
+        .price(listing.getPrice())
+        .minPrice(listing.getMinPrice())
+        .maxPrice(listing.getMaxPrice())
+        .listingType(listing.getListingType().name())
+        .isNegotiable(listing.getIsNegotiable())
+        .isFeatured(isFeatured)
+        .isHot(isHot)
+        .thumbnailUrl(thumbnailUrl)
+        .mediaCount(listingMedias.size())
+        .propertyType(property.getPropertyType() != null
+            ? listingMapper.mapPropertyTypeInfo(property.getPropertyType())
+            : null)
+        .location(property.getLocation() != null
+            ? listingMapper.mapLocationInfo(property.getLocation())
+            : null)
+        .fullAddress(fullAddress)
+        .usableSizeM2(property.getUsableSizeM2())
+        .landSizeM2(property.getLandSizeM2())
+        .widthM(property.getWidthM())
+        .lengthM(property.getLengthM())
+        .bedrooms(bedrooms)
+        .bathrooms(bathrooms)
+        .floor(floor)
+        .totalFloors(totalFloors)
+        .direction(direction)
+        .attributes(attributeDTOs)
+        .amenities(amenityDTOs)
+        .availableFrom(listing.getAvailableFrom())
+        .publishedAt(listing.getPublishedAt())
+        .content(listing.getContent())
+        .build();
+  }
+
+  private Integer findAttributeValueAsInteger(List<PropertyAttributeValue> attributeValues, String attributeCode) {
+    return attributeValues.stream()
+        .filter(pav -> attributeCode.equals(pav.getPropertyAttribute().getCode()))
+        .findFirst()
+        .map(PropertyAttributeValue::getValueNumber)
+        .map(BigDecimal::intValue)
+        .orElse(null);
+  }
+
+  private String findAttributeValueAsString(List<PropertyAttributeValue> attributeValues, String attributeCode) {
+    return attributeValues.stream()
+        .filter(pav -> attributeCode.equals(pav.getPropertyAttribute().getCode()))
+        .findFirst()
+        .map(PropertyAttributeValue::getValueText)
+        .orElse(null);
+  }
+
+  /**
+   * One label per THREE_D media on the listing, ordered like the gallery. Blank string = unnamed room.
+   */
+  private List<String> buildThreeDRoomNames(List<ListingMedia> listingMedias) {
+    if (listingMedias == null || listingMedias.isEmpty()) {
+      return List.of();
+    }
+    return listingMedias.stream()
+        .filter(lm -> lm.getPropertyMedia() != null && !Boolean.TRUE.equals(lm.getDeleted()))
+        .filter(lm -> lm.getPropertyMedia().getMediaType() == MediaType.THREE_D)
+        .sorted(Comparator.comparing(
+            ListingMedia::getDisplayOrder,
+            Comparator.nullsLast(Integer::compareTo)))
+        .map(lm -> extractThreeDRoomLabel(lm.getPropertyMedia().getMetadata()))
+        .collect(Collectors.toList());
+  }
+
+  private static String extractThreeDRoomLabel(java.util.Map<String, Object> metadata) {
+    if (metadata == null) {
+      return "";
+    }
+    Object roomName = metadata.get("room_name");
+    if (roomName instanceof String s) {
+      return s.trim();
+    }
+    return "";
+  }
 }
