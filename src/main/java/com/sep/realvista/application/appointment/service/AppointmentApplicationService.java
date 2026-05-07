@@ -62,10 +62,8 @@ public class AppointmentApplicationService {
     @Value("${spring.application.frontend.url}")
     private String frontendUrl;
 
-    private static final DateTimeFormatter DATE_FORMATTER_VI = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy",
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy",
             Locale.forLanguageTag("vi"));
-    private static final DateTimeFormatter DATE_FORMATTER_EN = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy",
-            Locale.ENGLISH);
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
     @Transactional(readOnly = true)
@@ -119,28 +117,29 @@ public class AppointmentApplicationService {
                 .toUriString();
 
         for (Appointment appointment : result.appointments()) {
+            String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
             String tourTime = appointment.getStartTime().format(TIME_FORMATTER)
                     + " - " + appointment.getEndTime().format(TIME_FORMATTER);
+            String status = "Chờ xác nhận";
 
-            // Confirmation email to the booker (Thymeleaf HTML template)
+            // Confirmation email to the booker
             try {
-                String senderLang = getUserLanguage(sender.getUserId());
-                String tourDateForSender = formatTourDate(appointment.getStartTime(), senderLang);
-
                 Map<String, Object> confirmationVars = new HashMap<>();
                 confirmationVars.put("senderName", sender.getFullName());
                 confirmationVars.put("listingName", listingName);
                 confirmationVars.put("propertyAddress", propertyAddress);
-                confirmationVars.put("tourDate", tourDateForSender);
+                confirmationVars.put("tourDate", tourDate);
                 confirmationVars.put("tourTime", tourTime);
-                confirmationVars.put("status", pendingTourStatusLabel(senderLang));
+                confirmationVars.put("status", status);
                 confirmationVars.put("notes", appointment.getSenderNotes());
                 confirmationVars.put("viewAppointmentUrl", appointmentsUrl);
 
-                emailService.sendTemplateMessageAsync(
+                String lang = getUserLanguage(sender.getUserId());
+
+                emailService.sendDbTemplateMessageAsync(
                         sender.getEmail().getValue(),
-                        tourBookingConfirmationSubject(listingName, senderLang),
-                        "tour-booking-confirmation",
+                        "TOUR_BOOKING_CONFIRMATION",
+                        lang,
                         confirmationVars);
                 log.info("Sent tour confirmation email to sender: {}", sender.getEmail().getValue());
             } catch (Exception e) {
@@ -150,9 +149,6 @@ public class AppointmentApplicationService {
 
             // Notification email to the property owner
             try {
-                String ownerLang = getUserLanguage(owner.getUserId());
-                String tourDateForOwner = formatTourDate(appointment.getStartTime(), ownerLang);
-
                 Map<String, Object> notificationVars = new HashMap<>();
                 notificationVars.put("ownerName", owner.getFullName());
                 notificationVars.put("senderName", sender.getFullName());
@@ -161,16 +157,18 @@ public class AppointmentApplicationService {
                         sender.getPhone() != null ? sender.getPhone() : "N/A");
                 notificationVars.put("listingName", listingName);
                 notificationVars.put("propertyAddress", propertyAddress);
-                notificationVars.put("tourDate", tourDateForOwner);
+                notificationVars.put("tourDate", tourDate);
                 notificationVars.put("tourTime", tourTime);
-                notificationVars.put("status", pendingTourStatusLabel(ownerLang));
+                notificationVars.put("status", status);
                 notificationVars.put("notes", appointment.getSenderNotes());
                 notificationVars.put("viewAppointmentUrl", appointmentsUrl);
 
-                emailService.sendTemplateMessageAsync(
+                String lang = getUserLanguage(owner.getUserId());
+
+                emailService.sendDbTemplateMessageAsync(
                         owner.getEmail().getValue(),
-                        tourBookingNotificationSubject(listingName, ownerLang),
-                        "tour-booking-notification",
+                        "TOUR_BOOKING_NOTIFICATION",
+                        lang,
                         notificationVars);
                 log.info("Sent tour notification email to owner: {}", owner.getEmail().getValue());
             } catch (Exception e) {
@@ -188,22 +186,21 @@ public class AppointmentApplicationService {
         String listingName = listing.getName();
 
         for (Appointment appointment : result.appointments()) {
+            String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
             String tourTime = appointment.getStartTime().format(TIME_FORMATTER)
                     + " - " + appointment.getEndTime().format(TIME_FORMATTER);
-            String tourDateVi = appointment.getStartTime().format(DATE_FORMATTER_VI);
 
             // Build metadata for deep linking on frontend/mobile
             Map<String, String> metadata = new HashMap<>();
             metadata.put("listing_id", listing.getListingId().toString());
             metadata.put("appointment_id", appointment.getAppointmentId().toString());
-            metadata.put("tour_date", tourDateVi);
+            metadata.put("tour_date", tourDate);
             metadata.put("tour_time", tourTime);
 
             // In-app + push notification to the OWNER (most important - they need to
             // respond)
             try {
                 String lang = getUserLanguage(owner.getUserId());
-                String tourDateForOwner = formatTourDate(appointment.getStartTime(), lang);
                 notificationApplicationService.sendDbNotification(
                         owner.getUserId(),
                         "NEW_TOUR_REQUEST",
@@ -211,7 +208,7 @@ public class AppointmentApplicationService {
                         Map.of(
                                 "senderName", sender.getFullName(),
                                 "listingName", listingName,
-                                "tourDate", tourDateForOwner,
+                                "tourDate", tourDate,
                                 "tourTime", tourTime
                         ),
                         EventType.NEW_TOUR_REQUEST,
@@ -225,14 +222,13 @@ public class AppointmentApplicationService {
             // In-app + push notification to the SENDER (confirmation)
             try {
                 String lang = getUserLanguage(sender.getUserId());
-                String tourDateForSender = formatTourDate(appointment.getStartTime(), lang);
                 notificationApplicationService.sendDbNotification(
                         sender.getUserId(),
                         "TOUR_BOOKING_SUCCESS",
                         lang,
                         Map.of(
                                 "listingName", listingName,
-                                "tourDate", tourDateForSender,
+                                "tourDate", tourDate,
                                 "tourTime", tourTime
                         ),
                         EventType.APPOINTMENT_CONFIRMED,
@@ -446,7 +442,7 @@ public class AppointmentApplicationService {
         User recipient = actorId.equals(sender.getUserId()) ? receiver : sender;
 
         String listingName = appointment.getListing() != null ? appointment.getListing().getName() : "Listing";
-        String tourDate = appointment.getStartTime().format(DATE_FORMATTER_VI);
+        String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
         String tourTime = appointment.getStartTime().format(TIME_FORMATTER)
                 + " - " + appointment.getEndTime().format(TIME_FORMATTER);
 
@@ -479,7 +475,7 @@ public class AppointmentApplicationService {
         }
 
         String listingName = listing.getName();
-        String tourDate = appointment.getStartTime().format(DATE_FORMATTER_VI);
+        String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
         String tourTime = appointment.getStartTime().format(TIME_FORMATTER)
                 + " - " + appointment.getEndTime().format(TIME_FORMATTER);
 
@@ -590,6 +586,7 @@ public class AppointmentApplicationService {
         }
 
         String listingName = listing.getName();
+        String tourDate = appointment.getStartTime().format(DATE_FORMATTER);
         String tourTime = appointment.getStartTime().format(TIME_FORMATTER)
                 + " - " + appointment.getEndTime().format(TIME_FORMATTER);
         String propertyAddress = buildPropertyAddress(listing);
@@ -599,35 +596,25 @@ public class AppointmentApplicationService {
                 .toUriString();
 
         User recipient = null;
-        String subject = "";
-        String template = "";
         Map<String, Object> vars = new HashMap<>();
 
         switch (appointment.getStatus()) {
             case ACCEPTED -> {
                 recipient = sender;
-                subject = "Lịch tham quan được chấp nhận: " + listingName;
-                template = "tour-booking-status-change";
                 vars.put("status", "Đã chấp nhận");
             }
             case REJECTED -> {
                 recipient = sender;
-                subject = "Lịch tham quan bị từ chối: " + listingName;
-                template = "tour-booking-status-change";
                 vars.put("status", "Đã từ chối");
-                vars.put("reason", appointment.getRejectionReason() != null ? appointment.getRejectionReason() : "");
+                vars.put("reason", appointment.getRejectionReason());
             }
             case CANCELED -> {
                 boolean cancelledBySender = appointment.getCanceledByUserId().equals(sender.getUserId());
                 recipient = cancelledBySender ? receiver : sender;
                 User actor = cancelledBySender ? sender : receiver;
-                subject = "Lịch tham quan đã bị hủy: " + listingName;
-                template = "tour-booking-status-change";
                 vars.put("status", "Đã hủy");
                 vars.put("actorName", actor.getFullName());
-                vars.put("reason", appointment.getCancellationReason() != null
-                        ? appointment.getCancellationReason()
-                        : "");
+                vars.put("reason", appointment.getCancellationReason());
             }
             case PENDING, COMPLETED -> {
                 // No email for PENDING or COMPLETED from this method
@@ -635,23 +622,21 @@ public class AppointmentApplicationService {
             default -> log.debug("No email logic for status: {}", appointment.getStatus());
         }
 
-        if (recipient != null && !template.isEmpty()) {
+        if (recipient != null) {
             try {
-                String lang = getUserLanguage(recipient.getUserId());
-                vars.put("subject", subject);
                 vars.put("recipientName", recipient.getFullName());
                 vars.put("listingName", listingName);
                 vars.put("propertyAddress", propertyAddress);
-                vars.put("tourDate", formatTourDate(appointment.getStartTime(), lang));
+                vars.put("tourDate", tourDate);
                 vars.put("tourTime", tourTime);
                 vars.put("viewAppointmentUrl", appointmentsUrl);
-                vars.putIfAbsent("reason", "");
-                vars.putIfAbsent("actorName", "");
 
-                emailService.sendTemplateMessageAsync(
+                String lang = getUserLanguage(recipient.getUserId());
+
+                emailService.sendDbTemplateMessageAsync(
                         recipient.getEmail().getValue(),
-                        subject,
-                        template,
+                        "TOUR_BOOKING_STATUS_CHANGE",
+                        lang,
                         vars);
             } catch (Exception e) {
                 log.error("Failed to send status change email to {}: {}",
@@ -712,28 +697,6 @@ public class AppointmentApplicationService {
                 log.error("Failed to notify user {} about unpublished listing: {}", sender.getUserId(), e.getMessage());
             }
         }
-    }
-
-    private static boolean isEnglish(String lang) {
-        return lang != null && lang.toLowerCase(Locale.ROOT).startsWith("en");
-    }
-
-    private String formatTourDate(LocalDateTime start, String lang) {
-        return start.format(isEnglish(lang) ? DATE_FORMATTER_EN : DATE_FORMATTER_VI);
-    }
-
-    private static String pendingTourStatusLabel(String lang) {
-        return isEnglish(lang) ? "Pending confirmation" : "Chờ xác nhận";
-    }
-
-    private static String tourBookingConfirmationSubject(String listingName, String lang) {
-        return isEnglish(lang) ? ("Tour booking confirmation: " + listingName)
-                : ("Xác nhận đặt lịch tham quan: " + listingName);
-    }
-
-    private static String tourBookingNotificationSubject(String listingName, String lang) {
-        return isEnglish(lang) ? ("New tour request: " + listingName)
-                : ("Yêu cầu tham quan mới: " + listingName);
     }
 
     private String getUserLanguage(UUID userId) {

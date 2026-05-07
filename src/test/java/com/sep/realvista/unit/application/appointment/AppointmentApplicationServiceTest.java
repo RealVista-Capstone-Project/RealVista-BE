@@ -177,19 +177,19 @@ class AppointmentApplicationServiceTest {
         assertThat(lead.getFullName()).isEqualTo("Sender");
         assertThat(lead.getEmail()).isEqualTo("sender@test.com");
 
-        // Verify confirmation email sent to sender (Thymeleaf HTML)
-        verify(emailService).sendTemplateMessageAsync(
+        // Verify confirmation email sent to sender (DB template)
+        verify(emailService).sendDbTemplateMessageAsync(
                 eq("sender@test.com"),
-                eq("Xác nhận đặt lịch tham quan: Test Listing"),
-                eq("tour-booking-confirmation"),
+                eq("TOUR_BOOKING_CONFIRMATION"),
+                eq("vi"),
                 anyMap()
         );
 
         // Verify notification email sent to owner
-        verify(emailService).sendTemplateMessageAsync(
+        verify(emailService).sendDbTemplateMessageAsync(
                 eq("owner@test.com"),
-                eq("Yêu cầu tham quan mới: Test Listing"),
-                eq("tour-booking-notification"),
+                eq("TOUR_BOOKING_NOTIFICATION"),
+                eq("vi"),
                 anyMap()
         );
 
