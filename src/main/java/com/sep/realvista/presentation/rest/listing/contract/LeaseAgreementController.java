@@ -3,6 +3,7 @@ package com.sep.realvista.presentation.rest.listing.contract;
 import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.listing.contract.LeaseAgreementApplicationService;
+import com.sep.realvista.application.listing.contract.dto.CancelLeaseRequest;
 import com.sep.realvista.application.listing.contract.dto.CreateLeaseRequest;
 import com.sep.realvista.application.listing.contract.dto.LeaseResponse;
 import com.sep.realvista.application.listing.contract.dto.SigningUrlResponse;
@@ -53,6 +54,7 @@ import java.util.UUID;
  *   GET    /api/v1/leases/{id}/landlord-signing-url    — Get landlord signing URL
  *   POST   /api/v1/leases/{id}/confirm-landlord-signed — Confirm landlord signed (PENDING_LANDLORD→PENDING_RENTER)
  *   PUT    /api/v1/leases/{id}/reject                  — Reject lease
+ *   PUT    /api/v1/leases/{id}/cancel                  — Cancel lease before active
  *   PUT    /api/v1/leases/{id}/terminate               — Terminate active lease
  *   POST   /api/v1/leases/docusign/webhook             — DocuSign Connect webhook (public)
  * </pre>
@@ -226,6 +228,18 @@ public class LeaseAgreementController {
       @RequestBody(required = false) Map<String, String> body) {
     String reason = body != null ? body.getOrDefault("reason", null) : null;
     return ResponseEntity.ok(ApiResponse.success("Lease rejected", leaseService.rejectLease(id, reason)));
+  }
+
+  @PutMapping("/{id}/cancel")
+  @PreAuthorize("hasAnyRole('OWNER', 'TENANT', 'ADMIN')")
+  @Operation(summary = "Cancel lease agreement before active", 
+      description = "Cancels a DRAFT, PENDING_LANDLORD, or PENDING_RENTER lease when the landlord or renter "
+      + "does not want to continue the contract signing flow. This is different from termination, "
+      + "which is only for ACTIVE leases.")
+  public ResponseEntity<ApiResponse<LeaseResponse>> cancelLease(
+      @PathVariable UUID id,
+      @RequestBody(required = false) CancelLeaseRequest request) {
+    return ResponseEntity.ok(ApiResponse.success("Lease cancelled", leaseService.cancelLease(id, request)));
   }
 
   @PutMapping("/{id}/terminate")

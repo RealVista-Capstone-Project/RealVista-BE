@@ -89,6 +89,14 @@ public interface DocuSignService {
     );
 
     /**
+     * Downloads the completed signed envelope as a combined PDF from DocuSign.
+     *
+     * @param envelopeId DocuSign envelope ID
+     * @return final signed PDF bytes, including all envelope documents
+     */
+    byte[] downloadCompletedDocument(String envelopeId);
+
+    /**
      * Verifies the HMAC signature on a DocuSign Connect webhook payload.
      *
      * @param payload   Raw request body bytes

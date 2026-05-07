@@ -4,6 +4,7 @@ import com.sep.realvista.domain.listing.appointment.Appointment;
 import com.sep.realvista.domain.listing.appointment.AppointmentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -14,13 +15,19 @@ import java.util.UUID;
 public interface AppointmentRepository extends JpaRepository<Appointment, UUID> {
     @Query("SELECT a FROM Appointment a WHERE a.receiverId = :receiverId "
             + "AND a.deleted = false "
-            + "AND a.startTime BETWEEN :start AND :end "
-            + "AND a.status IN :statuses")
-    List<Appointment> findByReceiverIdAndStartTimeBetweenAndStatusIn(
-            UUID receiverId,
-            LocalDateTime start,
-            LocalDateTime end,
-            List<AppointmentStatus> statuses
+            + "AND ((a.startTime < :end AND a.endTime > :start) "
+            + "     OR (a.proposedStartTime IS NOT NULL "
+            + "         AND a.proposedStartTime < :end "
+            + "         AND a.proposedEndTime > :start)) "
+            + "AND a.status IN :statuses "
+            + "AND (:excludeId IS NULL "
+            + "     OR a.appointmentId != :excludeId)")
+    List<Appointment> findOverlappingAppointments(
+            @Param("receiverId") UUID receiverId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("statuses") List<AppointmentStatus> statuses,
+            @Param("excludeId") UUID excludeId
     );
 
     @Query("SELECT a FROM Appointment a WHERE (a.senderId = :userId OR a.receiverId = :userId) "

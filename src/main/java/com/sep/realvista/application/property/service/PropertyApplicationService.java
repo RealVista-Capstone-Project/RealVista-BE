@@ -56,6 +56,8 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.repository.AppointmentRepository;
 import com.sep.realvista.application.listing.dto.ListingSummaryDTO;
 import com.sep.realvista.domain.listing.ListingStatus;
+import com.sep.realvista.domain.listing.contract.LeaseAgreement;
+import com.sep.realvista.domain.listing.contract.LeaseAgreementRepository;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.domain.user.notification.EntityType;
@@ -115,6 +117,7 @@ public class PropertyApplicationService {
     private final PropertyAttributeRangeRepository propertyAttributeRangeRepository;
     private final PropertyTypeAttributeRepository propertyTypeAttributeRepository;
     private final ListingRepository listingRepository;
+    private final LeaseAgreementRepository leaseAgreementRepository;
     private final AppointmentRepository appointmentRepository;
     private final EngagementRepository engagementRepository;
     private final AppointmentApplicationService appointmentApplicationService;
@@ -536,6 +539,13 @@ public class PropertyApplicationService {
 
             List<PropertyMedia> media = propertyMediaRepository.findByPropertyId(propId);
 
+            if (isAgent) {
+                media = media.stream()
+                        .filter(m -> m.getUploadBy().equals(property.getOwnerId())
+                                || m.getUploadBy().equals(userId))
+                        .collect(Collectors.toList());
+            }
+
             List<PropertyAttributeValue> attributes =
                     propertyAttributeValueRepository.findByPropertyIdWithAttribute(propId);
 
@@ -552,6 +562,7 @@ public class PropertyApplicationService {
             }
             applyOwnerPhoneDisplay(summary, prefsByUserId.get(property.getOwnerId()));
             applySoldByInfo(summary, property);
+            applyRentedByInfo(summary, property);
             return summary;
         }).collect(Collectors.toList());
 
@@ -688,6 +699,43 @@ public class PropertyApplicationService {
         userRepository.findById(soldByUserId).ifPresent(user -> {
             summary.setSoldByName(user.getFullName());
             summary.setSoldByPhone(user.getPhone());
+        });
+    }
+
+    private void applyRentedByInfo(PropertySummaryResponse summary, Property property) {
+        if (summary == null || property == null || property.getStatus() != PropertyStatus.RENTED) {
+            return;
+        }
+
+        UUID rentedByUserId = leaseAgreementRepository.findActiveLeasesWithAgentByPropertyId(property.getPropertyId())
+                .stream()
+                .findFirst()
+                .map(LeaseAgreement::getAgentId)
+                .orElse(null);
+        LocalDateTime rentedAt = null;
+
+        Optional<Listing> rentedListing = listingRepository.findByPropertyId(property.getPropertyId()).stream()
+                .filter(l -> l.getStatus() == ListingStatus.RENTED && l.getRentedByUserId() != null)
+                .max(Comparator.comparing(Listing::getRentedAt, Comparator.nullsLast(Comparator.naturalOrder())));
+
+        if (rentedListing.isPresent()) {
+            rentedAt = rentedListing.get().getRentedAt();
+            if (rentedByUserId == null) {
+                rentedByUserId = rentedListing.get().getRentedByUserId();
+            }
+        }
+
+        if (rentedByUserId == null) {
+            return;
+        }
+
+        summary.setRentedByUserId(rentedByUserId);
+        summary.setRentedAt(rentedAt);
+        summary.setRentedByRole(rentedByUserId.equals(property.getOwnerId()) ? "OWNER" : "AGENT");
+
+        userRepository.findById(rentedByUserId).ifPresent(user -> {
+            summary.setRentedByName(user.getFullName());
+            summary.setRentedByPhone(user.getPhone());
         });
     }
 
@@ -1204,6 +1252,7 @@ public class PropertyApplicationService {
                 summary.setOwnerPhone(owner.getPhone());
             });
             applySoldByInfo(summary, property);
+            applyRentedByInfo(summary, property);
             return summary;
         }).collect(Collectors.toList());
 

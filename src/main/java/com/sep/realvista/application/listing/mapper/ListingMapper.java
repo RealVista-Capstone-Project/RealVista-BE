@@ -319,6 +319,7 @@ public interface ListingMapper {
                 .thumbnailUrl(propertyMedia.getThumbnailUrl())
                 .isPrimary(listingMedia.getIsPrimary())
                 .displayOrder(listingMedia.getDisplayOrder())
+                .uploadBy(propertyMedia.getUploadBy())
                 .metadata(propertyMedia.getMetadata())
                 .build();
     }

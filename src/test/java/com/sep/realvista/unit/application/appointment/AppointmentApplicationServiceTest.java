@@ -81,14 +81,14 @@ class AppointmentApplicationServiceTest {
         UUID listingId = UUID.randomUUID();
         LocalDate date = LocalDate.now().plusDays(1);
         List<LocalTime> expected = List.of(LocalTime.of(9, 0), LocalTime.of(10, 0));
-        when(appointmentService.getAvailableSlots(listingId, date)).thenReturn(expected);
+        when(appointmentService.getAvailableSlots(listingId, date, null)).thenReturn(expected);
 
         // Act
-        List<LocalTime> result = applicationService.getAvailableSlots(listingId, date);
+        List<LocalTime> result = applicationService.getAvailableSlots(listingId, date, null);
 
         // Assert
         assertThat(result).isEqualTo(expected);
-        verify(appointmentService).getAvailableSlots(listingId, date);
+        verify(appointmentService).getAvailableSlots(listingId, date, null);
     }
 
     @Test

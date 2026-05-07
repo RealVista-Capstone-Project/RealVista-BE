@@ -108,6 +108,21 @@ public class PropertySummaryResponse {
     @JsonProperty("sold_at")
     private LocalDateTime soldAt;
 
+    @JsonProperty("rented_by_user_id")
+    private UUID rentedByUserId;
+
+    @JsonProperty("rented_by_name")
+    private String rentedByName;
+
+    @JsonProperty("rented_by_phone")
+    private String rentedByPhone;
+
+    @JsonProperty("rented_by_role")
+    private String rentedByRole;
+
+    @JsonProperty("rented_at")
+    private LocalDateTime rentedAt;
+
     @JsonProperty("allow_rent_listing_when_rented")
     private Boolean allowRentListingWhenRented;
 

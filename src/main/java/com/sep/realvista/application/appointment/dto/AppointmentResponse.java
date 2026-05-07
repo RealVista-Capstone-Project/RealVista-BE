@@ -55,6 +55,14 @@ public class AppointmentResponse {
     @JsonProperty("end_time")
     private LocalDateTime endTime;
 
+    @Schema(description = "Proposed new start time (when in RESCHEDULE_PENDING)")
+    @JsonProperty("proposed_start_time")
+    private LocalDateTime proposedStartTime;
+
+    @Schema(description = "Proposed new end time (when in RESCHEDULE_PENDING)")
+    @JsonProperty("proposed_end_time")
+    private LocalDateTime proposedEndTime;
+
     @Schema(description = "Current status of the appointment")
     private String status;
 
@@ -77,6 +85,14 @@ public class AppointmentResponse {
     @Schema(description = "ID of user who canceled (if applicable)")
     @JsonProperty("canceled_by_user_id")
     private UUID canceledByUserId;
+
+    @Schema(description = "ID of user who last modified/proposed reschedule")
+    @JsonProperty("last_modified_by_user_id")
+    private UUID lastModifiedByUserId;
+
+    @Schema(description = "Reason for rescheduling")
+    @JsonProperty("reschedule_reason")
+    private String rescheduleReason;
 
     @Schema(description = "Whether the current user is the sender")
     @JsonProperty("is_sender")
