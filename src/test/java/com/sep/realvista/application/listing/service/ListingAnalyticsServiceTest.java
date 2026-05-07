@@ -2,6 +2,7 @@ package com.sep.realvista.application.listing.service;
 
 import com.sep.realvista.application.listing.dto.ListingAnalyticsDTO;
 import com.sep.realvista.domain.agent.lead.ListingLeadRepository;
+import com.sep.realvista.domain.listing.analytics.ListingDailyViewBucketRepository;
 import com.sep.realvista.domain.listing.analytics.ListingView;
 import com.sep.realvista.domain.listing.analytics.ListingViewRepository;
 import com.sep.realvista.domain.listing.appointment.Appointment;
@@ -42,6 +43,9 @@ class ListingAnalyticsServiceTest {
 
     @Mock
     private ListingLeadRepository listingLeadRepository;
+
+    @Mock
+    private ListingDailyViewBucketRepository listingDailyViewBucketRepository;
 
     @InjectMocks
     private ListingAnalyticsService listingAnalyticsService;

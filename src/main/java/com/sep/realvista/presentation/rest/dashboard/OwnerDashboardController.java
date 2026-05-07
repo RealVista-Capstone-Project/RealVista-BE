@@ -7,6 +7,7 @@ import com.sep.realvista.application.dashboard.dto.DashboardPropertyItemDTO;
 import com.sep.realvista.application.dashboard.dto.DashboardScheduleResponse;
 import com.sep.realvista.application.dashboard.dto.DashboardStatsResponse;
 import com.sep.realvista.application.dashboard.dto.FeaturedPropertyDTO;
+import com.sep.realvista.application.dashboard.dto.OwnerHeroInsightsResponse;
 import com.sep.realvista.application.dashboard.dto.PerformanceResponse;
 import com.sep.realvista.application.dashboard.dto.PropertyOverviewResponse;
 import com.sep.realvista.application.dashboard.dto.SalesAnalyticsResponse;
@@ -51,6 +52,18 @@ public class OwnerDashboardController {
 
         DashboardStatsResponse response = ownerDashboardService.getStats(ownerId);
         return ResponseEntity.ok(ApiResponse.success("Dashboard stats retrieved successfully", response));
+    }
+
+    @GetMapping("/hero-insights")
+    @PreAuthorize("hasRole('OWNER')")
+    @Operation(summary = "Hero KPIs: views, chat/appt counts linked to listings, completed contracts")
+    public ResponseEntity<ApiResponse<OwnerHeroInsightsResponse>> getHeroInsights(
+            @AuthenticationPrincipal SecurityUserDetails userDetails
+    ) {
+        UUID ownerId = userDetails.getUserId();
+        log.info("Dashboard hero insights request - ownerId: {}", ownerId);
+        OwnerHeroInsightsResponse response = ownerDashboardService.getHeroInsights(ownerId);
+        return ResponseEntity.ok(ApiResponse.success("Hero insights retrieved successfully", response));
     }
 
     @GetMapping("/performance")

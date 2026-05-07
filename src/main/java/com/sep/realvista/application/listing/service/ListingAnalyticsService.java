@@ -5,10 +5,15 @@ import com.sep.realvista.application.listing.dto.AgentPerformanceAnalyticsDTO;
 import com.sep.realvista.application.listing.dto.AgentPerformanceChannelDTO;
 import com.sep.realvista.application.listing.dto.AgentPerformanceTrendPointDTO;
 import com.sep.realvista.application.listing.dto.ListingAnalyticsDTO;
+import com.sep.realvista.application.listing.dto.ListingDailyViewsDayDTO;
+import com.sep.realvista.application.listing.dto.ListingWeeklyViewsDTO;
 import com.sep.realvista.domain.agent.lead.LeadSource;
 import com.sep.realvista.domain.agent.lead.LeadStatus;
 import com.sep.realvista.domain.agent.lead.ListingLeadRepository;
 import com.sep.realvista.domain.listing.Listing;
+import com.sep.realvista.domain.listing.analytics.ListingDailyViewBucket;
+import com.sep.realvista.domain.listing.analytics.ListingDailyViewBucketId;
+import com.sep.realvista.domain.listing.analytics.ListingDailyViewBucketRepository;
 import com.sep.realvista.domain.listing.analytics.ListingView;
 import com.sep.realvista.domain.listing.analytics.ListingViewRepository;
 import com.sep.realvista.domain.listing.appointment.Appointment;
@@ -30,6 +35,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.time.ZoneId;
 import java.time.format.TextStyle;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
@@ -53,10 +59,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ListingAnalyticsService {
 
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+
     private final ListingViewRepository listingViewRepository;
     private final AppointmentRepository appointmentRepository;
     private final ListingRepository listingRepository;
     private final ListingLeadRepository listingLeadRepository;
+    private final ListingDailyViewBucketRepository listingDailyViewBucketRepository;
 
     /**
      * Record a view for a listing by a user.
@@ -95,6 +104,7 @@ public class ListingAnalyticsService {
                 listingViewRepository.save(newView);
                 log.debug("Created new view record for listing: {} by user: {}", listingId, effectiveUserId);
             }
+            incrementDailyBucket(listingId);
         } catch (Exception e) {
             log.error("Failed to record view for listing: {} by user: {}", 
                     listingId, userId != null ? userId : "anonymous", e);
@@ -146,6 +156,54 @@ public class ListingAnalyticsService {
                 .tourBookings(tourBookings)
                 .conversionRate(conversionRate)
                 .build();
+    }
+
+    /**
+     * View counts per calendar day for the Monday–Sunday week containing {@code weekStart}.
+     * Missing days are filled with zero.
+     */
+    @Transactional(readOnly = true)
+    public ListingWeeklyViewsDTO getListingViewsByWeek(UUID listingId, LocalDate weekStartParam) {
+        LocalDate monday = weekStartParam.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate sunday = monday.plusDays(6);
+        List<ListingDailyViewBucket> rows =
+                listingDailyViewBucketRepository.findByListingIdAndBucketDateBetweenOrderByBucketDateAsc(
+                        listingId, monday, sunday);
+        Map<LocalDate, Long> byDay = rows.stream()
+                .collect(Collectors.toMap(ListingDailyViewBucket::getBucketDate, ListingDailyViewBucket::getViewCount));
+
+        List<ListingDailyViewsDayDTO> days = new ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            LocalDate d = monday.plusDays(i);
+            long raw = byDay.getOrDefault(d, 0L);
+            int v = raw > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) raw;
+            days.add(ListingDailyViewsDayDTO.builder().date(d).views(v).build());
+        }
+        return ListingWeeklyViewsDTO.builder()
+                .weekStart(monday)
+                .days(days)
+                .build();
+    }
+
+    private void incrementDailyBucket(UUID listingId) {
+        try {
+            LocalDate day = LocalDate.now(VIETNAM_ZONE);
+            ListingDailyViewBucketId id = new ListingDailyViewBucketId(listingId, day);
+            Optional<ListingDailyViewBucket> found = listingDailyViewBucketRepository.findById(id);
+            if (found.isPresent()) {
+                ListingDailyViewBucket bucket = found.get();
+                bucket.incrementBy(1);
+                listingDailyViewBucketRepository.save(bucket);
+            } else {
+                listingDailyViewBucketRepository.save(ListingDailyViewBucket.builder()
+                        .listingId(listingId)
+                        .bucketDate(day)
+                        .viewCount(1)
+                        .build());
+            }
+        } catch (Exception e) {
+            log.error("Failed to increment daily view bucket for listing {}", listingId, e);
+        }
     }
 
     @Transactional(readOnly = true)

@@ -4,6 +4,8 @@ import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyStatus;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,6 +26,7 @@ public interface PropertyRepository {
             String keyword,
             PropertyStatus status,
             List<PropertyStatus> statuses,
+            UUID propertyTypeId,
             Pageable pageable);
 
     org.springframework.data.domain.Page<Property> findByAgentIdAndCriteria(
@@ -31,6 +34,7 @@ public interface PropertyRepository {
             String keyword,
             PropertyStatus status,
             List<PropertyStatus> statuses,
+            UUID propertyTypeId,
             Pageable pageable);
 
     boolean existsById(UUID id);
@@ -45,6 +49,29 @@ public interface PropertyRepository {
     List<Property> searchByAddress(String address);
 
     long countByLocationIds(List<UUID> locationIds);
+
+    /**
+     * Finds properties that may be duplicates of the given address.
+     * Uses two detection strategies:
+     * 1. Exact normalized text match: LOWER(TRIM(street_address)) + same location_id
+     * 2. Coordinate proximity: within ~30 metres (0.0003 degree bounding box)
+     *
+     * @param locationId       ward-level location ID
+     * @param normalizedAddress LOWER(TRIM(streetAddress)) for comparison
+     * @param latitude         center latitude
+     * @param longitude        center longitude
+     * @param excludeId        property to exclude (e.g. when editing)
+     * @return list of candidate duplicate properties
+     */
+    List<Property> findPotentialDuplicates(UUID locationId, String normalizedAddress,
+                                           BigDecimal latitude, BigDecimal longitude,
+                                           UUID excludeId);
+
+    /**
+     * Finds ACTIVE/AVAILABLE/RESERVED/RENTED properties that have had no active listing
+     * for longer than the given cutoff and are not yet STALE.
+     */
+    List<Property> findPropertiesEligibleForStale(LocalDateTime lastActiveListingCutoff);
 
     /**
      * Admin-only: finds all non-deleted properties with optional keyword, status, user,

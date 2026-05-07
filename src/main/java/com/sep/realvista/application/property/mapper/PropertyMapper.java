@@ -39,6 +39,16 @@ public class PropertyMapper {
 
         boolean has3d = media != null && media.stream().anyMatch(PropertyMedia::is3D);
 
+        String thumbnailUrl = media == null ? null : media.stream()
+                .filter(pm -> Boolean.TRUE.equals(pm.getIsPrimary()) && pm.getMediaUrl() != null)
+                .findFirst()
+                .map(pm -> pm.getThumbnailUrl() != null ? pm.getThumbnailUrl() : pm.getMediaUrl())
+                .orElseGet(() -> media.stream()
+                        .filter(pm -> pm.getMediaUrl() != null)
+                        .findFirst()
+                        .map(pm -> pm.getThumbnailUrl() != null ? pm.getThumbnailUrl() : pm.getMediaUrl())
+                        .orElse(null));
+
         return PropertyDetailResponse.builder()
                 .propertyId(property.getPropertyId())
                 .ownerId(property.getOwnerId())
@@ -59,6 +69,11 @@ public class PropertyMapper {
                 .slug(property.getSlug())
                 .extraAttributes(property.getExtraAttributes())
                 .has3d(has3d)
+                .thumbnailUrl(thumbnailUrl)
+                .propertyTypeInfo(mapPropertyType(property))
+                .locationInfo(mapLocation(property))
+                .flaggedForAdminReview(Boolean.TRUE.equals(property.getFlaggedForAdminReview()))
+                .duplicateOverrideReason(property.getDuplicateOverrideReason())
                 .allowRentListingWhenRented(Boolean.TRUE.equals(property.getAllowRentListingWhenRented()))
                 .attributes(attributes != null ? attributes.stream()
                         .map(this::mapAttribute).collect(Collectors.toList()) : null)
@@ -107,6 +122,8 @@ public class PropertyMapper {
                 .thumbnailUrl(thumbnailUrl)
                 .priceRange(property.getPriceRange())
                 .allowRentListingWhenRented(Boolean.TRUE.equals(property.getAllowRentListingWhenRented()))
+                .flaggedForAdminReview(Boolean.TRUE.equals(property.getFlaggedForAdminReview()))
+                .duplicateOverrideReason(property.getDuplicateOverrideReason())
                 .media(media != null ? media.stream()
                         .map(this::mapMedia).collect(Collectors.toList()) : null)
                 .attributes(attributes != null ? attributes.stream()

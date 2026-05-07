@@ -8,6 +8,7 @@ import com.sep.realvista.application.dashboard.dto.DashboardScheduleItemDTO;
 import com.sep.realvista.application.dashboard.dto.DashboardScheduleResponse;
 import com.sep.realvista.application.dashboard.dto.DashboardStatsResponse;
 import com.sep.realvista.application.dashboard.dto.FeaturedPropertyDTO;
+import com.sep.realvista.application.dashboard.dto.OwnerHeroInsightsResponse;
 import com.sep.realvista.application.dashboard.dto.PerformancePointDTO;
 import com.sep.realvista.application.dashboard.dto.PerformanceResponse;
 import com.sep.realvista.application.dashboard.dto.PropertyOverviewResponse;
@@ -109,6 +110,21 @@ public class DashboardQueryRepositoryImpl implements DashboardQueryRepository {
                         BigDecimal.valueOf(activeLeadsPrevious)))
                 .onProgress(onProgress)
                 .closedDeals(closedCurrent)
+                .build();
+    }
+
+    @Override
+    public OwnerHeroInsightsResponse getHeroInsights(UUID ownerId) {
+        long listingViews = sumViews(ownerId, null, null).longValue();
+        long completed = countClosedListings(ownerId, null, null);
+        long chatMsgs = countChatMessagesLinkedToOwnerListings(ownerId);
+        long appts = countAppointmentsOnOwnerListings(ownerId);
+
+        return OwnerHeroInsightsResponse.builder()
+                .listingViewsTotal(listingViews)
+                .chatMessagesOnListings(chatMsgs)
+                .appointmentsOnOwnerListings(appts)
+                .completedContracts(completed)
                 .build();
     }
 
@@ -473,7 +489,20 @@ public class DashboardQueryRepositoryImpl implements DashboardQueryRepository {
                              AND lv.deleted = false
                        ), 0) AS views,
                        l.status,
-                       l.listing_type
+                       l.listing_type,
+                       COALESCE((
+                           SELECT COALESCE(pm.thumbnail_url, pm.media_url)
+                           FROM listing_medias lm
+                           JOIN property_medias pm ON pm.property_media_id = lm.property_media_id
+                           WHERE lm.listing_id = l.listing_id
+                             AND lm.deleted = false
+                             AND pm.deleted = false
+                           ORDER BY lm.is_primary DESC,
+                                    pm.is_primary DESC,
+                                    lm.display_order ASC,
+                                    lm.created_at ASC
+                           LIMIT 1
+                       ), '') AS image_url
                 """ + baseFrom + where + orderBy;
 
         Query dataQuery = entityManager.createNativeQuery(dataSql)
@@ -503,6 +532,7 @@ public class DashboardQueryRepositoryImpl implements DashboardQueryRepository {
                     .views(longVal(row[5]))
                     .status(str(row[6]))
                     .listingType(str(row[7]))
+                    .imageUrl(str(row[8]))
                     .build());
         }
 
@@ -877,5 +907,42 @@ public class DashboardQueryRepositoryImpl implements DashboardQueryRepository {
             log.debug("Cannot parse long from value: {}", value);
             return 0L;
         }
+    }
+
+    private long countChatMessagesLinkedToOwnerListings(UUID ownerId) {
+        String sql = """
+                SELECT COUNT(*) FROM messages m
+                WHERE m.deleted = false
+                  AND m.message_type <> 'SYSTEM'
+                  AND EXISTS (
+                      SELECT 1
+                      FROM listing_leads ll
+                      INNER JOIN listings l ON l.listing_id = ll.listing_id AND l.deleted = false
+                      INNER JOIN properties p ON p.property_id = l.property_id AND p.deleted = false
+                      WHERE ll.deleted = false
+                        AND ll.conversation_id IS NOT NULL
+                        AND ll.conversation_id = m.conversation_id
+                        AND p.owner_id = :ownerId
+                  )
+                """;
+        Object result = entityManager.createNativeQuery(sql)
+                .setParameter("ownerId", ownerId)
+                .getSingleResult();
+        return longVal(result);
+    }
+
+    private long countAppointmentsOnOwnerListings(UUID ownerId) {
+        String sql = """
+                SELECT COUNT(*) FROM appointments a
+                INNER JOIN listings l ON l.listing_id = a.listing_id AND l.deleted = false
+                INNER JOIN properties p ON p.property_id = l.property_id AND p.deleted = false
+                WHERE a.deleted = false
+                  AND a.listing_id IS NOT NULL
+                  AND p.owner_id = :ownerId
+                """;
+        Object result = entityManager.createNativeQuery(sql)
+                .setParameter("ownerId", ownerId)
+                .getSingleResult();
+        return longVal(result);
     }
 }

@@ -133,6 +133,9 @@ class ListingApplicationServiceUnitTest {
         @Mock
         private EngagementRepository engagementRepository;
 
+        @Mock
+        private com.sep.realvista.application.listing.service.PriceChangeNotificationService priceChangeNotificationService;
+
         @InjectMocks
         private ListingApplicationService listingApplicationService;
 

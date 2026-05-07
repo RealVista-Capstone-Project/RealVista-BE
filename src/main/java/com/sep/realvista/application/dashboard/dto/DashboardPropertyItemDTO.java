@@ -21,4 +21,6 @@ public class DashboardPropertyItemDTO {
     private Long views;
     private String status;
     private String listingType;
+    /** Primary listing image URL (thumbnail preferred). */
+    private String imageUrl;
 }

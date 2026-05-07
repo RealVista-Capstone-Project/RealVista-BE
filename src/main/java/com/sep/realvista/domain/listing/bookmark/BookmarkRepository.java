@@ -83,4 +83,12 @@ public interface BookmarkRepository {
             ListingType listingType,
             Pageable pageable
     );
+
+    /**
+     * Returns user IDs who have an active (non-deleted) bookmark on the listing.
+     *
+     * @param listingId the listing ID
+     * @return distinct user IDs
+     */
+    List<UUID> findActiveUserIdsByListingId(UUID listingId);
 }

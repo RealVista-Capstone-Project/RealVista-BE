@@ -6,6 +6,7 @@ import com.sep.realvista.application.dashboard.dto.DashboardPropertyItemDTO;
 import com.sep.realvista.application.dashboard.dto.DashboardScheduleResponse;
 import com.sep.realvista.application.dashboard.dto.DashboardStatsResponse;
 import com.sep.realvista.application.dashboard.dto.FeaturedPropertyDTO;
+import com.sep.realvista.application.dashboard.dto.OwnerHeroInsightsResponse;
 import com.sep.realvista.application.dashboard.dto.PerformanceResponse;
 import com.sep.realvista.application.dashboard.dto.PropertyOverviewResponse;
 import com.sep.realvista.application.dashboard.dto.SalesAnalyticsResponse;
@@ -27,6 +28,11 @@ public class OwnerDashboardService {
     @Transactional(readOnly = true)
     public DashboardStatsResponse getStats(UUID ownerId) {
         return dashboardQueryRepository.getStats(ownerId);
+    }
+
+    @Transactional(readOnly = true)
+    public OwnerHeroInsightsResponse getHeroInsights(UUID ownerId) {
+        return dashboardQueryRepository.getHeroInsights(ownerId);
     }
 
     @Transactional(readOnly = true)

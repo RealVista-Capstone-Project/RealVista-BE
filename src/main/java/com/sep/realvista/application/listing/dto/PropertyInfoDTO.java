@@ -39,4 +39,8 @@ public class PropertyInfoDTO {
     private Integer bathrooms;
     @JsonProperty("area_sqft")
     private BigDecimal areaSqft;
+
+    /** Owner-entered expected price range when the property was created. */
+    @JsonProperty("price_range")
+    private PropertyPriceRangeDTO priceRange;
 }

@@ -110,4 +110,10 @@ public class PropertySummaryResponse {
 
     @JsonProperty("allow_rent_listing_when_rented")
     private Boolean allowRentListingWhenRented;
+
+    @JsonProperty("flagged_for_admin_review")
+    private Boolean flaggedForAdminReview;
+
+    @JsonProperty("duplicate_override_reason")
+    private String duplicateOverrideReason;
 }

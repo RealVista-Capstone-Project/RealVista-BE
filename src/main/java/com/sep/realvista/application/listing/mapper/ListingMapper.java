@@ -5,8 +5,10 @@ import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.ListingDetailResponse;
 import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
+import com.sep.realvista.application.listing.dto.MoneyRangeDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyInfoDTO;
+import com.sep.realvista.application.listing.dto.PropertyPriceRangeDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
 import com.sep.realvista.domain.user.User;
 import com.sep.realvista.domain.user.UserStatus;
@@ -23,6 +25,8 @@ import com.sep.realvista.domain.property.location.LocationType;
 import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.common.value.PriceRangeVO;
+import com.sep.realvista.domain.common.value.RangeVO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -201,7 +205,31 @@ public interface ListingMapper {
                 .widthM(property.getWidthM())
                 .lengthM(property.getLengthM())
                 .description(property.getDescriptions())
+                .priceRange(toPropertyPriceRangeDto(property.getPriceRange()))
                 .build();
+    }
+
+    /** Maps owner-entered expected price bands from the property aggregate. */
+    default PropertyPriceRangeDTO toPropertyPriceRangeDto(PriceRangeVO vo) {
+        if (vo == null) {
+            return null;
+        }
+        MoneyRangeDTO rent = toMoneyRangeDto(vo.getRent());
+        MoneyRangeDTO buy = toMoneyRangeDto(vo.getBuy());
+        if (rent == null && buy == null) {
+            return null;
+        }
+        return PropertyPriceRangeDTO.builder().rent(rent).buy(buy).build();
+    }
+
+    default MoneyRangeDTO toMoneyRangeDto(RangeVO range) {
+        if (range == null) {
+            return null;
+        }
+        if (range.getMin() == null && range.getMax() == null) {
+            return null;
+        }
+        return MoneyRangeDTO.builder().min(range.getMin()).max(range.getMax()).build();
     }
 
     default LocationInfoDTO mapLocationInfo(Location location) {

@@ -6,6 +6,7 @@ import com.sep.realvista.application.dashboard.dto.DashboardPropertyItemDTO;
 import com.sep.realvista.application.dashboard.dto.DashboardScheduleResponse;
 import com.sep.realvista.application.dashboard.dto.DashboardStatsResponse;
 import com.sep.realvista.application.dashboard.dto.FeaturedPropertyDTO;
+import com.sep.realvista.application.dashboard.dto.OwnerHeroInsightsResponse;
 import com.sep.realvista.application.dashboard.dto.PerformanceResponse;
 import com.sep.realvista.application.dashboard.dto.PropertyOverviewResponse;
 import com.sep.realvista.application.dashboard.dto.SalesAnalyticsResponse;
@@ -16,6 +17,8 @@ import java.util.UUID;
 
 public interface DashboardQueryRepository {
     DashboardStatsResponse getStats(UUID ownerId);
+
+    OwnerHeroInsightsResponse getHeroInsights(UUID ownerId);
 
     PerformanceResponse getPerformance(UUID ownerId, String period, String metric);
 

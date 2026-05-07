@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -103,6 +104,14 @@ public class ListingDetailResponse {
     // Cost Breakdown (for RENT listings)
     @JsonProperty("cost_breakdown")
     private CostBreakdownDTO costBreakdown;
+
+    /**
+     * Display names for 3D tour rooms on this listing (one entry per THREE_D media, in display order).
+     * Empty string means the room has no name in metadata.
+     */
+    @JsonProperty("three_d_room_names")
+    @Builder.Default
+    private List<String> threeDRoomNames = new ArrayList<>();
 
     // Bookmark status for the requesting user (null for anonymous)
     @JsonProperty("is_favorite")

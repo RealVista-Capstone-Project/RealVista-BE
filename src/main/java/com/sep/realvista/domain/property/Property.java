@@ -26,6 +26,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -112,6 +113,16 @@ public class Property extends BaseEntity {
     @Column(name = "allow_rent_listing_when_rented", nullable = false)
     @Builder.Default
     private Boolean allowRentListingWhenRented = false;
+
+    @Column(name = "flagged_for_admin_review", nullable = false)
+    @Builder.Default
+    private Boolean flaggedForAdminReview = false;
+
+    @Column(name = "duplicate_override_reason", length = 100)
+    private String duplicateOverrideReason;
+
+    @Column(name = "stale_at")
+    private LocalDateTime staleAt;
 
     public void publish() {
         if (this.status != PropertyStatus.DRAFT && this.status != PropertyStatus.VERIFIED) {
@@ -311,5 +322,28 @@ public class Property extends BaseEntity {
     /** Admin-only: reassign the property to a different owner. */
     public void reassignOwner(UUID newOwnerId) {
         this.ownerId = newOwnerId;
+    }
+
+    /** Flag this property for admin review due to a duplicate address conflict. */
+    public void flagForAdminReview(String overrideReason) {
+        this.flaggedForAdminReview = true;
+        this.duplicateOverrideReason = overrideReason;
+    }
+
+    /** Clear the admin review flag after the admin has resolved the issue. */
+    public void clearAdminReviewFlag() {
+        this.flaggedForAdminReview = false;
+    }
+
+    /** Mark property as stale (no active listing for too long). */
+    public void markAsStale() {
+        this.status = PropertyStatus.STALE;
+        this.staleAt = LocalDateTime.now();
+    }
+
+    /** Reactivate a stale or inactive property. */
+    public void reactivate() {
+        this.status = PropertyStatus.DRAFT;
+        this.staleAt = null;
     }
 }

@@ -41,6 +41,7 @@ import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.shared.util.AddressFormatter;
 import com.sep.realvista.domain.property.Property;
+import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.PropertyStatus;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
@@ -77,6 +78,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +105,7 @@ public class ListingApplicationService {
     private final ListingMapper listingMapper;
     private final CostBreakdownService costBreakdownService;
     private final BookmarkRepository bookmarkRepository;
+    private final PriceChangeNotificationService priceChangeNotificationService;
     private final ListingAnalyticsService listingAnalyticsService;
     private final SettingPreferenceRepository settingPreferenceRepository;
     private final com.sep.realvista.infrastructure.service.NotificationMessageService notificationMessageService;
@@ -270,6 +273,8 @@ public class ListingApplicationService {
         // Calculate and add cost breakdown (only for RENT listings)
         CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
         response.setCostBreakdown(costBreakdown);
+
+        response.setThreeDRoomNames(buildThreeDRoomNames(listingMedias));
 
         // Note: is_favorite is NOT set here - it will be set by the public method
         return response;
@@ -748,6 +753,18 @@ public class ListingApplicationService {
             listingPriceHistoryRepository.save(priceHistory);
             log.info("Created price history entry for listing ID: {} (old: {}, new: {})",
                     listingId, oldPrice, updatedListing.getPrice());
+
+            try {
+                priceChangeNotificationService.notifyBookmarkUsersAboutPriceChange(
+                        updatedListing.getListingId(),
+                        updatedListing.getName(),
+                        oldPrice,
+                        updatedListing.getPrice(),
+                        userId);
+            } catch (Exception e) {
+                log.error("Failed to fan-out price-change notifications for listing {}: {}",
+                        updatedListing.getListingId(), e.getMessage(), e);
+            }
         }
 
         if (request.getContent() != null) {
@@ -941,7 +958,16 @@ public class ListingApplicationService {
             Predicate isCreator = cb.equal(root.get("userId"), userId);
             Predicate isOwner = cb.equal(propertyJoin.get("ownerId"), userId);
             Predicate creatorNotDeleted = cb.isFalse(userJoin.get("deleted"));
-            predicates.add(cb.or(isCreator, cb.and(isOwner, creatorNotDeleted)));
+            Predicate isAgentCreated = cb.and(isOwner, cb.notEqual(root.get("userId"), userId), creatorNotDeleted);
+
+            String createdBy = criteria != null ? criteria.getCreatedBy() : null;
+            if ("SELF".equalsIgnoreCase(createdBy)) {
+                predicates.add(isCreator);
+            } else if ("AGENT".equalsIgnoreCase(createdBy)) {
+                predicates.add(isAgentCreated);
+            } else {
+                predicates.add(cb.or(isCreator, cb.and(isOwner, creatorNotDeleted)));
+            }
 
             if (criteria != null) {
                 // Listing Type
@@ -1651,5 +1677,31 @@ public class ListingApplicationService {
                 .findFirst()
                 .map(PropertyAttributeValue::getValueText)
                 .orElse(null);
+    }
+
+    /**
+     * One label per THREE_D media on the listing, ordered like the gallery. Blank string = unnamed room.
+     */
+    private List<String> buildThreeDRoomNames(List<ListingMedia> listingMedias) {
+        if (listingMedias == null || listingMedias.isEmpty()) {
+            return List.of();
+        }
+        return listingMedias.stream()
+                .filter(lm -> lm.getPropertyMedia() != null && !Boolean.TRUE.equals(lm.getDeleted()))
+                .filter(lm -> lm.getPropertyMedia().getMediaType() == MediaType.THREE_D)
+                .sorted(Comparator.comparing(ListingMedia::getDisplayOrder, Comparator.nullsLast(Integer::compareTo)))
+                .map(lm -> extractThreeDRoomLabel(lm.getPropertyMedia().getMetadata()))
+                .collect(Collectors.toList());
+    }
+
+    private static String extractThreeDRoomLabel(Map<String, Object> metadata) {
+        if (metadata == null) {
+            return "";
+        }
+        Object roomName = metadata.get("room_name");
+        if (roomName instanceof String s) {
+            return s.trim();
+        }
+        return "";
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,13 +40,15 @@ public class PropertyRepositoryImpl implements PropertyRepository {
             String keyword,
             PropertyStatus status,
             List<PropertyStatus> statuses,
+            UUID propertyTypeId,
             Pageable pageable) {
         String keywordPattern = (keyword == null || keyword.isBlank())
                 ? null
                 : "%" + keyword.trim().toLowerCase() + "%";
         List<PropertyStatus> statusFilter = statuses == null || statuses.isEmpty() ? null : statuses;
         PropertyStatus singleStatus = statusFilter == null ? status : null;
-        return jpaRepository.findByOwnerIdAndKeyword(ownerId, keywordPattern, singleStatus, statusFilter, pageable);
+        return jpaRepository.findByOwnerIdAndKeyword(ownerId, keywordPattern, singleStatus, statusFilter,
+                propertyTypeId, pageable);
     }
 
     @Override
@@ -54,13 +57,15 @@ public class PropertyRepositoryImpl implements PropertyRepository {
             String keyword,
             PropertyStatus status,
             List<PropertyStatus> statuses,
+            UUID propertyTypeId,
             Pageable pageable) {
         String keywordPattern = (keyword == null || keyword.isBlank())
                 ? null
                 : "%" + keyword.trim().toLowerCase() + "%";
         List<PropertyStatus> statusFilter = statuses == null || statuses.isEmpty() ? null : statuses;
         PropertyStatus singleStatus = statusFilter == null ? status : null;
-        return jpaRepository.findByAgentIdAndKeyword(agentId, keywordPattern, singleStatus, statusFilter, pageable);
+        return jpaRepository.findByAgentIdAndKeyword(agentId, keywordPattern, singleStatus, statusFilter,
+                propertyTypeId, pageable);
     }
 
     @Override
@@ -105,6 +110,19 @@ public class PropertyRepositoryImpl implements PropertyRepository {
             return 0;
         }
         return jpaRepository.countByLocationIds(locationIds);
+    }
+
+    @Override
+    public List<Property> findPotentialDuplicates(UUID locationId, String normalizedAddress,
+                                                   BigDecimal latitude, BigDecimal longitude,
+                                                   UUID excludeId) {
+        return jpaRepository.findPotentialDuplicates(locationId, normalizedAddress,
+                latitude, longitude, excludeId);
+    }
+
+    @Override
+    public List<Property> findPropertiesEligibleForStale(LocalDateTime lastActiveListingCutoff) {
+        return jpaRepository.findPropertiesEligibleForStale(lastActiveListingCutoff);
     }
 
     @Override
