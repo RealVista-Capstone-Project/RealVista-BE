@@ -1861,7 +1861,9 @@ public class ListingApplicationService {
         return listingMedias.stream()
                 .filter(lm -> lm.getPropertyMedia() != null && !Boolean.TRUE.equals(lm.getDeleted()))
                 .filter(lm -> lm.getPropertyMedia().getMediaType() == MediaType.THREE_D)
-                .sorted(Comparator.comparing(ListingMedia::getDisplayOrder, Comparator.nullsLast(Integer::compareTo)))
+                .sorted(Comparator.comparing(
+                        ListingMedia::getDisplayOrder,
+                        Comparator.nullsLast(Integer::compareTo)))
                 .map(lm -> extractThreeDRoomLabel(lm.getPropertyMedia().getMetadata()))
                 .collect(Collectors.toList());
     }
