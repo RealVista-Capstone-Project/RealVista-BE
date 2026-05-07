@@ -1042,6 +1042,20 @@ public class ListingApplicationService {
         if (criteria.getPropertyId() != null) {
           predicates.add(cb.equal(propertyJoin.get("propertyId"), criteria.getPropertyId()));
         }
+
+        // Creator: SELF = property owner created the listing; AGENT = broker created on owner's property
+        if (criteria.getCreatedBy() != null
+            && !criteria.getCreatedBy().isBlank()
+            && !criteria.getCreatedBy().equalsIgnoreCase("ALL")) {
+          String createdByUpper = criteria.getCreatedBy().trim().toUpperCase();
+          if ("SELF".equals(createdByUpper)) {
+            predicates.add(cb.equal(root.get("userId"), propertyJoin.get("ownerId")));
+          } else if ("AGENT".equals(createdByUpper)) {
+            predicates.add(cb.notEqual(root.get("userId"), propertyJoin.get("ownerId")));
+          } else {
+            log.warn("Invalid createdBy in managed listing search: {}", criteria.getCreatedBy());
+          }
+        }
       }
 
       return cb.and(predicates.toArray(new Predicate[0]));

@@ -78,7 +78,7 @@ public class CreatePropertyRequest {
 
     /**
      * Optional override reason supplied by the FE after the user acknowledges a duplicate warning.
-     * Allowed values: CONFIRMED_DIFFERENT_UNIT | NEW_OWNER_WITH_DOCS | CONFIRMED_NEW_BUILD
+     * Allowed values: CONFIRMED_DIFFERENT_UNIT | CONFIRMED_NEW_BUILD
      * When present, the property is created as PENDING and flagged for admin review.
      */
     @JsonProperty("override_reason")

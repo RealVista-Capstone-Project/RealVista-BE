@@ -462,20 +462,34 @@ public class PropertyApplicationService {
 
         // Enrich with sold-by info (derived from sold listing)
         if (property.getStatus() == PropertyStatus.SOLD) {
-            listingRepository.findByPropertyId(propertyId).stream()
+            Optional<Listing> soldListing = listingRepository.findByPropertyId(propertyId).stream()
                     .filter(l -> l.getStatus() == ListingStatus.SOLD && l.getSoldByUserId() != null)
-                    .max(java.util.Comparator.comparing(com.sep.realvista.domain.listing.Listing::getSoldAt,
-                            java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
-                    .ifPresent(soldListing -> {
-                        UUID soldByUserId = soldListing.getSoldByUserId();
-                        response.setSoldByUserId(soldByUserId);
-                        response.setSoldAt(soldListing.getSoldAt());
-                        response.setSoldByRole(soldByUserId.equals(property.getOwnerId()) ? "OWNER" : "AGENT");
-                        userRepository.findById(soldByUserId).ifPresent(soldUser -> {
-                            response.setSoldByName(soldUser.getFullName());
-                            response.setSoldByPhone(soldUser.getPhone());
-                        });
-                    });
+                    .max(Comparator.comparing(Listing::getSoldAt, Comparator.nullsLast(Comparator.naturalOrder())));
+
+            if (soldListing.isPresent()) {
+                Listing listing = soldListing.get();
+                UUID soldByUserId = listing.getSoldByUserId();
+                response.setSoldByUserId(soldByUserId);
+                response.setSoldAt(listing.getSoldAt());
+                response.setSoldByRole(soldByUserId.equals(property.getOwnerId()) ? "OWNER" : "AGENT");
+                userRepository.findById(soldByUserId).ifPresent(soldUser -> {
+                    response.setSoldByName(soldUser.getFullName());
+                    response.setSoldByPhone(soldUser.getPhone());
+                });
+            } else {
+                response.setSoldByUserId(property.getOwnerId());
+                response.setSoldByRole("OWNER");
+                response.setSoldByName(response.getOwnerName());
+                response.setSoldByPhone(response.getOwnerPhone());
+                userRepository.findById(property.getOwnerId()).ifPresent(owner -> {
+                    if (response.getSoldByName() == null) {
+                        response.setSoldByName(owner.getFullName());
+                    }
+                    if (response.getSoldByPhone() == null) {
+                        response.setSoldByPhone(owner.getPhone());
+                    }
+                });
+            }
         }
 
         // Fetch active listings for this property
@@ -688,6 +702,22 @@ public class PropertyApplicationService {
                 .max(Comparator.comparing(Listing::getSoldAt, Comparator.nullsLast(Comparator.naturalOrder())));
 
         if (soldListing.isEmpty()) {
+            summary.setSoldByUserId(property.getOwnerId());
+            summary.setSoldByRole("OWNER");
+            if (summary.getOwnerName() != null) {
+                summary.setSoldByName(summary.getOwnerName());
+            }
+            if (summary.getOwnerPhone() != null && summary.getSoldByPhone() == null) {
+                summary.setSoldByPhone(summary.getOwnerPhone());
+            }
+            userRepository.findById(property.getOwnerId()).ifPresent(user -> {
+                if (summary.getSoldByName() == null) {
+                    summary.setSoldByName(user.getFullName());
+                }
+                if (summary.getSoldByPhone() == null) {
+                    summary.setSoldByPhone(user.getPhone());
+                }
+            });
             return;
         }
 
@@ -1132,11 +1162,46 @@ public class PropertyApplicationService {
                     "ERROR_PROPERTY_INVALID_STATUS", new Object[]{newStatus});
         }
 
-        property.updateStatus(newStatus);
+        if (newStatus == PropertyStatus.SOLD) {
+            property.markAsSold();
+        } else if (newStatus == PropertyStatus.RENTED) {
+            property.markAsRented();
+        } else {
+            property.updateStatus(newStatus);
+        }
         propertyRepository.save(property);
+
+        if (newStatus == PropertyStatus.SOLD) {
+            closePublishedListingsAsSoldDueToPropertyClosure(property, currentUserId);
+        }
+
         log.info("Property {} status updated to {} by user {}", propertyId, status, currentUserId);
 
         return getPropertyDetails(propertyId);
+    }
+
+    /**
+     * When the owner sets the property to {@link PropertyStatus#SOLD} via dashboard (not via
+     * {@code markAsSold} on a listing), published listings must be closed with {@code sold_by}
+     * so the owner can see who recorded the sale — same as the listing-driven closure path.
+     */
+    private void closePublishedListingsAsSoldDueToPropertyClosure(Property property, UUID closedByUserId) {
+        UUID propertyId = property.getPropertyId();
+        UUID ownerId = property.getOwnerId();
+        List<Listing> closed = new ArrayList<>();
+        for (Listing l : listingRepository.findByPropertyId(propertyId)) {
+            if (l.getStatus() != ListingStatus.PUBLISHED) {
+                continue;
+            }
+            l.markAsSoldDueToPropertyClosure(closedByUserId);
+            listingRepository.save(l);
+            closed.add(l);
+            appointmentApplicationService.cancelActiveAppointmentsByListingId(
+                    l.getListingId(),
+                    ownerId,
+                    "Property no longer available (sold/rented).");
+        }
+        evictListingDetailCache(closed);
     }
 
     @Transactional

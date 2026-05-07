@@ -168,8 +168,6 @@ public class BillingApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Feature package not found: " + request.getPlanCode()));
 
-        assertNoDowngrade(userId, pkg);
-
         PaymentMethod method = toPaymentMethod(request.getPaymentMethod());
 
         CheckoutOrder order = CheckoutOrder.builder()
@@ -767,25 +765,6 @@ public class BillingApplicationService {
     // -------------------------------------------------------------------------
     // Internal helpers
     // -------------------------------------------------------------------------
-
-    private void assertNoDowngrade(UUID userId, FeaturePackage pkg) {
-        if (pkg.isFree()) {
-            return;
-        }
-        List<UserFeatureSubscription> existing = userFeatureSubscriptionRepository
-                .findActiveByUserIdAndFeatureType(userId, pkg.getFeatureType());
-        int maxTier = existing.stream()
-                .filter(UserFeatureSubscription::isUsable)
-                .mapToInt(s -> FeaturePackageTierHelper.tierLevel(s.getFeaturePackage()))
-                .max()
-                .orElse(0);
-        int newTier = FeaturePackageTierHelper.tierLevel(pkg);
-        if (newTier < maxTier) {
-            throw new BusinessConflictException(
-                    "Bạn đang dùng gói cấp cao hơn. Không thể mua hoặc hạ xuống gói cấp thấp hơn.",
-                    "ERROR_SUBSCRIPTION_DOWNGRADE_BLOCKED");
-        }
-    }
 
     private void supersedeActiveSubscriptionsForFeatureType(UUID userId, FeatureType featureType) {
         List<UserFeatureSubscription> existing = userFeatureSubscriptionRepository

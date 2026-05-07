@@ -323,9 +323,15 @@ public class ListingController {
                         + "Supports pagination, search, and sorting.")
         public ResponseEntity<ApiResponse<PageResponse<ListingResponse>>> getManagedListings(
                         @org.springdoc.core.annotations.ParameterObject ManagedListingSearchCriteria criteria,
+                        @RequestParam(value = "createdBy", required = false) String createdByQuery,
                         @org.springframework.data.web.PageableDefault()
                         org.springframework.data.domain.Pageable pageable,
                         @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+                // Explicit createdBy param so criteria always receives it (backup for @ParameterObject).
+                if (createdByQuery != null && !createdByQuery.isBlank()) {
+                        criteria.setCreatedBy(createdByQuery);
+                }
 
                 log.info("Fetching managed listings for user: {} with criteria: {}", userDetails.getUserId(), criteria);
 

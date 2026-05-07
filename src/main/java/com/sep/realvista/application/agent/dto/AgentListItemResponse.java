@@ -27,6 +27,9 @@ public class AgentListItemResponse {
     private Integer yearsOfExperience;
     private Integer propertiesSold;
 
+    /** Agent account email (when available). */
+    private String email;
+
     /** Engagement status this agent has with the queried property (null if none). */
     private String engagementStatus;
     /** Engagement ID for this agent + property (null if none). */
