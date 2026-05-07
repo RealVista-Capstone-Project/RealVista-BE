@@ -237,6 +237,12 @@ public class PropertyApplicationService {
         UUID propertyLocationId = request.getLocationId() != null ? request.getLocationId()
                 : resolveLocationId(request.getLatitude(), request.getLongitude());
 
+        if (propertyLocationId == null) {
+            throw new DomainException(
+                    "Could not resolve property location from ward/district or map coordinates.",
+                    "ERROR_PROPERTY_LOCATION_UNRESOLVED");
+        }
+
         // --- Duplicate address check ---
         boolean flagForReview = false;
         String overrideReason = request.getOverrideReason();
