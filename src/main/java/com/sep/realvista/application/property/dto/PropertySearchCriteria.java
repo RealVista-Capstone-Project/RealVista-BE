@@ -33,4 +33,7 @@ public class PropertySearchCriteria {
 
     @Parameter(description = "Filter properties by city, district, ward, or exact location ID")
     private UUID locationId;
+
+    @Parameter(description = "Sort order: NEWEST, OLDEST, AREA_ASC, AREA_DESC, ADDRESS_ASC, ADDRESS_DESC")
+    private String sortBy;
 }

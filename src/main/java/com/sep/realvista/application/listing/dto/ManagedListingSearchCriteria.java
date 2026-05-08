@@ -27,4 +27,7 @@ public class ManagedListingSearchCriteria {
 
     @Parameter(description = "Filter by property ID")
     private UUID propertyId;
+
+    @Parameter(description = "Filter by creator: SELF (owner created), AGENT (agent created on owner's property)")
+    private String createdBy;
 }

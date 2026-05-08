@@ -5,6 +5,10 @@ import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
 import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
+import com.sep.realvista.application.property.dto.AddressDuplicateCheckRequest;
+import com.sep.realvista.application.property.dto.AddressDuplicateCheckResponse;
+import com.sep.realvista.application.property.dto.ClaimPropertyRequest;
+import com.sep.realvista.application.property.dto.ClaimPropertyResponse;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
 import com.sep.realvista.application.property.dto.PropertyFeedCriteria;
@@ -276,5 +280,35 @@ public class PropertyController {
     log.info("Admin REST request to soft-delete property {}", propertyId);
     propertyApplicationService.adminDeleteProperty(propertyId);
     return ResponseEntity.ok(ApiResponse.success("Property deleted successfully", null));
+  }
+
+  @PostMapping("/check-address-duplicate")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(
+      summary = "Check for duplicate address",
+      description = "Real-time validation endpoint. Returns severity level and conflicting properties "
+          + "so the FE can decide whether to block, warn, or allow property creation.")
+  public ResponseEntity<ApiResponse<AddressDuplicateCheckResponse>> checkAddressDuplicate(
+      @Valid @RequestBody AddressDuplicateCheckRequest request) {
+    log.info("REST request to check address duplicate for location {} / '{}'",
+        request.getLocationId(), request.getStreetAddress());
+    AddressDuplicateCheckResponse response =
+        propertyApplicationService.checkAddressDuplicateForCurrentUser(request);
+    return ResponseEntity.ok(ApiResponse.success("Duplicate check completed", response));
+  }
+
+  @PostMapping("/{propertyId}/claim")
+  @PreAuthorize("isAuthenticated()")
+  @Operation(
+      summary = "Claim ownership of a property",
+      description = "Initiates a claim request against a property owned by someone else. "
+          + "The current owner is notified and has 7 days to confirm or reject.")
+  public ResponseEntity<ApiResponse<ClaimPropertyResponse>> claimProperty(
+      @PathVariable UUID propertyId,
+      @Valid @RequestBody ClaimPropertyRequest request) {
+    log.info("REST request to claim property {}", propertyId);
+    ClaimPropertyResponse response = propertyApplicationService.claimProperty(propertyId, request);
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(ApiResponse.success("Claim request submitted successfully", response));
   }
 }

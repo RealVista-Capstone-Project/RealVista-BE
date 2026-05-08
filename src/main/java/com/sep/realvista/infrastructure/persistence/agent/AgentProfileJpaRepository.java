@@ -31,4 +31,15 @@ public interface AgentProfileJpaRepository extends JpaRepository<AgentProfile, U
            + "LEFT JOIN FETCH ap.user "
            + "WHERE ap.deleted = false ORDER BY ap.rating DESC")
     List<AgentProfile> findAllActive();
+
+    /**
+     * Agent profiles whose linked user account is usable on the platform: not deleted and
+     * {@link com.sep.realvista.domain.user.UserStatus} ACTIVE or VERIFIED (excludes suspended/banned).
+     */
+    @Query("SELECT ap FROM AgentProfile ap "
+           + "JOIN FETCH ap.user u "
+           + "WHERE ap.deleted = false AND u.deleted = false "
+           + "AND u.status IN ('ACTIVE', 'VERIFIED') "
+           + "ORDER BY ap.rating DESC")
+    List<AgentProfile> findAllActiveWithEligibleUserAccount();
 }

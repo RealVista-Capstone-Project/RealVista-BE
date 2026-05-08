@@ -29,5 +29,7 @@ public enum PropertyStatus {
     AVAILABLE,
     RESERVED,
     SOLD,
-    RENTED
+    RENTED,
+    /** Property has had no active listing for 6+ months and was auto-expired by the scheduler. */
+    STALE
 }

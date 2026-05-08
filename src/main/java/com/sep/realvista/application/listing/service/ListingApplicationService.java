@@ -42,6 +42,7 @@ import com.sep.realvista.domain.listing.repository.ListingPriceHistoryRepository
 import com.sep.realvista.domain.listing.repository.ListingRepository;
 import com.sep.realvista.domain.listing.similarity.SimilarListing;
 import com.sep.realvista.shared.util.AddressFormatter;
+import com.sep.realvista.domain.property.MediaType;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.PropertyStatus;
@@ -81,6 +82,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -116,6 +118,7 @@ public class ListingApplicationService {
   private final UserFeatureSubscriptionRepository userFeatureSubscriptionRepository;
   private final EngagementRepository engagementRepository;
   private final LeaseAgreementRepository leaseAgreementRepository;
+  private final PriceChangeNotificationService priceChangeNotificationService;
   private final com.sep.realvista.domain.billing.boost.repository.ListingBoostRepository listingBoostRepository;
   // Self-injection via @Lazy to route internal calls through the Spring AOP
   // proxy,
@@ -296,6 +299,8 @@ public class ListingApplicationService {
     // Calculate and add cost breakdown (only for RENT listings)
     CostBreakdownDTO costBreakdown = costBreakdownService.calculateCostBreakdown(listing);
     response.setCostBreakdown(costBreakdown);
+
+    response.setThreeDRoomNames(buildThreeDRoomNames(listingMedias));
 
     // Note: is_favorite is NOT set here - it will be set by the public method
     return response;
@@ -787,6 +792,18 @@ public class ListingApplicationService {
       listingPriceHistoryRepository.save(priceHistory);
       log.info("Created price history entry for listing ID: {} (old: {}, new: {})",
           listingId, oldPrice, updatedListing.getPrice());
+
+      try {
+        priceChangeNotificationService.notifyBookmarkUsersAboutPriceChange(
+            updatedListing.getListingId(),
+            updatedListing.getName(),
+            oldPrice,
+            updatedListing.getPrice(),
+            userId);
+      } catch (Exception e) {
+        log.error("Failed to fan-out price-change notifications for listing {}: {}",
+            updatedListing.getListingId(), e.getMessage(), e);
+      }
     }
 
     if (request.getContent() != null) {
@@ -1024,6 +1041,20 @@ public class ListingApplicationService {
         // Filter by property ID
         if (criteria.getPropertyId() != null) {
           predicates.add(cb.equal(propertyJoin.get("propertyId"), criteria.getPropertyId()));
+        }
+
+        // Creator: SELF = property owner created the listing; AGENT = broker created on owner's property
+        if (criteria.getCreatedBy() != null
+            && !criteria.getCreatedBy().isBlank()
+            && !criteria.getCreatedBy().equalsIgnoreCase("ALL")) {
+          String createdByUpper = criteria.getCreatedBy().trim().toUpperCase();
+          if ("SELF".equals(createdByUpper)) {
+            predicates.add(cb.equal(root.get("userId"), propertyJoin.get("ownerId")));
+          } else if ("AGENT".equals(createdByUpper)) {
+            predicates.add(cb.notEqual(root.get("userId"), propertyJoin.get("ownerId")));
+          } else {
+            log.warn("Invalid createdBy in managed listing search: {}", criteria.getCreatedBy());
+          }
         }
       }
 
@@ -1717,5 +1748,33 @@ public class ListingApplicationService {
         .findFirst()
         .map(PropertyAttributeValue::getValueText)
         .orElse(null);
+  }
+
+  /**
+   * One label per THREE_D media on the listing, ordered like the gallery. Blank string = unnamed room.
+   */
+  private List<String> buildThreeDRoomNames(List<ListingMedia> listingMedias) {
+    if (listingMedias == null || listingMedias.isEmpty()) {
+      return List.of();
+    }
+    return listingMedias.stream()
+        .filter(lm -> lm.getPropertyMedia() != null && !Boolean.TRUE.equals(lm.getDeleted()))
+        .filter(lm -> lm.getPropertyMedia().getMediaType() == MediaType.THREE_D)
+        .sorted(Comparator.comparing(
+            ListingMedia::getDisplayOrder,
+            Comparator.nullsLast(Integer::compareTo)))
+        .map(lm -> extractThreeDRoomLabel(lm.getPropertyMedia().getMetadata()))
+        .collect(Collectors.toList());
+  }
+
+  private static String extractThreeDRoomLabel(java.util.Map<String, Object> metadata) {
+    if (metadata == null) {
+      return "";
+    }
+    Object roomName = metadata.get("room_name");
+    if (roomName instanceof String s) {
+      return s.trim();
+    }
+    return "";
   }
 }

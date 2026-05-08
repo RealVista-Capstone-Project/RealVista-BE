@@ -177,7 +177,7 @@ class AppointmentApplicationServiceTest {
         assertThat(lead.getFullName()).isEqualTo("Sender");
         assertThat(lead.getEmail()).isEqualTo("sender@test.com");
 
-        // Verify confirmation email sent to sender
+        // Verify confirmation email sent to sender (DB template)
         verify(emailService).sendDbTemplateMessageAsync(
                 eq("sender@test.com"),
                 eq("TOUR_BOOKING_CONFIRMATION"),

@@ -4,6 +4,7 @@ import com.sep.realvista.application.common.dto.ApiResponse;
 import com.sep.realvista.application.listing.dto.AgentListingAnalyticsRowDTO;
 import com.sep.realvista.application.listing.dto.AgentPerformanceAnalyticsDTO;
 import com.sep.realvista.application.listing.dto.ListingAnalyticsDTO;
+import com.sep.realvista.application.listing.dto.ListingWeeklyViewsDTO;
 import com.sep.realvista.application.listing.service.ListingAnalyticsService;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
 import com.sep.realvista.domain.listing.Listing;
@@ -18,14 +19,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -78,6 +82,46 @@ public class ListingAnalyticsController {
 
             log.info("Successfully retrieved analytics for listing ID: {} - traceId: {}", listingId, traceId);
             return ResponseEntity.ok(ApiResponse.success("Analytics retrieved successfully", analytics));
+
+        } finally {
+            MDC.remove("traceId");
+        }
+    }
+
+    @GetMapping("/{listingId}/analytics/views-by-day")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary = "Get listing views by day for a week",
+            description = "Returns seven daily view counts (Mon–Sun) for the week containing week_start. "
+                    + "The listing creator or the property owner may access.")
+    public ResponseEntity<ApiResponse<ListingWeeklyViewsDTO>> getListingViewsByDay(
+            @PathVariable UUID listingId,
+            @RequestParam("week_start") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekStart,
+            @AuthenticationPrincipal SecurityUserDetails userDetails) {
+
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+
+        try {
+            log.info("Fetching weekly views for listing ID: {} week_start {} - traceId: {}",
+                    listingId, weekStart, traceId);
+
+            Listing listing = listingRepository.findById(listingId)
+                    .orElseThrow(() -> {
+                        log.error("Listing not found with ID: {} - traceId: {}", listingId, traceId);
+                        return new ResourceNotFoundException("Listing", listingId);
+                    });
+
+            if (!canViewListingAnalytics(listing, userDetails.getUserId())) {
+                log.warn("Unauthorized weekly views attempt for listing ID: {} by user: {} - traceId: {}",
+                        listingId, userDetails.getUserId(), traceId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("You do not have permission to view these analytics"));
+            }
+
+            ListingWeeklyViewsDTO data = listingAnalyticsService.getListingViewsByWeek(listingId, weekStart);
+            return ResponseEntity.ok(ApiResponse.success("Weekly views retrieved successfully", data));
 
         } finally {
             MDC.remove("traceId");

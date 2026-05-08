@@ -74,7 +74,7 @@ public class AgentProfileApplicationService {
     @Transactional(readOnly = true)
     public List<AgentListItemResponse> listAgentsForProperty(
             UUID propertyId, UUID ownerId, String search, BigDecimal minRating) {
-        List<AgentProfile> allAgents = agentProfileRepository.findAllActive();
+        List<AgentProfile> allAgents = agentProfileRepository.findAllActiveWithEligibleUserAccount();
 
         // Build a map of agentUserId -> latest engagement for this property
         Map<UUID, Engagement> engagementByAgent = new HashMap<>();
@@ -121,14 +121,19 @@ public class AgentProfileApplicationService {
     private static AgentListItemResponse toListItem(AgentProfile p, Engagement engagement) {
         String avatarUrl = null;
         String fullName = null;
+        String email = null;
         if (p.getUser() != null) {
             avatarUrl = p.getUser().getAvatarUrl();
             fullName = p.getUser().getFullName();
+            if (p.getUser().getEmail() != null) {
+                email = p.getUser().getEmail().getValue();
+            }
         }
         return AgentListItemResponse.builder()
                 .userId(p.getUserId())
                 .fullName(fullName)
                 .avatarUrl(avatarUrl)
+                .email(email)
                 .bio(p.getBio())
                 .specialties(p.getSpecialties())
                 .serviceAreas(p.getServiceAreas())

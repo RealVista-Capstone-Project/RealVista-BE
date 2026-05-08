@@ -2,6 +2,10 @@ package com.sep.realvista.application.property.service;
 
 import com.sep.realvista.application.common.dto.PageResponse;
 import com.sep.realvista.application.appointment.service.AppointmentApplicationService;
+import com.sep.realvista.application.property.dto.AddressDuplicateCheckRequest;
+import com.sep.realvista.application.property.dto.AddressDuplicateCheckResponse;
+import com.sep.realvista.application.property.dto.ClaimPropertyRequest;
+import com.sep.realvista.application.property.dto.ClaimPropertyResponse;
 import com.sep.realvista.application.property.dto.CreatePropertyRequest;
 import com.sep.realvista.application.property.dto.PropertyAttributeRequest;
 import com.sep.realvista.application.property.dto.PropertyDetailResponse;
@@ -18,14 +22,20 @@ import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.notification.service.NotificationApplicationService;
 import com.sep.realvista.domain.agent.PropertyAgent;
 import com.sep.realvista.domain.agent.PropertyAgentRepository;
+import com.sep.realvista.domain.common.exception.BusinessConflictException;
 import com.sep.realvista.domain.common.exception.DomainException;
 import com.sep.realvista.domain.common.exception.ResourceNotFoundException;
+import com.sep.realvista.domain.common.value.PriceRangeVO;
+import com.sep.realvista.domain.common.value.RangeVO;
 import com.sep.realvista.domain.engagement.Engagement;
 import com.sep.realvista.domain.engagement.EngagementRepository;
 import com.sep.realvista.domain.engagement.proposal.AgentProposalRepository;
+import com.sep.realvista.domain.property.DuplicateSeverity;
 import com.sep.realvista.domain.property.Property;
 import com.sep.realvista.domain.property.PropertyMedia;
 import com.sep.realvista.domain.property.PropertyStatus;
+import com.sep.realvista.domain.property.claim.PropertyClaim;
+import com.sep.realvista.domain.property.claim.PropertyClaimRepository;
 import com.sep.realvista.domain.property.amenity.PropertyAmenity;
 import com.sep.realvista.domain.property.attribute.PropertyAttributeValue;
 import com.sep.realvista.domain.property.attribute.repository.PropertyAttributeRangeRepository;
@@ -60,21 +70,29 @@ import com.sep.realvista.infrastructure.service.NotificationMessageService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -111,6 +129,15 @@ public class PropertyApplicationService {
     private final CacheManager cacheManager;
     private final NotificationApplicationService notificationApplicationService;
     private final NotificationMessageService notificationMessageService;
+    private final PropertyClaimRepository propertyClaimRepository;
+
+    @Value("${realvista.listing.max-lifetime-days:14}")
+    private long listingMaxLifetimeDays;
+
+    private static final UUID SHOWCASE_TYPE_HOUSE = UUID.fromString("320e8400-e29b-41d4-a716-446655440002");
+    private static final UUID SHOWCASE_TYPE_VILLA = UUID.fromString("320e8400-e29b-41d4-a716-446655440003");
+    private static final UUID SHOWCASE_TYPE_TOWNHOUSE = UUID.fromString("320e8400-e29b-41d4-a716-446655440004");
+    private static final UUID SHOWCASE_TYPE_SHOPHOUSE = UUID.fromString("320e8400-e29b-41d4-a716-446655440008");
 
     private UUID getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -153,6 +180,53 @@ public class PropertyApplicationService {
         return phone.substring(0, 2) + "******" + phone.substring(phone.length() - 2);
     }
 
+    private Sort resolveMyPropertiesSort(PropertySearchCriteria criteria) {
+        String key = "NEWEST";
+        if (criteria != null && criteria.getSortBy() != null && !criteria.getSortBy().isBlank()) {
+            key = criteria.getSortBy().trim().toUpperCase(Locale.ROOT);
+        }
+        return switch (key) {
+            case "OLDEST" -> Sort.by(Sort.Direction.ASC, "createdAt");
+            case "AREA_ASC" -> Sort.by(Sort.Direction.ASC, "landSizeM2");
+            case "AREA_DESC" -> Sort.by(Sort.Direction.DESC, "landSizeM2");
+            case "ADDRESS_ASC" -> Sort.by(Sort.Direction.ASC, "streetAddress");
+            case "ADDRESS_DESC" -> Sort.by(Sort.Direction.DESC, "streetAddress");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt");
+        };
+    }
+
+    private BigDecimal estimatePortfolioContribution(Property property) {
+        PriceRangeVO priceRange = property.getPriceRange();
+        if (priceRange == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal buyMid = midpoint(priceRange.getBuy());
+        if (buyMid.compareTo(BigDecimal.ZERO) > 0) {
+            return buyMid;
+        }
+        return midpoint(priceRange.getRent());
+    }
+
+    private BigDecimal midpoint(RangeVO range) {
+        if (range == null) {
+            return BigDecimal.ZERO;
+        }
+        if (range.getMin() != null && range.getMax() != null) {
+            return range.getMin().add(range.getMax()).divide(BigDecimal.valueOf(2), RoundingMode.HALF_UP);
+        }
+        if (range.getMin() != null) {
+            return range.getMin();
+        }
+        if (range.getMax() != null) {
+            return range.getMax();
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private static long countPropertiesWithType(List<Property> properties, UUID propertyTypeId) {
+        return properties.stream().filter(p -> propertyTypeId.equals(p.getPropertyTypeId())).count();
+    }
+
     @Transactional
     public PropertyDetailResponse createProperty(CreatePropertyRequest request) {
         UUID currentUserId = getCurrentUserId();
@@ -165,6 +239,38 @@ public class PropertyApplicationService {
 
         UUID propertyLocationId = request.getLocationId() != null ? request.getLocationId()
                 : resolveLocationId(request.getLatitude(), request.getLongitude());
+
+        if (propertyLocationId == null) {
+            throw new DomainException(
+                    "Could not resolve property location from ward/district or map coordinates.",
+                    "ERROR_PROPERTY_LOCATION_UNRESOLVED");
+        }
+
+        // --- Duplicate address check ---
+        boolean flagForReview = false;
+        String overrideReason = request.getOverrideReason();
+        if (propertyLocationId != null) {
+            AddressDuplicateCheckResponse dupCheck = checkAddressDuplicate(
+                    AddressDuplicateCheckRequest.builder()
+                            .locationId(propertyLocationId)
+                            .streetAddress(request.getStreetAddress())
+                            .latitude(request.getLatitude())
+                            .longitude(request.getLongitude())
+                            .build(),
+                    ownerId);
+
+            if (dupCheck.getSeverity() == DuplicateSeverity.HARD_BLOCK) {
+                throw new BusinessConflictException(
+                        dupCheck.getMessage(), "ERROR_DUPLICATE_PROPERTY_ADDRESS");
+            }
+            if (dupCheck.getSeverity() == DuplicateSeverity.SOFT_WARNING && overrideReason == null) {
+                throw new BusinessConflictException(
+                        dupCheck.getMessage(), "ERROR_DUPLICATE_REQUIRES_CONFIRMATION");
+            }
+            if (overrideReason != null) {
+                flagForReview = true;
+            }
+        }
 
         PropertyStatus finalStatus = isAgentCreatingForOwner ? PropertyStatus.PENDING : PropertyStatus.DRAFT;
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
@@ -187,6 +293,11 @@ public class PropertyApplicationService {
             }
         }
 
+        // Force PENDING when there is an override (duplicate conflict acknowledged by user)
+        if (flagForReview && finalStatus == PropertyStatus.DRAFT) {
+            finalStatus = PropertyStatus.PENDING;
+        }
+
         Property property = Property.builder()
                 .ownerId(ownerId)
                 .locationId(propertyLocationId)
@@ -202,6 +313,8 @@ public class PropertyApplicationService {
                 .extraAttributes(request.getExtraAttributes())
                 .priceRange(request.getPriceRange())
                 .allowRentListingWhenRented(Boolean.TRUE.equals(request.getAllowRentListingWhenRented()))
+                .flaggedForAdminReview(flagForReview)
+                .duplicateOverrideReason(overrideReason)
                 .status(finalStatus)
                 .slug(titleSlug)
                 .build();
@@ -334,6 +447,51 @@ public class PropertyApplicationService {
 
         PropertyDetailResponse response = propertyMapper.toDetailResponse(property, media, attributes, amenities);
 
+        // Enrich with owner info
+        userRepository.findById(property.getOwnerId()).ifPresent(owner -> {
+            response.setOwnerName(owner.getFullName());
+            response.setOwnerEmail(owner.getEmail() != null ? owner.getEmail().getValue() : null);
+            response.setOwnerAvatarUrl(owner.getAvatarUrl());
+            response.setOwnerPhone(owner.getPhone());
+            settingPreferenceRepository.findByUserId(owner.getUserId()).ifPresent(pref -> {
+                boolean hidden = Boolean.TRUE.equals(pref.getHidePhoneNumber());
+                response.setIsOwnerPhoneHidden(hidden);
+                response.setOwnerPhoneDisplay(hidden ? null : owner.getPhone());
+            });
+        });
+
+        // Enrich with sold-by info (derived from sold listing)
+        if (property.getStatus() == PropertyStatus.SOLD) {
+            Optional<Listing> soldListing = listingRepository.findByPropertyId(propertyId).stream()
+                    .filter(l -> l.getStatus() == ListingStatus.SOLD && l.getSoldByUserId() != null)
+                    .max(Comparator.comparing(Listing::getSoldAt, Comparator.nullsLast(Comparator.naturalOrder())));
+
+            if (soldListing.isPresent()) {
+                Listing listing = soldListing.get();
+                UUID soldByUserId = listing.getSoldByUserId();
+                response.setSoldByUserId(soldByUserId);
+                response.setSoldAt(listing.getSoldAt());
+                response.setSoldByRole(soldByUserId.equals(property.getOwnerId()) ? "OWNER" : "AGENT");
+                userRepository.findById(soldByUserId).ifPresent(soldUser -> {
+                    response.setSoldByName(soldUser.getFullName());
+                    response.setSoldByPhone(soldUser.getPhone());
+                });
+            } else {
+                response.setSoldByUserId(property.getOwnerId());
+                response.setSoldByRole("OWNER");
+                response.setSoldByName(response.getOwnerName());
+                response.setSoldByPhone(response.getOwnerPhone());
+                userRepository.findById(property.getOwnerId()).ifPresent(owner -> {
+                    if (response.getSoldByName() == null) {
+                        response.setSoldByName(owner.getFullName());
+                    }
+                    if (response.getSoldByPhone() == null) {
+                        response.setSoldByPhone(owner.getPhone());
+                    }
+                });
+            }
+        }
+
         // Fetch active listings for this property
         List<ListingSummaryDTO> activeListings = listingRepository.findByPropertyId(propertyId).stream()
                 .filter(l -> l.getStatus() == ListingStatus.PUBLISHED)
@@ -365,14 +523,21 @@ public class PropertyApplicationService {
         String keyword = criteria != null ? criteria.getKeyword() : null;
         PropertyStatus status = criteria != null ? criteria.getStatus() : null;
         List<PropertyStatus> statuses = criteria != null ? criteria.getStatuses() : null;
+        UUID propertyTypeId = criteria != null ? criteria.getPropertyTypeId() : null;
+
+        Sort sort = resolveMyPropertiesSort(criteria);
+        Pageable effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
         Page<Property> propertiesPage;
 
         if (isAgent) {
             log.info("Getting properties for agent: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByAgentIdAndCriteria(userId, keyword, status, statuses, pageable);
+            propertiesPage = propertyRepository.findByAgentIdAndCriteria(
+                    userId, keyword, status, statuses, propertyTypeId, effectivePageable);
         } else {
             log.info("Getting properties for owner: {} with criteria: {}", userId, criteria);
-            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(userId, keyword, status, statuses, pageable);
+            propertiesPage = propertyRepository.findByOwnerIdAndCriteria(
+                    userId, keyword, status, statuses, propertyTypeId, effectivePageable);
         }
 
         Set<UUID> ownerIds = propertiesPage.getContent().stream()
@@ -456,6 +621,54 @@ public class PropertyApplicationService {
                         && p.getCreatedAt().isBefore(currentMonthStart))
                 .count();
 
+        BigDecimal totalLandAreaM2 = properties.stream()
+                .map(Property::getLandSizeM2)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        long propertiesWithLand = properties.stream().filter(p -> p.getLandSizeM2() != null).count();
+        BigDecimal averageLandAreaM2 = propertiesWithLand == 0
+                ? BigDecimal.ZERO
+                : totalLandAreaM2.divide(BigDecimal.valueOf(propertiesWithLand), 2, RoundingMode.HALF_UP);
+
+        BigDecimal estimatedPortfolioValueVnd = properties.stream()
+                .map(this::estimatePortfolioContribution)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        int currentYear = LocalDate.now().getYear();
+        BigDecimal portfolioAddedThisYear = properties.stream()
+                .filter(p -> p.getCreatedAt() != null && p.getCreatedAt().getYear() == currentYear)
+                .map(this::estimatePortfolioContribution)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal portfolioAddedLastYear = properties.stream()
+                .filter(p -> p.getCreatedAt() != null && p.getCreatedAt().getYear() == currentYear - 1)
+                .map(this::estimatePortfolioContribution)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Double estimatedPortfolioValueYoyPercent = portfolioAddedLastYear.signum() == 0
+                ? null
+                : portfolioAddedThisYear.subtract(portfolioAddedLastYear)
+                        .divide(portfolioAddedLastYear, 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .doubleValue();
+
+        Map<String, Long> showcaseTypeCounts = new LinkedHashMap<>();
+        showcaseTypeCounts.put("HOUSE", countPropertiesWithType(properties, SHOWCASE_TYPE_HOUSE));
+        showcaseTypeCounts.put("VILLA", countPropertiesWithType(properties, SHOWCASE_TYPE_VILLA));
+        showcaseTypeCounts.put("TOWNHOUSE", countPropertiesWithType(properties, SHOWCASE_TYPE_TOWNHOUSE));
+        showcaseTypeCounts.put("SHOPHOUSE", countPropertiesWithType(properties, SHOWCASE_TYPE_SHOPHOUSE));
+
+        List<Listing> listings = listingRepository.findByUserIdOrPropertyOwnerId(userId);
+        long publishedListingsCount =
+                listings.stream().filter(l -> l.getStatus() == ListingStatus.PUBLISHED).count();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiringHorizon = now.plusDays(7);
+        long listingsExpiringSoonCount = listings.stream()
+                .filter(l -> l.getStatus() == ListingStatus.PUBLISHED && l.getPublishedAt() != null)
+                .filter(l -> {
+                    LocalDateTime expiresAt = l.getPublishedAt().plusDays(listingMaxLifetimeDays);
+                    return expiresAt.isAfter(now) && !expiresAt.isAfter(expiringHorizon);
+                })
+                .count();
+
         return PropertySummaryMetricsResponse.builder()
                 .totalProperties(properties.size())
                 .currentMonthTotalProperties(currentMonthTotalProperties)
@@ -468,6 +681,13 @@ public class PropertyApplicationService {
                 .pendingProperties(pendingProperties)
                 .verifiedProperties(verifiedProperties)
                 .rejectedProperties(rejectedProperties)
+                .totalLandAreaM2(totalLandAreaM2.setScale(2, RoundingMode.HALF_UP))
+                .averageLandAreaM2(averageLandAreaM2.setScale(2, RoundingMode.HALF_UP))
+                .estimatedPortfolioValueVnd(estimatedPortfolioValueVnd.setScale(0, RoundingMode.HALF_UP))
+                .estimatedPortfolioValueYoyPercent(estimatedPortfolioValueYoyPercent)
+                .publishedListingsCount(publishedListingsCount)
+                .listingsExpiringSoonCount(listingsExpiringSoonCount)
+                .showcaseTypeCounts(showcaseTypeCounts)
                 .build();
     }
 
@@ -482,6 +702,22 @@ public class PropertyApplicationService {
                 .max(Comparator.comparing(Listing::getSoldAt, Comparator.nullsLast(Comparator.naturalOrder())));
 
         if (soldListing.isEmpty()) {
+            summary.setSoldByUserId(property.getOwnerId());
+            summary.setSoldByRole("OWNER");
+            if (summary.getOwnerName() != null) {
+                summary.setSoldByName(summary.getOwnerName());
+            }
+            if (summary.getOwnerPhone() != null && summary.getSoldByPhone() == null) {
+                summary.setSoldByPhone(summary.getOwnerPhone());
+            }
+            userRepository.findById(property.getOwnerId()).ifPresent(user -> {
+                if (summary.getSoldByName() == null) {
+                    summary.setSoldByName(user.getFullName());
+                }
+                if (summary.getSoldByPhone() == null) {
+                    summary.setSoldByPhone(user.getPhone());
+                }
+            });
             return;
         }
 
@@ -926,11 +1162,46 @@ public class PropertyApplicationService {
                     "ERROR_PROPERTY_INVALID_STATUS", new Object[]{newStatus});
         }
 
-        property.updateStatus(newStatus);
+        if (newStatus == PropertyStatus.SOLD) {
+            property.markAsSold();
+        } else if (newStatus == PropertyStatus.RENTED) {
+            property.markAsRented();
+        } else {
+            property.updateStatus(newStatus);
+        }
         propertyRepository.save(property);
+
+        if (newStatus == PropertyStatus.SOLD) {
+            closePublishedListingsAsSoldDueToPropertyClosure(property, currentUserId);
+        }
+
         log.info("Property {} status updated to {} by user {}", propertyId, status, currentUserId);
 
         return getPropertyDetails(propertyId);
+    }
+
+    /**
+     * When the owner sets the property to {@link PropertyStatus#SOLD} via dashboard (not via
+     * {@code markAsSold} on a listing), published listings must be closed with {@code sold_by}
+     * so the owner can see who recorded the sale — same as the listing-driven closure path.
+     */
+    private void closePublishedListingsAsSoldDueToPropertyClosure(Property property, UUID closedByUserId) {
+        UUID propertyId = property.getPropertyId();
+        UUID ownerId = property.getOwnerId();
+        List<Listing> closed = new ArrayList<>();
+        for (Listing l : listingRepository.findByPropertyId(propertyId)) {
+            if (l.getStatus() != ListingStatus.PUBLISHED) {
+                continue;
+            }
+            l.markAsSoldDueToPropertyClosure(closedByUserId);
+            listingRepository.save(l);
+            closed.add(l);
+            appointmentApplicationService.cancelActiveAppointmentsByListingId(
+                    l.getListingId(),
+                    ownerId,
+                    "Property no longer available (sold/rented).");
+        }
+        evictListingDetailCache(closed);
     }
 
     @Transactional
@@ -1266,6 +1537,166 @@ public class PropertyApplicationService {
                 listings.size(),
                 engagements.size(),
                 propertyId);
+    }
+
+    /**
+     * Checks whether a given address is a potential duplicate of an existing property.
+     * Can be called standalone (FE real-time validation) or from createProperty.
+     */
+    public AddressDuplicateCheckResponse checkAddressDuplicate(
+            AddressDuplicateCheckRequest request, UUID currentOwnerId) {
+
+        if (request.getLocationId() == null || request.getStreetAddress() == null) {
+            return AddressDuplicateCheckResponse.builder()
+                    .severity(DuplicateSeverity.NONE)
+                    .reasonCode("NO_LOCATION")
+                    .conflictingProperties(List.of())
+                    .build();
+        }
+
+        String normalized = request.getStreetAddress().trim().toLowerCase(java.util.Locale.ROOT);
+        List<Property> candidates = propertyRepository.findPotentialDuplicates(
+                request.getLocationId(), normalized,
+                request.getLatitude(), request.getLongitude(),
+                request.getExcludePropertyId());
+
+        if (candidates.isEmpty()) {
+            return AddressDuplicateCheckResponse.builder()
+                    .severity(DuplicateSeverity.NONE)
+                    .reasonCode("NO_MATCH")
+                    .conflictingProperties(List.of())
+                    .build();
+        }
+
+        DuplicateSeverity worstSeverity = DuplicateSeverity.NONE;
+        String worstReasonCode = "NO_MATCH";
+        List<AddressDuplicateCheckResponse.ConflictingPropertySummary> summaries = new ArrayList<>();
+
+        for (Property candidate : candidates) {
+            boolean sameOwner = candidate.getOwnerId().equals(currentOwnerId);
+            boolean activeStatus = candidate.getStatus() == PropertyStatus.AVAILABLE
+                    || candidate.getStatus() == PropertyStatus.VERIFIED
+                    || candidate.getStatus() == PropertyStatus.PENDING
+                    || candidate.getStatus() == PropertyStatus.RESERVED;
+
+            DuplicateSeverity severity;
+            String reasonCode;
+
+            if (sameOwner && activeStatus) {
+                severity = DuplicateSeverity.HARD_BLOCK;
+                reasonCode = "SAME_OWNER_ACTIVE";
+            } else if (sameOwner) {
+                severity = DuplicateSeverity.SOFT_WARNING;
+                reasonCode = "SAME_OWNER_INACTIVE";
+            } else if (activeStatus) {
+                severity = DuplicateSeverity.SOFT_WARNING;
+                reasonCode = "DIFFERENT_OWNER_ACTIVE";
+            } else {
+                severity = DuplicateSeverity.INFO;
+                reasonCode = "DIFFERENT_OWNER_INACTIVE";
+            }
+
+            if (severity.ordinal() > worstSeverity.ordinal()) {
+                worstSeverity = severity;
+                worstReasonCode = reasonCode;
+            }
+
+            String thumbnail = candidate.getMediaList() != null
+                    ? candidate.getMediaList().stream()
+                            .filter(m -> Boolean.TRUE.equals(m.getIsPrimary()))
+                            .findFirst()
+                            .map(m -> m.getThumbnailUrl() != null ? m.getThumbnailUrl() : m.getMediaUrl())
+                            .orElse(null)
+                    : null;
+
+            summaries.add(AddressDuplicateCheckResponse.ConflictingPropertySummary.builder()
+                    .propertyId(candidate.getPropertyId().toString())
+                    .streetAddress(candidate.getStreetAddress())
+                    .status(candidate.getStatus().name())
+                    .isSameOwner(sameOwner)
+                    .thumbnailUrl(sameOwner ? thumbnail : null)
+                    .build());
+        }
+
+        String message = switch (worstReasonCode) {
+            case "SAME_OWNER_ACTIVE" -> "Bạn đã có bất động sản tại địa chỉ này.";
+            case "SAME_OWNER_INACTIVE" -> "Bạn đã có bất động sản ngừng hoạt động tại địa chỉ này.";
+            case "DIFFERENT_OWNER_ACTIVE" -> "Có bất động sản khác đang hoạt động tại địa chỉ này.";
+            default -> "Có bất động sản tương tự gần địa chỉ này.";
+        };
+
+        return AddressDuplicateCheckResponse.builder()
+                .severity(worstSeverity)
+                .reasonCode(worstReasonCode)
+                .message(message)
+                .conflictingProperties(summaries)
+                .build();
+    }
+
+    /**
+     * Public wrapper for the check endpoint — resolves current user from security context.
+     */
+    public AddressDuplicateCheckResponse checkAddressDuplicateForCurrentUser(
+            AddressDuplicateCheckRequest request) {
+        UUID currentUserId = getCurrentUserId();
+        return checkAddressDuplicate(request, currentUserId);
+    }
+
+    /**
+     * Initiates a claim against an existing property that belongs to a different owner.
+     * Sends a notification to the current owner and creates a PropertyClaim record.
+     */
+    @Transactional
+    public ClaimPropertyResponse claimProperty(UUID propertyId, ClaimPropertyRequest request) {
+        UUID claimantId = getCurrentUserId();
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found", "ERROR_PROPERTY_NOT_FOUND"));
+
+        if (property.getOwnerId().equals(claimantId)) {
+            throw new BusinessConflictException(
+                    "You cannot claim your own property", "ERROR_CANNOT_CLAIM_OWN_PROPERTY");
+        }
+
+        LocalDateTime expiresAt = LocalDateTime.now().plusDays(7);
+        PropertyClaim claim = PropertyClaim.builder()
+                .propertyId(propertyId)
+                .claimantId(claimantId)
+                .claimReason(request.getClaimReason())
+                .message(request.getMessage())
+                .expiresAt(expiresAt)
+                .build();
+
+        PropertyClaim savedClaim = propertyClaimRepository.save(claim);
+        log.info("Property claim {} created for property {} by user {}",
+                savedClaim.getClaimId(), propertyId, claimantId);
+
+        // Notify the current owner
+        try {
+            User currentOwner = userRepository.findById(property.getOwnerId()).orElse(null);
+            if (currentOwner != null) {
+                String ownerEmail = currentOwner.getEmail() != null ? currentOwner.getEmail().getValue() : null;
+                notificationApplicationService.sendNotification(SendNotificationRequest.builder()
+                        .userId(property.getOwnerId())
+                        .userEmail(ownerEmail)
+                        .title("Có người muốn claim bất động sản của bạn")
+                        .message("Bất động sản tại " + property.getStreetAddress()
+                                + " đã nhận được một yêu cầu claim quyền sở hữu. Vui lòng phản hồi trong 7 ngày.")
+                        .eventType(EventType.PROPERTY_CLAIM_RECEIVED)
+                        .entityType(EntityType.PROPERTY)
+                        .entityId(propertyId)
+                        .build());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send claim notification for property {}: {}", propertyId, e.getMessage());
+        }
+
+        return ClaimPropertyResponse.builder()
+                .claimId(savedClaim.getClaimId().toString())
+                .propertyId(propertyId.toString())
+                .status(savedClaim.getStatus().name())
+                .expiresAt(expiresAt)
+                .message("Yêu cầu claim đã được gửi. Chủ sở hữu hiện tại có 7 ngày để phản hồi.")
+                .build();
     }
 
     private String getLanguageForUser(UUID userId) {

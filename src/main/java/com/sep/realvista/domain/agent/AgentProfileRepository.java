@@ -36,6 +36,13 @@ public interface AgentProfileRepository {
     List<AgentProfile> findAllActive();
 
     /**
+     * Non-deleted agent profiles whose user is not deleted and has ACTIVE or VERIFIED status.
+     *
+     * @return agents browseable for owner flows (e.g. hire agent), excludes banned/suspended users
+     */
+    List<AgentProfile> findAllActiveWithEligibleUserAccount();
+
+    /**
      * Saves an agent profile.
      *
      * @param agentProfile the agent profile to save

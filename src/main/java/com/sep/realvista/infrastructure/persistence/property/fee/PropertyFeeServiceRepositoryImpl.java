@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -20,5 +21,31 @@ public class PropertyFeeServiceRepositoryImpl implements PropertyFeeServiceRepos
     @Override
     public List<PropertyFeeService> findByPropertyId(UUID propertyId) {
         return jpaRepository.findByPropertyId(propertyId);
+    }
+
+    @Override
+    public Optional<PropertyFeeService> findById(UUID feeId) {
+        return jpaRepository.findById(feeId);
+    }
+
+    @Override
+    public PropertyFeeService save(PropertyFeeService fee) {
+        return jpaRepository.save(fee);
+    }
+
+    @Override
+    public void softDelete(UUID feeId) {
+        jpaRepository.findById(feeId).ifPresent(fee -> {
+            fee.markAsDeleted();
+            jpaRepository.save(fee);
+        });
+    }
+
+    @Override
+    public void softDeleteAllByPropertyId(UUID propertyId) {
+        jpaRepository.findByPropertyId(propertyId).forEach(fee -> {
+            fee.markAsDeleted();
+            jpaRepository.save(fee);
+        });
     }
 }

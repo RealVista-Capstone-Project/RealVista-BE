@@ -3,6 +3,7 @@ package com.sep.realvista.application.notification.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sep.realvista.application.common.dto.PageResponse;
+import com.sep.realvista.application.notification.dto.DbNotificationContext;
 import com.sep.realvista.application.notification.dto.NotificationResponse;
 import com.sep.realvista.application.notification.dto.SendNotificationRequest;
 import com.sep.realvista.application.service.FirebaseNotificationService;
@@ -106,15 +107,23 @@ public class NotificationApplicationService {
     }
 
     /**
-     * Send a notification using a database template.
+     * Send a notification using a database template (no extra metadata).
      */
     public void sendDbNotification(UUID userId, String templateKey, String language, Map<String, Object> variables,
                                   EventType eventType, EntityType entityType, UUID entityId) {
+        sendDbNotification(userId, templateKey, language, variables,
+                DbNotificationContext.of(eventType, entityType, entityId));
+    }
+
+    /**
+     * Send a notification using a database template with optional metadata for client-side deep linking.
+     */
+    public void sendDbNotification(UUID userId, String templateKey, String language,
+                                  Map<String, Object> variables, DbNotificationContext ctx) {
         NotificationTemplate template = templateRepository.findByTemplateKeyAndLanguage(templateKey, language)
-                .orElseThrow(() -> new DomainException("Notification template not found: " + templateKey, 
+                .orElseThrow(() -> new DomainException("Notification template not found: " + templateKey,
                         "ERROR_TEMPLATE_NOT_FOUND"));
 
-        // Get user email for WebSocket
         com.sep.realvista.domain.user.User user = userRepository.findById(userId)
                 .orElseThrow(() -> new DomainException("User not found: " + userId, "ERROR_USER_NOT_FOUND"));
 
@@ -126,10 +135,10 @@ public class NotificationApplicationService {
                 .userEmail(user.getEmail().getValue())
                 .title(rendered.title())
                 .message(rendered.body())
-                .eventType(eventType)
-                .entityType(entityType)
-                .entityId(entityId)
-                .metadata(new HashMap<>()) // Default empty metadata
+                .eventType(ctx.eventType())
+                .entityType(ctx.entityType())
+                .entityId(ctx.entityId())
+                .metadata(ctx.metadata() != null ? new HashMap<>(ctx.metadata()) : new HashMap<>())
                 .build();
 
         sendNotification(request);

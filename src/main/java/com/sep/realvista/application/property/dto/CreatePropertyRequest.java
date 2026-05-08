@@ -75,4 +75,12 @@ public class CreatePropertyRequest {
 
     @JsonProperty("allow_rent_listing_when_rented")
     private Boolean allowRentListingWhenRented;
+
+    /**
+     * Optional override reason supplied by the FE after the user acknowledges a duplicate warning.
+     * Allowed values: CONFIRMED_DIFFERENT_UNIT | CONFIRMED_NEW_BUILD
+     * When present, the property is created as PENDING and flagged for admin review.
+     */
+    @JsonProperty("override_reason")
+    private String overrideReason;
 }

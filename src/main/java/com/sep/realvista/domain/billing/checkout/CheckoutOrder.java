@@ -17,6 +17,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -58,4 +59,12 @@ public class CheckoutOrder extends BaseEntity {
     /** Gateway order code (PayOS integer or VNPay txn ref equivalent). Unique per checkout. */
     @Column(name = "order_code", unique = true, nullable = false)
     private Long orderCode;
+
+    /**
+     * VNPay {@code vnp_CreateDate} from the pay URL (yyyyMMddHHmmss, Asia/Ho_Chi_Minh).
+     * Required for QueryDR {@code vnp_TransactionDate}. Null for PayOS checkouts.
+     */
+    @Setter
+    @Column(name = "vnp_create_date", length = 14)
+    private String vnpCreateDate;
 }

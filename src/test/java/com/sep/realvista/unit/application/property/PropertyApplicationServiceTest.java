@@ -18,9 +18,11 @@ import com.sep.realvista.domain.property.repository.PropertyAmenityRepository;
 import com.sep.realvista.domain.property.repository.PropertyMediaRepository;
 import com.sep.realvista.domain.property.repository.PropertyRepository;
 import com.sep.realvista.domain.property.repository.PropertyTypeRepository;
+import com.sep.realvista.domain.user.UserRepository;
 import com.sep.realvista.infrastructure.security.SecurityUserDetails;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +57,7 @@ class PropertyApplicationServiceTest {
     @Mock private PropertyTypeRepository propertyTypeRepository;
     @Mock private PropertyAgentRepository propertyAgentRepository;
     @Mock private ListingRepository listingRepository;
+    @Mock private UserRepository userRepository;
     @Mock private PropertyMapper propertyMapper;
     @Mock private EngagementApplicationService engagementApplicationService;
     @Mock private EntityManager entityManager;
@@ -63,6 +66,11 @@ class PropertyApplicationServiceTest {
 
     @InjectMocks
     private PropertyApplicationService propertyApplicationService;
+
+    @BeforeEach
+    void stubUserRepositoryDefaults() {
+        when(userRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+    }
 
     @AfterEach
     void cleanSecurityContext() {

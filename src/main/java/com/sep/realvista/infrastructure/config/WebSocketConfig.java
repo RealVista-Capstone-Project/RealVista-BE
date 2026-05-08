@@ -52,25 +52,42 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private String stompPasscode;
 
     /**
-     * Configure STOMP broker relay using RabbitMQ.
-     * Requires a running RabbitMQ with STOMP plugin enabled on stompPort (default 61613).
-     * Set rabbitmq.stomp.* in application.yml (or environment variables) to override defaults.
+     * Selects the STOMP broker implementation:
+     * <ul>
+     *   <li><b>simple</b> – in-memory simple broker. No external dependency.
+     *       Ideal for local development and small single-instance deployments.</li>
+     *   <li><b>relay</b> – external STOMP broker relay (RabbitMQ). Required for
+     *       multi-instance / production deployments where messages must be shared
+     *       across nodes. Requires RabbitMQ with the STOMP plugin enabled.</li>
+     * </ul>
+     */
+    @Value("${app.websocket.broker:simple}")
+    private String brokerMode;
+
+    /**
+     * Configure the STOMP message broker. Falls back to the in-memory simple broker
+     * by default so local development works without a running RabbitMQ instance.
      */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableStompBrokerRelay("/topic", "/queue")
-                .setRelayHost(stompHost)
-                .setRelayPort(stompPort)
-                .setClientLogin(stompLogin)
-                .setClientPasscode(stompPasscode)
-                .setSystemLogin(stompLogin)
-                .setSystemPasscode(stompPasscode);
+        if ("relay".equalsIgnoreCase(brokerMode)) {
+            config.enableStompBrokerRelay("/topic", "/queue")
+                    .setRelayHost(stompHost)
+                    .setRelayPort(stompPort)
+                    .setClientLogin(stompLogin)
+                    .setClientPasscode(stompPasscode)
+                    .setSystemLogin(stompLogin)
+                    .setSystemPasscode(stompPasscode);
+
+            log.info("STOMP broker relay configured - host: {}:{}, destinations: /topic, /queue",
+                    stompHost, stompPort);
+        } else {
+            config.enableSimpleBroker("/topic", "/queue");
+            log.info("STOMP simple in-memory broker enabled (set app.websocket.broker=relay to use RabbitMQ)");
+        }
 
         config.setApplicationDestinationPrefixes("/app");
         config.setUserDestinationPrefix("/user");
-
-        log.info("STOMP broker relay configured - host: {}:{}, destinations: /topic, /queue",
-                stompHost, stompPort);
     }
 
     @Override

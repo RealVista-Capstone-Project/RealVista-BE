@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,13 +31,15 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
            + "LEFT JOIN FETCH dist.parent city "
            + "WHERE p.ownerId = :ownerId AND p.deleted = false "
            + "AND (:status IS NULL OR p.status = :status) "
-           + "AND (:statuses IS NULL OR p.status IN :statuses) AND "
+           + "AND (:statuses IS NULL OR p.status IN :statuses) "
+           + "AND (:propertyTypeId IS NULL OR p.propertyTypeId = :propertyTypeId) AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)",
            countQuery = "SELECT COUNT(p) FROM Property p "
            + "WHERE p.ownerId = :ownerId AND p.deleted = false "
            + "AND (:status IS NULL OR p.status = :status) "
-           + "AND (:statuses IS NULL OR p.status IN :statuses) AND "
+           + "AND (:statuses IS NULL OR p.status IN :statuses) "
+           + "AND (:propertyTypeId IS NULL OR p.propertyTypeId = :propertyTypeId) AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)")
     org.springframework.data.domain.Page<Property> findByOwnerIdAndKeyword(
@@ -43,6 +47,7 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
             @Param("keyword") String keyword,
             @Param("status") PropertyStatus status,
             @Param("statuses") List<PropertyStatus> statuses,
+            @Param("propertyTypeId") UUID propertyTypeId,
             Pageable pageable);
  
     @Query(value = "SELECT DISTINCT p FROM Property p "
@@ -56,7 +61,8 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
            + "WHERE ( (e.initiatorId = :agentId OR e.receiverId = :agentId) "
            + "OR (pa.agentId = :agentId AND pa.deleted = false) ) "
            + "AND p.deleted = false AND (:status IS NULL OR p.status = :status) "
-           + "AND (:statuses IS NULL OR p.status IN :statuses) AND "
+           + "AND (:statuses IS NULL OR p.status IN :statuses) "
+           + "AND (:propertyTypeId IS NULL OR p.propertyTypeId = :propertyTypeId) AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)",
            countQuery = "SELECT COUNT(DISTINCT p) FROM Property p "
@@ -65,7 +71,8 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
            + "WHERE ( (e.initiatorId = :agentId OR e.receiverId = :agentId) "
            + "OR (pa.agentId = :agentId AND pa.deleted = false) ) "
             + "AND p.deleted = false AND (:status IS NULL OR p.status = :status) "
-            + "AND (:statuses IS NULL OR p.status IN :statuses) AND "
+            + "AND (:statuses IS NULL OR p.status IN :statuses) "
+            + "AND (:propertyTypeId IS NULL OR p.propertyTypeId = :propertyTypeId) AND "
            + "(:keyword IS NULL OR LOWER(p.streetAddress) LIKE :keyword OR "
            + "LOWER(p.descriptions) LIKE :keyword)")
     org.springframework.data.domain.Page<Property> findByAgentIdAndKeyword(
@@ -73,6 +80,7 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
             @Param("keyword") String keyword,
             @Param("status") PropertyStatus status,
             @Param("statuses") List<PropertyStatus> statuses,
+            @Param("propertyTypeId") UUID propertyTypeId,
             Pageable pageable);
 
     @Query("SELECT p FROM Property p WHERE (p.ownerId = :userId OR "
@@ -97,6 +105,39 @@ public interface PropertyJpaRepository extends JpaRepository<Property, UUID> {
 
     @Query("SELECT COUNT(p) FROM Property p WHERE p.locationId IN :locationIds AND p.deleted = false")
     long countByLocationIds(@Param("locationIds") List<UUID> locationIds);
+
+    /**
+     * Duplicate detection: exact text match (normalized) OR coordinate proximity (~30m bounding box).
+     * Excludes the property being edited (excludeId may be null).
+     */
+    @Query("SELECT p FROM Property p WHERE p.deleted = false "
+            + "AND (:excludeId IS NULL OR p.propertyId <> :excludeId) "
+            + "AND ("
+            + "  (p.locationId = :locationId AND LOWER(TRIM(p.streetAddress)) = :normalizedAddress) "
+            + "  OR (ABS(p.latitude - :latitude) < 0.0003 AND ABS(p.longitude - :longitude) < 0.0003)"
+            + ")")
+    List<Property> findPotentialDuplicates(
+            @Param("locationId") UUID locationId,
+            @Param("normalizedAddress") String normalizedAddress,
+            @Param("latitude") BigDecimal latitude,
+            @Param("longitude") BigDecimal longitude,
+            @Param("excludeId") UUID excludeId);
+
+    /**
+     * Finds properties that have been active (not DRAFT/STALE/SOLD/RENTED) with no active listing
+     * created after the cutoff date — used by the stale-property scheduler.
+     */
+    @Query("SELECT p FROM Property p WHERE p.deleted = false "
+            + "AND p.status IN ('AVAILABLE', 'VERIFIED', 'RESERVED') "
+            + "AND p.staleAt IS NULL "
+            + "AND NOT EXISTS ("
+            + "  SELECT l FROM com.sep.realvista.domain.listing.Listing l "
+            + "  WHERE l.propertyId = p.propertyId "
+            + "  AND l.deleted = false "
+            + "  AND l.status = 'PUBLISHED' "
+            + "  AND l.createdAt > :cutoff"
+            + ")")
+    List<Property> findPropertiesEligibleForStale(@Param("cutoff") LocalDateTime cutoff);
 
     /**
      * Admin-only query: all non-deleted properties with optional keyword, status, user,

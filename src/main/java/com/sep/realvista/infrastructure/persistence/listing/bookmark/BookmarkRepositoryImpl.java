@@ -74,4 +74,9 @@ public class BookmarkRepositoryImpl implements BookmarkRepository {
                 pageable
         );
     }
+
+    @Override
+    public List<UUID> findActiveUserIdsByListingId(UUID listingId) {
+        return jpaRepository.findActiveUserIdsByListingId(listingId);
+    }
 }

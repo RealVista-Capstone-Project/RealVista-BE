@@ -596,21 +596,15 @@ public class AppointmentApplicationService {
                 .toUriString();
 
         User recipient = null;
-        String subject = "";
-        String template = "";
         Map<String, Object> vars = new HashMap<>();
 
         switch (appointment.getStatus()) {
             case ACCEPTED -> {
                 recipient = sender;
-                subject = "Lịch tham quan được chấp nhận: " + listingName;
-                template = "tour-booking-status-change";
                 vars.put("status", "Đã chấp nhận");
             }
             case REJECTED -> {
                 recipient = sender;
-                subject = "Lịch tham quan bị từ chối: " + listingName;
-                template = "tour-booking-status-change";
                 vars.put("status", "Đã từ chối");
                 vars.put("reason", appointment.getRejectionReason());
             }
@@ -618,8 +612,6 @@ public class AppointmentApplicationService {
                 boolean cancelledBySender = appointment.getCanceledByUserId().equals(sender.getUserId());
                 recipient = cancelledBySender ? receiver : sender;
                 User actor = cancelledBySender ? sender : receiver;
-                subject = "Lịch tham quan đã bị hủy: " + listingName;
-                template = "tour-booking-status-change";
                 vars.put("status", "Đã hủy");
                 vars.put("actorName", actor.getFullName());
                 vars.put("reason", appointment.getCancellationReason());

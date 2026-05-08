@@ -223,6 +223,7 @@ payment:
     tmn-code: ${VNPAY_TMN_CODE:}
     hash-secret: ${VNPAY_HASH_SECRET:}
     pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+    query-url: ${VNPAY_QUERY_URL:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}
     # Must match Return URL on VNPay merchant (register this exact URL, including query).
     return-url: "${VNPAY_RETURN_URL:}"
 

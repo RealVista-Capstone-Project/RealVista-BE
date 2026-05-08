@@ -3,8 +3,10 @@ package com.sep.realvista.application.property.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sep.realvista.application.listing.dto.AmenityDTO;
 import com.sep.realvista.application.listing.dto.ListingSummaryDTO;
+import com.sep.realvista.application.listing.dto.LocationInfoDTO;
 import com.sep.realvista.application.listing.dto.MediaDTO;
 import com.sep.realvista.application.listing.dto.PropertyAttributeDTO;
+import com.sep.realvista.application.listing.dto.PropertyTypeInfoDTO;
 import com.sep.realvista.domain.common.value.PriceRangeVO;
 import com.sep.realvista.domain.property.PropertyStatus;
 import lombok.AllArgsConstructor;
@@ -13,6 +15,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -79,6 +82,54 @@ public class PropertyDetailResponse {
 
     @JsonProperty("has_3d")
     private boolean has3d;
+
+    @JsonProperty("thumbnail_url")
+    private String thumbnailUrl;
+
+    @JsonProperty("property_type_info")
+    private PropertyTypeInfoDTO propertyTypeInfo;
+
+    @JsonProperty("location_info")
+    private LocationInfoDTO locationInfo;
+
+    @JsonProperty("owner_name")
+    private String ownerName;
+
+    @JsonProperty("owner_email")
+    private String ownerEmail;
+
+    @JsonProperty("owner_avatar_url")
+    private String ownerAvatarUrl;
+
+    @JsonProperty("owner_phone")
+    private String ownerPhone;
+
+    @JsonProperty("owner_phone_display")
+    private String ownerPhoneDisplay;
+
+    @JsonProperty("is_owner_phone_hidden")
+    private Boolean isOwnerPhoneHidden;
+
+    @JsonProperty("sold_by_user_id")
+    private UUID soldByUserId;
+
+    @JsonProperty("sold_by_name")
+    private String soldByName;
+
+    @JsonProperty("sold_by_phone")
+    private String soldByPhone;
+
+    @JsonProperty("sold_by_role")
+    private String soldByRole;
+
+    @JsonProperty("sold_at")
+    private LocalDateTime soldAt;
+
+    @JsonProperty("flagged_for_admin_review")
+    private Boolean flaggedForAdminReview;
+
+    @JsonProperty("duplicate_override_reason")
+    private String duplicateOverrideReason;
 
     @JsonProperty("active_listings")
     private List<ListingSummaryDTO> activeListings;

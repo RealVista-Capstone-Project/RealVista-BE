@@ -115,4 +115,7 @@ public interface BookmarkJpaRepository extends JpaRepository<Bookmark, BookmarkI
             @Param("listingType") ListingType listingType,
             Pageable pageable
     );
+
+    @Query("SELECT b.userId FROM Bookmark b WHERE b.listingId = :listingId AND b.deleted = false")
+    List<UUID> findActiveUserIdsByListingId(@Param("listingId") UUID listingId);
 }
